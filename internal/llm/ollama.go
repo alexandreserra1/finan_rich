@@ -32,6 +32,11 @@ func NewOllama(baseURL, model string) *Ollama {
 // é pequeno para o retrato financeiro + histórico.
 const contextTokens = 8192
 
+// Amostragem recomendada pela Alibaba para o Qwen3.5 sem modo raciocínio
+// (também adequada a outros modelos). Valores mais baixos que o padrão (1,0)
+// deixam as respostas mais consistentes, o que importa ao lidar com números.
+var ollamaSampling = map[string]any{"temperature": 0.7, "top_p": 0.8, "top_k": 20}
+
 type ollamaMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
@@ -61,7 +66,7 @@ func (o *Ollama) Chat(ctx context.Context, req Request, onText func(string)) (st
 	}
 	resp, err := o.post(ctx, "/api/chat", ollamaChatRequest{
 		Model: o.model, Messages: msgs, Stream: true,
-		Options: map[string]any{"num_ctx": contextTokens},
+		Options: ollamaOptions(),
 	})
 	if err != nil {
 		return "", err
@@ -84,6 +89,14 @@ func (o *Ollama) Chat(ctx context.Context, req Request, onText func(string)) (st
 		return "", err
 	}
 	return finish(), nil
+}
+
+func ollamaOptions() map[string]any {
+	opts := map[string]any{"num_ctx": contextTokens}
+	for k, v := range ollamaSampling {
+		opts[k] = v
+	}
+	return opts
 }
 
 // ---- Gerenciamento de modelos (usado pela tela de configurações) ----

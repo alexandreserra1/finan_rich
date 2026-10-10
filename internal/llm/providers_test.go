@@ -62,7 +62,7 @@ func TestOllamaChat(t *testing.T) {
 	if len(msgs) != 4 || msgs[0].(map[string]any)["role"] != "system" {
 		t.Errorf("mensagens enviadas = %v", msgs)
 	}
-	if body["think"] != false || body["model"] != "qwen3:4b" || body["options"].(map[string]any)["num_ctx"] != float64(contextTokens) {
+	if body["think"] != false || body["model"] != "qwen3:4b" || body["options"].(map[string]any)["num_ctx"] != float64(contextTokens) || body["options"].(map[string]any)["temperature"] != 0.7 {
 		t.Errorf("parâmetros = %v", body)
 	}
 }
