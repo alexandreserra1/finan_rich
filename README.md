@@ -150,7 +150,8 @@ testados contra servidores falsos que imitam o Ollama e as APIs da OpenAI e da A
 git tag v1.0.0 && git push origin v1.0.0
 ```
 
-O GitHub Actions roda os testes e o GoReleaser publica os executáveis em Releases.
+Ou pelo site: **Actions → Release → Run workflow**, informando a versão. O GitHub Actions
+roda os testes, cria a tag e o GoReleaser publica os executáveis em Releases.
 
 ## Licença
 
