@@ -189,7 +189,7 @@ func (o *Ollama) Pull(ctx context.Context, onProgress func(PullProgress)) error 
 			return err
 		}
 		if p.Error != "" {
-			return &APIError{Status: http.StatusInternalServerError, Message: p.Error}
+			return fmt.Errorf("não foi possível baixar o modelo %q: confira sua internet e se o nome do modelo está certo (detalhe: %s)", o.model, p.Error)
 		}
 		onProgress(p)
 		return nil

@@ -37,17 +37,28 @@ A opção recomendada é grátis, sem cadastro e privada:
 
 1. Instale o **Ollama**: https://ollama.com/download
 2. No finan_rich, abra **Configurações** e clique em **Baixar modelo agora** (download único
-   de ~2,5 GB do modelo `qwen3:4b`).
+   de ~3,5 GB do modelo `qwen3.5:4b`, da Alibaba).
 
 Pronto. O resto do app funciona mesmo sem IA.
 
 Qual modelo escolher no Ollama:
 
-| Memória do PC | Modelo sugerido | Observação |
+| Memória do PC | Modelo | Observação |
 |---|---|---|
-| 8 GB | `qwen3:4b` (padrão) | Bom em português, leve |
-| 16 GB | `qwen3:8b` | Respostas melhores |
-| 32 GB ou mais | `qwen3:14b` | O melhor dos três |
+| 8 GB | `qwen3.5:4b` (padrão) | Bom em português, leve |
+| 16 GB ou mais | `qwen3.5:9b` | Raciocina melhor; recomendado se couber |
+| Pouca memória | `qwen3.5:2b` | Mais simples, mas roda em quase tudo |
+
+Quer o mais inteligente sem pesar no PC? Escolha **Ollama Cloud** em Configurações: modelos
+gigantes (Qwen3.5, Kimi, GLM) nos servidores do Ollama, grátis com uma conta e limite de
+uso. Rode `ollama signin` uma vez para entrar.
+
+**Como o consultor acerta as contas:** modelos pequenos entendem bem a situação, mas erram
+aritmética. Por isso o app faz todas as contas (juros de cada dívida, sobra depois das
+parcelas, reserva de emergência, prazo para quitar) e entrega prontas ao modelo, que só
+interpreta e aconselha. Em testes com dados reais, isso levou o `qwen3.5:9b` de "erra quase
+toda conta" para acertar prazos e valores. Planos de divisão livres, montados pelo próprio
+modelo, ainda podem ter somas erradas: confira os números antes de seguir.
 
 Não quer instalar nada? Em **Configurações** dá para usar uma IA na nuvem:
 

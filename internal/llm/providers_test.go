@@ -107,6 +107,17 @@ func TestIsCloudModel(t *testing.T) {
 	}
 }
 
+func TestOllamaPullError(t *testing.T) {
+	srv := server(t, nil, func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `{"status":"pulling manifest"}`)
+		fmt.Fprintln(w, `{"error":"pull model manifest: file does not exist"}`)
+	})
+	err := NewOllama(srv.URL, "qwen9:1b").Pull(context.Background(), func(PullProgress) {})
+	if err == nil || !strings.Contains(err.Error(), "não foi possível baixar o modelo \"qwen9:1b\"") {
+		t.Errorf("err = %v", err)
+	}
+}
+
 func TestOllamaModelsAndPull(t *testing.T) {
 	srv := server(t, nil, func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
