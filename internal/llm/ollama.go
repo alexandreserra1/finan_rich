@@ -91,6 +91,23 @@ func (o *Ollama) Chat(ctx context.Context, req Request, onText func(string)) (st
 // ErrOllamaOffline indica que o Ollama não está instalado ou não está rodando.
 var ErrOllamaOffline = errors.New("Ollama não encontrado. Instale em https://ollama.com e deixe-o aberto")
 
+// SigninError indica que um modelo da nuvem do Ollama (":cloud") exige login.
+type SigninError struct{ URL string }
+
+func (e *SigninError) Error() string {
+	msg := "para usar modelos da nuvem do Ollama, entre na sua conta (é grátis): rode \"ollama signin\" no terminal"
+	if e.URL != "" {
+		msg += " ou abra " + e.URL
+	}
+	return msg
+}
+
+// IsCloudModel diz se o modelo roda nos servidores do Ollama ("glm-5.1:cloud",
+// "kimi-k2:1t-cloud"). Esses modelos não precisam ser baixados.
+func IsCloudModel(model string) bool {
+	return strings.HasSuffix(model, ":cloud") || strings.HasSuffix(model, "-cloud")
+}
+
 // Models lista os modelos já baixados no Ollama.
 func (o *Ollama) Models(ctx context.Context) ([]string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, o.baseURL+"/api/tags", nil)
@@ -122,7 +139,11 @@ func (o *Ollama) Models(ctx context.Context) ([]string, error) {
 }
 
 // HasModel diz se o modelo configurado já foi baixado ("qwen3" casa com "qwen3:latest").
+// Modelos da nuvem sempre estão disponíveis.
 func (o *Ollama) HasModel(ctx context.Context) (bool, error) {
+	if IsCloudModel(o.model) {
+		return true, nil
+	}
 	models, err := o.Models(ctx)
 	if err != nil {
 		return false, err
@@ -181,6 +202,13 @@ func (o *Ollama) post(ctx context.Context, path string, body any) (*http.Respons
 	}
 	if resp.StatusCode != http.StatusOK {
 		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusUnauthorized {
+			var body struct {
+				SigninURL string `json:"signin_url"`
+			}
+			json.NewDecoder(resp.Body).Decode(&body)
+			return nil, &SigninError{URL: body.SigninURL}
+		}
 		err := apiError(resp)
 		if resp.StatusCode == http.StatusNotFound {
 			return nil, fmt.Errorf("o modelo %q ainda não foi baixado; baixe-o em Configurações (%w)", o.model, err)

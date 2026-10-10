@@ -84,6 +84,29 @@ func TestOllamaErrors(t *testing.T) {
 	}
 }
 
+func TestOllamaCloudSignin(t *testing.T) {
+	srv := server(t, nil, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprint(w, `{"error":"unauthorized","signin_url":"https://ollama.com/connect?key=abc"}`)
+	})
+	_, _, err := collectChat(t, NewOllama(srv.URL, "glm-5.1:cloud"))
+	var signin *SigninError
+	if !errors.As(err, &signin) || signin.URL != "https://ollama.com/connect?key=abc" || !strings.Contains(err.Error(), "ollama signin") {
+		t.Errorf("err = %v", err)
+	}
+	if has, _ := NewOllama(srv.URL, "glm-5.1:cloud").HasModel(context.Background()); !has {
+		t.Error("modelo da nuvem não precisa de download")
+	}
+}
+
+func TestIsCloudModel(t *testing.T) {
+	for model, want := range map[string]bool{"glm-5.1:cloud": true, "kimi-k2:1t-cloud": true, "qwen3.5:4b": false, "cloud": false} {
+		if got := IsCloudModel(model); got != want {
+			t.Errorf("IsCloudModel(%q) = %v", model, got)
+		}
+	}
+}
+
 func TestOllamaModelsAndPull(t *testing.T) {
 	srv := server(t, nil, func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {

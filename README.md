@@ -140,3 +140,7 @@ git tag v1.0.0 && git push origin v1.0.0
 ```
 
 O GitHub Actions roda os testes e o GoReleaser publica os executáveis em Releases.
+
+## Licença
+
+[MIT](LICENSE): pode usar, modificar e distribuir livremente, inclusive comercialmente, mantendo o aviso de copyright.

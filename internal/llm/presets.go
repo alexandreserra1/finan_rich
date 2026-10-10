@@ -23,6 +23,12 @@ var Presets = []Preset{
 		Models: []string{"qwen3:4b", "qwen3:8b", "qwen3:14b", "deepseek-r1:8b", "gemma3:4b", "llama3.2:3b"},
 	},
 	{
+		ID: "ollama-cloud", Name: "Ollama Cloud (modelos gigantes, grátis com conta)", Kind: KindOllama,
+		Description: "Modelos chineses de ponta (Qwen3.5, Kimi, GLM) rodando nos servidores do Ollama. Plano grátis com limite de uso; precisa do Ollama e de uma conta (\"ollama signin\").",
+		BaseURL:     DefaultOllamaURL, Model: "qwen3.5:cloud",
+		Models: []string{"qwen3.5:cloud", "kimi-k2.6:cloud", "glm-5.1:cloud", "minimax-m2.7:cloud"},
+	},
+	{
 		ID: "groq", Name: "Groq (nuvem, grátis)", Kind: KindOpenAI,
 		Description: "Muito rápido e com plano gratuito. Precisa de uma chave grátis (login com Google).",
 		BaseURL:     "https://api.groq.com/openai/v1", Model: "qwen/qwen3-32b", NeedsKey: true,
