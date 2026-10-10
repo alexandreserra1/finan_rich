@@ -1,0 +1,33 @@
+{{define "content"}}
+<section class="panel chat">
+  <div class="row">
+    <h2>Consultor financeiro IA</h2>
+    {{if .History}}
+    <form method="post" action="/chat/limpar" onsubmit="return confirm('Apagar toda a conversa?')">
+      <button class="secondary" type="submit">Nova conversa</button>
+    </form>
+    {{end}}
+  </div>
+  {{if not .ChatEnabled}}
+    <p class="flash err">Chat desativado. Defina a variável <code>ANTHROPIC_API_KEY</code> e reinicie o app.</p>
+  {{else}}
+  <p class="small muted">O consultor vê seus números atuais (mês, divisão do salário, dívidas) a cada pergunta.</p>
+  <div id="messages" class="messages">
+    {{range .History}}<div class="msg {{.Role}}" data-md>{{.Display}}</div>{{end}}
+    {{if not .History}}
+    <div class="suggestions">
+      <button type="button">Como posso dividir melhor meu salário?</button>
+      <button type="button">Qual dívida devo pagar primeiro?</button>
+      <button type="button">Onde estou gastando demais este mês?</button>
+      <button type="button">Quanto devo ter de reserva de emergência?</button>
+    </div>
+    {{end}}
+  </div>
+  <form id="chat-form" class="chat-form">
+    <textarea name="message" rows="2" placeholder="Pergunte sobre dívidas, divisão de gastos, metas..." required></textarea>
+    <button type="submit">Enviar</button>
+  </form>
+  <script src="/static/chat.js"></script>
+  {{end}}
+</section>
+{{end}}

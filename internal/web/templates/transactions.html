@@ -1,0 +1,61 @@
+{{define "content"}}
+{{template "monthnav" .Month}}
+
+<section class="panel">
+  <h2>Novo lançamento</h2>
+  <form method="post" action="/lancamentos" class="grid-form">
+    <label>Tipo
+      <select name="kind">
+        <option value="saida">Saída (gasto)</option>
+        <option value="entrada">Entrada (salário, renda)</option>
+      </select>
+    </label>
+    <label>Descrição <input name="description" required placeholder="Ex.: Aluguel"></label>
+    <label>Valor (R$) <input name="amount" required inputmode="decimal" placeholder="1.234,56"></label>
+    <label>Categoria
+      <select name="category_id" required>
+        {{range .Categories}}<option value="{{.ID}}">{{.Name}} · {{bucketLabel .Bucket}}</option>{{end}}
+      </select>
+    </label>
+    <label>Data <input type="date" name="occurred_on" value="{{.DefaultDate}}" required></label>
+    <button type="submit">Adicionar</button>
+  </form>
+</section>
+
+<section class="cards">
+  <div class="card"><span class="muted">Entradas</span><strong class="pos">{{brl .Summary.InCents}}</strong></div>
+  <div class="card"><span class="muted">Saídas</span><strong>{{brl .Summary.OutCents}}</strong></div>
+  <div class="card"><span class="muted">Saldo</span><strong class="{{if neg .Summary.BalanceCents}}neg{{else}}pos{{end}}">{{brl .Summary.BalanceCents}}</strong></div>
+</section>
+
+<section class="panel">
+  <div class="row">
+    <h2>Lançamentos de {{.Month.Label}}</h2>
+    <form method="post" action="/lancamentos/copiar-mes-anterior">
+      <input type="hidden" name="mes" value="{{.Month.Key}}">
+      <button class="secondary" type="submit" title="Copia salário e contas fixas do mês anterior">Copiar do mês anterior</button>
+    </form>
+  </div>
+  {{if .Transactions}}
+  <table>
+    <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th class="num">Valor</th><th></th></tr></thead>
+    <tbody>
+    {{range .Transactions}}
+      <tr>
+        <td>{{.OccurredOn.Format "02/01"}}</td>
+        <td>{{.Description}}</td>
+        <td><span class="tag b-{{.Bucket}}">{{.CategoryName}}</span></td>
+        <td class="num {{if eq .Kind "entrada"}}pos{{end}}">{{if eq .Kind "entrada"}}+{{else}}−{{end}}{{brl .AmountCents}}</td>
+        <td class="num">
+          <form method="post" action="/lancamentos/{{.ID}}/apagar" onsubmit="return confirm('Apagar este lançamento?')">
+            <input type="hidden" name="mes" value="{{$.Month.Key}}">
+            <button class="link" type="submit">apagar</button>
+          </form>
+        </td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{else}}<p class="muted">Nenhum lançamento neste mês.</p>{{end}}
+</section>
+{{end}}

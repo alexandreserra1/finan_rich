@@ -1,0 +1,94 @@
+package store
+
+import "time"
+
+// Buckets da divisão do salário (estilo 50/30/20).
+const (
+	BucketNecessidades  = "necessidades"
+	BucketDesejos       = "desejos"
+	BucketInvestimentos = "investimentos"
+	BucketRenda         = "renda"
+)
+
+// SpendingBuckets são os grupos que dividem a renda, na ordem de exibição.
+var SpendingBuckets = []string{BucketNecessidades, BucketDesejos, BucketInvestimentos}
+
+const (
+	KindEntrada = "entrada"
+	KindSaida   = "saida"
+)
+
+type Category struct {
+	ID     int64
+	Name   string
+	Bucket string
+}
+
+type Transaction struct {
+	ID           int64
+	Kind         string
+	Description  string
+	AmountCents  int64
+	CategoryID   int64
+	CategoryName string
+	Bucket       string
+	OccurredOn   time.Time
+}
+
+type Debt struct {
+	ID              int64
+	Name            string
+	Creditor        string
+	BalanceCents    int64
+	MonthlyRateBP   int // juros ao mês em pontos-base: 199 = 1,99%
+	MinPaymentCents int64
+	DueDay          *int
+}
+
+type ChatMessage struct {
+	ID        int64
+	Role      string
+	Display   string // texto mostrado na tela
+	Content   []byte // JSON do BetaMessageParam
+	CreatedAt time.Time
+}
+
+// Month identifica um mês de referência (dia 1, UTC).
+type Month struct{ time.Time }
+
+func NewMonth(year int, m time.Month) Month {
+	return Month{time.Date(year, m, 1, 0, 0, 0, 0, time.UTC)}
+}
+
+func CurrentMonth() Month {
+	now := time.Now()
+	return NewMonth(now.Year(), now.Month())
+}
+
+// ParseMonth aceita "2026-10"; se inválido, devolve o mês atual.
+func ParseMonth(s string) Month {
+	t, err := time.Parse("2006-01", s)
+	if err != nil {
+		return CurrentMonth()
+	}
+	return NewMonth(t.Year(), t.Month())
+}
+
+func (m Month) Key() string    { return m.Format("2006-01") }
+func (m Month) Next() Month    { return Month{m.AddDate(0, 1, 0)} }
+func (m Month) Prev() Month    { return Month{m.AddDate(0, -1, 0)} }
+func (m Month) End() time.Time { return m.AddDate(0, 1, 0) }
+
+var mesesPT = [...]string{"janeiro", "fevereiro", "março", "abril", "maio", "junho",
+	"julho", "agosto", "setembro", "outubro", "novembro", "dezembro"}
+
+// Label devolve "outubro de 2026".
+func (m Month) Label() string {
+	return mesesPT[m.Month()-1] + " de " + m.Format("2006")
+}
+
+// Abbr devolve "out".
+func (m Month) Abbr() string { return mesesPT[m.Month()-1][:3] }
+
+// Short devolve "out/26".
+func (m Month) Short() string { return m.Abbr() + "/" + m.Format("06") }

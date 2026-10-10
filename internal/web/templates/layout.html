@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>finan_rich</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">finan<span>_rich</span></a>
+  <nav>
+    <a href="/" {{if eq .Page "dashboard"}}class="active"{{end}}>Painel</a>
+    <a href="/lancamentos" {{if eq .Page "transactions"}}class="active"{{end}}>Lançamentos</a>
+    <a href="/dividas" {{if eq .Page "debts"}}class="active"{{end}}>Dívidas</a>
+    <a href="/categorias" {{if eq .Page "categories"}}class="active"{{end}}>Categorias</a>
+    <a href="/chat" {{if eq .Page "chat"}}class="active"{{end}}>Consultor IA</a>
+  </nav>
+</header>
+<main>
+  {{with .Flash}}<p class="flash ok">{{.}}</p>{{end}}
+  {{with .Error}}<p class="flash err">{{.}}</p>{{end}}
+  {{template "content" .}}
+</main>
+</body>
+</html>
+
+{{define "monthnav"}}
+<div class="monthnav">
+  <a href="?mes={{.Prev.Key}}" aria-label="Mês anterior">‹</a>
+  <strong>{{.Label}}</strong>
+  <a href="?mes={{.Next.Key}}" aria-label="Próximo mês">›</a>
+</div>
+{{end}}
+
+{{define "buckets"}}
+<div class="buckets">
+  {{range .Buckets}}
+  <div class="bucket b-{{.Bucket}}">
+    <div class="row"><strong>{{bucketLabel .Bucket}}</strong><span class="muted">{{.Pct}}% da renda</span></div>
+    <div class="bar"><span style="width: {{min100 .UsedPct}}%" {{if gt .UsedPct 100}}class="over"{{end}}></span></div>
+    <div class="row small">
+      <span>{{brl .SpentCents}} de {{brl .PlannedCents}}</span>
+      {{if neg .RemainingCents}}<span class="neg">estourou {{brl (abs .RemainingCents)}}</span>
+      {{else}}<span class="muted">resta {{brl .RemainingCents}}</span>{{end}}
+    </div>
+  </div>
+  {{end}}
+</div>
+{{end}}
