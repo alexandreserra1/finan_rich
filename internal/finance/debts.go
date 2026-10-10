@@ -30,9 +30,10 @@ func Payoff(balanceCents int64, rateBP int, monthlyCents int64) (months int, int
 
 type DebtView struct {
 	store.Debt
-	Months        int
-	InterestCents int64
-	Payable       bool // o pagamento mínimo cobre os juros?
+	MonthlyInterestCents int64 // juros que o saldo atual gera em um mês
+	Months               int   // meses para quitar pagando só o mínimo
+	InterestCents        int64 // juros totais pagando só o mínimo
+	Payable              bool  // o pagamento mínimo cobre os juros?
 }
 
 type DebtPlan struct {
@@ -48,10 +49,11 @@ func PlanDebts(debts []store.Debt) DebtPlan {
 	var p DebtPlan
 	for _, d := range debts {
 		months, interest, ok := Payoff(d.BalanceCents, d.MonthlyRateBP, d.MinPaymentCents)
-		p.Debts = append(p.Debts, DebtView{Debt: d, Months: months, InterestCents: interest, Payable: ok})
+		monthly := d.BalanceCents * int64(d.MonthlyRateBP) / 10000
+		p.Debts = append(p.Debts, DebtView{Debt: d, MonthlyInterestCents: monthly, Months: months, InterestCents: interest, Payable: ok})
 		p.TotalCents += d.BalanceCents
 		p.TotalMinCents += d.MinPaymentCents
-		p.MonthlyInterest += d.BalanceCents * int64(d.MonthlyRateBP) / 10000
+		p.MonthlyInterest += monthly
 	}
 	p.Avalanche = append([]store.Debt(nil), debts...)
 	sort.SliceStable(p.Avalanche, func(i, j int) bool { return p.Avalanche[i].MonthlyRateBP > p.Avalanche[j].MonthlyRateBP })

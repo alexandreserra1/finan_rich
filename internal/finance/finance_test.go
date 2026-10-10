@@ -69,3 +69,29 @@ func TestPlanDebts(t *testing.T) {
 		t.Errorf("ordem: avalanche=%s snowball=%s", p.Avalanche[0].Name, p.Snowball[0].Name)
 	}
 }
+
+func TestPlanEmergencyFund(t *testing.T) {
+	f := PlanEmergencyFund([]store.Totals{
+		{InCents: 450000, OutCents: 355000, BalanceCents: 95000},
+		{}, // mês sem movimento é ignorado
+		{InCents: 450000, OutCents: 345000, BalanceCents: 105000},
+	})
+	want := EmergencyFund{AvgMonthlyOutCents: 350000, MinCents: 1050000, IdealCents: 2100000,
+		MonthlySavingCents: 100000, MonthsToMin: 11, MonthsToIdeal: 21}
+	if f != want {
+		t.Errorf("reserva = %+v, want %+v", f, want)
+	}
+	if neg := PlanEmergencyFund([]store.Totals{{InCents: 1, OutCents: 5, BalanceCents: -4}}); neg.MonthsToMin != 0 {
+		t.Errorf("sem sobra não dá para estimar prazo: %+v", neg)
+	}
+	if PlanEmergencyFund(nil) != (EmergencyFund{}) {
+		t.Error("sem dados deve ser zero")
+	}
+}
+
+func TestDebtMonthlyInterest(t *testing.T) {
+	p := PlanDebts([]store.Debt{{Name: "Cartão", BalanceCents: 320000, MonthlyRateBP: 1400, MinPaymentCents: 32000}})
+	if p.Debts[0].MonthlyInterestCents != 44800 || p.Debts[0].Payable {
+		t.Errorf("cartão = %+v", p.Debts[0])
+	}
+}

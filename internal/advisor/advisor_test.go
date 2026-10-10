@@ -79,11 +79,18 @@ func TestSnapshot(t *testing.T) {
 	plan := finance.PlanDebts([]store.Debt{
 		{Name: "Cartão", BalanceCents: 400000, MonthlyRateBP: 1250, MinPaymentCents: 40000},
 	})
-	got := Snapshot(time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC), sum, nil, plan)
+	got := Snapshot(Facts{
+		Today: time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC), Month: sum, Debts: plan,
+		Emergency: finance.PlanEmergencyFund([]store.Totals{{InCents: 500000, OutCents: 200000, BalanceCents: 300000}}),
+	})
 	for _, want := range []string{
 		"10/10/2026", "outubro de 2026", "Entradas: R$ 5.000,00",
-		"desejos: meta 30% = R$ 1.500,00; gasto R$ 2.000,00 (133% da meta)",
-		"Lazer (desejos): R$ 2.000,00", "juros 12,50% a.m.", "NÃO cobre os juros",
+		"desejos: meta 30% = R$ 1.500,00; gasto R$ 2.000,00 (133% da meta); passou R$ 500,00 da meta",
+		"Lazer (desejos): R$ 2.000,00",
+		"juros de 12,50% a.m. = R$ 500,00 de juros por mês",
+		"o mínimo NÃO cobre os juros (R$ 400,00 < R$ 500,00)",
+		"Reserva mínima (3 meses de gastos): R$ 6.000,00", "mínima em 2 meses",
+		"## Pontos de atenção", "Cartão cresce todo mês", "Gastos com desejos passaram da meta em R$ 500,00",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("snapshot sem %q:\n%s", want, got)

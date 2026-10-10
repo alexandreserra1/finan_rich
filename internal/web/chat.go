@@ -40,7 +40,7 @@ func (s *Server) snapshot(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	var recent []store.Totals
+	var recent, withCurrent []store.Totals
 	sixMonthsAgo := m.AddDate(0, -6, 0)
 	for _, year := range []int{m.Year() - 1, m.Year()} {
 		totals, err := s.store.MonthlyTotals(ctx, year)
@@ -48,8 +48,11 @@ func (s *Server) snapshot(ctx context.Context) (string, error) {
 			return "", err
 		}
 		for _, t := range totals {
-			// últimos 6 meses fechados, ignorando meses sem movimento
-			if t.Month.Before(m.Time) && !t.Month.Before(sixMonthsAgo) && (t.InCents > 0 || t.OutCents > 0) {
+			if t.Month.Before(sixMonthsAgo) || t.Month.After(m.Time) || (t.InCents == 0 && t.OutCents == 0) {
+				continue
+			}
+			withCurrent = append(withCurrent, t)
+			if t.Month.Before(m.Time) {
 				recent = append(recent, t)
 			}
 		}
@@ -58,7 +61,13 @@ func (s *Server) snapshot(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return advisor.Snapshot(time.Now(), sum, recent, finance.PlanDebts(debts)), nil
+	return advisor.Snapshot(advisor.Facts{
+		Today:     time.Now(),
+		Month:     sum,
+		Recent:    recent,
+		Debts:     finance.PlanDebts(debts),
+		Emergency: finance.PlanEmergencyFund(withCurrent),
+	}), nil
 }
 
 // chatSend responde em SSE: {"text": "..."} a cada pedaço, {"error": "..."}
