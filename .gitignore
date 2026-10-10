@@ -1,3 +1,5 @@
+/dist/
 .env
-/bin/
-*.test
+*.db
+*.db-shm
+*.db-wal

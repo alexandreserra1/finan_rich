@@ -1,8 +1,11 @@
-// Package web expõe a interface HTML (server-side, html/template) e o chat.
+// Package web expõe a interface HTML (renderizada no servidor com html/template).
 package web
 
 import (
+	"bytes"
 	"embed"
+	"encoding/json"
+	"fmt"
 	"html/template"
 	"io/fs"
 	"log"
@@ -11,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/alexandreserra1/finan_rich/internal/advisor"
+	"github.com/alexandreserra1/finan_rich/internal/llm"
 	"github.com/alexandreserra1/finan_rich/internal/money"
 	"github.com/alexandreserra1/finan_rich/internal/store"
 )
@@ -22,9 +26,9 @@ var templatesFS embed.FS
 var staticFS embed.FS
 
 type Server struct {
-	store   *store.Store
-	advisor *advisor.Advisor // nil quando não há ANTHROPIC_API_KEY
-	pages   map[string]*template.Template
+	store      *store.Store
+	aiDefaults AISettings
+	pages      map[string]*template.Template
 }
 
 var bucketLabels = map[string]string{
@@ -54,20 +58,36 @@ var funcs = template.FuncMap{
 		}
 		return int(v * 100 / max)
 	},
+	"json": func(v any) (template.JS, error) {
+		b, err := json.Marshal(v)
+		return template.JS(b), err
+	},
 }
 
-func New(st *store.Store, adv *advisor.Advisor) (*Server, error) {
-	s := &Server{store: st, advisor: adv, pages: map[string]*template.Template{}}
+// New cria o servidor. aiPreset/aiDefaults são usados enquanto o usuário não
+// salvar uma configuração de IA na tela de Configurações.
+func New(st *store.Store, aiPreset string, aiDefaults llm.Config) (*Server, error) {
+	s := &Server{
+		store:      st,
+		aiDefaults: AISettings{Preset: llm.PresetByID(aiPreset), Config: aiDefaults},
+		pages:      map[string]*template.Template{},
+	}
 	pages, err := fs.Glob(templatesFS, "templates/*.html")
+	if err != nil {
+		return nil, err
+	}
+	// Arquivos que começam com "_" são parciais (layout e blocos reaproveitados)
+	// e entram em todas as páginas; os demais são páginas.
+	partials, err := fs.Glob(templatesFS, "templates/_*.html")
 	if err != nil {
 		return nil, err
 	}
 	for _, p := range pages {
 		name := strings.TrimSuffix(strings.TrimPrefix(p, "templates/"), ".html")
-		if name == "layout" {
+		if strings.HasPrefix(name, "_") {
 			continue
 		}
-		t, err := template.New("layout.html").Funcs(funcs).ParseFS(templatesFS, "templates/layout.html", p)
+		t, err := template.New("_layout.html").Funcs(funcs).ParseFS(templatesFS, append(partials, p)...)
 		if err != nil {
 			return nil, err
 		}
@@ -79,6 +99,7 @@ func New(st *store.Store, adv *advisor.Advisor) (*Server, error) {
 func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /static/", http.FileServerFS(staticFS))
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 
 	mux.HandleFunc("GET /{$}", s.dashboard)
 
@@ -99,19 +120,27 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /chat", s.chat)
 	mux.HandleFunc("POST /chat/enviar", s.chatSend)
 	mux.HandleFunc("POST /chat/limpar", s.chatClear)
+
+	mux.HandleFunc("GET /configuracoes", s.settings)
+	mux.HandleFunc("POST /configuracoes", s.saveSettings)
+	mux.HandleFunc("POST /configuracoes/testar", s.testAI)
+	mux.HandleFunc("POST /configuracoes/baixar-modelo", s.pullModel)
 	return logRequests(sameOrigin(mux))
 }
 
-// render executa a página; dados comuns (página ativa, flash) vão no mapa.
+// render executa a página; dados comuns (página ativa, avisos) vão no mapa.
 func (s *Server) render(w http.ResponseWriter, r *http.Request, page string, data map[string]any) {
 	data["Page"] = page
 	data["Flash"] = r.URL.Query().Get("msg")
 	data["Error"] = r.URL.Query().Get("erro")
-	data["ChatEnabled"] = s.advisor != nil
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := s.pages[page].Execute(w, data); err != nil {
-		log.Printf("render %s: %v", page, err)
+	// Renderiza num buffer: se o template falhar, devolve 500 em vez de meia página.
+	var buf bytes.Buffer
+	if err := s.pages[page].Execute(&buf, data); err != nil {
+		serverError(w, fmt.Errorf("render %s: %w", page, err))
+		return
 	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	buf.WriteTo(w)
 }
 
 func serverError(w http.ResponseWriter, err error) {
@@ -123,25 +152,28 @@ func serverError(w http.ResponseWriter, err error) {
 // aberta no navegador poderia enviar formulários para o app.
 func sameOrigin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet && r.Method != http.MethodHead {
-			if site := r.Header.Get("Sec-Fetch-Site"); site != "" && site != "same-origin" && site != "none" {
-				http.Error(w, "requisição de outra origem bloqueada", http.StatusForbidden)
-				return
-			}
-			if origin := r.Header.Get("Origin"); origin != "" {
-				if u, err := url.Parse(origin); err != nil || u.Host != r.Host {
-					http.Error(w, "requisição de outra origem bloqueada", http.StatusForbidden)
-					return
-				}
-			}
+		if r.Method != http.MethodGet && r.Method != http.MethodHead && !isSameOrigin(r) {
+			http.Error(w, "requisição de outra origem bloqueada", http.StatusForbidden)
+			return
 		}
 		next.ServeHTTP(w, r)
 	})
 }
 
+func isSameOrigin(r *http.Request) bool {
+	if site := r.Header.Get("Sec-Fetch-Site"); site != "" && site != "same-origin" && site != "none" {
+		return false
+	}
+	if origin := r.Header.Get("Origin"); origin != "" {
+		u, err := url.Parse(origin)
+		return err == nil && u.Host == r.Host
+	}
+	return true
+}
+
 func logRequests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.HasPrefix(r.URL.Path, "/static/") {
+		if !strings.HasPrefix(r.URL.Path, "/static/") && r.URL.Path != "/healthz" {
 			log.Printf("%s %s", r.Method, r.URL.Path)
 		}
 		next.ServeHTTP(w, r)

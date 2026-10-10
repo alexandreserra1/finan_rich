@@ -49,7 +49,7 @@
     <tbody>
       {{range .Year}}{{if or .InCents .OutCents}}
       <tr><td><a href="/?mes={{.Month.Key}}">{{.Month.Label}}</a></td><td class="num">{{brl .InCents}}</td><td class="num">{{brl .OutCents}}</td>
-        <td class="num {{if neg .BalanceCent}}neg{{else}}pos{{end}}">{{brl .BalanceCent}}</td></tr>
+        <td class="num {{if neg .BalanceCents}}neg{{else}}pos{{end}}">{{brl .BalanceCents}}</td></tr>
       {{end}}{{end}}
     </tbody>
     <tfoot><tr><th>Total</th><th class="num">{{brl .YearIn}}</th><th class="num">{{brl .YearOut}}</th><th class="num {{if neg .YearBalance}}neg{{else}}pos{{end}}">{{brl .YearBalance}}</th></tr></tfoot>

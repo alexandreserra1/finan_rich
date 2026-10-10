@@ -8,12 +8,10 @@
     </form>
     {{end}}
   </div>
-  {{if not .ChatEnabled}}
-    <p class="flash err">Chat desativado. Defina a variável <code>ANTHROPIC_API_KEY</code> e reinicie o app.</p>
-  {{else}}
-  <p class="small muted">O consultor vê seus números atuais (mês, divisão do salário, dívidas) a cada pergunta.</p>
+  {{template "aistatus" .}}
+  <p class="small muted">Usando <strong>{{.AI.Preset.Name}}</strong> · <code>{{.AI.Model}}</code> (<a href="/configuracoes">trocar</a>). O consultor vê seus números atuais (mês, divisão do salário, dívidas) a cada pergunta.</p>
   <div id="messages" class="messages">
-    {{range .History}}<div class="msg {{.Role}}" data-md>{{.Display}}</div>{{end}}
+    {{range .History}}<div class="msg {{.Role}}" data-md>{{.Content}}</div>{{end}}
     {{if not .History}}
     <div class="suggestions">
       <button type="button">Como posso dividir melhor meu salário?</button>
@@ -27,7 +25,7 @@
     <textarea name="message" rows="2" placeholder="Pergunte sobre dívidas, divisão de gastos, metas..." required></textarea>
     <button type="submit">Enviar</button>
   </form>
+  <script src="/static/app.js"></script>
   <script src="/static/chat.js"></script>
-  {{end}}
 </section>
 {{end}}

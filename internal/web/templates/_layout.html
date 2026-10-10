@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>finan_rich</title>
 <link rel="stylesheet" href="/static/app.css">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 </head>
 <body>
 <header class="top">
@@ -15,6 +16,7 @@
     <a href="/dividas" {{if eq .Page "debts"}}class="active"{{end}}>Dívidas</a>
     <a href="/categorias" {{if eq .Page "categories"}}class="active"{{end}}>Categorias</a>
     <a href="/chat" {{if eq .Page "chat"}}class="active"{{end}}>Consultor IA</a>
+    <a href="/configuracoes" {{if eq .Page "settings"}}class="active"{{end}}>Configurações</a>
   </nav>
 </header>
 <main>

@@ -98,3 +98,17 @@ form.inline { display: inline; margin-left: .5rem; }
   .yearchart small { font-size: .6rem; }
   .yearchart { gap: .1rem; }
 }
+
+/* Configurações e avisos */
+.notice { padding: .75rem 1rem; border-radius: 10px; margin: .75rem 0; border: 1px solid var(--border); }
+.notice.warn { background: color-mix(in srgb, var(--desejos) 14%, transparent); border-color: color-mix(in srgb, var(--desejos) 40%, transparent); }
+.notice.ok { background: color-mix(in srgb, var(--pos) 12%, transparent); }
+.notice ol { margin: .4rem 0; padding-left: 1.3rem; }
+.row-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .75rem; }
+.pull-bar { width: 100%; margin-top: .5rem; accent-color: var(--accent); }
+.presets { border: 0; padding: 0; margin: 0 0 1rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: .5rem; }
+.preset { flex-direction: row; align-items: flex-start; gap: .6rem; padding: .7rem; border: 1px solid var(--border); border-radius: 10px; color: var(--text); cursor: pointer; font-size: .95rem; }
+.preset:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.preset input { width: auto; margin-top: .25rem; accent-color: var(--accent); }
+[hidden] { display: none !important; }
+code { font-size: .9em; }

@@ -45,12 +45,15 @@ type Debt struct {
 	DueDay          *int
 }
 
+const (
+	RoleUser      = "user"
+	RoleAssistant = "assistant"
+)
+
 type ChatMessage struct {
-	ID        int64
-	Role      string
-	Display   string // texto mostrado na tela
-	Content   []byte // JSON do BetaMessageParam
-	CreatedAt time.Time
+	ID      int64
+	Role    string // RoleUser ou RoleAssistant
+	Content string
 }
 
 // Month identifica um mês de referência (dia 1, UTC).
@@ -78,6 +81,12 @@ func (m Month) Key() string    { return m.Format("2006-01") }
 func (m Month) Next() Month    { return Month{m.AddDate(0, 1, 0)} }
 func (m Month) Prev() Month    { return Month{m.AddDate(0, -1, 0)} }
 func (m Month) End() time.Time { return m.AddDate(0, 1, 0) }
+
+// Day devolve o dia informado dentro do mês, limitado ao último dia (31 → 30 em abril).
+func (m Month) Day(day int) time.Time {
+	last := m.End().AddDate(0, 0, -1).Day()
+	return m.AddDate(0, 0, min(day, last)-1)
+}
 
 var mesesPT = [...]string{"janeiro", "fevereiro", "março", "abril", "maio", "junho",
 	"julho", "agosto", "setembro", "outubro", "novembro", "dezembro"}

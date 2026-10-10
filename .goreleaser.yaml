@@ -1,0 +1,29 @@
+# Gera os executáveis de cada versão. Roda pelo GitHub Actions ao criar uma tag
+# (ex.: git tag v1.0.0 && git push origin v1.0.0). Teste local: goreleaser release --snapshot --clean
+version: 2
+project_name: finan_rich
+
+builds:
+  - main: ./cmd/finanrich
+    binary: finanrich
+    env: [CGO_ENABLED=0]
+    goos: [windows, darwin, linux]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags: ["-s -w -X main.version={{.Version}}"]
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    # finan_rich_1.0.0_macos_arm64.tar.gz, finan_rich_1.0.0_windows_amd64.zip...
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ if eq .Os "darwin" }}macos{{ else }}{{ .Os }}{{ end }}_{{ .Arch }}
+    files: [README.md]
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc

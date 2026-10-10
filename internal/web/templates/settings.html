@@ -1,0 +1,49 @@
+{{define "content"}}
+<section class="panel">
+  <h2>Assistente de IA</h2>
+  <p class="muted">Escolha qual inteligência artificial o consultor usa. A recomendada é o <strong>Ollama</strong>: é grátis, não precisa de chave e seus dados financeiros não saem do computador.</p>
+  {{template "aistatus" .}}
+  {{if .Status.Ready}}<p class="notice ok">✅ Pronto para usar: <strong>{{.AI.Preset.Name}}</strong> com o modelo <code>{{.AI.Model}}</code>.</p>{{end}}
+
+  <form method="post" action="/configuracoes" id="ai-form">
+    <fieldset class="presets">
+      <legend class="small muted">Provedor</legend>
+      {{range .Presets}}
+      <label class="preset">
+        <input type="radio" name="preset" value="{{.ID}}" {{if eq .ID $.AI.Preset.ID}}checked{{end}}>
+        <span><strong>{{.Name}}</strong><br><small class="muted">{{.Description}}</small></span>
+      </label>
+      {{end}}
+    </fieldset>
+
+    <div class="grid-form">
+      <label>Modelo
+        <input name="model" list="model-options" value="{{.AI.Model}}" required>
+        <datalist id="model-options"></datalist>
+      </label>
+      <label data-field="base_url">Endereço da API
+        <input name="base_url" value="{{.AI.BaseURL}}">
+      </label>
+      <label data-field="api_key">Chave da API
+        <input name="api_key" type="password" autocomplete="off" placeholder="{{if .HasKey}}•••••• (deixe em branco para manter){{else}}cole sua chave aqui{{end}}">
+        <small data-key-link></small>
+      </label>
+    </div>
+    <div class="row-actions">
+      <button type="submit">Salvar</button>
+      <button type="button" class="secondary" data-test>Testar conexão</button>
+      <span class="test-result small"></span>
+    </div>
+  </form>
+  <p class="small muted">Dica: no Ollama, modelos maiores (ex.: <code>qwen3:8b</code>) dão respostas melhores, mas precisam de mais memória. Com 8 GB de RAM use <code>qwen3:4b</code>; com 16 GB ou mais, <code>qwen3:8b</code> ou <code>qwen3:14b</code>.</p>
+</section>
+
+<section class="panel">
+  <h2>Seus dados</h2>
+  <p class="muted">Tudo fica num único arquivo no seu computador. Para fazer backup, copie o arquivo <code>finan.db</code> da pasta de dados (o caminho aparece no terminal ao abrir o app).</p>
+</section>
+
+<script>window.FINAN = { presets: {{json .Presets}}, installed: {{json .Status.Installed}}, saved: {{json .AI.Preset.ID}} };</script>
+<script src="/static/app.js"></script>
+<script src="/static/settings.js"></script>
+{{end}}

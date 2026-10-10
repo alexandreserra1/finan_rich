@@ -1,4 +1,5 @@
--- Valores monetários ficam em centavos (BIGINT) para evitar arredondamento.
+-- Valores monetários ficam em centavos (INTEGER) para evitar arredondamento.
+-- Datas ficam como texto ISO (AAAA-MM-DD), que ordena e compara corretamente.
 
 CREATE TABLE settings (
     key   TEXT PRIMARY KEY,
@@ -7,43 +8,40 @@ CREATE TABLE settings (
 
 -- bucket: necessidades | desejos | investimentos | renda
 CREATE TABLE categories (
-    id         BIGSERIAL PRIMARY KEY,
+    id         INTEGER PRIMARY KEY,
     name       TEXT NOT NULL UNIQUE,
     bucket     TEXT NOT NULL CHECK (bucket IN ('necessidades', 'desejos', 'investimentos', 'renda')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- kind: entrada | saida
 CREATE TABLE transactions (
-    id           BIGSERIAL PRIMARY KEY,
+    id           INTEGER PRIMARY KEY,
     kind         TEXT NOT NULL CHECK (kind IN ('entrada', 'saida')),
     description  TEXT NOT NULL,
-    amount_cents BIGINT NOT NULL CHECK (amount_cents >= 0),
-    category_id  BIGINT NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
-    occurred_on  DATE NOT NULL,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    amount_cents INTEGER NOT NULL CHECK (amount_cents >= 0),
+    category_id  INTEGER NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
+    occurred_on  TEXT NOT NULL,
+    created_at   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX transactions_occurred_on_idx ON transactions (occurred_on);
 
 CREATE TABLE debts (
-    id                  BIGSERIAL PRIMARY KEY,
-    name                TEXT NOT NULL,
-    creditor            TEXT NOT NULL DEFAULT '',
-    balance_cents       BIGINT NOT NULL CHECK (balance_cents >= 0),
-    monthly_rate_bp     INTEGER NOT NULL DEFAULT 0, -- juros ao mês em pontos-base (1,99% = 199)
-    min_payment_cents   BIGINT NOT NULL DEFAULT 0,
-    due_day             INTEGER CHECK (due_day BETWEEN 1 AND 31),
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+    id                INTEGER PRIMARY KEY,
+    name              TEXT NOT NULL,
+    creditor          TEXT NOT NULL DEFAULT '',
+    balance_cents     INTEGER NOT NULL CHECK (balance_cents >= 0),
+    monthly_rate_bp   INTEGER NOT NULL DEFAULT 0, -- juros ao mês em pontos-base (1,99% = 199)
+    min_payment_cents INTEGER NOT NULL DEFAULT 0,
+    due_day           INTEGER CHECK (due_day BETWEEN 1 AND 31),
+    created_at        TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- content guarda o BetaMessageParam da Anthropic em JSON, exatamente como foi
--- enviado/recebido, para reenviar o histórico sem alterações.
 CREATE TABLE chat_messages (
-    id         BIGSERIAL PRIMARY KEY,
+    id         INTEGER PRIMARY KEY,
     role       TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
-    display    TEXT NOT NULL,
-    content    JSONB NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    content    TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 INSERT INTO settings (key, value) VALUES

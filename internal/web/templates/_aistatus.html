@@ -1,0 +1,24 @@
+{{define "aistatus"}}
+{{if .Status.OllamaOff}}
+<div class="notice warn">
+  <strong>O Ollama não está rodando.</strong> Ele é o programa gratuito que roda a IA no seu computador.
+  <ol>
+    <li>Baixe e instale em <a href="https://ollama.com/download" target="_blank" rel="noopener">ollama.com/download</a> (Windows, Mac ou Linux).</li>
+    <li>Abra o Ollama (ele fica no canto da tela, perto do relógio).</li>
+    <li>Volte aqui e recarregue a página.</li>
+  </ol>
+  Prefere não instalar nada? Escolha um provedor na nuvem em <a href="/configuracoes">Configurações</a>.
+</div>
+{{else if .Status.ModelMissing}}
+<div class="notice warn">
+  <strong>Falta baixar o modelo {{.AI.Model}}.</strong> É um download único de alguns GB.
+  <div class="row-actions">
+    <button type="button" data-pull>Baixar modelo agora</button>
+    <span class="pull-status muted small"></span>
+  </div>
+  <progress class="pull-bar" max="100" value="0" hidden></progress>
+</div>
+{{else if not .Status.Ready}}
+<div class="notice warn"><strong>IA não configurada:</strong> {{.Status.Problem}}. Ajuste em <a href="/configuracoes">Configurações</a>.</div>
+{{end}}
+{{end}}

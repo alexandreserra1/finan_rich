@@ -152,7 +152,7 @@ func (s *Server) deleteTransaction(w http.ResponseWriter, r *http.Request) {
 func (s *Server) copyPreviousMonth(w http.ResponseWriter, r *http.Request) {
 	m := store.ParseMonth(r.FormValue("mes"))
 	n, err := s.store.CopyFromPreviousMonth(r.Context(), m)
-	redirect(w, r, "/lancamentos", strconv.FormatInt(n, 10)+" lançamento(s) copiado(s) do mês anterior.", err)
+	redirect(w, r, "/lancamentos", strconv.Itoa(n)+" lançamento(s) copiado(s) do mês anterior.", err)
 }
 
 // ---------- Categorias e divisão do salário ----------

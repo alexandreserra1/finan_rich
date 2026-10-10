@@ -1,31 +1,34 @@
+# Alternativa ao executável, para quem prefere Docker.
+#
+#   docker compose up -d                    -> app em http://localhost:8080
+#   docker compose --profile ollama up -d   -> app + Ollama dentro do Docker
+#
+# No Mac, prefira o Ollama instalado direto no sistema (ollama.com/download):
+# dentro do Docker ele não usa a GPU do Mac e fica bem mais lento. O app já
+# procura o Ollama do sistema em host.docker.internal.
 services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: finan
-      POSTGRES_PASSWORD: finan
-      POSTGRES_DB: finan
-    ports:
-      - "127.0.0.1:5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U finan"]
-      interval: 2s
-      retries: 15
-
   app:
     build: .
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgres://finan:finan@db:5432/finan?sslmode=disable
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-opus-5-5}
     ports:
       - "127.0.0.1:8080:8080"
-    profiles: ["app"]
+    volumes:
+      - finan-data:/data
+    environment:
+      FINAN_AI_BASE_URL: ${FINAN_AI_BASE_URL:-http://host.docker.internal:11434}
+      FINAN_AI_MODEL: ${FINAN_AI_MODEL:-qwen3:4b}
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # necessário no Linux
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: [ollama]
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+    # Com o profile "ollama", aponte o app para cá:
+    #   FINAN_AI_BASE_URL=http://ollama:11434 docker compose --profile ollama up -d
 
 volumes:
-  pgdata:
+  finan-data:
+  ollama-models:

@@ -36,7 +36,7 @@ func Snapshot(today time.Time, sum finance.Summary, recent []store.Totals, plan 
 		b.WriteString("\n## Últimos meses\n")
 		for _, t := range recent {
 			fmt.Fprintf(&b, "- %s: entradas %s, saídas %s, saldo %s\n",
-				t.Month.Short(), money.Format(t.InCents), money.Format(t.OutCents), money.Format(t.BalanceCent))
+				t.Month.Short(), money.Format(t.InCents), money.Format(t.OutCents), money.Format(t.BalanceCents))
 		}
 	}
 
