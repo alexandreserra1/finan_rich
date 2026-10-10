@@ -61,12 +61,15 @@ func (s *Server) snapshot(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	debtPlan := finance.PlanDebts(debts)
+	monthPlan := finance.PlanMonth(sum, debtPlan)
 	return advisor.Snapshot(advisor.Facts{
 		Today:     time.Now(),
 		Month:     sum,
 		Recent:    recent,
-		Debts:     finance.PlanDebts(debts),
-		Emergency: finance.PlanEmergencyFund(withCurrent),
+		Debts:     debtPlan,
+		Emergency: finance.PlanEmergencyFund(withCurrent, monthPlan.PendingMinCents),
+		Plan:      monthPlan,
 	}), nil
 }
 

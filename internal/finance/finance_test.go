@@ -75,16 +75,19 @@ func TestPlanEmergencyFund(t *testing.T) {
 		{InCents: 450000, OutCents: 355000, BalanceCents: 95000},
 		{}, // mês sem movimento é ignorado
 		{InCents: 450000, OutCents: 345000, BalanceCents: 105000},
-	})
+	}, 0)
 	want := EmergencyFund{AvgMonthlyOutCents: 350000, MinCents: 1050000, IdealCents: 2100000,
 		MonthlySavingCents: 100000, MonthsToMin: 11, MonthsToIdeal: 21}
 	if f != want {
 		t.Errorf("reserva = %+v, want %+v", f, want)
 	}
-	if neg := PlanEmergencyFund([]store.Totals{{InCents: 1, OutCents: 5, BalanceCents: -4}}); neg.MonthsToMin != 0 {
+	if withDebts := PlanEmergencyFund([]store.Totals{{InCents: 450000, OutCents: 350000, BalanceCents: 100000}}, 72000); withDebts.MonthlySavingCents != 28000 || withDebts.MonthsToMin != 38 {
+		t.Errorf("parcelas pendentes devem sair da sobra: %+v", withDebts)
+	}
+	if neg := PlanEmergencyFund([]store.Totals{{InCents: 1, OutCents: 5, BalanceCents: -4}}, 0); neg.MonthsToMin != 0 {
 		t.Errorf("sem sobra não dá para estimar prazo: %+v", neg)
 	}
-	if PlanEmergencyFund(nil) != (EmergencyFund{}) {
+	if PlanEmergencyFund(nil, 0) != (EmergencyFund{}) {
 		t.Error("sem dados deve ser zero")
 	}
 }
@@ -93,5 +96,31 @@ func TestDebtMonthlyInterest(t *testing.T) {
 	p := PlanDebts([]store.Debt{{Name: "Cartão", BalanceCents: 320000, MonthlyRateBP: 1400, MinPaymentCents: 32000}})
 	if p.Debts[0].MonthlyInterestCents != 44800 || p.Debts[0].Payable {
 		t.Errorf("cartão = %+v", p.Debts[0])
+	}
+}
+
+func TestPlanMonth(t *testing.T) {
+	m := store.NewMonth(2026, time.October)
+	sum := Summarize(m, []store.Transaction{
+		{Kind: store.KindEntrada, AmountCents: 450000, CategoryName: "Salário", Bucket: store.BucketRenda},
+		{Kind: store.KindSaida, AmountCents: 355000, CategoryName: "Moradia", Bucket: store.BucketNecessidades},
+	}, map[string]int{"necessidades": 50, "desejos": 30, "investimentos": 20})
+	debts := PlanDebts([]store.Debt{
+		{ID: 1, Name: "Empréstimo", BalanceCents: 500000, MonthlyRateBP: 250, MinPaymentCents: 40000},
+		{ID: 2, Name: "Cartão", BalanceCents: 320000, MonthlyRateBP: 1400, MinPaymentCents: 32000},
+	})
+
+	p := PlanMonth(sum, debts)
+	if p.SurplusCents != 95000 || p.PendingMinCents != 72000 || p.FreeCents != 23000 {
+		t.Fatalf("plano = %+v", p)
+	}
+	if p.Target == nil || p.Target.Name != "Cartão" || p.TargetPaymentCents != 55000 || !p.TargetPayable || p.TargetMonths == 0 {
+		t.Errorf("alvo = %+v", p)
+	}
+
+	// Parcelas já lançadas não contam como pendentes.
+	sum.Categories = append(sum.Categories, CategoryLine{Name: store.DebtPaymentCategory, SpentCents: 72000})
+	if p := PlanMonth(sum, debts); p.PendingMinCents != 0 || p.FreeCents != 95000 {
+		t.Errorf("com parcelas lançadas = %+v", p)
 	}
 }

@@ -80,8 +80,8 @@ func TestSnapshot(t *testing.T) {
 		{Name: "Cartão", BalanceCents: 400000, MonthlyRateBP: 1250, MinPaymentCents: 40000},
 	})
 	got := Snapshot(Facts{
-		Today: time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC), Month: sum, Debts: plan,
-		Emergency: finance.PlanEmergencyFund([]store.Totals{{InCents: 500000, OutCents: 200000, BalanceCents: 300000}}),
+		Today: time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC), Month: sum, Debts: plan, Plan: finance.PlanMonth(sum, plan),
+		Emergency: finance.PlanEmergencyFund([]store.Totals{{InCents: 500000, OutCents: 200000, BalanceCents: 300000}}, 40000),
 	})
 	for _, want := range []string{
 		"10/10/2026", "outubro de 2026", "Entradas: R$ 5.000,00",
@@ -89,8 +89,11 @@ func TestSnapshot(t *testing.T) {
 		"Lazer (desejos): R$ 2.000,00",
 		"juros de 12,50% a.m. = R$ 500,00 de juros por mês",
 		"o mínimo NÃO cobre os juros (R$ 400,00 < R$ 500,00)",
-		"Reserva mínima (3 meses de gastos): R$ 6.000,00", "mínima em 2 meses",
-		"## Pontos de atenção", "Cartão cresce todo mês", "Gastos com desejos passaram da meta em R$ 500,00",
+		"Reserva mínima (3 meses de gastos): R$ 6.000,00", "sobra livre (R$ 2.600,00/mês, já descontadas as parcelas de dívidas): mínima em 3 meses",
+		"## Pontos de atenção", "Cartão cresce todo mês",
+		"Parcelas mínimas que ainda faltam pagar este mês (não estão nas saídas): R$ 400,00",
+		"Sobra livre depois de pagar as parcelas mínimas: R$ 3.000,00 - R$ 400,00 = R$ 2.600,00",
+		"pagando R$ 400,00 + R$ 2.600,00 = R$ 3.000,00 por mês", "Gastos com desejos passaram da meta em R$ 500,00",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("snapshot sem %q:\n%s", want, got)

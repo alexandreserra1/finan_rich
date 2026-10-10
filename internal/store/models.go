@@ -13,6 +13,9 @@ const (
 // SpendingBuckets são os grupos que dividem a renda, na ordem de exibição.
 var SpendingBuckets = []string{BucketNecessidades, BucketDesejos, BucketInvestimentos}
 
+// DebtPaymentCategory é a categoria padrão para lançar pagamentos de dívidas.
+const DebtPaymentCategory = "Pagamento de dívidas"
+
 const (
 	KindEntrada = "entrada"
 	KindSaida   = "saida"

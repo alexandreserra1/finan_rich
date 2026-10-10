@@ -17,6 +17,7 @@ type Facts struct {
 	Recent    []store.Totals // meses anteriores com movimento
 	Debts     finance.DebtPlan
 	Emergency finance.EmergencyFund
+	Plan      finance.MonthPlan
 }
 
 // Snapshot descreve os dados em texto para o modelo. Todas as contas vêm
@@ -29,7 +30,7 @@ func Snapshot(f Facts) string {
 	fmt.Fprintf(&b, "Data de hoje: %s\n\n", f.Today.Format("02/01/2006"))
 
 	fmt.Fprintf(&b, "## Mês atual (%s)\n", sum.Month.Label())
-	fmt.Fprintf(&b, "- Entradas: %s\n- Saídas: %s\n- Sobra do mês (entradas - saídas): %s\n",
+	fmt.Fprintf(&b, "- Entradas: %s\n- Saídas lançadas: %s\n- Sobra do mês (entradas - saídas lançadas): %s\n",
 		brl(sum.InCents), brl(sum.OutCents), brl(sum.BalanceCents()))
 	b.WriteString("\nDivisão do salário (planejado x realizado):\n")
 	for _, l := range sum.Buckets {
@@ -61,8 +62,11 @@ func Snapshot(f Facts) string {
 		fmt.Fprintf(&b, "- Gasto médio por mês: %s\n- Reserva mínima (3 meses de gastos): %s\n- Reserva ideal (6 meses de gastos): %s\n",
 			brl(e.AvgMonthlyOutCents), brl(e.MinCents), brl(e.IdealCents))
 		if e.MonthsToMin > 0 {
-			fmt.Fprintf(&b, "- Guardando toda a sobra média (%s/mês): mínima em %d meses, ideal em %d meses\n",
+			fmt.Fprintf(&b, "- Guardando toda a sobra livre (%s/mês, já descontadas as parcelas de dívidas): mínima em %d meses, ideal em %d meses\n",
 				brl(e.MonthlySavingCents), e.MonthsToMin, e.MonthsToIdeal)
+			if f.Debts.TotalCents > 0 {
+				b.WriteString("- Com dívidas de juros altos, o comum é juntar só uma reserva pequena e quitar essas dívidas antes de completar a reserva\n")
+			}
 		} else {
 			b.WriteString("- Hoje não sobra dinheiro no mês, então não dá para formar reserva sem cortar gastos\n")
 		}
@@ -99,6 +103,8 @@ func Snapshot(f Facts) string {
 		fmt.Fprintf(&b, "Ordem pelo método bola de neve (menor saldo primeiro): %s\n", names(f.Debts.Snowball))
 	}
 
+	writeMonthPlan(&b, f.Plan)
+
 	if alerts := attentionPoints(f); len(alerts) > 0 {
 		b.WriteString("\n## Pontos de atenção\n")
 		for _, a := range alerts {
@@ -106,6 +112,31 @@ func Snapshot(f Facts) string {
 		}
 	}
 	return b.String()
+}
+
+// writeMonthPlan descreve para onde vai o dinheiro do mês, com as contas feitas.
+func writeMonthPlan(b *strings.Builder, p finance.MonthPlan) {
+	if p.PendingMinCents == 0 && p.Target == nil {
+		return
+	}
+	brl := money.Format
+	b.WriteString("\n## Plano do mês (calculado pelo app)\n")
+	if p.DebtPaidCents > 0 {
+		fmt.Fprintf(b, "- Pagamentos de dívidas já lançados: %s\n", brl(p.DebtPaidCents))
+	}
+	fmt.Fprintf(b, "- Parcelas mínimas que ainda faltam pagar este mês (não estão nas saídas): %s\n", brl(p.PendingMinCents))
+	fmt.Fprintf(b, "- Sobra livre depois de pagar as parcelas mínimas: %s - %s = %s\n",
+		brl(p.SurplusCents), brl(p.PendingMinCents), brl(p.FreeCents))
+	switch {
+	case p.FreeCents <= 0:
+		fmt.Fprintf(b, "- Não sobra nada depois das parcelas mínimas: faltam %s, então é preciso cortar gastos\n", brl(-p.FreeCents))
+	case p.Target != nil && p.TargetPayable:
+		fmt.Fprintf(b, "- Sugestão (avalanche): mandar toda a sobra livre para %s, pagando %s + %s = %s por mês; assim ela é quitada em %d meses, com %s de juros no total\n",
+			p.Target.Name, brl(p.Target.MinPaymentCents), brl(p.FreeCents), brl(p.TargetPaymentCents), p.TargetMonths, brl(p.TargetInterest))
+	case p.Target != nil:
+		fmt.Fprintf(b, "- Mesmo mandando toda a sobra livre para %s (%s por mês), o pagamento não cobre os juros: é preciso cortar gastos ou renegociar\n",
+			p.Target.Name, brl(p.TargetPaymentCents))
+	}
 }
 
 // attentionPoints lista os problemas mais importantes, já em linguagem simples.

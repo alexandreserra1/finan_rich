@@ -14,7 +14,9 @@ type EmergencyFund struct {
 }
 
 // PlanEmergencyFund calcula a reserva a partir dos meses com movimento.
-func PlanEmergencyFund(months []store.Totals) EmergencyFund {
+// pendingDebtCents são parcelas de dívida que ainda não aparecem nas saídas e
+// por isso são descontadas da sobra mensal.
+func PlanEmergencyFund(months []store.Totals, pendingDebtCents int64) EmergencyFund {
 	var f EmergencyFund
 	var n, totalOut, totalBalance int64
 	for _, m := range months {
@@ -29,7 +31,7 @@ func PlanEmergencyFund(months []store.Totals) EmergencyFund {
 		return f
 	}
 	f.AvgMonthlyOutCents = totalOut / n
-	f.MonthlySavingCents = totalBalance / n
+	f.MonthlySavingCents = totalBalance/n - pendingDebtCents
 	f.MinCents = 3 * f.AvgMonthlyOutCents
 	f.IdealCents = 6 * f.AvgMonthlyOutCents
 	if f.MonthlySavingCents > 0 {
