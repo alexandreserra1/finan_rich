@@ -16,6 +16,8 @@ const NAV_PAGE = { "/": "dashboard", "/lancamentos": "transactions", "/dividas":
 
 const root = document.getElementById("app");
 let ledger = null;
+let booted = false; // as regras (WebAssembly) já carregaram e a primeira tela foi desenhada
+let changedDuringBoot = false; // chegaram dados novos enquanto o app iniciava
 let dirty = false; // há um formulário sendo preenchido: não redesenhar por baixo
 let rerenderPending = false;
 
@@ -41,7 +43,9 @@ function showStatus(s) {
 }
 window.addEventListener("finan-sync", (e) => {
   showStatus(e.detail);
-  if (e.detail.dataChanged && root) reloadAndRender();
+  if (!e.detail.dataChanged || !root) return;
+  if (booted) reloadAndRender();
+  else changedDuringBoot = true; // relê assim que terminar de iniciar
 });
 
 // O chat chama isto antes de perguntar, para a IA ver os dados mais recentes.
@@ -152,8 +156,16 @@ if (root) {
       if (rerenderPending && !root.contains(document.activeElement)) render();
     }, 0);
   });
-  Promise.all([db.loadLedger(), finance.load()])
-    .then(([l]) => { ledger = l; render(); })
+  // Primeiro as regras; só depois lê os dados, para pegar também o que uma
+  // sincronização que terminou durante a carga já gravou no aparelho.
+  finance.load()
+    .then(() => db.loadLedger())
+    .then((l) => {
+      ledger = l;
+      booted = true;
+      render();
+      if (changedDuringBoot) reloadAndRender();
+    })
     .catch((err) => {
       root.innerHTML = `<p class="notice warn">Não foi possível iniciar o app: ${String(err.message || err).replace(/</g, "&lt;")}</p>`;
     });

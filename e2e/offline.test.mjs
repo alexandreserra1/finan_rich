@@ -60,7 +60,16 @@ try {
   const pc = await browser.newContext({ viewport: { width: 1100, height: 900 } });
   const page = await pc.newPage();
   const errors = [];
+  const logs = [];
   page.on("pageerror", (e) => errors.push(e.message));
+  page.on("console", (m) => logs.push(`[${m.type()}] ${m.text()}`));
+  page.on("requestfailed", (r) => logs.push(`[falhou] ${r.url()} ${r.failure()?.errorText}`));
+  globalThis.dumpPage = async () => {
+    console.log("--- diagnóstico ---");
+    console.log("url:", page.url(), "| status:", await page.textContent("#sync-status").catch(() => "?"));
+    console.log("tela:", (await page.innerText("body").catch(() => "")).slice(0, 500));
+    console.log(logs.slice(-15).join("\n"));
+  };
 
   // Online: baixa as categorias, lança, calcula o painel pelo WebAssembly.
   await page.goto(`${B}/lancamentos`);
@@ -104,6 +113,9 @@ try {
   // Outro aparelho recebe; e o que ele lança chega ao primeiro.
   const phone = await browser.newContext({ ...devices["iPhone 13"] });
   const other = await phone.newPage();
+  // Aparelho lento: as regras (WebAssembly) chegam depois da primeira sincronização.
+  // Antes da correção, a tela ficava presa em "Baixando seus dados…".
+  await phone.route("**/static/finance.wasm", async (route) => { await sleep(3000); await route.continue(); });
   await other.goto(`${B}/lancamentos`);
   await other.waitForSelector("td:has-text('Feira (offline)')", { timeout: 20000 });
   ok(true, "segundo aparelho recebeu o lançamento feito offline");
@@ -125,6 +137,7 @@ try {
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);
 } catch (err) {
   ok(false, err.message);
+  await globalThis.dumpPage?.();
 } finally {
   await browser.close();
   await stopServer();
