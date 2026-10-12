@@ -25,14 +25,14 @@
 
 <section class="panel">
   <h2>Categorias</h2>
-  <table>
+  <table class="cards-mobile">
     <thead><tr><th>Nome</th><th>Grupo</th><th></th></tr></thead>
     <tbody>
     {{range .Categories}}
       <tr>
-        <td>{{.Name}}</td>
-        <td><span class="tag b-{{.Bucket}}">{{bucketLabel .Bucket}}</span></td>
-        <td class="num">
+        <td class="primary">{{.Name}}</td>
+        <td data-label="Grupo"><span class="tag b-{{.Bucket}}">{{bucketLabel .Bucket}}</span></td>
+        <td class="num actions">
           <form method="post" action="/categorias/{{.ID}}/apagar" onsubmit="return confirm('Apagar a categoria {{.Name}}?')">
             <button class="link" type="submit">apagar</button>
           </form>

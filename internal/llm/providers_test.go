@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 var testReq = Request{
@@ -115,6 +116,19 @@ func TestOllamaPullError(t *testing.T) {
 	err := NewOllama(srv.URL, "qwen9:1b").Pull(context.Background(), func(PullProgress) {})
 	if err == nil || !strings.Contains(err.Error(), "não foi possível baixar o modelo \"qwen9:1b\"") {
 		t.Errorf("err = %v", err)
+	}
+}
+
+func TestOllamaSlowIsNotOffline(t *testing.T) {
+	srv := server(t, nil, func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(300 * time.Millisecond) // "carregando o modelo"
+	})
+	old := httpClient.Transport.(*http.Transport).ResponseHeaderTimeout
+	httpClient.Transport.(*http.Transport).ResponseHeaderTimeout = 50 * time.Millisecond
+	defer func() { httpClient.Transport.(*http.Transport).ResponseHeaderTimeout = old }()
+
+	if _, _, err := collectChat(t, NewOllama(srv.URL, "m")); !errors.Is(err, ErrOllamaSlow) {
+		t.Errorf("demora deve virar ErrOllamaSlow, não 'não instalado': %v", err)
 	}
 }
 

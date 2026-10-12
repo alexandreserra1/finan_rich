@@ -12,8 +12,10 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/advisor"
+	"github.com/alexandreserra1/finan_rich/internal/auth"
 	"github.com/alexandreserra1/finan_rich/internal/llm"
 	"github.com/alexandreserra1/finan_rich/internal/money"
 	"github.com/alexandreserra1/finan_rich/internal/store"
@@ -26,9 +28,26 @@ var templatesFS embed.FS
 var staticFS embed.FS
 
 type Server struct {
-	store      *store.Store
-	aiDefaults AISettings
-	pages      map[string]*template.Template
+	store           *store.Store
+	aiDefaults      AISettings
+	pages           map[string]*template.Template
+	port            string
+	envPasswordHash string // senha de FINAN_PASSWORD (modo servidor), já com hash
+	limiter         *auth.Limiter
+	onNetworkChange func()
+}
+
+// Options configura o servidor.
+type Options struct {
+	AIPreset   string     // preset de IA usado enquanto o usuário não salvar outro
+	AIDefaults llm.Config // valores iniciais da IA
+	Port       string     // porta HTTP, para montar o endereço do celular
+	// Password, se definida (FINAN_PASSWORD), vale para todo acesso, inclusive
+	// o local, e não pode ser trocada pela tela.
+	Password string
+	// OnNetworkChange é chamado quando o acesso pelo celular é ligado ou
+	// desligado, para o programa reabrir a porta no endereço certo.
+	OnNetworkChange func()
 }
 
 var bucketLabels = map[string]string{
@@ -64,13 +83,21 @@ var funcs = template.FuncMap{
 	},
 }
 
-// New cria o servidor. aiPreset/aiDefaults são usados enquanto o usuário não
-// salvar uma configuração de IA na tela de Configurações.
-func New(st *store.Store, aiPreset string, aiDefaults llm.Config) (*Server, error) {
+func New(st *store.Store, opts Options) (*Server, error) {
 	s := &Server{
-		store:      st,
-		aiDefaults: AISettings{Preset: llm.PresetByID(aiPreset), Config: aiDefaults},
-		pages:      map[string]*template.Template{},
+		store:           st,
+		aiDefaults:      AISettings{Preset: llm.PresetByID(opts.AIPreset), Config: opts.AIDefaults},
+		pages:           map[string]*template.Template{},
+		port:            opts.Port,
+		limiter:         auth.NewLimiter(5, 10*time.Minute),
+		onNetworkChange: opts.OnNetworkChange,
+	}
+	if opts.Password != "" {
+		hash, err := auth.HashPassword(opts.Password)
+		if err != nil {
+			return nil, fmt.Errorf("FINAN_PASSWORD: %w", err)
+		}
+		s.envPasswordHash = hash
 	}
 	pages, err := fs.Glob(templatesFS, "templates/*.html")
 	if err != nil {
@@ -100,6 +127,13 @@ func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /static/", http.FileServerFS(staticFS))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
+	mux.HandleFunc("GET /manifest.webmanifest", serveStatic("manifest.webmanifest", "application/manifest+json"))
+	mux.HandleFunc("GET /sw.js", serveStatic("sw.js", "text/javascript"))
+	mux.HandleFunc("GET /offline", serveStatic("offline.html", "text/html; charset=utf-8"))
+
+	mux.HandleFunc("GET /entrar", s.loginPage)
+	mux.HandleFunc("POST /entrar", s.login)
+	mux.HandleFunc("POST /sair", s.logout)
 
 	mux.HandleFunc("GET /{$}", s.dashboard)
 
@@ -125,7 +159,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /configuracoes", s.saveSettings)
 	mux.HandleFunc("POST /configuracoes/testar", s.testAI)
 	mux.HandleFunc("POST /configuracoes/baixar-modelo", s.pullModel)
-	return logRequests(sameOrigin(mux))
+	mux.HandleFunc("POST /configuracoes/acesso", s.saveAccess)
+	return logRequests(securityHeaders(sameOrigin(s.requireAuth(mux))))
 }
 
 // render executa a página; dados comuns (página ativa, avisos) vão no mapa.
@@ -133,6 +168,7 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, page string, dat
 	data["Page"] = page
 	data["Flash"] = r.URL.Query().Get("msg")
 	data["Error"] = r.URL.Query().Get("erro")
+	data["Remote"] = !isLoopback(r) // acesso pela rede: mostra o botão de sair
 	// Renderiza num buffer: se o template falhar, devolve 500 em vez de meia página.
 	var buf bytes.Buffer
 	if err := s.pages[page].Execute(&buf, data); err != nil {
@@ -169,6 +205,33 @@ func isSameOrigin(r *http.Request) bool {
 		return err == nil && u.Host == r.Host
 	}
 	return true
+}
+
+// securityHeaders impede que o app seja aberto dentro de outro site (clickjacking)
+// e que o navegador "adivinhe" tipos de arquivo.
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("X-Frame-Options", "DENY")
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("Referrer-Policy", "same-origin")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// serveStatic serve um arquivo de static/ num caminho da raiz. O manifest e o
+// service worker precisam ficar na raiz para o PWA controlar o site inteiro.
+func serveStatic(name, contentType string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		b, err := staticFS.ReadFile("static/" + name)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", contentType)
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Write(b)
+	}
 }
 
 func logRequests(next http.Handler) http.Handler {

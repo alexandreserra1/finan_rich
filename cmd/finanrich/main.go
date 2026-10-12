@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -44,19 +45,11 @@ func run(args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	url := "http://" + cfg.Addr
-	ln, err := net.Listen("tcp", cfg.Addr)
+	host, port, err := net.SplitHostPort(cfg.Addr)
 	if err != nil {
-		// Provavelmente o app já está aberto: só abre o navegador nele.
-		if alreadyRunning(url) {
-			log.Printf("finan_rich já está aberto em %s", url)
-			if cfg.OpenBrowser {
-				return openBrowser(url)
-			}
-			return nil
-		}
-		return fmt.Errorf("não foi possível usar o endereço %s (outro programa está usando a porta?): %w", cfg.Addr, err)
+		return fmt.Errorf("endereço inválido %q: %w", cfg.Addr, err)
 	}
+	localURL := "http://" + net.JoinHostPort(displayHost(host), port)
 
 	if err := os.MkdirAll(cfg.DataDir, 0o700); err != nil {
 		return fmt.Errorf("criando a pasta de dados: %w", err)
@@ -67,28 +60,108 @@ func run(args []string) error {
 	}
 	defer st.Close()
 
-	srv, err := web.New(st, cfg.AIPreset, cfg.AI)
+	reload := make(chan struct{}, 1)
+	srv, err := web.New(st, web.Options{
+		AIPreset: cfg.AIPreset, AIDefaults: cfg.AI, Port: port, Password: cfg.Password,
+		OnNetworkChange: func() {
+			select {
+			case reload <- struct{}{}:
+			default:
+			}
+		},
+	})
 	if err != nil {
 		return err
 	}
-	httpSrv := &http.Server{Handler: srv.Routes(), ReadHeaderTimeout: 10 * time.Second}
-	go func() {
-		<-ctx.Done()
-		shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		httpSrv.Shutdown(shutdown)
-	}()
 
-	fmt.Printf("\n  finan_rich %s\n  Aberto em:  %s\n  Seus dados: %s\n  Para fechar, feche esta janela ou aperte Ctrl+C.\n\n", version, url, cfg.DBPath())
-	if cfg.OpenBrowser {
-		if err := openBrowser(url); err != nil {
-			log.Printf("abra %s no navegador (%v)", url, err)
+	// Se o usuário liberou o acesso pelo celular, escuta em todas as interfaces
+	// da rede; senão, só neste computador.
+	listenAddr := func() string {
+		if isLoopbackHost(host) && srv.LANEnabled(ctx) {
+			return net.JoinHostPort("", port)
+		}
+		return cfg.Addr
+	}
+
+	for first := true; ; first = false {
+		addr := listenAddr()
+		ln, err := net.Listen("tcp", addr)
+		if err != nil {
+			if first && alreadyRunning(localURL) {
+				log.Printf("finan_rich já está aberto em %s", localURL)
+				if cfg.OpenBrowser {
+					return openBrowser(localURL)
+				}
+				return nil
+			}
+			return fmt.Errorf("não foi possível usar o endereço %s (outro programa está usando a porta?): %w", addr, err)
+		}
+		network := !isLoopbackHost(hostOf(addr))
+		if first {
+			printBanner(localURL, cfg.DBPath())
+			if cfg.OpenBrowser {
+				if err := openBrowser(localURL); err != nil {
+					log.Printf("abra %s no navegador (%v)", localURL, err)
+				}
+			}
+		}
+		if network {
+			if urls := srv.LANURLs(); len(urls) > 0 {
+				fmt.Printf("  No celular (mesmo Wi-Fi): %s\n\n", strings.Join(urls, "  ou  "))
+			}
+			if !srv.HasPassword(ctx) {
+				log.Print("ATENÇÃO: o app está acessível pela rede SEM senha. Defina FINAN_PASSWORD ou ative o acesso pelo celular nas Configurações.")
+			}
+		} else if !first {
+			log.Print("acesso pela rede desligado: o app aceita só este computador")
+		}
+
+		httpSrv := &http.Server{Handler: srv.Routes(), ReadHeaderTimeout: 10 * time.Second}
+		served := make(chan error, 1)
+		go func() { served <- httpSrv.Serve(ln) }()
+
+		select {
+		case <-ctx.Done():
+			shutdown(httpSrv)
+			return nil
+		case err := <-served:
+			return err
+		case <-reload:
+			shutdown(httpSrv) // reabre no novo endereço na próxima volta
 		}
 	}
-	if err := httpSrv.Serve(ln); !errors.Is(err, http.ErrServerClosed) {
-		return err
+}
+
+func printBanner(url, dbPath string) {
+	fmt.Printf("\n  finan_rich %s\n  Aberto em:  %s\n  Seus dados: %s\n  Para fechar, feche esta janela ou aperte Ctrl+C.\n\n", version, url, dbPath)
+}
+
+func shutdown(s *http.Server) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	s.Shutdown(ctx)
+}
+
+func hostOf(addr string) string {
+	host, _, _ := net.SplitHostPort(addr)
+	return host
+}
+
+// isLoopbackHost diz se o endereço só aceita conexões deste computador.
+func isLoopbackHost(host string) bool {
+	if host == "localhost" {
+		return true
 	}
-	return nil
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
+
+// displayHost troca "" e "0.0.0.0" por um endereço que o navegador local abre.
+func displayHost(host string) string {
+	if host == "" || host == "0.0.0.0" || host == "::" {
+		return "127.0.0.1"
+	}
+	return host
 }
 
 // alreadyRunning verifica se há um finan_rich respondendo no endereço.

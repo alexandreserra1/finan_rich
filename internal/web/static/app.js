@@ -79,5 +79,45 @@ window.Finan = (function () {
     });
   });
 
+  // PWA: o service worker só funciona em https ou no próprio computador
+  // (localhost); pelo Wi-Fi em http o navegador ignora, e o app segue normal.
+  if ("serviceWorker" in navigator && window.isSecureContext) {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  }
+
+  // Botão "Instalar app" (Chrome, Edge e Android avisam quando dá para instalar).
+  const installButton = document.querySelector("[data-install]");
+  let installPrompt = null;
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    installPrompt = e;
+    if (installButton) installButton.hidden = false;
+  });
+  installButton?.addEventListener("click", async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    await installPrompt.userChoice;
+    installPrompt = null;
+    installButton.hidden = true;
+  });
+
+  // Formulário de lançamento: entradas só mostram categorias de Renda, e saídas
+  // só as de gastos, para não lançar um gasto como renda por engano.
+  document.querySelectorAll("form").forEach((form) => {
+    const kind = form.elements.kind, category = form.elements.category_id;
+    if (!kind || !category) return;
+    const filter = () => {
+      const wantIncome = kind.value === "entrada";
+      let firstVisible = null;
+      for (const opt of category.options) {
+        opt.hidden = opt.disabled = (opt.dataset.bucket === "renda") !== wantIncome;
+        if (!opt.hidden && !firstVisible) firstVisible = opt;
+      }
+      if (category.selectedOptions[0]?.hidden && firstVisible) category.value = firstVisible.value;
+    };
+    kind.addEventListener("change", filter);
+    filter();
+  });
+
   return { postSSE, markdown };
 })();

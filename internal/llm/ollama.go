@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"slices"
 	"strings"
@@ -104,6 +105,23 @@ func ollamaOptions() map[string]any {
 // ErrOllamaOffline indica que o Ollama não está instalado ou não está rodando.
 var ErrOllamaOffline = errors.New("Ollama não encontrado. Instale em https://ollama.com e deixe-o aberto")
 
+// ErrOllamaSlow indica que o Ollama está rodando mas demorou demais (em geral,
+// carregando um modelo grande num computador lento).
+var ErrOllamaSlow = errors.New("o Ollama demorou demais para responder; o modelo pode estar carregando na memória. Tente de novo em alguns minutos ou use um modelo menor (ex.: qwen3.5:4b)")
+
+// connError traduz uma falha de conexão com o Ollama: sem conexão (não
+// instalado/fechado) é diferente de conexão lenta.
+func connError(ctx context.Context, err error) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return ErrOllamaSlow
+	}
+	return ErrOllamaOffline
+}
+
 // SigninError indica que um modelo da nuvem do Ollama (":cloud") exige login.
 type SigninError struct{ URL string }
 
@@ -129,7 +147,7 @@ func (o *Ollama) Models(ctx context.Context) ([]string, error) {
 	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, ErrOllamaOffline
+		return nil, connError(ctx, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -208,10 +226,7 @@ func (o *Ollama) post(ctx context.Context, path string, body any) (*http.Respons
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		if ctx.Err() != nil {
-			return nil, ctx.Err()
-		}
-		return nil, ErrOllamaOffline
+		return nil, connError(ctx, err)
 	}
 	if resp.StatusCode != http.StatusOK {
 		defer resp.Body.Close()

@@ -154,3 +154,21 @@ func TestSettings(t *testing.T) {
 		t.Errorf("settings = %v, err = %v", got, err)
 	}
 }
+
+func TestSessions(t *testing.T) {
+	ctx := context.Background()
+	s := newTestStore(t)
+	now := time.Date(2026, 10, 11, 12, 0, 0, 0, time.UTC)
+	s.CreateSession(ctx, "valida", now.Add(time.Hour))
+	s.CreateSession(ctx, "vencida", now.Add(-time.Hour))
+	for token, want := range map[string]bool{"valida": true, "vencida": false, "inexistente": false} {
+		if ok, err := s.SessionValid(ctx, token, now); err != nil || ok != want {
+			t.Errorf("SessionValid(%s) = %v, %v", token, ok, err)
+		}
+	}
+	s.DeleteExpiredSessions(ctx, now)
+	s.DeleteSession(ctx, "valida")
+	if ok, _ := s.SessionValid(ctx, "valida", now); ok {
+		t.Error("sessão apagada continua válida")
+	}
+}

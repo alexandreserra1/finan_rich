@@ -18,9 +18,9 @@ type Preset struct {
 var Presets = []Preset{
 	{
 		ID: "ollama", Name: "Ollama (no seu computador)", Kind: KindOllama,
-		Description: "Grátis, sem chave e privado: seus dados não saem do PC. Precisa do Ollama instalado e de ~3,5 GB para o modelo.",
-		BaseURL:     DefaultOllamaURL, Model: "qwen3.5:4b",
-		Models: []string{"qwen3.5:4b", "qwen3.5:9b", "qwen3.5:2b", "qwen3:4b"},
+		Description: "Grátis, sem chave e privado: seus dados não saem do PC. Precisa do Ollama instalado, ~7 GB para o modelo e de preferência 16 GB de RAM.",
+		BaseURL:     DefaultOllamaURL, Model: "qwen3.5:9b",
+		Models: []string{"qwen3.5:9b", "qwen3.5:4b", "qwen3.5:2b", "qwen3:4b"},
 	},
 	{
 		ID: "ollama-cloud", Name: "Ollama Cloud (modelos gigantes, grátis com conta)", Kind: KindOllama,

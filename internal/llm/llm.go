@@ -85,11 +85,13 @@ func New(cfg Config) (Provider, error) {
 
 // httpClient é compartilhado pelos provedores HTTP. Sem timeout total, pois
 // respostas em streaming de modelos locais podem levar minutos; o cancelamento
-// vem do contexto da requisição.
+// vem do contexto da requisição (fechar a página cancela).
 var httpClient = &http.Client{
 	Transport: &http.Transport{
-		Proxy:                 http.ProxyFromEnvironment,
-		ResponseHeaderTimeout: 5 * time.Minute, // modelo local pode demorar para carregar
+		Proxy: http.ProxyFromEnvironment,
+		// O Ollama só responde depois de carregar o modelo na memória. Num PC
+		// com HD lento, um modelo de 7 GB pode levar vários minutos na 1ª vez.
+		ResponseHeaderTimeout: 20 * time.Minute,
 	},
 }
 

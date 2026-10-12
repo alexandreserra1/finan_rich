@@ -17,9 +17,15 @@ func (s *Server) settings(w http.ResponseWriter, r *http.Request) {
 		serverError(w, err)
 		return
 	}
-	s.render(w, r, "settings", map[string]any{
+	data := map[string]any{
 		"AI": ai, "Status": s.aiStatus(ctx, ai), "Presets": llm.Presets, "HasKey": ai.APIKey != "",
-	})
+		"LAN": s.LANEnabled(ctx), "EnvPassword": s.envPasswordHash != "",
+	}
+	if urls := lanURLs(s.port); len(urls) > 0 {
+		data["LANURLs"] = urls
+		data["LANQR"] = qrDataURI(urls[0])
+	}
+	s.render(w, r, "settings", data)
 }
 
 func (s *Server) saveSettings(w http.ResponseWriter, r *http.Request) {

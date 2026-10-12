@@ -15,6 +15,7 @@ type Config struct {
 	Addr        string     // endereço HTTP, ex: 127.0.0.1:8080
 	DataDir     string     // pasta onde fica o banco finan.db
 	OpenBrowser bool       // abrir o navegador ao iniciar
+	Password    string     // FINAN_PASSWORD: exige senha em todo acesso (modo servidor)
 	AIPreset    string     // preset inicial da IA (ver llm.Presets)
 	AI          llm.Config // valores iniciais da IA
 }
@@ -35,6 +36,7 @@ func Load(args []string) (Config, error) {
 		return cfg, err
 	}
 	cfg.OpenBrowser = !*noBrowser
+	cfg.Password = os.Getenv("FINAN_PASSWORD")
 	cfg.AI = llm.Config{
 		Kind:    preset.Kind,
 		BaseURL: env("FINAN_AI_BASE_URL", preset.BaseURL),

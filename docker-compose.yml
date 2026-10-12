@@ -15,7 +15,9 @@ services:
       - finan-data:/data
     environment:
       FINAN_AI_BASE_URL: ${FINAN_AI_BASE_URL:-http://host.docker.internal:11434}
-      FINAN_AI_MODEL: ${FINAN_AI_MODEL:-qwen3.5:4b}
+      FINAN_AI_MODEL: ${FINAN_AI_MODEL:-qwen3.5:9b}
+      # Obrigatório se a porta for exposta além deste computador (servidor):
+      FINAN_PASSWORD: ${FINAN_PASSWORD:-}
     extra_hosts:
       - "host.docker.internal:host-gateway" # necessário no Linux
     restart: unless-stopped

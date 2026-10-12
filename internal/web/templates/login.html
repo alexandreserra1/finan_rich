@@ -1,0 +1,11 @@
+{{define "content"}}
+<section class="panel login">
+  <p class="brand big">finan<span>_rich</span></p>
+  <p class="muted">Digite a senha de acesso definida no computador onde o finan_rich está instalado.</p>
+  <form method="post" action="/entrar">
+    <input type="hidden" name="volta" value="{{.Return}}">
+    <label>Senha <input type="password" name="senha" autocomplete="current-password" required autofocus></label>
+    <button type="submit">Entrar</button>
+  </form>
+</section>
+{{end}}

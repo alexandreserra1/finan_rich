@@ -48,7 +48,7 @@ func newApp(t *testing.T, ollamaURL string) *app {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { st.Close() })
-	s, err := New(st, "ollama", llm.Config{Kind: llm.KindOllama, BaseURL: ollamaURL, Model: "qwen3:4b"})
+	s, err := New(st, Options{AIPreset: "ollama", AIDefaults: llm.Config{Kind: llm.KindOllama, BaseURL: ollamaURL, Model: "qwen3:4b"}, Port: "8080"})
 	if err != nil {
 		t.Fatal(err)
 	}

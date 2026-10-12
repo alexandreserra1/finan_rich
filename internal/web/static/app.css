@@ -17,13 +17,20 @@ body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 syst
 a { color: var(--accent); }
 h2 { font-size: 1.1rem; margin: 0 0 .75rem; }
 h3 { font-size: 1rem; margin: 0 0 .5rem; }
-.top { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; align-items: center; padding: .75rem 1rem; background: var(--surface); border-bottom: 1px solid var(--border); }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .7rem 1rem; padding-top: max(.7rem, env(safe-area-inset-top)); background: var(--surface); border-bottom: 1px solid var(--border); }
 .brand { font-weight: 700; font-size: 1.15rem; color: var(--text); text-decoration: none; }
 .brand span { color: var(--accent); }
-nav { display: flex; flex-wrap: wrap; gap: .25rem; }
-nav a { padding: .35rem .7rem; border-radius: 8px; color: var(--muted); text-decoration: none; }
-nav a.active, nav a:hover { background: var(--bg); color: var(--text); }
-main { max-width: 1000px; margin: 0 auto; padding: 1rem; }
+.brand.big { font-size: 1.8rem; margin: 0 0 .5rem; }
+.top-actions { display: flex; gap: .5rem; align-items: center; }
+.top-actions form { margin: 0; }
+.small-btn { padding: .35rem .8rem; font-size: .85rem; }
+
+/* Navegação: barra horizontal no computador, abas no rodapé no celular. */
+.tabs { display: flex; flex-wrap: wrap; gap: .25rem; padding: .4rem 1rem; background: var(--surface); border-bottom: 1px solid var(--border); }
+.tabs a { display: flex; align-items: center; gap: .4rem; padding: .4rem .75rem; border-radius: 8px; color: var(--muted); text-decoration: none; }
+.tabs a[aria-current="page"], .tabs a:hover { background: var(--bg); color: var(--text); }
+.icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+main { max-width: 1000px; margin: 0 auto; padding: 1rem; padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right)); }
 .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; }
 .panel.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; }
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .75rem; margin-bottom: 1rem; }
@@ -112,3 +119,55 @@ form.inline { display: inline; margin-left: .5rem; }
 .preset input { width: auto; margin-top: .25rem; accent-color: var(--accent); }
 [hidden] { display: none !important; }
 code { font-size: .9em; }
+
+/* Atalhos, login e acesso pelo celular */
+.link-card { display: flex; justify-content: space-between; align-items: center; color: var(--text); text-decoration: none; }
+.link-card span:first-child { display: flex; align-items: center; gap: .5rem; }
+.login { max-width: 380px; margin: 12vh auto 0; }
+.login form { display: grid; gap: .75rem; margin-top: 1rem; }
+.lan { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin: .5rem 0 1rem; }
+.lan img { background: #fff; padding: 6px; border-radius: 8px; image-rendering: pixelated; }
+.lan-url { margin: .2rem 0; font-size: 1.05rem; }
+details { margin-top: .75rem; }
+summary { cursor: pointer; color: var(--accent); margin-bottom: .5rem; }
+
+/* Celular e telas estreitas */
+@media (max-width: 720px) {
+  body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+  .tabs { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; flex-wrap: nowrap; justify-content: space-around; gap: 0;
+          padding: .3rem .25rem calc(.3rem + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); border-bottom: 0; }
+  .tabs a { flex: 1; flex-direction: column; gap: .15rem; padding: .35rem .1rem; font-size: .68rem; text-align: center; border-radius: 10px; min-width: 0; }
+  .tabs a span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .tabs a[aria-current="page"] { color: var(--accent); background: transparent; }
+  .tabs .tab-extra { display: none; }
+  .icon { width: 22px; height: 22px; }
+  main { padding-top: .75rem; }
+  .panel { padding: .85rem; border-radius: 10px; }
+  .cards { grid-template-columns: 1fr 1fr; gap: .5rem; }
+  .card { padding: .6rem .75rem; }
+  .card strong { font-size: 1.1rem; }
+
+  /* Evita o zoom automático do iPhone ao tocar em campos com fonte < 16px. */
+  input, select, textarea { font-size: 16px; }
+  button, .tabs a, select, input { min-height: 44px; }
+  button.link { min-height: 0; padding: .4rem 0; }
+  .grid-form { grid-template-columns: 1fr; }
+
+  /* Tabelas viram cartões: uma linha por item, rótulo ao lado do valor. */
+  table.cards-mobile, .cards-mobile tbody, .cards-mobile tr, .cards-mobile td { display: block; width: 100%; }
+  .cards-mobile thead { display: none; }
+  .cards-mobile tr { border: 1px solid var(--border); border-radius: 10px; padding: .55rem .75rem; margin-bottom: .5rem; }
+  .cards-mobile td { border: 0; padding: .15rem 0; text-align: left; display: flex; justify-content: space-between; gap: 1rem; }
+  .cards-mobile td[data-label]::before { content: attr(data-label); color: var(--muted); font-size: .8rem; }
+  .cards-mobile td.primary { font-weight: 600; display: block; }
+  .cards-mobile td.amount { font-size: 1.05rem; font-weight: 600; }
+  .cards-mobile td.actions { justify-content: flex-end; gap: 1rem; }
+  .panel:has(table) { overflow-x: visible; }
+
+  .chat-form { position: sticky; bottom: calc(64px + env(safe-area-inset-bottom)); background: var(--surface); padding: .5rem 0; }
+}
+
+/* Instalado como app (janela própria): sem barra de endereço, mais espaço. */
+@media (display-mode: standalone) {
+  .top-actions [data-install] { display: none !important; }
+}

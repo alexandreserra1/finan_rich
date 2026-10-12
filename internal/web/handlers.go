@@ -25,8 +25,12 @@ func redirect(w http.ResponseWriter, r *http.Request, path, msg string, err erro
 	if mes := r.FormValue("mes"); mes != "" {
 		q.Set("mes", mes)
 	}
+	path, fragment, _ := strings.Cut(path, "#") // a query vem antes do #ancora
 	if len(q) > 0 {
 		path += "?" + q.Encode()
+	}
+	if fragment != "" {
+		path += "#" + fragment
 	}
 	http.Redirect(w, r, path, http.StatusSeeOther)
 }

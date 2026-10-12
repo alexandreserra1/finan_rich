@@ -37,7 +37,7 @@ A opção recomendada é grátis, sem cadastro e privada:
 
 1. Instale o **Ollama**: https://ollama.com/download
 2. No finan_rich, abra **Configurações** e clique em **Baixar modelo agora** (download único
-   de ~3,5 GB do modelo `qwen3.5:4b`, da Alibaba).
+   de ~6,6 GB do modelo `qwen3.5:9b`, da Alibaba).
 
 Pronto. O resto do app funciona mesmo sem IA.
 
@@ -45,8 +45,8 @@ Qual modelo escolher no Ollama:
 
 | Memória do PC | Modelo | Observação |
 |---|---|---|
-| 8 GB | `qwen3.5:4b` (padrão) | Bom em português, leve |
-| 16 GB ou mais | `qwen3.5:9b` | Raciocina melhor; recomendado se couber |
+| 16 GB ou mais | `qwen3.5:9b` (padrão) | Raciocina melhor |
+| 8 GB | `qwen3.5:4b` | Bom em português, mais leve |
 | Pouca memória | `qwen3.5:2b` | Mais simples, mas roda em quase tudo |
 
 Quer o mais inteligente sem pesar no PC? Escolha **Ollama Cloud** em Configurações: modelos
@@ -72,6 +72,27 @@ Não quer instalar nada? Em **Configurações** dá para usar uma IA na nuvem:
 
 Na nuvem, o resumo das suas finanças é enviado ao provedor junto com cada pergunta.
 
+### No celular
+
+O finan_rich roda no seu computador, e o celular acessa pelo Wi-Fi de casa:
+
+1. No computador, abra **Ajustes → Acesso pelo celular**, crie uma senha e clique em
+   **Ligar acesso pelo celular**.
+2. Aponte a câmera do celular para o **QR code** que aparece (ou digite o endereço,
+   algo como `http://192.168.0.10:8080`) e entre com a senha.
+3. Para ter o ícone na tela inicial: no Android (Chrome), menu ⋮ → *Adicionar à tela
+   inicial*; no iPhone (Safari), Compartilhar → *Adicionar à Tela de Início*.
+
+A interface se adapta ao celular (menu no rodapé, listas em cartões). Os dados e a IA
+continuam no computador, que precisa ficar ligado com o finan_rich aberto. No computador
+a senha não é pedida.
+
+### Como aplicativo no computador
+
+No Chrome ou no Edge, clique em **Instalar app** no topo da página (ou no ícone de
+instalar na barra de endereço). O finan_rich ganha ícone próprio e abre em janela
+própria, como um programa. Se ele estiver fechado, a janela mostra um aviso em vez de erro.
+
 ### Seus dados e backup
 
 Tudo fica no arquivo `finan.db`, cujo caminho aparece no terminal ao abrir o app:
@@ -90,6 +111,19 @@ docker compose up -d     # http://localhost:8080
 
 O app procura o Ollama instalado no seu sistema. No Mac, prefira o Ollama nativo: dentro
 do Docker ele não usa a GPU. Veja os comentários em `docker-compose.yml`.
+
+### Num servidor (acesso de qualquer lugar)
+
+Para usar fora de casa, rode o finan_rich num servidor (uma VPS, por exemplo) e **defina
+uma senha** com `FINAN_PASSWORD`: com ela, todo acesso pede login, inclusive o local.
+
+```bash
+FINAN_PASSWORD='uma-senha-forte' docker compose up -d
+```
+
+Use HTTPS na frente (um proxy reverso como Caddy, ou o Tailscale para acessar só dos seus
+aparelhos, sem expor nada na internet). Num servidor geralmente não há GPU para o Ollama:
+use um provedor na nuvem (Ollama Cloud, Groq, OpenRouter...) em Ajustes.
 
 ## Desenvolvimento
 
@@ -111,7 +145,8 @@ internal/store/     SQLite (database/sql) + migrations embutidas
 internal/finance/   regras de negócio puras: resumo do mês, simulação de dívidas
 internal/llm/       interface Provider + Ollama, APIs compatíveis com OpenAI e Anthropic
 internal/advisor/   prompt do consultor e retrato financeiro enviado à IA
-internal/web/       handlers HTTP, templates, CSS e JS
+internal/auth/      senha (PBKDF2), tokens de sessão e limite de tentativas
+internal/web/       handlers HTTP, templates, CSS, JS e arquivos do PWA
 ```
 
 As dependências apontam para dentro: `web` usa `advisor`, `llm`, `finance` e `store`;
@@ -127,8 +162,13 @@ As dependências apontam para dentro: `web` usa `advisor`, `llm`, `finance` e `s
 - **Dinheiro em centavos** para evitar arredondamento. Juros em pontos-base (1,99% = 199).
 - **Migrations**: para mudar o schema, crie `internal/store/migrations/002_algo.sql`. Elas
   rodam em ordem, uma vez cada, ao abrir o app. Nunca edite uma que já foi publicada.
-- **Segurança**: sem login, pois é uso individual. Por isso o app só escuta em `127.0.0.1` e
-  recusa formulários vindos de outros sites (CSRF).
+- **Segurança**: no próprio computador não há login. Por padrão o app só escuta em
+  `127.0.0.1`. Ao ligar o acesso pelo celular, ele passa a escutar na rede e exige senha de
+  quem vem de outro aparelho (PBKDF2-SHA256, sessões com cookie `HttpOnly`, limite de
+  tentativas). Também recusa formulários de outros sites (CSRF) e não pode ser aberto
+  dentro de outro site (`X-Frame-Options`).
+- **PWA**: manifesto e service worker deixam o app instalável. O service worker só guarda
+  os arquivos estáticos em cache; os dados sempre vêm do servidor.
 
 ### Como estender
 

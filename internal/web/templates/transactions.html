@@ -14,7 +14,7 @@
     <label>Valor (R$) <input name="amount" required inputmode="decimal" placeholder="1.234,56"></label>
     <label>Categoria
       <select name="category_id" required>
-        {{range .Categories}}<option value="{{.ID}}">{{.Name}} · {{bucketLabel .Bucket}}</option>{{end}}
+        {{range .Categories}}<option value="{{.ID}}" data-bucket="{{.Bucket}}">{{.Name}} · {{bucketLabel .Bucket}}</option>{{end}}
       </select>
     </label>
     <label>Data <input type="date" name="occurred_on" value="{{.DefaultDate}}" required></label>
@@ -37,16 +37,16 @@
     </form>
   </div>
   {{if .Transactions}}
-  <table>
+  <table class="cards-mobile">
     <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th class="num">Valor</th><th></th></tr></thead>
     <tbody>
     {{range .Transactions}}
       <tr>
-        <td>{{.OccurredOn.Format "02/01"}}</td>
-        <td>{{.Description}}</td>
-        <td><span class="tag b-{{.Bucket}}">{{.CategoryName}}</span></td>
-        <td class="num {{if eq .Kind "entrada"}}pos{{end}}">{{if eq .Kind "entrada"}}+{{else}}−{{end}}{{brl .AmountCents}}</td>
-        <td class="num">
+        <td data-label="Data">{{.OccurredOn.Format "02/01"}}</td>
+        <td data-label="Descrição" class="primary">{{.Description}}</td>
+        <td data-label="Categoria"><span class="tag b-{{.Bucket}}">{{.CategoryName}}</span></td>
+        <td data-label="Valor" class="num amount {{if eq .Kind "entrada"}}pos{{end}}">{{if eq .Kind "entrada"}}+{{else}}−{{end}}{{brl .AmountCents}}</td>
+        <td class="num actions">
           <form method="post" action="/lancamentos/{{.ID}}/apagar" onsubmit="return confirm('Apagar este lançamento?')">
             <input type="hidden" name="mes" value="{{$.Month.Key}}">
             <button class="link" type="submit">apagar</button>

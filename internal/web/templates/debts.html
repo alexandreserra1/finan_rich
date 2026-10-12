@@ -25,19 +25,19 @@
 <section class="panel">
   <h2>Suas dívidas</h2>
   {{if .Plan.Debts}}
-  <table>
+  <table class="cards-mobile">
     <thead><tr><th>Dívida</th><th class="num">Saldo</th><th class="num">Juros a.m.</th><th class="num">Mínimo</th><th>Só pagando o mínimo</th><th></th></tr></thead>
     <tbody>
     {{range .Plan.Debts}}
       <tr>
-        <td><strong>{{.Name}}</strong>{{with .Creditor}}<br><small class="muted">{{.}}</small>{{end}}{{with .DueDay}}<br><small class="muted">vence dia {{.}}</small>{{end}}</td>
-        <td class="num">{{brl .BalanceCents}}</td>
-        <td class="num">{{rate .MonthlyRateBP}}</td>
-        <td class="num">{{brl .MinPaymentCents}}</td>
-        <td>{{if .Payable}}{{.Months}} meses · {{brl .InterestCents}} de juros
+        <td class="primary"><strong>{{.Name}}</strong>{{with .Creditor}}<br><small class="muted">{{.}}</small>{{end}}{{with .DueDay}}<br><small class="muted">vence dia {{.}}</small>{{end}}</td>
+        <td data-label="Saldo" class="num">{{brl .BalanceCents}}</td>
+        <td data-label="Juros a.m." class="num">{{rate .MonthlyRateBP}}</td>
+        <td data-label="Mínimo" class="num">{{brl .MinPaymentCents}}</td>
+        <td data-label="Só o mínimo">{{if .Payable}}{{.Months}} meses · {{brl .InterestCents}} de juros
             {{else if .MinPaymentCents}}<span class="neg">não cobre os juros — a dívida cresce</span>
             {{else}}<span class="muted">informe o pagamento</span>{{end}}</td>
-        <td class="num nowrap">
+        <td class="num nowrap actions">
           <a href="/dividas?editar={{.ID}}">editar</a>
           <form method="post" action="/dividas/{{.ID}}/apagar" class="inline" onsubmit="return confirm('Apagar {{.Name}}?')">
             <button class="link" type="submit">apagar</button>
