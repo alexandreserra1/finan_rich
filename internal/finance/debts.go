@@ -3,7 +3,7 @@ package finance
 import (
 	"sort"
 
-	"github.com/alexandreserra1/finan_rich/internal/store"
+	"github.com/alexandreserra1/finan_rich/internal/domain"
 )
 
 // maxMonths limita a simulação: acima disso consideramos que a dívida não é quitada.
@@ -29,7 +29,7 @@ func Payoff(balanceCents int64, rateBP int, monthlyCents int64) (months int, int
 }
 
 type DebtView struct {
-	store.Debt
+	domain.Debt
 	MonthlyInterestCents int64 // juros que o saldo atual gera em um mês
 	Months               int   // meses para quitar pagando só o mínimo
 	InterestCents        int64 // juros totais pagando só o mínimo
@@ -40,12 +40,12 @@ type DebtPlan struct {
 	Debts           []DebtView
 	TotalCents      int64
 	TotalMinCents   int64
-	MonthlyInterest int64        // juros que as dívidas geram por mês hoje
-	Avalanche       []store.Debt // maior juros primeiro (economiza mais)
-	Snowball        []store.Debt // menor saldo primeiro (vitórias rápidas)
+	MonthlyInterest int64         // juros que as dívidas geram por mês hoje
+	Avalanche       []domain.Debt // maior juros primeiro (economiza mais)
+	Snowball        []domain.Debt // menor saldo primeiro (vitórias rápidas)
 }
 
-func PlanDebts(debts []store.Debt) DebtPlan {
+func PlanDebts(debts []domain.Debt) DebtPlan {
 	var p DebtPlan
 	for _, d := range debts {
 		months, interest, ok := Payoff(d.BalanceCents, d.MonthlyRateBP, d.MinPaymentCents)
@@ -55,9 +55,9 @@ func PlanDebts(debts []store.Debt) DebtPlan {
 		p.TotalMinCents += d.MinPaymentCents
 		p.MonthlyInterest += monthly
 	}
-	p.Avalanche = append([]store.Debt(nil), debts...)
+	p.Avalanche = append([]domain.Debt(nil), debts...)
 	sort.SliceStable(p.Avalanche, func(i, j int) bool { return p.Avalanche[i].MonthlyRateBP > p.Avalanche[j].MonthlyRateBP })
-	p.Snowball = append([]store.Debt(nil), debts...)
+	p.Snowball = append([]domain.Debt(nil), debts...)
 	sort.SliceStable(p.Snowball, func(i, j int) bool { return p.Snowball[i].BalanceCents < p.Snowball[j].BalanceCents })
 	return p
 }

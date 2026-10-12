@@ -3,3 +3,5 @@
 *.db
 *.db-shm
 *.db-wal
+/internal/web/static/finance.wasm
+/internal/web/static/js/wasm_exec.js

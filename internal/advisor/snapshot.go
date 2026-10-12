@@ -5,16 +5,35 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alexandreserra1/finan_rich/internal/domain"
 	"github.com/alexandreserra1/finan_rich/internal/finance"
 	"github.com/alexandreserra1/finan_rich/internal/money"
-	"github.com/alexandreserra1/finan_rich/internal/store"
 )
+
+// BuildFacts calcula tudo o que o consultor recebe, a partir do livro-caixa.
+func BuildFacts(l domain.Ledger, today time.Time) Facts {
+	m := domain.NewMonth(today.Year(), today.Month())
+	sum := finance.Summarize(m, l)
+	debts := finance.PlanDebts(l.ActiveDebts())
+	plan := finance.PlanMonth(sum, debts)
+	var recent []finance.Totals
+	all := finance.RecentTotals(l, m, 6)
+	for _, t := range all {
+		if t.Key != m.Key() {
+			recent = append(recent, t)
+		}
+	}
+	return Facts{
+		Today: today, Month: sum, Recent: recent, Debts: debts, Plan: plan,
+		Emergency: finance.PlanEmergencyFund(all, plan.PendingMinCents),
+	}
+}
 
 // Facts reúne os dados que o consultor recebe a cada pergunta.
 type Facts struct {
 	Today     time.Time
 	Month     finance.Summary
-	Recent    []store.Totals // meses anteriores com movimento
+	Recent    []finance.Totals // meses anteriores com movimento
 	Debts     finance.DebtPlan
 	Emergency finance.EmergencyFund
 	Plan      finance.MonthPlan
@@ -92,7 +111,7 @@ func Snapshot(f Facts) string {
 			}
 			b.WriteString("\n")
 		}
-		names := func(ds []store.Debt) string {
+		names := func(ds []domain.Debt) string {
 			out := make([]string, len(ds))
 			for i, d := range ds {
 				out[i] = d.Name

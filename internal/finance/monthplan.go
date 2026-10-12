@@ -1,6 +1,6 @@
 package finance
 
-import "github.com/alexandreserra1/finan_rich/internal/store"
+import "github.com/alexandreserra1/finan_rich/internal/domain"
 
 // MonthPlan é o plano do mês calculado pelo app: quanto ainda falta pagar das
 // dívidas, quanto sobra livre e para onde mandar o extra (método avalanche).
@@ -22,7 +22,7 @@ type MonthPlan struct {
 func PlanMonth(sum Summary, debts DebtPlan) MonthPlan {
 	p := MonthPlan{SurplusCents: sum.BalanceCents()}
 	for _, c := range sum.Categories {
-		if c.Name == store.DebtPaymentCategory {
+		if c.Name == domain.DebtPaymentCategory {
 			p.DebtPaidCents = c.SpentCents
 		}
 	}

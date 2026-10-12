@@ -1,0 +1,33 @@
+//go:build js && wasm
+
+// Comando finanwasm: as regras do finan_rich compiladas para WebAssembly.
+// Registra o objeto global "finan" no navegador. Compile com:
+//
+//	go generate ./internal/web   (ou: make wasm)
+package main
+
+import (
+	"syscall/js"
+
+	"github.com/alexandreserra1/finan_rich/internal/wasmapi"
+)
+
+func main() {
+	str := func(args []js.Value, i int) string {
+		if i < len(args) {
+			return args[i].String()
+		}
+		return ""
+	}
+	api := map[string]any{
+		"dashboard":   js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Dashboard(str(a, 0), str(a, 1)) }),
+		"debts":       js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Debts(str(a, 0)) }),
+		"validate":    js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Validate(str(a, 0), str(a, 1)) }),
+		"parseMoney":  js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.ParseMoney(str(a, 0)) }),
+		"formatMoney": js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.FormatMoney(int64(a[0].Int())) }),
+		"monthLabel":  js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.MonthLabel(str(a, 0)) }),
+	}
+	js.Global().Set("finan", js.ValueOf(api))
+	js.Global().Call("dispatchEvent", js.Global().Get("Event").New("finan-ready"))
+	select {} // mantém as funções vivas
+}

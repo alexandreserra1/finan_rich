@@ -4,8 +4,9 @@ package finance
 
 import (
 	"sort"
+	"time"
 
-	"github.com/alexandreserra1/finan_rich/internal/store"
+	"github.com/alexandreserra1/finan_rich/internal/domain"
 )
 
 // BucketLine compara o planejado (percentual da renda) com o realizado no mês.
@@ -37,7 +38,7 @@ type CategoryLine struct {
 }
 
 type Summary struct {
-	Month      store.Month
+	Month      domain.Month
 	InCents    int64
 	OutCents   int64
 	Buckets    []BucketLine
@@ -53,33 +54,39 @@ func (s Summary) SavingsRatePct() int {
 	}
 	var invested int64
 	for _, b := range s.Buckets {
-		if b.Bucket == store.BucketInvestimentos {
+		if b.Bucket == domain.BucketInvestimentos {
 			invested = b.SpentCents
 		}
 	}
 	return int((s.BalanceCents() + invested) * 100 / s.InCents)
 }
 
-// Summarize monta o resumo do mês a partir dos lançamentos e da divisão planejada.
-func Summarize(m store.Month, txs []store.Transaction, split map[string]int) Summary {
+// Summarize monta o resumo do mês a partir do livro-caixa.
+func Summarize(m domain.Month, l domain.Ledger) Summary {
 	s := Summary{Month: m}
+	split := l.Split()
+	cats := l.CategoryIndex()
 	spentByBucket := map[string]int64{}
 	byCategory := map[string]*CategoryLine{}
-	for _, t := range txs {
-		if t.Kind == store.KindEntrada {
+	for _, t := range l.ActiveTransactions() {
+		if !m.Contains(t.Date) {
+			continue
+		}
+		if t.Kind == domain.KindEntrada {
 			s.InCents += t.AmountCents
 			continue
 		}
+		cat := cats[t.CategoryID]
 		s.OutCents += t.AmountCents
-		spentByBucket[t.Bucket] += t.AmountCents
-		c, ok := byCategory[t.CategoryName]
+		spentByBucket[cat.Bucket] += t.AmountCents
+		c, ok := byCategory[t.CategoryID]
 		if !ok {
-			c = &CategoryLine{Name: t.CategoryName, Bucket: t.Bucket}
-			byCategory[t.CategoryName] = c
+			c = &CategoryLine{Name: cat.Name, Bucket: cat.Bucket}
+			byCategory[t.CategoryID] = c
 		}
 		c.SpentCents += t.AmountCents
 	}
-	for _, b := range store.SpendingBuckets {
+	for _, b := range domain.SpendingBuckets {
 		s.Buckets = append(s.Buckets, BucketLine{
 			Bucket:       b,
 			Pct:          split[b],
@@ -100,4 +107,53 @@ func Summarize(m store.Month, txs []store.Transaction, split map[string]int) Sum
 		return s.Categories[i].Name < s.Categories[j].Name
 	})
 	return s
+}
+
+// Totals são os totais de um mês.
+type Totals struct {
+	Month        domain.Month `json:"-"`
+	Key          string       `json:"month"` // "2026-10"
+	InCents      int64        `json:"inCents"`
+	OutCents     int64        `json:"outCents"`
+	BalanceCents int64        `json:"balanceCents"`
+}
+
+// YearTotals devolve entradas e saídas de cada um dos 12 meses do ano.
+func YearTotals(l domain.Ledger, year int) []Totals {
+	out := make([]Totals, 12)
+	for i := range out {
+		out[i].Month = domain.NewMonth(year, time.Month(i+1))
+		out[i].Key = out[i].Month.Key()
+	}
+	for _, t := range l.ActiveTransactions() {
+		d := t.Day()
+		if d.Year() != year {
+			continue
+		}
+		m := &out[d.Month()-1]
+		if t.Kind == domain.KindEntrada {
+			m.InCents += t.AmountCents
+		} else {
+			m.OutCents += t.AmountCents
+		}
+	}
+	for i := range out {
+		out[i].BalanceCents = out[i].InCents - out[i].OutCents
+	}
+	return out
+}
+
+// RecentTotals devolve os meses com movimento entre (m - n meses) e m, inclusive.
+func RecentTotals(l domain.Ledger, m domain.Month, n int) []Totals {
+	from := m.AddDate(0, -n, 0)
+	var out []Totals
+	for year := from.Year(); year <= m.Year(); year++ {
+		for _, t := range YearTotals(l, year) {
+			if t.Month.Before(from) || t.Month.After(m.Time) || (t.InCents == 0 && t.OutCents == 0) {
+				continue
+			}
+			out = append(out, t)
+		}
+	}
+	return out
 }

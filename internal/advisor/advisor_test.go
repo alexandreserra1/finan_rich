@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alexandreserra1/finan_rich/internal/finance"
+	"github.com/alexandreserra1/finan_rich/internal/domain"
 	"github.com/alexandreserra1/finan_rich/internal/llm"
 	"github.com/alexandreserra1/finan_rich/internal/store"
 )
@@ -71,29 +71,30 @@ func TestAsk(t *testing.T) {
 }
 
 func TestSnapshot(t *testing.T) {
-	m := store.NewMonth(2026, time.October)
-	sum := finance.Summarize(m, []store.Transaction{
-		{Kind: store.KindEntrada, AmountCents: 500000, CategoryName: "Salário", Bucket: store.BucketRenda},
-		{Kind: store.KindSaida, AmountCents: 200000, CategoryName: "Lazer", Bucket: store.BucketDesejos},
-	}, map[string]int{"necessidades": 50, "desejos": 30, "investimentos": 20})
-	plan := finance.PlanDebts([]store.Debt{
-		{Name: "Cartão", BalanceCents: 400000, MonthlyRateBP: 1250, MinPaymentCents: 40000},
-	})
-	got := Snapshot(Facts{
-		Today: time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC), Month: sum, Debts: plan, Plan: finance.PlanMonth(sum, plan),
-		Emergency: finance.PlanEmergencyFund([]store.Totals{{InCents: 500000, OutCents: 200000, BalanceCents: 300000}}, 40000),
-	})
+	cat := func(id, name, bucket string) domain.Category {
+		return domain.Category{Meta: domain.Meta{ID: id, UpdatedAt: 1}, Name: name, Bucket: bucket}
+	}
+	tx := func(id, kind, catID string, cents int64) domain.Transaction {
+		return domain.Transaction{Meta: domain.Meta{ID: id, UpdatedAt: 1}, Kind: kind, Description: id, AmountCents: cents, CategoryID: catID, Date: "2026-10-05"}
+	}
+	l := domain.Ledger{
+		Categories:   []domain.Category{cat("sal", "Salário", domain.BucketRenda), cat("laz", "Lazer", domain.BucketDesejos)},
+		Transactions: []domain.Transaction{tx("a", domain.KindEntrada, "sal", 500000), tx("b", domain.KindSaida, "laz", 200000)},
+		Debts:        []domain.Debt{{Meta: domain.Meta{ID: "d", UpdatedAt: 1}, Name: "Cartão", BalanceCents: 400000, MonthlyRateBP: 1250, MinPaymentCents: 40000}},
+	}
+	got := Snapshot(BuildFacts(l, time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC)))
 	for _, want := range []string{
 		"10/10/2026", "outubro de 2026", "Entradas: R$ 5.000,00",
 		"desejos: meta 30% = R$ 1.500,00; gasto R$ 2.000,00 (133% da meta); passou R$ 500,00 da meta",
 		"Lazer (desejos): R$ 2.000,00",
 		"juros de 12,50% a.m. = R$ 500,00 de juros por mês",
 		"o mínimo NÃO cobre os juros (R$ 400,00 < R$ 500,00)",
-		"Reserva mínima (3 meses de gastos): R$ 6.000,00", "sobra livre (R$ 2.600,00/mês, já descontadas as parcelas de dívidas): mínima em 3 meses",
-		"## Pontos de atenção", "Cartão cresce todo mês",
+		"Reserva mínima (3 meses de gastos): R$ 6.000,00",
+		"sobra livre (R$ 2.600,00/mês, já descontadas as parcelas de dívidas): mínima em 3 meses",
+		"## Pontos de atenção", "Cartão cresce todo mês", "Gastos com desejos passaram da meta em R$ 500,00",
 		"Parcelas mínimas que ainda faltam pagar este mês (não estão nas saídas): R$ 400,00",
 		"Sobra livre depois de pagar as parcelas mínimas: R$ 3.000,00 - R$ 400,00 = R$ 2.600,00",
-		"pagando R$ 400,00 + R$ 2.600,00 = R$ 3.000,00 por mês", "Gastos com desejos passaram da meta em R$ 500,00",
+		"pagando R$ 400,00 + R$ 2.600,00 = R$ 3.000,00 por mês",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("snapshot sem %q:\n%s", want, got)

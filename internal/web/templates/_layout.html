@@ -44,28 +44,4 @@
 </body>
 </html>
 
-{{define "monthnav"}}
-<div class="monthnav">
-  <a href="?mes={{.Prev.Key}}" aria-label="Mês anterior">‹</a>
-  <strong>{{.Label}}</strong>
-  <a href="?mes={{.Next.Key}}" aria-label="Próximo mês">›</a>
-</div>
-{{end}}
-
-{{define "buckets"}}
-<div class="buckets">
-  {{range .Buckets}}
-  <div class="bucket b-{{.Bucket}}">
-    <div class="row"><strong>{{bucketLabel .Bucket}}</strong><span class="muted">{{.Pct}}% da renda</span></div>
-    <div class="bar"><span style="width: {{min100 .UsedPct}}%" {{if gt .UsedPct 100}}class="over"{{end}}></span></div>
-    <div class="row small">
-      <span>{{brl .SpentCents}} de {{brl .PlannedCents}}</span>
-      {{if neg .RemainingCents}}<span class="neg">estourou {{brl (abs .RemainingCents)}}</span>
-      {{else}}<span class="muted">resta {{brl .RemainingCents}}</span>{{end}}
-    </div>
-  </div>
-  {{end}}
-</div>
-{{end}}
-
 {{define "icon"}}<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">{{if eq . "home"}}<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>{{else if eq . "list"}}<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>{{else if eq . "card"}}<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>{{else if eq . "chat"}}<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>{{else if eq . "tag"}}<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z"/><path d="M7 7h.01"/>{{else if eq . "gear"}}<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>{{end}}</svg>{{end}}

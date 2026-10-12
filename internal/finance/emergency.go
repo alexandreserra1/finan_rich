@@ -1,7 +1,5 @@
 package finance
 
-import "github.com/alexandreserra1/finan_rich/internal/store"
-
 // EmergencyFund é a reserva de emergência recomendada: de 3 (mínimo) a 6 meses
 // (ideal) do gasto mensal médio.
 type EmergencyFund struct {
@@ -16,7 +14,7 @@ type EmergencyFund struct {
 // PlanEmergencyFund calcula a reserva a partir dos meses com movimento.
 // pendingDebtCents são parcelas de dívida que ainda não aparecem nas saídas e
 // por isso são descontadas da sobra mensal.
-func PlanEmergencyFund(months []store.Totals, pendingDebtCents int64) EmergencyFund {
+func PlanEmergencyFund(months []Totals, pendingDebtCents int64) EmergencyFund {
 	var f EmergencyFund
 	var n, totalOut, totalBalance int64
 	for _, m := range months {

@@ -14,10 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alexandreserra1/finan_rich/internal/advisor"
 	"github.com/alexandreserra1/finan_rich/internal/auth"
 	"github.com/alexandreserra1/finan_rich/internal/llm"
-	"github.com/alexandreserra1/finan_rich/internal/money"
 	"github.com/alexandreserra1/finan_rich/internal/store"
 )
 
@@ -50,33 +48,7 @@ type Options struct {
 	OnNetworkChange func()
 }
 
-var bucketLabels = map[string]string{
-	store.BucketNecessidades:  "Necessidades",
-	store.BucketDesejos:       "Desejos",
-	store.BucketInvestimentos: "Investimentos",
-	store.BucketRenda:         "Renda",
-}
-
 var funcs = template.FuncMap{
-	"brl":         money.Format,
-	"moneyInput":  money.Input,
-	"rate":        advisor.RatePct,
-	"rateInput":   func(bp int) string { return money.Input(int64(bp)) },
-	"bucketLabel": func(b string) string { return bucketLabels[b] },
-	"neg":         func(c int64) bool { return c < 0 },
-	"abs": func(c int64) int64 {
-		if c < 0 {
-			return -c
-		}
-		return c
-	},
-	"min100": func(p int) int { return min(p, 100) },
-	"barPct": func(v, max int64) int {
-		if max <= 0 {
-			return 0
-		}
-		return int(v * 100 / max)
-	},
 	"json": func(v any) (template.JS, error) {
 		b, err := json.Marshal(v)
 		return template.JS(b), err
@@ -135,21 +107,12 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /entrar", s.login)
 	mux.HandleFunc("POST /sair", s.logout)
 
-	mux.HandleFunc("GET /{$}", s.dashboard)
-
-	mux.HandleFunc("GET /lancamentos", s.transactions)
-	mux.HandleFunc("POST /lancamentos", s.createTransaction)
-	mux.HandleFunc("POST /lancamentos/{id}/apagar", s.deleteTransaction)
-	mux.HandleFunc("POST /lancamentos/copiar-mes-anterior", s.copyPreviousMonth)
-
-	mux.HandleFunc("GET /categorias", s.categories)
-	mux.HandleFunc("POST /categorias", s.createCategory)
-	mux.HandleFunc("POST /categorias/{id}/apagar", s.deleteCategory)
-	mux.HandleFunc("POST /divisao", s.saveSplit)
-
-	mux.HandleFunc("GET /dividas", s.debts)
-	mux.HandleFunc("POST /dividas", s.saveDebt)
-	mux.HandleFunc("POST /dividas/{id}/apagar", s.deleteDebt)
+	// Telas de dados: o servidor entrega só o "casco"; o aparelho monta a tela
+	// com os dados guardados nele (funciona offline) e sincroniza com /api/sync.
+	for path, page := range map[string]string{"/{$}": "dashboard", "/lancamentos": "transactions", "/dividas": "debts", "/categorias": "categories"} {
+		mux.HandleFunc("GET "+path, s.appShell(page))
+	}
+	mux.HandleFunc("POST /api/sync", s.apiSync)
 
 	mux.HandleFunc("GET /chat", s.chat)
 	mux.HandleFunc("POST /chat/enviar", s.chatSend)
@@ -165,7 +128,9 @@ func (s *Server) Routes() http.Handler {
 
 // render executa a página; dados comuns (página ativa, avisos) vão no mapa.
 func (s *Server) render(w http.ResponseWriter, r *http.Request, page string, data map[string]any) {
-	data["Page"] = page
+	if _, ok := data["Page"]; !ok {
+		data["Page"] = page
+	}
 	data["Flash"] = r.URL.Query().Get("msg")
 	data["Error"] = r.URL.Query().Get("erro")
 	data["Remote"] = !isLoopback(r) // acesso pela rede: mostra o botão de sair
@@ -205,6 +170,13 @@ func isSameOrigin(r *http.Request) bool {
 		return err == nil && u.Host == r.Host
 	}
 	return true
+}
+
+// appShell entrega a página que o JavaScript do aparelho preenche.
+func (s *Server) appShell(page string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.render(w, r, "app", map[string]any{"Page": page, "AppPage": page})
+	}
 }
 
 // securityHeaders impede que o app seja aberto dentro de outro site (clickjacking)

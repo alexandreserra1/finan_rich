@@ -1,7 +1,9 @@
 package web
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,7 +11,9 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/alexandreserra1/finan_rich/internal/domain"
 	"github.com/alexandreserra1/finan_rich/internal/llm"
 	"github.com/alexandreserra1/finan_rich/internal/store"
 )
@@ -94,57 +98,87 @@ func (a *app) post(path string, form url.Values, header ...string) (int, string)
 // para pegar erros de template que só aparecem num dos dois casos.
 func TestPagesRender(t *testing.T) {
 	a := newApp(t, fakeOllama(t).URL)
-	paths := []string{"/", "/?mes=2026-09", "/lancamentos?mes=2026-09", "/categorias", "/dividas", "/dividas?editar=1",
-		"/chat", "/configuracoes", "/static/app.css", "/static/app.js", "/static/favicon.svg"}
+	paths := []string{"/", "/lancamentos", "/categorias", "/dividas", "/chat", "/configuracoes",
+		"/static/app.css", "/static/app.js", "/static/favicon.svg", "/manifest.webmanifest", "/sw.js", "/offline"}
 	check := func(state string) {
 		for _, path := range paths {
-			if path == "/dividas?editar=1" && state == "vazio" {
-				continue
-			}
 			if code, body := a.get(path); code != http.StatusOK {
 				t.Errorf("[%s] GET %s = %d: %.300s", state, path, code, body)
 			}
 		}
 	}
 	check("vazio")
-
-	ctx := context.Background()
-	cats, _ := a.st.ListCategories(ctx)
-	day := 10
-	for _, tx := range []store.Transaction{
-		{Kind: store.KindEntrada, Description: "Salário", AmountCents: 500000, CategoryID: cats[0].ID, OccurredOn: store.NewMonth(2026, 9).Day(5)},
-		{Kind: store.KindSaida, Description: "Aluguel", AmountCents: 180000, CategoryID: cats[2].ID, OccurredOn: store.NewMonth(2026, 9).Day(10)},
-	} {
-		if err := a.st.CreateTransaction(ctx, tx); err != nil {
-			t.Fatal(err)
-		}
-	}
-	a.st.SaveDebt(ctx, store.Debt{Name: "Cartão", BalanceCents: 400000, MonthlyRateBP: 1250, MinPaymentCents: 40000, DueDay: &day})
-	a.st.SaveDebt(ctx, store.Debt{Name: "Empréstimo", BalanceCents: 200000, MonthlyRateBP: 210, MinPaymentCents: 30000})
-	a.st.AppendChatTurn(ctx, "oi", "**olá**")
+	seed(t, a.st)
+	a.st.AppendChatTurn(context.Background(), "oi", "**olá**")
 	check("com dados")
+
+	// O casco das telas de dados diz qual tela o JavaScript deve montar.
+	if _, body := a.get("/dividas"); !strings.Contains(body, `data-page="debts"`) || !strings.Contains(body, "/static/js/main.js") {
+		t.Errorf("casco da tela de dívidas: %.400s", body)
+	}
 }
 
-func TestTransactionFlow(t *testing.T) {
+// seed grava um lançamento e uma dívida pelo mesmo caminho da sincronização.
+func seed(t *testing.T, st *store.Store) {
+	t.Helper()
+	rec := func(v any) json.RawMessage { b, _ := json.Marshal(v); return b }
+	_, err := st.ApplyChanges(context.Background(), []store.Change{
+		{Type: store.TypeTransaction, Record: rec(domain.Transaction{Meta: domain.Meta{ID: "t1", UpdatedAt: 1}, Kind: domain.KindSaida,
+			Description: "Aluguel", AmountCents: 180000, CategoryID: "cat-3", Date: time.Now().Format(domain.DateLayout)})},
+		{Type: store.TypeDebt, Record: rec(domain.Debt{Meta: domain.Meta{ID: "d1", UpdatedAt: 1}, Name: "Cartão",
+			BalanceCents: 320000, MonthlyRateBP: 1400, MinPaymentCents: 32000})},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func (a *app) postJSON(path string, body any) (int, map[string]any) {
+	a.t.Helper()
+	b, _ := json.Marshal(body)
+	req, _ := http.NewRequest(http.MethodPost, a.srv.URL+path, bytes.NewReader(b))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		a.t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var out map[string]any
+	json.NewDecoder(resp.Body).Decode(&out)
+	return resp.StatusCode, out
+}
+
+func TestSyncAPI(t *testing.T) {
 	a := newApp(t, fakeOllama(t).URL)
-	cats, _ := a.st.ListCategories(context.Background())
-	form := url.Values{"kind": {"saida"}, "description": {"Aluguel"}, "amount": {"1.800,00"},
-		"category_id": {fmt.Sprint(cats[2].ID)}, "occurred_on": {"2026-09-10"}}
-	code, loc := a.post("/lancamentos", form)
-	if code != http.StatusSeeOther || !strings.Contains(loc, "mes=2026-09") || !strings.Contains(loc, "msg=") {
-		t.Fatalf("POST = %d %s", code, loc)
+
+	// Aparelho novo: baixa tudo (categorias padrão e divisão do salário).
+	code, first := a.postJSON("/api/sync", map[string]any{"cursor": 0})
+	if code != http.StatusOK || len(first["changes"].([]any)) != 16 || first["more"] != false {
+		t.Fatalf("primeira sincronização: %d %v", code, first)
 	}
-	if _, body := a.get("/lancamentos?mes=2026-09"); !strings.Contains(body, "Aluguel") || !strings.Contains(body, "R$ 1.800,00") {
-		t.Error("lançamento não aparece na lista")
+	cursor := first["cursor"].(float64)
+
+	// Envia um lançamento feito offline e recebe de volta só o que mudou.
+	tx := domain.Transaction{Meta: domain.Meta{ID: "uuid-1", UpdatedAt: 1000}, Kind: domain.KindSaida,
+		Description: "Mercado", AmountCents: 9000, CategoryID: "cat-5", Date: "2026-10-12"}
+	code, second := a.postJSON("/api/sync", map[string]any{"cursor": cursor, "changes": []any{map[string]any{"type": "transaction", "record": tx}}})
+	changes := second["changes"].([]any)
+	if code != http.StatusOK || len(changes) != 1 || second["cursor"].(float64) <= cursor {
+		t.Fatalf("envio: %d %v", code, second)
 	}
-	// Com dados, o painel monta o resumo do mês e a tabela anual.
-	if code, body := a.get("/?mes=2026-09"); code != http.StatusOK || !strings.Contains(body, "setembro de 2026") || !strings.Contains(body, "-R$ 1.800,00") {
-		t.Errorf("painel com dados = %d: %.300s", code, body)
+	l, _ := a.st.Ledger(context.Background())
+	if txs := l.ActiveTransactions(); len(txs) != 1 || txs[0].Description != "Mercado" {
+		t.Errorf("servidor não gravou: %+v", txs)
 	}
 
-	form.Set("amount", "abc")
-	if _, loc := a.post("/lancamentos", form); !strings.Contains(loc, "erro=") {
-		t.Errorf("valor inválido deveria dar erro: %s", loc)
+	// Registro inválido é recusado com 422 e a mensagem do domínio.
+	tx.Description = ""
+	code, bad := a.postJSON("/api/sync", map[string]any{"cursor": cursor, "changes": []any{map[string]any{"type": "transaction", "record": tx}}})
+	if code != http.StatusUnprocessableEntity || !strings.Contains(bad["error"].(string), "descrição") {
+		t.Errorf("inválido: %d %v", code, bad)
+	}
+	if code, _ := a.postJSON("/api/sync", "lixo"); code != http.StatusBadRequest {
+		t.Errorf("corpo inválido = %d", code)
 	}
 }
 

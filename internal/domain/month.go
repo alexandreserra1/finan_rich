@@ -1,63 +1,6 @@
-package store
+package domain
 
 import "time"
-
-// Buckets da divisão do salário (estilo 50/30/20).
-const (
-	BucketNecessidades  = "necessidades"
-	BucketDesejos       = "desejos"
-	BucketInvestimentos = "investimentos"
-	BucketRenda         = "renda"
-)
-
-// SpendingBuckets são os grupos que dividem a renda, na ordem de exibição.
-var SpendingBuckets = []string{BucketNecessidades, BucketDesejos, BucketInvestimentos}
-
-// DebtPaymentCategory é a categoria padrão para lançar pagamentos de dívidas.
-const DebtPaymentCategory = "Pagamento de dívidas"
-
-const (
-	KindEntrada = "entrada"
-	KindSaida   = "saida"
-)
-
-type Category struct {
-	ID     int64
-	Name   string
-	Bucket string
-}
-
-type Transaction struct {
-	ID           int64
-	Kind         string
-	Description  string
-	AmountCents  int64
-	CategoryID   int64
-	CategoryName string
-	Bucket       string
-	OccurredOn   time.Time
-}
-
-type Debt struct {
-	ID              int64
-	Name            string
-	Creditor        string
-	BalanceCents    int64
-	MonthlyRateBP   int // juros ao mês em pontos-base: 199 = 1,99%
-	MinPaymentCents int64
-	DueDay          *int
-}
-
-const (
-	RoleUser      = "user"
-	RoleAssistant = "assistant"
-)
-
-type ChatMessage struct {
-	ID      int64
-	Role    string // RoleUser ou RoleAssistant
-	Content string
-}
 
 // Month identifica um mês de referência (dia 1, UTC).
 type Month struct{ time.Time }
@@ -85,6 +28,9 @@ func (m Month) Next() Month    { return Month{m.AddDate(0, 1, 0)} }
 func (m Month) Prev() Month    { return Month{m.AddDate(0, -1, 0)} }
 func (m Month) End() time.Time { return m.AddDate(0, 1, 0) }
 
+// Contains diz se a data (AAAA-MM-DD) cai neste mês.
+func (m Month) Contains(date string) bool { return len(date) >= 7 && date[:7] == m.Key() }
+
 // Day devolve o dia informado dentro do mês, limitado ao último dia (31 → 30 em abril).
 func (m Month) Day(day int) time.Time {
 	last := m.End().AddDate(0, 0, -1).Day()
@@ -95,9 +41,7 @@ var mesesPT = [...]string{"janeiro", "fevereiro", "março", "abril", "maio", "ju
 	"julho", "agosto", "setembro", "outubro", "novembro", "dezembro"}
 
 // Label devolve "outubro de 2026".
-func (m Month) Label() string {
-	return mesesPT[m.Month()-1] + " de " + m.Format("2006")
-}
+func (m Month) Label() string { return mesesPT[m.Month()-1] + " de " + m.Format("2006") }
 
 // Abbr devolve "out".
 func (m Month) Abbr() string { return mesesPT[m.Month()-1][:3] }

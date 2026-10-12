@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/advisor"
-	"github.com/alexandreserra1/finan_rich/internal/finance"
-	"github.com/alexandreserra1/finan_rich/internal/store"
 )
 
 func (s *Server) chat(w http.ResponseWriter, r *http.Request) {
@@ -35,42 +33,11 @@ func (s *Server) chatClear(w http.ResponseWriter, r *http.Request) {
 
 // snapshot monta o retrato financeiro enviado junto com cada pergunta.
 func (s *Server) snapshot(ctx context.Context) (string, error) {
-	m := store.CurrentMonth()
-	sum, _, err := s.monthSummary(ctx, m)
+	l, err := s.store.Ledger(ctx)
 	if err != nil {
 		return "", err
 	}
-	var recent, withCurrent []store.Totals
-	sixMonthsAgo := m.AddDate(0, -6, 0)
-	for _, year := range []int{m.Year() - 1, m.Year()} {
-		totals, err := s.store.MonthlyTotals(ctx, year)
-		if err != nil {
-			return "", err
-		}
-		for _, t := range totals {
-			if t.Month.Before(sixMonthsAgo) || t.Month.After(m.Time) || (t.InCents == 0 && t.OutCents == 0) {
-				continue
-			}
-			withCurrent = append(withCurrent, t)
-			if t.Month.Before(m.Time) {
-				recent = append(recent, t)
-			}
-		}
-	}
-	debts, err := s.store.ListDebts(ctx)
-	if err != nil {
-		return "", err
-	}
-	debtPlan := finance.PlanDebts(debts)
-	monthPlan := finance.PlanMonth(sum, debtPlan)
-	return advisor.Snapshot(advisor.Facts{
-		Today:     time.Now(),
-		Month:     sum,
-		Recent:    recent,
-		Debts:     debtPlan,
-		Emergency: finance.PlanEmergencyFund(withCurrent, monthPlan.PendingMinCents),
-		Plan:      monthPlan,
-	}), nil
+	return advisor.Snapshot(advisor.BuildFacts(l, time.Now())), nil
 }
 
 // chatSend responde em SSE: {"text": "..."} a cada pedaço, {"error": "..."}

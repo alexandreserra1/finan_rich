@@ -2,9 +2,13 @@ package store
 
 import (
 	"context"
-	"errors"
+	"database/sql"
+	"encoding/json"
+	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/alexandreserra1/finan_rich/internal/domain"
 )
 
 func newTestStore(t *testing.T) *Store {
@@ -17,120 +21,192 @@ func newTestStore(t *testing.T) *Store {
 	return s
 }
 
-func categoryID(t *testing.T, s *Store, name string) int64 {
+func change(t *testing.T, typ string, v any) Change {
 	t.Helper()
-	cats, err := s.ListCategories(context.Background())
+	b, err := json.Marshal(v)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, c := range cats {
-		if c.Name == name {
-			return c.ID
-		}
-	}
-	t.Fatalf("categoria %q não encontrada", name)
-	return 0
+	return Change{Type: typ, Record: b}
 }
 
-func TestMigrateIsIdempotent(t *testing.T) {
+func txRecord(id string, updated int64, desc string) domain.Transaction {
+	return domain.Transaction{Meta: domain.Meta{ID: id, UpdatedAt: updated}, Kind: domain.KindSaida,
+		Description: desc, AmountCents: 100, CategoryID: "cat-3", Date: "2026-10-05"}
+}
+
+func TestFreshInstallHasDefaults(t *testing.T) {
 	s := newTestStore(t)
+	l, err := s.Ledger(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(l.Categories) != 15 || l.Split()[domain.BucketNecessidades] != 50 {
+		t.Errorf("instalação nova: %d categorias, split %v", len(l.Categories), l.Split())
+	}
 	if err := s.migrate(context.Background()); err != nil {
-		t.Fatalf("segunda execução das migrations: %v", err)
-	}
-	split, err := s.Split(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if split["necessidades"] != 50 || split["desejos"] != 30 || split["investimentos"] != 20 {
-		t.Errorf("divisão padrão = %v", split)
+		t.Errorf("migrations devem ser idempotentes: %v", err)
 	}
 }
 
-func TestTransactionsAndTotals(t *testing.T) {
+func TestApplyChangesLastWriteWins(t *testing.T) {
 	ctx := context.Background()
 	s := newTestStore(t)
-	salario, aluguel := categoryID(t, s, "Salário"), categoryID(t, s, "Moradia")
-	sep := NewMonth(2026, time.September)
+	start, _ := s.CurrentRev(ctx)
 
-	for _, tx := range []Transaction{
-		{Kind: KindEntrada, Description: "Salário", AmountCents: 500000, CategoryID: salario, OccurredOn: sep.Day(5)},
-		{Kind: KindSaida, Description: "Aluguel", AmountCents: 180000, CategoryID: aluguel, OccurredOn: sep.Day(31)}, // 30/09
-		{Kind: KindSaida, Description: "Outro mês", AmountCents: 1, CategoryID: aluguel, OccurredOn: sep.Next().Day(1)},
-	} {
-		if err := s.CreateTransaction(ctx, tx); err != nil {
-			t.Fatal(err)
+	n, err := s.ApplyChanges(ctx, []Change{change(t, TypeTransaction, txRecord("t1", 100, "celular"))})
+	if err != nil || n != 1 {
+		t.Fatalf("criar: n=%d err=%v", n, err)
+	}
+	// Uma edição mais antiga (feita offline em outro aparelho) perde.
+	if n, _ := s.ApplyChanges(ctx, []Change{change(t, TypeTransaction, txRecord("t1", 50, "computador"))}); n != 0 {
+		t.Error("alteração mais antiga não pode sobrescrever")
+	}
+	// A mais nova vence; reenviar a mesma é ignorado (idempotente).
+	newer := change(t, TypeTransaction, txRecord("t1", 200, "computador"))
+	if n, _ := s.ApplyChanges(ctx, []Change{newer, newer}); n != 1 {
+		t.Errorf("mais nova: n=%d", n)
+	}
+	// Apagar também sincroniza.
+	del := domain.Transaction{Meta: domain.Meta{ID: "t1", UpdatedAt: 300, Deleted: true}}
+	if n, err := s.ApplyChanges(ctx, []Change{change(t, TypeTransaction, del)}); n != 1 || err != nil {
+		t.Errorf("apagar: n=%d err=%v", n, err)
+	}
+
+	changes, cursor, err := s.ChangesSince(ctx, start, 100)
+	if err != nil || len(changes) != 1 || cursor != start+3 {
+		t.Fatalf("mudanças desde %d: %d itens, cursor %d, err %v", start, len(changes), cursor, err)
+	}
+	var got domain.Transaction
+	json.Unmarshal(changes[0].Record, &got)
+	if !got.Deleted || got.UpdatedAt != 300 {
+		t.Errorf("registro final = %+v", got)
+	}
+	if l, _ := s.Ledger(ctx); len(l.ActiveTransactions()) != 0 {
+		t.Error("lançamento apagado não pode aparecer como ativo")
+	}
+}
+
+func TestApplyChangesValidates(t *testing.T) {
+	ctx := context.Background()
+	s := newTestStore(t)
+	bad := txRecord("t1", 1, "")
+	cases := []Change{
+		change(t, TypeTransaction, bad),
+		change(t, "senha", map[string]string{"id": "x"}),
+		{Type: TypeDebt, Record: json.RawMessage(`{"id":`)},
+	}
+	for i, c := range cases {
+		if _, err := s.ApplyChanges(ctx, []Change{change(t, TypeTransaction, txRecord("ok", 1, "ok")), c}); err == nil {
+			t.Errorf("caso %d deveria ser recusado", i)
 		}
 	}
-
-	txs, err := s.ListTransactions(ctx, sep)
-	if err != nil {
-		t.Fatal(err)
+	// Um lote com erro não grava nada.
+	if l, _ := s.Ledger(ctx); len(l.Transactions) != 0 {
+		t.Error("lote inválido gravou parte dos registros")
 	}
-	if len(txs) != 2 || txs[0].Description != "Aluguel" || txs[0].OccurredOn.Day() != 30 || txs[0].Bucket != BucketNecessidades {
-		t.Fatalf("lançamentos de setembro = %+v", txs)
-	}
-
-	totals, err := s.MonthlyTotals(ctx, 2026)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := totals[8]; got.InCents != 500000 || got.OutCents != 180000 || got.BalanceCents != 320000 {
-		t.Errorf("totais de setembro = %+v", got)
-	}
-	if totals[0].InCents != 0 || len(totals) != 12 {
-		t.Errorf("janeiro deveria estar zerado: %+v", totals[0])
-	}
-
-	if err := s.DeleteCategory(ctx, aluguel); !errors.Is(err, ErrCategoryInUse) {
-		t.Errorf("apagar categoria em uso: err = %v", err)
+	// Campos desconhecidos são descartados.
+	extra := Change{Type: TypeTransaction, Record: json.RawMessage(`{"id":"x","updatedAt":1,"kind":"saida","description":"d","amountCents":1,"categoryId":"c","date":"2026-01-01","hack":"<script>"}`)}
+	s.ApplyChanges(ctx, []Change{extra})
+	changes, _, _ := s.ChangesSince(ctx, 1, 10)
+	if len(changes) != 1 || string(changes[0].Record) == string(extra.Record) || json.Valid(changes[0].Record) == false {
+		t.Errorf("registro normalizado = %s", changes[0].Record)
 	}
 }
 
-func TestCopyFromPreviousMonth(t *testing.T) {
+func TestChangesSincePaginates(t *testing.T) {
 	ctx := context.Background()
 	s := newTestStore(t)
-	cat := categoryID(t, s, "Moradia")
-	jan := NewMonth(2026, time.January)
-	if err := s.CreateTransaction(ctx, Transaction{Kind: KindSaida, Description: "Aluguel", AmountCents: 100, CategoryID: cat, OccurredOn: jan.Day(31)}); err != nil {
+	var batch []Change
+	for i := range 5 {
+		batch = append(batch, change(t, TypeTransaction, txRecord(string(rune('a'+i)), 1, "x")))
+	}
+	s.ApplyChanges(ctx, batch)
+	rev, _ := s.CurrentRev(ctx)
+	first, cursor, _ := s.ChangesSince(ctx, rev-5, 3)
+	rest, cursor2, _ := s.ChangesSince(ctx, cursor, 3)
+	if len(first) != 3 || len(rest) != 2 || cursor2 != rev {
+		t.Errorf("paginação: %d + %d, cursor final %d (rev %d)", len(first), len(rest), cursor2, rev)
+	}
+}
+
+// TestMigrateFromV1 simula um banco da versão 1.0 com dados e confere que a
+// conversão para registros sincronizáveis não perde nada.
+func TestMigrateFromV1(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "v1.db")
+	db, err := sql.Open("sqlite", "file:"+path+"?_pragma=foreign_keys(1)")
+	if err != nil {
 		t.Fatal(err)
 	}
-
-	feb := jan.Next()
-	for i, want := range []int{1, 0} { // a segunda chamada não pode duplicar
-		n, err := s.CopyFromPreviousMonth(ctx, feb)
-		if err != nil || n != want {
-			t.Fatalf("chamada %d: copiados=%d err=%v, want %d", i+1, n, err, want)
+	db.Exec(`CREATE TABLE schema_migrations (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`)
+	for _, name := range []string{"migrations/001_init.sql", "migrations/002_sessions.sql"} {
+		script, _ := migrationsFS.ReadFile(name)
+		if _, err := db.Exec(string(script)); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		db.Exec(`INSERT INTO schema_migrations (name) VALUES (?)`, name)
+	}
+	mustExec := func(q string, args ...any) {
+		if _, err := db.Exec(q, args...); err != nil {
+			t.Fatalf("%s: %v", q, err)
 		}
 	}
-	txs, _ := s.ListTransactions(ctx, feb)
-	if len(txs) != 1 || txs[0].OccurredOn.Format("2006-01-02") != "2026-02-28" {
-		t.Errorf("cópia = %+v (dia 31 deveria virar 28/02)", txs)
+	mustExec(`UPDATE settings SET value = '60' WHERE key = 'pct_necessidades'`)
+	mustExec(`UPDATE settings SET value = '20' WHERE key = 'pct_desejos'`)
+	mustExec(`INSERT INTO settings (key, value) VALUES ('ai_model', 'qwen3.5:9b')`)
+	mustExec(`INSERT INTO transactions (kind, description, amount_cents, category_id, occurred_on) VALUES ('saida', 'Aluguel', 180000, 3, '2026-09-10')`)
+	mustExec(`INSERT INTO debts (name, creditor, balance_cents, monthly_rate_bp, min_payment_cents, due_day) VALUES ('Cartão', 'Banco', 320000, 1400, 32000, 10)`)
+	mustExec(`INSERT INTO debts (name, balance_cents) VALUES ('Sem dia', 1000)`)
+	db.Close()
+
+	s, err := Open(ctx, path) // aplica a 003
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	l, err := s.Ledger(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	txs := l.ActiveTransactions()
+	if len(txs) != 1 || txs[0].Description != "Aluguel" || txs[0].AmountCents != 180000 || txs[0].Date != "2026-09-10" {
+		t.Fatalf("lançamentos migrados = %+v", txs)
+	}
+	if cat := l.CategoryIndex()[txs[0].CategoryID]; cat.Name != "Moradia" {
+		t.Errorf("categoria do lançamento = %+v", cat)
+	}
+	debts := l.ActiveDebts()
+	if len(debts) != 2 || debts[0].Name != "Cartão" || debts[0].DueDay != 10 || debts[0].MonthlyRateBP != 1400 || debts[1].DueDay != 0 {
+		t.Errorf("dívidas migradas = %+v", debts)
+	}
+	if split := l.Split(); split[domain.BucketNecessidades] != 60 || split[domain.BucketDesejos] != 20 {
+		t.Errorf("divisão migrada = %v", split)
+	}
+	for _, c := range mustChanges(t, s) {
+		if _, _, err := decodeChange(c); err != nil {
+			t.Errorf("registro migrado inválido: %v", err)
+		}
+	}
+	if ai, _ := s.Settings(ctx, "ai_"); ai["model"] != "qwen3.5:9b" {
+		t.Error("configurações da IA devem continuar")
+	}
+	if pct, _ := s.Settings(ctx, "pct_"); len(pct) != 0 {
+		t.Error("percentuais antigos devem sair de settings")
 	}
 }
 
-func TestDebtsAndChat(t *testing.T) {
+func mustChanges(t *testing.T, s *Store) []Change {
+	changes, _, err := s.ChangesSince(context.Background(), 0, 1000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return changes
+}
+
+func TestChat(t *testing.T) {
 	ctx := context.Background()
 	s := newTestStore(t)
-	day := 10
-	if err := s.SaveDebt(ctx, Debt{Name: "Cartão", BalanceCents: 1000, MonthlyRateBP: 1200, DueDay: &day}); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.SaveDebt(ctx, Debt{Name: "Empréstimo", BalanceCents: 5000, MonthlyRateBP: 200}); err != nil {
-		t.Fatal(err)
-	}
-	debts, err := s.ListDebts(ctx)
-	if err != nil || len(debts) != 2 || debts[0].Name != "Cartão" || *debts[0].DueDay != 10 || debts[1].DueDay != nil {
-		t.Fatalf("dívidas = %+v, err = %v", debts, err)
-	}
-	d := debts[1]
-	d.BalanceCents = 4000
-	if err := s.SaveDebt(ctx, d); err != nil {
-		t.Fatal(err)
-	}
-	if got, _ := s.GetDebt(ctx, d.ID); got.BalanceCents != 4000 {
-		t.Errorf("saldo após editar = %d", got.BalanceCents)
-	}
-
 	if err := s.AppendChatTurn(ctx, "oi", "olá!"); err != nil {
 		t.Fatal(err)
 	}
@@ -143,14 +219,10 @@ func TestDebtsAndChat(t *testing.T) {
 func TestSettings(t *testing.T) {
 	ctx := context.Background()
 	s := newTestStore(t)
-	if err := s.SaveSettings(ctx, "ai_", map[string]string{"model": "qwen3:4b"}); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.SaveSettings(ctx, "ai_", map[string]string{"model": "qwen3:8b", "provider": "ollama"}); err != nil {
-		t.Fatal(err)
-	}
+	s.SaveSettings(ctx, "ai_", map[string]string{"model": "qwen3:4b"})
+	s.SaveSettings(ctx, "ai_", map[string]string{"model": "qwen3.5:9b", "provider": "ollama"})
 	got, err := s.Settings(ctx, "ai_")
-	if err != nil || got["model"] != "qwen3:8b" || got["provider"] != "ollama" || len(got) != 2 {
+	if err != nil || got["model"] != "qwen3.5:9b" || got["provider"] != "ollama" || len(got) != 2 {
 		t.Errorf("settings = %v, err = %v", got, err)
 	}
 }
@@ -166,7 +238,6 @@ func TestSessions(t *testing.T) {
 			t.Errorf("SessionValid(%s) = %v, %v", token, ok, err)
 		}
 	}
-	s.DeleteExpiredSessions(ctx, now)
 	s.DeleteSession(ctx, "valida")
 	if ok, _ := s.SessionValid(ctx, "valida", now); ok {
 		t.Error("sessão apagada continua válida")
