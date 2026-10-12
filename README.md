@@ -100,6 +100,8 @@ O finan_rich roda no seu computador, e o celular acessa pelo Wi-Fi de casa:
 3. Para ter o ícone na tela inicial: no Android (Chrome), menu ⋮ → *Adicionar à tela
    inicial*; no iPhone (Safari), Compartilhar → *Adicionar à Tela de Início*.
 
+Um app mobile de verdade (Android/iOS) está nos planos: veja o [ROADMAP](docs/ROADMAP.md).
+
 A interface se adapta ao celular (menu no rodapé, listas em cartões). Os dados e a IA
 continuam no computador, que precisa ficar ligado com o finan_rich aberto. No computador
 a senha não é pedida.
@@ -143,6 +145,10 @@ aparelhos, sem expor nada na internet). Num servidor geralmente não há GPU par
 use um provedor na nuvem (Ollama Cloud, Groq, OpenRouter...) em Ajustes.
 
 ## Desenvolvimento
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): como o projeto se organiza, cada pasta e
+  arquivo, e como as peças se conectam (sincronização, WebAssembly, consultor IA).
+- [docs/ROADMAP.md](docs/ROADMAP.md): próximos passos, incluindo o app mobile.
 
 Requer Go 1.26+ e, para os testes do navegador, Node 22+.
 
