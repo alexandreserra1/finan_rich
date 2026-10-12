@@ -1,13 +1,36 @@
-// Service worker do finan_rich.
-// - Arquivos estáticos (CSS, JS, ícones): servidos do cache e atualizados em segundo plano.
-// - Páginas: sempre da rede (os dados ficam no computador onde o app roda);
-//   sem conexão, mostra a página /offline.
-// - POSTs e o chat em streaming nunca passam pelo cache.
-const VERSION = "finan-v1";
-const PRECACHE = ["/offline", "/static/app.css", "/static/app.js", "/static/favicon.svg", "/static/icons/icon-192.png"];
+// Service worker do finan_rich: faz o app abrir e funcionar sem conexão.
+//
+// - Telas de dados (Painel, Lançamentos, Dívidas, Categorias): tenta a rede e,
+//   sem conexão, usa o "casco" guardado; os dados vêm do banco do aparelho.
+// - Scripts, estilos, ícones e as regras em WebAssembly: guardados na instalação.
+// - Chat e Ajustes precisam do computador: sem conexão, mostram /offline.
+// - A sincronização (/api/sync) e outros POSTs nunca passam pelo cache.
+//
+// __VERSION__ é trocado pelo servidor por uma impressão digital dos arquivos:
+// quando o app é atualizado, o cache antigo é descartado.
+const VERSION = "finan-__VERSION__";
+const APP_ROUTES = ["/", "/lancamentos", "/dividas", "/categorias"];
+const PRECACHE = [
+  ...APP_ROUTES, "/offline",
+  "/static/app.css", "/static/app.js", "/static/chat.js", "/static/settings.js", "/static/favicon.svg",
+  "/static/icons/icon-192.png", "/static/finance.wasm",
+  "/static/js/main.js", "/static/js/db.js", "/static/js/sync.js", "/static/js/finance.js", "/static/js/ui.js",
+  "/static/js/wasm_exec.js", "/static/js/pages/dashboard.js", "/static/js/pages/transactions.js",
+  "/static/js/pages/debts.js", "/static/js/pages/categories.js",
+];
+
+// Guarda cada arquivo, ignorando respostas redirecionadas (ex.: sessão expirada
+// levando à tela de login), para nunca guardar a página errada no lugar do app.
+async function precache() {
+  const cache = await caches.open(VERSION);
+  await Promise.allSettled(PRECACHE.map(async (url) => {
+    const res = await fetch(url, { credentials: "same-origin", cache: "no-cache" });
+    if (res.ok && !res.redirected) await cache.put(url, res);
+  }));
+}
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(VERSION).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
+  event.waitUntil(precache().then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (event) => {
@@ -24,20 +47,23 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET" || url.origin !== location.origin) return;
 
   if (url.pathname.startsWith("/static/")) {
-    event.respondWith(
-      caches.open(VERSION).then(async (cache) => {
-        const cached = await cache.match(req);
-        const fresh = fetch(req).then((res) => {
-          if (res.ok) cache.put(req, res.clone());
-          return res;
-        }).catch(() => cached);
-        return cached || fresh;
-      }),
-    );
+    event.respondWith(caches.match(req, { ignoreSearch: true }).then((hit) => hit || fetch(req)));
     return;
   }
 
   if (req.mode === "navigate") {
-    event.respondWith(fetch(req).catch(() => caches.match("/offline")));
+    if (APP_ROUTES.includes(url.pathname)) {
+      event.respondWith(
+        fetch(req)
+          .then((res) => {
+            // Atualiza o casco guardado (se a sessão expirou, o servidor redireciona: não guarda).
+            if (res.ok && !res.redirected) caches.open(VERSION).then((c) => c.put(url.pathname, res.clone()));
+            return res;
+          })
+          .catch(async () => (await caches.match(url.pathname)) || caches.match("/")),
+      );
+    } else {
+      event.respondWith(fetch(req).catch(() => caches.match("/offline")));
+    }
   }
 });

@@ -1,0 +1,160 @@
+// Ponto de entrada do app no aparelho. Roda em todas as páginas:
+// - em todas: sincronização em segundo plano e indicador de status;
+// - nas telas de dados (Painel, Lançamentos, Dívidas, Categorias): monta a tela
+//   com os dados guardados no aparelho, que funcionam sem conexão.
+import * as db from "./db.js";
+import * as finance from "./finance.js";
+import * as sync from "./sync.js";
+import { currentMonth, flash, newId, toString } from "./ui.js";
+import * as dashboard from "./pages/dashboard.js";
+import * as transactions from "./pages/transactions.js";
+import * as debts from "./pages/debts.js";
+import * as categories from "./pages/categories.js";
+
+const ROUTES = { "/": dashboard, "/lancamentos": transactions, "/dividas": debts, "/categorias": categories };
+const NAV_PAGE = { "/": "dashboard", "/lancamentos": "transactions", "/dividas": "debts", "/categorias": "categories" };
+
+const root = document.getElementById("app");
+let ledger = null;
+let dirty = false; // há um formulário sendo preenchido: não redesenhar por baixo
+let rerenderPending = false;
+
+// ---------- status da sincronização ----------
+
+const pill = document.getElementById("sync-status");
+const LABELS = {
+  ok: () => "Sincronizado",
+  syncing: () => "Sincronizando…",
+  offline: (s) => s.pending ? `Offline · ${s.pending} pendente(s)` : "Offline",
+  login: () => "Entre de novo para sincronizar",
+  error: () => "Erro ao sincronizar",
+};
+function showStatus(s) {
+  if (!pill) return;
+  pill.hidden = false;
+  pill.dataset.status = s.status;
+  pill.textContent = LABELS[s.status](s);
+  pill.title = s.status === "offline"
+    ? "Sem conexão com o computador. Tudo que você fizer fica salvo neste aparelho e é enviado quando a conexão voltar."
+    : s.message || (s.lastSync ? `Última sincronização: ${s.lastSync.toLocaleTimeString("pt-BR")}` : "");
+  if (s.status === "login") pill.onclick = () => { location.href = "/entrar?volta=" + encodeURIComponent(location.pathname); };
+}
+window.addEventListener("finan-sync", (e) => {
+  showStatus(e.detail);
+  if (e.detail.dataChanged && root) reloadAndRender();
+});
+
+// O chat chama isto antes de perguntar, para a IA ver os dados mais recentes.
+window.finanSync = () => sync.sync();
+
+// Ao sair da conta, apaga os dados guardados neste aparelho.
+document.querySelectorAll('form[action="/sair"]').forEach((form) => form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  await db.wipe();
+  form.submit();
+}));
+
+sync.start();
+
+// ---------- telas de dados ----------
+
+function context(path, params) {
+  return {
+    ledger,
+    params,
+    month: /^\d{4}-\d{2}$/.test(params.get("mes") || "") ? params.get("mes") : currentMonth(),
+    // save valida (mesma regra do servidor), grava no aparelho e agenda o envio.
+    async save(type, partial, message, { rerender = true } = {}) {
+      const list = listOf(type);
+      const previous = list.find((r) => r.id === partial.id);
+      const record = { ...(previous || {}), ...partial, id: partial.id || newId(), deleted: false };
+      record.updatedAt = Math.max(Date.now(), (previous?.updatedAt || 0) + 1);
+      delete record.deleted;
+      const normalized = finance.validate(type, record);
+      await db.saveLocal(type, normalized);
+      upsert(list, normalized);
+      sync.soon();
+      if (rerender) render(message);
+    },
+    async remove(type, record, message) {
+      const gone = { ...record, deleted: true, updatedAt: Math.max(Date.now(), record.updatedAt + 1) };
+      await db.saveLocal(type, gone);
+      upsert(listOf(type), gone);
+      sync.soon();
+      render(message);
+    },
+    async refresh(message) { await reloadAndRender(message); },
+    go(url) { navigate(url); },
+    error(err) { flash(err.message.replace(/^registro inválido: /, ""), "err"); },
+  };
+}
+
+const listOf = (type) => ({ category: ledger.categories, transaction: ledger.transactions, debt: ledger.debts, pref: ledger.prefs })[type];
+function upsert(list, record) {
+  const i = list.findIndex((r) => r.id === record.id);
+  if (i >= 0) list[i] = record; else list.push(record);
+}
+
+function render(message) {
+  const path = location.pathname;
+  const page = ROUTES[path];
+  if (!page || !ledger) return;
+  if (!ledger.categories.length) {
+    root.innerHTML = sync.state.status === "offline"
+      ? `<p class="notice warn">Este aparelho ainda não tem seus dados. Conecte-se ao computador onde o finan_rich está aberto uma vez para baixá-los; depois ele funciona sem conexão.</p>`
+      : `<p class="muted loading">Baixando seus dados…</p>`;
+    return;
+  }
+  const ctx = context(path, new URLSearchParams(location.search));
+  root.innerHTML = `<p id="flash" hidden></p>` + toString(page.render(ctx));
+  page.bind?.(root, ctx);
+  dirty = false;
+  rerenderPending = false;
+  document.querySelectorAll("nav.tabs a").forEach((a) => {
+    if (NAV_PAGE[new URL(a.href).pathname] === NAV_PAGE[path]) a.setAttribute("aria-current", "page");
+    else a.removeAttribute("aria-current");
+  });
+  if (message) flash(message);
+}
+
+async function reloadAndRender(message) {
+  ledger = await db.loadLedger();
+  if (dirty && !message) {
+    rerenderPending = true; // redesenha quando o usuário terminar de preencher
+    return;
+  }
+  render(message);
+}
+
+// Navegação entre as telas de dados sem recarregar a página (funciona offline).
+function navigate(url, replace = false) {
+  const u = new URL(url, location.href);
+  if (replace) history.replaceState(null, "", u);
+  else history.pushState(null, "", u);
+  render();
+  window.scrollTo(0, 0);
+}
+
+document.addEventListener("click", (e) => {
+  const a = e.target.closest("a[href]");
+  if (!a || !root || e.metaKey || e.ctrlKey || e.shiftKey || a.target) return;
+  const u = new URL(a.href, location.href);
+  if (u.origin !== location.origin || !ROUTES[u.pathname]) return;
+  e.preventDefault();
+  navigate(u.href);
+});
+window.addEventListener("popstate", () => render());
+
+if (root) {
+  root.addEventListener("input", () => { dirty = true; });
+  root.addEventListener("focusout", () => {
+    setTimeout(() => {
+      if (rerenderPending && !root.contains(document.activeElement)) render();
+    }, 0);
+  });
+  Promise.all([db.loadLedger(), finance.load()])
+    .then(([l]) => { ledger = l; render(); })
+    .catch((err) => {
+      root.innerHTML = `<p class="notice warn">Não foi possível iniciar o app: ${String(err.message || err).replace(/</g, "&lt;")}</p>`;
+    });
+}

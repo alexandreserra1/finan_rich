@@ -31,8 +31,13 @@ func isPublicPath(path string) bool {
 	return strings.HasPrefix(path, "/static/")
 }
 
-// isLoopback diz se a requisição veio do próprio computador.
+// isLoopback diz se a requisição veio do próprio computador. Requisições
+// repassadas por um proxy local (Tailscale Serve, nginx...) vêm de outro
+// aparelho e não contam como locais.
 func isLoopback(r *http.Request) bool {
+	if r.Header.Get("X-Forwarded-For") != "" || r.Header.Get("Tailscale-User-Login") != "" {
+		return false
+	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		host = r.RemoteAddr

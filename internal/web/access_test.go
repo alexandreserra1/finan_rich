@@ -227,3 +227,20 @@ func TestLANURLRanking(t *testing.T) {
 		}
 	}
 }
+
+func TestProxiedRequestIsNotLocal(t *testing.T) {
+	a := newAccessApp(t, "")
+	a.enableLAN("senha-forte-1")
+	// Tailscale Serve e proxies reversos conectam de 127.0.0.1, mas o pedido vem
+	// de outro aparelho: precisa de login.
+	for _, header := range []string{"X-Forwarded-For", "Tailscale-User-Login"} {
+		req := httptest.NewRequest("GET", "/", nil)
+		req.RemoteAddr = local
+		req.Header.Set(header, "100.64.0.2")
+		rec := httptest.NewRecorder()
+		a.h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusSeeOther {
+			t.Errorf("%s: pedido repassado entrou sem login (%d)", header, rec.Code)
+		}
+	}
+}

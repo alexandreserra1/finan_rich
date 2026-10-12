@@ -39,6 +39,7 @@
     const reply = add("assistant pending", "Pensando… Na primeira pergunta o modelo é carregado na memória, o que pode levar alguns minutos em computadores mais lentos.");
     let answer = "";
     try {
+      await window.finanSync?.();
       await Finan.postSSE("/chat/enviar", new URLSearchParams({ message: text }), (ev) => {
         if (!ev.text) return;
         answer += ev.text;

@@ -3,8 +3,11 @@ package web
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"embed"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -33,6 +36,7 @@ type Server struct {
 	envPasswordHash string // senha de FINAN_PASSWORD (modo servidor), já com hash
 	limiter         *auth.Limiter
 	onNetworkChange func()
+	assetsVersion   string // impressão digital de static/ e templates/
 }
 
 // Options configura o servidor.
@@ -63,6 +67,10 @@ func New(st *store.Store, opts Options) (*Server, error) {
 		port:            opts.Port,
 		limiter:         auth.NewLimiter(5, 10*time.Minute),
 		onNetworkChange: opts.OnNetworkChange,
+		assetsVersion:   assetsFingerprint(),
+	}
+	if _, err := staticFS.ReadFile("static/finance.wasm"); err != nil {
+		return nil, errors.New("static/finance.wasm não encontrado: rode 'go generate ./internal/web' (ou 'make wasm') antes de compilar")
 	}
 	if opts.Password != "" {
 		hash, err := auth.HashPassword(opts.Password)
@@ -100,7 +108,7 @@ func (s *Server) Routes() http.Handler {
 	mux.Handle("GET /static/", http.FileServerFS(staticFS))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 	mux.HandleFunc("GET /manifest.webmanifest", serveStatic("manifest.webmanifest", "application/manifest+json"))
-	mux.HandleFunc("GET /sw.js", serveStatic("sw.js", "text/javascript"))
+	mux.HandleFunc("GET /sw.js", s.serviceWorker)
 	mux.HandleFunc("GET /offline", serveStatic("offline.html", "text/html; charset=utf-8"))
 
 	mux.HandleFunc("GET /entrar", s.loginPage)
@@ -172,6 +180,19 @@ func isSameOrigin(r *http.Request) bool {
 	return true
 }
 
+// serviceWorker entrega o sw.js com a impressão digital dos arquivos do app:
+// mudou algum arquivo, muda o service worker, e o navegador renova o cache.
+func (s *Server) serviceWorker(w http.ResponseWriter, r *http.Request) {
+	b, err := staticFS.ReadFile("static/sw.js")
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "text/javascript")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Write(bytes.ReplaceAll(b, []byte("__VERSION__"), []byte(s.assetsVersion)))
+}
+
 // appShell entrega a página que o JavaScript do aparelho preenche.
 func (s *Server) appShell(page string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -189,6 +210,22 @@ func securityHeaders(next http.Handler) http.Handler {
 		h.Set("Referrer-Policy", "same-origin")
 		next.ServeHTTP(w, r)
 	})
+}
+
+// assetsFingerprint resume o conteúdo dos arquivos do app num código curto.
+func assetsFingerprint() string {
+	h := sha256.New()
+	for _, fsys := range []fs.FS{staticFS, templatesFS} {
+		fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+			if err == nil && !d.IsDir() {
+				b, _ := fs.ReadFile(fsys, path)
+				h.Write([]byte(path))
+				h.Write(b)
+			}
+			return nil
+		})
+	}
+	return hex.EncodeToString(h.Sum(nil))[:12]
 }
 
 // serveStatic serve um arquivo de static/ num caminho da raiz. O manifest e o

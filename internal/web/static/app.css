@@ -171,3 +171,13 @@ summary { cursor: pointer; color: var(--accent); margin-bottom: .5rem; }
 @media (display-mode: standalone) {
   .top-actions [data-install] { display: none !important; }
 }
+
+/* Indicador de sincronização */
+.sync-pill { font-size: .78rem; padding: .25rem .6rem; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); white-space: nowrap; cursor: default; }
+.sync-pill[data-status="ok"]::before { content: "● "; color: var(--pos); }
+.sync-pill[data-status="syncing"]::before { content: "● "; color: var(--desejos); }
+.sync-pill[data-status="offline"] { color: var(--text); background: color-mix(in srgb, var(--desejos) 15%, transparent); }
+.sync-pill[data-status="offline"]::before { content: "○ "; }
+.sync-pill[data-status="login"], .sync-pill[data-status="error"] { color: var(--neg); cursor: pointer; }
+.loading { text-align: center; padding: 3rem 0; }
+@media (max-width: 720px) { .sync-pill { font-size: .7rem; } }

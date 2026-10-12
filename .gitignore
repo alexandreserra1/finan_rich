@@ -5,3 +5,5 @@
 *.db-wal
 /internal/web/static/finance.wasm
 /internal/web/static/js/wasm_exec.js
+/e2e/node_modules/
+/e2e/package-lock.json

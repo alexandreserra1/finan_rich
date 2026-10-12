@@ -21,6 +21,11 @@ func (s *Server) settings(w http.ResponseWriter, r *http.Request) {
 		"AI": ai, "Status": s.aiStatus(ctx, ai), "Presets": llm.Presets, "HasKey": ai.APIKey != "",
 		"LAN": s.LANEnabled(ctx), "EnvPassword": s.envPasswordHash != "",
 	}
+	data["Port"] = s.port
+	if ts := tailscaleURL(ctx); ts != "" {
+		data["TailscaleURL"] = ts
+		data["TailscaleQR"] = qrDataURI(ts)
+	}
 	if urls := lanURLs(s.port); len(urls) > 0 {
 		data["LANURLs"] = urls
 		data["LANQR"] = qrDataURI(urls[0])

@@ -80,6 +80,29 @@
   {{end}}
 </section>
 
+<section class="panel" id="offline-celular">
+  <h2>Usar no celular sem conexão e fora de casa</h2>
+  <p class="muted">Pelo Wi-Fi o celular já guarda seus dados e continua funcionando se a conexão cair com o app aberto. Para <strong>abrir o app sem conexão</strong> e <strong>sincronizar de qualquer lugar</strong>, o celular precisa de um endereço seguro (https). O jeito grátis e simples é o <strong>Tailscale</strong>: só os seus aparelhos acessam, nada fica exposto na internet.</p>
+  {{if .TailscaleURL}}
+    <p class="notice ok">✅ Tailscale encontrado neste computador.</p>
+    <ol class="small">
+      <li>Neste computador, rode uma vez no terminal: <code>tailscale serve --bg {{.Port}}</code></li>
+      <li>No celular, com o Tailscale ligado (mesma conta), abra:</li>
+    </ol>
+    <div class="lan">
+      {{with .TailscaleQR}}<img src="{{.}}" alt="QR code com o endereço seguro do finan_rich" width="174" height="174">{{end}}
+      <div><p class="lan-url"><code>{{.TailscaleURL}}</code></p>
+        <p class="small muted">Depois toque em <strong>Adicionar à tela de início</strong>: o app abre mesmo sem internet e sincroniza quando o computador estiver ligado.</p></div>
+    </div>
+  {{else}}
+    <ol class="small">
+      <li>Instale o Tailscale neste computador e no celular: <a href="https://tailscale.com/download" target="_blank" rel="noopener">tailscale.com/download</a> (entre com a mesma conta nos dois).</li>
+      <li>Neste computador, rode uma vez no terminal: <code>tailscale serve --bg {{.Port}}</code></li>
+      <li>Recarregue esta página: o endereço seguro e o QR code aparecem aqui.</li>
+    </ol>
+  {{end}}
+</section>
+
 <section class="panel" id="instalar">
   <h2>Instalar como aplicativo</h2>
   <ul class="small">

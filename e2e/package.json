@@ -1,0 +1,12 @@
+{
+  "name": "finan-rich-e2e",
+  "private": true,
+  "description": "Testes de ponta a ponta no navegador (offline, sincronização, celular)",
+  "type": "module",
+  "scripts": {
+    "test": "node offline.test.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  }
+}

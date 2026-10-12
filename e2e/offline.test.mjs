@@ -1,0 +1,131 @@
+// Testes de ponta a ponta do modo offline e da sincronização entre aparelhos.
+//
+// Sobe o finan_rich (binário já compilado) com um banco temporário e usa um
+// Chromium de verdade. Uso (na pasta e2e):
+//   npm install && npx playwright install chromium
+//   FINANRICH_BIN=../dist/finanrich npm test
+// Para usar um Chromium já instalado: CHROMIUM_PATH=/caminho/do/chrome
+import { chromium, devices } from "playwright";
+import { spawn } from "node:child_process";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+const BIN = process.env.FINANRICH_BIN || "../dist/finanrich";
+const PORT = 18099;
+const B = `http://127.0.0.1:${PORT}`;
+const dataDir = mkdtempSync(join(tmpdir(), "finan-e2e-"));
+let server = null;
+let failures = 0;
+
+const ok = (cond, msg) => {
+  console.log(`${cond ? "OK   " : "FALHA"} ${msg}`);
+  if (!cond) failures++;
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function startServer() {
+  server = spawn(BIN, ["-data", dataDir, "-no-browser", "-addr", `127.0.0.1:${PORT}`], { stdio: "ignore" });
+  for (let i = 0; i < 100; i++) {
+    try { if ((await fetch(`${B}/healthz`)).ok) return; } catch {}
+    await sleep(100);
+  }
+  throw new Error("o servidor não subiu");
+}
+async function stopServer() {
+  if (!server) return;
+  const exited = new Promise((r) => server.once("exit", r));
+  server.kill();
+  await exited;
+  server = null;
+}
+async function serverRecords() {
+  const res = await fetch(`${B}/api/sync`, { method: "POST", headers: { "Content-Type": "application/json" }, body: '{"cursor":0}' });
+  return (await res.json()).changes.map((c) => c.record);
+}
+const syncStatus = (page) => page.locator("#sync-status").getAttribute("data-status");
+const waitStatus = (page, status, timeout = 15000) =>
+  page.waitForFunction((s) => document.getElementById("sync-status")?.dataset.status === s, status, { timeout });
+
+async function addTransaction(page, description, amount) {
+  await page.fill("input[name=description]", description);
+  await page.fill("input[name=amount]", amount);
+  await page.click("form[data-form=transaction] button[type=submit]");
+  await page.waitForSelector(`td:has-text('${description}')`);
+}
+
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
+try {
+  await startServer();
+  const pc = await browser.newContext({ viewport: { width: 1100, height: 900 } });
+  const page = await pc.newPage();
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+
+  // Online: baixa as categorias, lança, calcula o painel pelo WebAssembly.
+  await page.goto(`${B}/lancamentos`);
+  await page.waitForSelector("form[data-form=transaction]", { timeout: 20000 });
+  await page.selectOption("select[name=kind]", "entrada");
+  await addTransaction(page, "Salário", "4.500");
+  await addTransaction(page, "Aluguel", "1.400");
+  await waitStatus(page, "ok");
+  await page.click("nav.tabs a[href='/']");
+  await page.waitForSelector("text=Divisão do salário");
+  ok((await page.textContent(".cards")).includes("R$ 3.100,00"), "painel calculado no aparelho (saldo R$ 3.100,00)");
+
+  // Instala o app (service worker) e fecha o servidor.
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.reload();
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  await stopServer();
+
+  // Offline: abre do cache, mostra os dados, aceita lançamentos novos.
+  await page.goto(`${B}/lancamentos`);
+  await page.waitForSelector("td:has-text('Aluguel')", { timeout: 20000 });
+  ok(true, "sem o servidor, o app abre e mostra os dados guardados");
+  await addTransaction(page, "Feira (offline)", "87,50");
+  await waitStatus(page, "offline");
+  ok((await page.textContent("#sync-status")).includes("1 pendente"), "indicador mostra 1 alteração pendente");
+  await page.goto(`${B}/`);
+  await page.goto(`${B}/lancamentos`);
+  await page.waitForSelector("td:has-text('Feira (offline)')", { timeout: 20000 });
+  ok(true, "recarregando sem servidor, nada se perde");
+
+  // O servidor volta: sincroniza sozinho.
+  await startServer();
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await waitStatus(page, "ok", 20000);
+  ok((await serverRecords()).some((r) => r.description === "Feira (offline)" && r.amountCents === 8750),
+    "ao voltar a conexão, o servidor recebeu o lançamento feito offline");
+
+  // Outro aparelho recebe; e o que ele lança chega ao primeiro.
+  const phone = await browser.newContext({ ...devices["iPhone 13"] });
+  const other = await phone.newPage();
+  await other.goto(`${B}/lancamentos`);
+  await other.waitForSelector("td:has-text('Feira (offline)')", { timeout: 20000 });
+  ok(true, "segundo aparelho recebeu o lançamento feito offline");
+  await addTransaction(other, "Uber (do celular)", "23");
+  await other.evaluate(() => window.finanSync());
+  await page.evaluate(() => window.finanSync());
+  await page.waitForSelector("td:has-text('Uber (do celular)')", { timeout: 15000 });
+  ok(true, "o primeiro aparelho recebeu o lançamento do segundo sem recarregar");
+
+  // Apagar também sincroniza.
+  page.once("dialog", (d) => d.accept());
+  await page.click("tr:has-text('Uber (do celular)') [data-delete]");
+  await page.evaluate(() => window.finanSync());
+  await other.evaluate(() => window.finanSync());
+  await other.waitForSelector("td:has-text('Uber (do celular)')", { state: "detached", timeout: 15000 });
+  ok(true, "apagar num aparelho apaga no outro");
+
+  ok(await syncStatus(page) === "ok", "tudo sincronizado no fim");
+  ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);
+} catch (err) {
+  ok(false, err.message);
+} finally {
+  await browser.close();
+  await stopServer();
+  rmSync(dataDir, { recursive: true, force: true });
+}
+console.log(failures ? `\n${failures} falha(s)` : "\nTudo certo.");
+process.exit(failures ? 1 : 0);

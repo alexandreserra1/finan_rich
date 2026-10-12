@@ -21,6 +21,7 @@
 <header class="top">
   <a class="brand" href="/">finan<span>_rich</span></a>
   <div class="top-actions">
+    <span id="sync-status" class="sync-pill" role="status" hidden></span>
     <button type="button" class="secondary small-btn" data-install hidden>Instalar app</button>
     {{if .Remote}}<form method="post" action="/sair"><button type="submit" class="secondary small-btn">Sair</button></form>{{end}}
   </div>
@@ -40,6 +41,7 @@
   {{template "content" .}}
 </main>
 <script src="/static/app.js"></script>
+<script type="module" src="/static/js/main.js"></script>
 {{block "scripts" .}}{{end}}
 </body>
 </html>
