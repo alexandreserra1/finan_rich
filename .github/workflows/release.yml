@@ -24,6 +24,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - run: go generate ./internal/web
       - run: go test ./...
       - name: Cria a tag (execução manual)
         if: github.event_name == 'workflow_dispatch'

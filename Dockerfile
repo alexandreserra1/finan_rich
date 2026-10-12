@@ -3,7 +3,7 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /finanrich ./cmd/finanrich \
+RUN go generate ./internal/web && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /finanrich ./cmd/finanrich \
     && mkdir /data
 
 FROM gcr.io/distroless/static-debian12:nonroot

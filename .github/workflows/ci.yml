@@ -12,12 +12,38 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Gera as regras para o navegador (WebAssembly)
+        run: go generate ./internal/web
       - name: Formatação
         run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
       - run: go vet ./...
       - run: go test -race ./...
+      - name: Regras rodando como WebAssembly
+        run: make test-wasm
       - name: Compila para todos os sistemas
         run: |
           for target in windows/amd64 darwin/arm64 darwin/amd64 linux/amd64; do
             GOOS=${target%/*} GOARCH=${target#*/} CGO_ENABLED=0 go build -o /dev/null ./cmd/finanrich
           done
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: go generate ./internal/web
+      - run: go build -o dist/finanrich ./cmd/finanrich
+      - name: Testes no navegador (offline e sincronização)
+        working-directory: e2e
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          FINANRICH_BIN=../dist/finanrich npm test

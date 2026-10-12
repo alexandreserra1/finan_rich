@@ -72,6 +72,23 @@ Não quer instalar nada? Em **Configurações** dá para usar uma IA na nuvem:
 
 Na nuvem, o resumo das suas finanças é enviado ao provedor junto com cada pergunta.
 
+### Sem internet (modo offline)
+
+Cada aparelho (computador ou celular) guarda uma cópia dos seus dados. Sem conexão com o
+computador onde o finan_rich roda, o app continua funcionando: você consulta, lança,
+edita e apaga normalmente. As alterações ficam numa fila e são enviadas sozinhas quando a
+conexão volta; o indicador no topo mostra *Sincronizado*, *Offline · N pendente(s)* etc.
+Se o mesmo item for alterado em dois aparelhos, vale a alteração mais recente.
+
+O que precisa do computador ligado: o **Consultor IA** (a IA roda nele) e os **Ajustes**.
+
+- **No computador**, com o app instalado (botão *Instalar app*), ele abre mesmo com o
+  finan_rich fechado.
+- **No celular pelo Wi-Fi** (`http://192.168...`), os dados ficam no celular e o app aguenta
+  a conexão cair enquanto estiver aberto. Para **abrir o app sem conexão** e sincronizar
+  **de fora de casa**, use o Tailscale (grátis): veja *Ajustes → Usar no celular sem
+  conexão*. Ele dá ao seu computador um endereço `https://` acessível só pelos seus aparelhos.
+
 ### No celular
 
 O finan_rich roda no seu computador, e o celular acessa pelo Wi-Fi de casa:
@@ -127,30 +144,54 @@ use um provedor na nuvem (Ollama Cloud, Groq, OpenRouter...) em Ajustes.
 
 ## Desenvolvimento
 
-Requer Go 1.26+.
+Requer Go 1.26+ e, para os testes do navegador, Node 22+.
 
 ```bash
-make run     # roda o app
-make test    # gofmt + go vet + testes
+make run     # gera as regras para o navegador (finance.wasm) e roda o app
+make test    # gofmt, vet, testes do Go e das regras como WebAssembly
+make e2e     # testes no navegador: offline e sincronização entre aparelhos
 make build   # executáveis de todos os sistemas em dist/
 ```
+
+O `finance.wasm` não fica no git: é gerado por `make wasm` (ou `go generate ./internal/web`).
+Sem ele o app não sobe e avisa o que fazer.
 
 ### Estrutura
 
 ```
 cmd/finanrich/      main: flags, abre o navegador, sobe o servidor
-internal/config/    flags e variáveis de ambiente
+cmd/finanwasm/      as regras compiladas para WebAssembly (roda no navegador)
+internal/domain/    modelos (lançamento, dívida...), validação e Ledger — Go puro
+internal/finance/   regras de negócio puras: resumo do mês, dívidas, reserva, views
 internal/money/     valores em centavos (int64) e formatação "R$ 1.234,56"
-internal/store/     SQLite (database/sql) + migrations embutidas
-internal/finance/   regras de negócio puras: resumo do mês, simulação de dívidas
+internal/wasmapi/   ponte JSON entre o navegador e as regras
+internal/store/     SQLite: registros sincronizáveis, chat, sessões, configurações
 internal/llm/       interface Provider + Ollama, APIs compatíveis com OpenAI e Anthropic
 internal/advisor/   prompt do consultor e retrato financeiro enviado à IA
 internal/auth/      senha (PBKDF2), tokens de sessão e limite de tentativas
-internal/web/       handlers HTTP, templates, CSS, JS e arquivos do PWA
+internal/web/       HTTP, /api/sync, templates, service worker e o app do aparelho (static/js)
+tools/wasmbuild/    gera static/finance.wasm (go generate ./internal/web)
+e2e/                testes no navegador: offline e sincronização entre aparelhos
 ```
 
-As dependências apontam para dentro: `web` usa `advisor`, `llm`, `finance` e `store`;
-`finance` e `llm` não conhecem HTTP nem banco.
+### Como funciona o modo offline
+
+```
+ aparelho (navegador)                               computador (finanrich)
+ ┌──────────────────────────────┐   /api/sync    ┌──────────────────────────┐
+ │ telas em JS  ← regras em Go  │ ─────────────▶ │ SQLite: records          │
+ │ (static/js)    (finance.wasm)│ ◀───────────── │ (documentos JSON + rev)  │
+ │ IndexedDB: dados + fila      │  envia a fila, │ Consultor IA (Ollama)    │
+ │ service worker: abre offline │  recebe o novo │                          │
+ └──────────────────────────────┘                └──────────────────────────┘
+```
+
+- Todo registro tem um **UUID** criado no aparelho (funciona offline), `updatedAt` e
+  `deleted` (apagar também sincroniza). Em conflito, vence o `updatedAt` maior — a mesma
+  regra no servidor (`store.ApplyChanges`) e no aparelho (`static/js/db.js`).
+- O servidor numera cada gravação (`rev`); o aparelho pede "o que mudou depois da rev N".
+- As regras (resumo, dívidas, validação) existem **uma vez**, em Go, e rodam no servidor e no
+  navegador (WebAssembly). Os testes delas rodam nos dois (`make test`).
 
 ### Decisões
 
@@ -160,7 +201,7 @@ As dependências apontam para dentro: `web` usa `advisor`, `llm`, `finance` e `s
   `http.ServeMux` e páginas com `html/template`. O único JavaScript é o do chat e o das
   configurações.
 - **Dinheiro em centavos** para evitar arredondamento. Juros em pontos-base (1,99% = 199).
-- **Migrations**: para mudar o schema, crie `internal/store/migrations/002_algo.sql`. Elas
+- **Migrations**: para mudar o schema, crie `internal/store/migrations/004_algo.sql`. Elas
   rodam em ordem, uma vez cada, ao abrir o app. Nunca edite uma que já foi publicada.
 - **Segurança**: no próprio computador não há login. Por padrão o app só escuta em
   `127.0.0.1`. Ao ligar o acesso pelo celular, ele passa a escutar na rede e exige senha de
@@ -174,6 +215,9 @@ As dependências apontam para dentro: `web` usa `advisor`, `llm`, `finance` e `s
 
 - **Novo provedor de IA**: implemente `llm.Provider` (um método `Chat`), registre em
   `llm.New` e, se quiser que apareça na tela, adicione um `llm.Preset`.
+- **Novo tipo de registro** (ex.: metas): crie o tipo em `internal/domain` com `Meta` e
+  `Validate`, registre em `domain.DecodeRecord` e no `CHECK` de `records`, e monte a tela
+  em `static/js/pages/`.
 - **A IA enxergar algo novo** (metas, por exemplo): inclua no texto de
   `internal/advisor/snapshot.go`.
 - **Nova página**: crie `internal/web/templates/nome.html` com `{{define "content"}}`,
@@ -183,6 +227,11 @@ As dependências apontam para dentro: `web` usa `advisor`, `llm`, `finance` e `s
 
 `make test` roda tudo sem rede: o banco é SQLite em memória e os provedores de IA são
 testados contra servidores falsos que imitam o Ollama e as APIs da OpenAI e da Anthropic.
+As regras de negócio rodam duas vezes: compiladas normalmente e como WebAssembly no Node.
+
+`make e2e` abre um Chromium de verdade e testa o ciclo completo: lançar online, desligar o
+servidor, reabrir o app sem conexão, lançar e recarregar, religar e conferir que tudo
+sincronizou, e um segundo aparelho recebendo (e apagando) os dados do primeiro.
 
 ### Publicar uma versão
 

@@ -3,6 +3,10 @@
 version: 2
 project_name: finan_rich
 
+before:
+  hooks:
+    - go generate ./internal/web # regras em Go para o navegador (finance.wasm)
+
 builds:
   - main: ./cmd/finanrich
     binary: finanrich

@@ -77,6 +77,8 @@ try {
   await page.evaluate(() => navigator.serviceWorker.ready);
   await page.reload();
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  await page.evaluate(() => window.finanSync()); // garante que nada ficou pendente antes de desligar
+  ok((await page.textContent("#sync-status")) === "Sincronizado", "antes de desligar, tudo foi enviado ao computador");
   await stopServer();
 
   // Offline: abre do cache, mostra os dados, aceita lançamentos novos.
@@ -85,7 +87,8 @@ try {
   ok(true, "sem o servidor, o app abre e mostra os dados guardados");
   await addTransaction(page, "Feira (offline)", "87,50");
   await waitStatus(page, "offline");
-  ok((await page.textContent("#sync-status")).includes("1 pendente"), "indicador mostra 1 alteração pendente");
+  await page.waitForFunction(() => /1 pendente/.test(document.getElementById("sync-status").textContent), null, { timeout: 5000 })
+    .then(() => ok(true, "indicador mostra 1 alteração pendente"), async () => ok(false, "indicador mostra 1 alteração pendente: " + await page.textContent("#sync-status")));
   await page.goto(`${B}/`);
   await page.goto(`${B}/lancamentos`);
   await page.waitForSelector("td:has-text('Feira (offline)')", { timeout: 20000 });
