@@ -63,13 +63,30 @@ func (s Summary) SavingsRatePct() int {
 
 // Summarize monta o resumo do mês a partir do livro-caixa.
 func Summarize(m domain.Month, l domain.Ledger) Summary {
-	s := Summary{Month: m}
+	s := summarize(l, m.Contains)
+	s.Month = m
+	return s
+}
+
+// SummarizePeriod soma os meses de from a to (inclusive), para relatórios de
+// vários meses. O planejado de cada grupo usa a renda do período inteiro.
+func SummarizePeriod(from, to domain.Month, l domain.Ledger) Summary {
+	first, last := from.Key(), to.Key()
+	s := summarize(l, func(date string) bool {
+		return len(date) >= 7 && date[:7] >= first && date[:7] <= last
+	})
+	s.Month = from
+	return s
+}
+
+func summarize(l domain.Ledger, in func(date string) bool) Summary {
+	var s Summary
 	split := l.Split()
 	cats := l.CategoryIndex()
 	spentByBucket := map[string]int64{}
 	byCategory := map[string]*CategoryLine{}
 	for _, t := range l.ActiveTransactions() {
-		if !m.Contains(t.Date) {
+		if !in(t.Date) {
 			continue
 		}
 		if t.Kind == domain.KindEntrada {

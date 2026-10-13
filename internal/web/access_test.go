@@ -246,3 +246,16 @@ func TestProxiedRequestIsNotLocal(t *testing.T) {
 		}
 	}
 }
+
+func TestBackupDB(t *testing.T) {
+	a := newAccessApp(t, "")
+	rec := a.do("GET", "/configuracoes/backup.db", local, nil)
+	if rec.Code != http.StatusOK || !strings.HasPrefix(rec.Body.String(), "SQLite format 3\x00") ||
+		!strings.Contains(rec.Header().Get("Content-Disposition"), `attachment; filename="finan_rich_`) {
+		t.Fatalf("backup do banco: %d %q %.20q", rec.Code, rec.Header().Get("Content-Disposition"), rec.Body.String())
+	}
+	a.enableLAN("senha-forte-1")
+	if rec := a.do("GET", "/configuracoes/backup.db", phone, nil); rec.Code != http.StatusSeeOther {
+		t.Errorf("backup pela rede sem login = %d", rec.Code)
+	}
+}

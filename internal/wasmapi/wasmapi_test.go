@@ -1,6 +1,7 @@
 package wasmapi
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -57,5 +58,30 @@ func TestValidateAndMoney(t *testing.T) {
 	}
 	if FormatMoney(123456) != "R$ 1.234,56" || MonthLabel("2026-02") != "fevereiro de 2026" {
 		t.Error("formatação")
+	}
+}
+
+func TestExport(t *testing.T) {
+	v, errMsg := decode(t, Export(ledger, `{"format":"csv","scope":"month","month":"2026-10"}`, 1791900000000))
+	if errMsg != "" || v["name"] != "finan_rich_lancamentos_2026-10.csv" || v["mime"] != "text/csv;charset=utf-8" {
+		t.Fatalf("export csv: %v %s", v, errMsg)
+	}
+	data, _ := base64.StdEncoding.DecodeString(v["data"].(string))
+	if !strings.Contains(string(data), "2026-10-06;Saída;Bar;Lazer;Desejos;-2000,00") {
+		t.Errorf("conteúdo: %s", data)
+	}
+	if _, errMsg := decode(t, Export(ledger, `{"format":"doc"}`, 1)); errMsg == "" {
+		t.Error("formato desconhecido deveria dar erro")
+	}
+
+	v, _ = decode(t, Export(ledger, `{"format":"json"}`, 1791900000000))
+	backup, _ := base64.StdEncoding.DecodeString(v["data"].(string))
+	var r struct {
+		OK    []map[string]any `json:"ok"`
+		Error string           `json:"error"`
+	}
+	json.Unmarshal([]byte(ReadBackup(string(backup))), &r)
+	if r.Error != "" || len(r.OK) != 5 {
+		t.Errorf("backup lido de volta: %d registros, erro %q", len(r.OK), r.Error)
 	}
 }

@@ -2,6 +2,7 @@ package domain
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 )
@@ -86,5 +87,31 @@ func TestDecodeRecord(t *testing.T) {
 	}
 	if _, _, err := DecodeRecord("senha", raw); err == nil {
 		t.Error("tipo desconhecido deveria falhar")
+	}
+}
+
+func TestNotes(t *testing.T) {
+	meta := func(id string, at int64) Meta { return Meta{ID: id, UpdatedAt: at} }
+	if err := (Note{Meta: meta("a", 1), Body: "só texto"}).Validate(); err != nil {
+		t.Errorf("nota só com texto: %v", err)
+	}
+	if err := (Note{Meta: meta("a", 1), Title: "  "}).Validate(); err == nil {
+		t.Error("nota vazia deveria falhar")
+	}
+	if err := (Note{Meta: meta("a", 1), Title: strings.Repeat("é", NoteTitleMax+1)}).Validate(); err == nil {
+		t.Error("título longo demais deveria falhar")
+	}
+	l := Ledger{Notes: []Note{
+		{Meta: meta("velha", 1), Title: "velha"},
+		{Meta: meta("nova", 3), Title: "nova"},
+		{Meta: meta("fixada", 2), Title: "fixada", Pinned: true},
+		{Meta: Meta{ID: "apagada", UpdatedAt: 9, Deleted: true}},
+	}}
+	var got []string
+	for _, n := range l.ActiveNotes() {
+		got = append(got, n.ID)
+	}
+	if strings.Join(got, ",") != "fixada,nova,velha" {
+		t.Errorf("ordem das notas = %v", got)
 	}
 }

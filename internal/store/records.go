@@ -16,6 +16,7 @@ const (
 	TypeTransaction = domain.TypeTransaction
 	TypeDebt        = domain.TypeDebt
 	TypePref        = domain.TypePref
+	TypeNote        = domain.TypeNote
 )
 
 // Change é um registro enviado ou recebido na sincronização.
@@ -151,6 +152,9 @@ func (s *Store) Ledger(ctx context.Context) (domain.Ledger, error) {
 		case TypePref:
 			l.Prefs = append(l.Prefs, domain.Pref{})
 			target = &l.Prefs[len(l.Prefs)-1]
+		case TypeNote:
+			l.Notes = append(l.Notes, domain.Note{})
+			target = &l.Notes[len(l.Notes)-1]
 		default:
 			continue
 		}

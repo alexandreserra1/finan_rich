@@ -1,5 +1,5 @@
 // Package domain define os dados do finan_rich: categorias, lançamentos,
-// dívidas e preferências. É Go puro (sem banco, sem HTTP), então roda tanto no
+// dívidas, preferências e notas. É Go puro (sem banco, sem HTTP), então roda tanto no
 // servidor quanto no navegador (compilado para WebAssembly).
 //
 // Cada registro tem um ID universal (UUID) gerado por quem o cria, e a hora da
@@ -76,6 +76,21 @@ type Debt struct {
 	MinPaymentCents int64  `json:"minPaymentCents"`
 	DueDay          int    `json:"dueDay,omitempty"` // 0 = não informado
 }
+
+// Note é uma anotação livre do usuário (metas, combinados, lembretes...).
+// Sincroniza como os outros registros e o consultor de IA também lê.
+type Note struct {
+	Meta
+	Title  string `json:"title"`
+	Body   string `json:"body"`
+	Pinned bool   `json:"pinned,omitempty"` // fixada no topo da lista
+}
+
+// Limites das notas (em caracteres).
+const (
+	NoteTitleMax = 120
+	NoteBodyMax  = 20000
+)
 
 // Pref é uma preferência sincronizada entre aparelhos (ex.: "split").
 type Pref struct {
@@ -179,6 +194,22 @@ func (p Pref) Validate() error {
 			return errors.New("divisão do salário inválida")
 		}
 		return s.Validate()
+	}
+	return nil
+}
+
+func (n Note) Validate() error {
+	if err := n.validate(); err != nil || n.Deleted {
+		return err
+	}
+	if strings.TrimSpace(n.Title) == "" && strings.TrimSpace(n.Body) == "" {
+		return errors.New("a nota está vazia")
+	}
+	if len([]rune(n.Title)) > NoteTitleMax {
+		return fmt.Errorf("título muito longo (máximo %d caracteres)", NoteTitleMax)
+	}
+	if len([]rune(n.Body)) > NoteBodyMax {
+		return fmt.Errorf("nota muito longa (máximo %d caracteres)", NoteBodyMax)
 	}
 	return nil
 }

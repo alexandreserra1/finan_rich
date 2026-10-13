@@ -12,6 +12,7 @@ type Ledger struct {
 	Transactions []Transaction `json:"transactions"`
 	Debts        []Debt        `json:"debts"`
 	Prefs        []Pref        `json:"prefs"`
+	Notes        []Note        `json:"notes"`
 }
 
 // CategoryIndex dá acesso às categorias por ID, inclusive apagadas: um
@@ -54,6 +55,24 @@ func (l Ledger) ActiveDebts() []Debt {
 			return out[i].MonthlyRateBP > out[j].MonthlyRateBP
 		}
 		return out[i].BalanceCents < out[j].BalanceCents
+	})
+	return out
+}
+
+// ActiveNotes devolve as notas não apagadas: fixadas primeiro, depois da
+// alterada mais recentemente para a mais antiga.
+func (l Ledger) ActiveNotes() []Note {
+	out := make([]Note, 0, len(l.Notes))
+	for _, n := range l.Notes {
+		if !n.Deleted {
+			out = append(out, n)
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].Pinned != out[j].Pinned {
+			return out[i].Pinned
+		}
+		return out[i].UpdatedAt > out[j].UpdatedAt
 	})
 	return out
 }

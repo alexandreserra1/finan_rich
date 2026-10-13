@@ -4,7 +4,7 @@
 
 const DB_NAME = "finan_rich";
 const DB_VERSION = 1;
-export const TYPES = ["category", "transaction", "debt", "pref"];
+export const TYPES = ["category", "transaction", "debt", "pref", "note"];
 
 let dbPromise = null;
 
@@ -44,10 +44,22 @@ function all(store) {
 export async function loadLedger() {
   const db = await open();
   const rows = await all(db.transaction("records").objectStore("records"));
-  const ledger = { categories: [], transactions: [], debts: [], prefs: [] };
-  const lists = { category: ledger.categories, transaction: ledger.transactions, debt: ledger.debts, pref: ledger.prefs };
+  const ledger = { categories: [], transactions: [], debts: [], prefs: [], notes: [] };
+  const lists = { category: ledger.categories, transaction: ledger.transactions, debt: ledger.debts, pref: ledger.prefs, note: ledger.notes };
   for (const row of rows) lists[row.type]?.push(row.record);
   return ledger;
+}
+
+// saveManyLocal grava várias alterações de uma vez (ex.: restaurar um backup).
+export async function saveManyLocal(items) {
+  const db = await open();
+  const tx = db.transaction(["records", "outbox"], "readwrite");
+  for (const { type, record } of items) {
+    const key = keyOf(type, record.id);
+    tx.objectStore("records").put({ key, type, record });
+    tx.objectStore("outbox").put({ key, type, record });
+  }
+  return done(tx);
 }
 
 // saveLocal grava uma alteração feita neste aparelho e a coloca na fila de envio.

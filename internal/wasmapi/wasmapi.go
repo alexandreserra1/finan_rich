@@ -7,10 +7,12 @@ package wasmapi
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/domain"
 	"github.com/alexandreserra1/finan_rich/internal/finance"
 	"github.com/alexandreserra1/finan_rich/internal/money"
+	"github.com/alexandreserra1/finan_rich/internal/report"
 )
 
 // result é a resposta de toda função: um valor ou um erro.
@@ -67,3 +69,24 @@ func FormatMoney(cents int64) string { return money.Format(cents) }
 
 // MonthLabel devolve "outubro de 2026" para "2026-10".
 func MonthLabel(month string) string { return domain.ParseMonth(month).Label() }
+
+// Export gera um arquivo para baixar (planilha, CSV, PDF, backup ou nota).
+// options é o report.Options em JSON; nowMs é a hora do aparelho. O arquivo
+// volta em JSON, com o conteúdo em base64.
+func Export(ledgerJSON, optionsJSON string, nowMs int64) string {
+	var l domain.Ledger
+	if err := json.Unmarshal([]byte(ledgerJSON), &l); err != nil {
+		return reply(nil, err)
+	}
+	var o report.Options
+	if err := json.Unmarshal([]byte(optionsJSON), &o); err != nil {
+		return reply(nil, err)
+	}
+	f, err := report.Export(l, o, time.UnixMilli(nowMs))
+	return reply(f, err)
+}
+
+// ReadBackup confere um arquivo de backup e devolve os registros validados.
+func ReadBackup(content string) string {
+	return reply(report.ReadBackup([]byte(content)))
+}

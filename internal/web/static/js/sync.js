@@ -20,12 +20,16 @@ function emit(dataChanged = false) {
   window.dispatchEvent(new CustomEvent("finan-sync", { detail: { ...state, dataChanged } }));
 }
 
+// Tipos que o computador ainda não conhece (finan_rich desatualizado lá, ex.:
+// notas antes da v1.3). Ficam na fila, sem travar o resto da sincronização.
+const unsupported = new Set();
+
 async function round() {
   const out = await pending();
   state.pending = out.length;
   let cursor = await getMeta("cursor", 0);
   let changed = false;
-  let toSend = out;
+  let toSend = out.filter((c) => !unsupported.has(c.type));
   const api = await endpoint("/api/sync");
   if (!api) throw Object.assign(new Error("unpaired"), { kind: "unpaired" });
   for (;;) {
@@ -37,6 +41,12 @@ async function round() {
     });
     if (res.status === 401) throw Object.assign(new Error("login"), { kind: "login" });
     const body = await res.json().catch(() => ({}));
+    const unknownType = res.status === 422 && /tipo "(\w+)"/.exec(body.error || "")?.[1];
+    if (unknownType && !unsupported.has(unknownType) && toSend.some((c) => c.type === unknownType)) {
+      unsupported.add(unknownType);
+      toSend = toSend.filter((c) => c.type !== unknownType);
+      continue;
+    }
     if (!res.ok) throw Object.assign(new Error(body.error || res.statusText), { kind: "error" });
     if (toSend.length) {
       await clearSent(toSend);
@@ -48,6 +58,7 @@ async function round() {
     if (!body.more) break;
   }
   state.pending = (await pending()).length;
+  state.message = unsupported.size ? "Atualize o finan_rich do computador para sincronizar as notas." : "";
   return changed;
 }
 
@@ -66,7 +77,6 @@ export async function sync() {
         const changed = await round();
         state.status = "ok";
         state.lastSync = new Date();
-        state.message = "";
         emit(changed);
       } while (again);
     } catch (err) {

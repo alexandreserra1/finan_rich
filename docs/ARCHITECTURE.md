@@ -189,11 +189,27 @@ aparelho                                      servidor
 |---|---|
 | `money.go` | Valores em centavos (`int64`). `Parse` entende "1.234,56", "1234.56" e "3.500" (três mil e quinhentos); `Format` gera "R$ 1.234,56". |
 
+### `internal/report/` — exportação e backup (Go puro)
+
+Gera os arquivos que o usuário leva para fora do app. Sem dependências além da biblioteca
+padrão, então também roda no aparelho (WebAssembly): exportar funciona sem conexão.
+
+| Arquivo | Função |
+|---|---|
+| `report.go` | `Export(ledger, Options, agora)`: escolhe o formato (`xlsx`, `csv`, `pdf`, `json`, ou `txt`/`pdf` de uma nota), monta o nome do arquivo e o relatório em PDF. |
+| `tables.go` | Os dados viram tabelas genéricas (`Table`, com colunas de tipo `Text`, `Money`, `Date`, `Percent`...): lançamentos, resumo por mês, por categoria, divisão do salário, dívidas, notas, categorias. Cada formato só sabe desenhar tabelas. |
+| `period.go` | Período do relatório: mês, ano ou todo o histórico. |
+| `xlsx.go` | Planilha do Excel escrita à mão (zip + XML): uma aba por tabela, valores e datas como número, formato R$, cabeçalho fixo e filtro. |
+| `csv.go` | CSV no padrão do Excel em português: `;`, vírgula decimal, UTF-8 com BOM. |
+| `pdf.go` | PDF escrito à mão: A4, Helvetica (WinAnsi, cobre os acentos), texto, linhas e retângulos; tabelas com cabeçalho repetido a cada página, barras e quebra de linha. |
+| `backup.go` | `Backup` (todos os registros num `.json`) e `ReadBackup` (confere e valida antes de restaurar). |
+| `report_test.go` | Abre os arquivos gerados: XML bem formado, tabela xref do PDF, CSV, backup de ida e volta. Roda também como WebAssembly (`make test-wasm`). |
+
 ### `internal/wasmapi/` — ponte com o navegador
 
 | Arquivo | Função |
 |---|---|
-| `wasmapi.go` | Funções texto → texto (JSON) chamadas pelo JavaScript: `Dashboard`, `Debts`, `Validate`, `ParseMoney`, `FormatMoney`, `MonthLabel`. Respostas no formato `{"ok": ...}` ou `{"error": "..."}`. Separado do `cmd/finanwasm` para ser testável sem navegador. |
+| `wasmapi.go` | Funções texto → texto (JSON) chamadas pelo JavaScript: `Dashboard`, `Debts`, `Validate`, `ParseMoney`, `FormatMoney`, `MonthLabel`, `Export` (arquivo em base64) e `ReadBackup`. Respostas no formato `{"ok": ...}` ou `{"error": "..."}`. Separado do `cmd/finanwasm` para ser testável sem navegador. |
 
 ### `internal/store/` — banco de dados (SQLite)
 
@@ -209,13 +225,14 @@ aparelho                                      servidor
 | `migrations/002_sessions.sql` | Tabela de sessões. |
 | `migrations/003_sync_records.sql` | v1.1: cria `records` e `sync_state`, **converte** os dados da v1.0 e remove as tabelas antigas. |
 | `migrations/004_devices.sql` | Tabela `devices` (app do celular). |
+| `migrations/005_notes.sql` | v1.3: recria `records` aceitando o tipo `note` (o SQLite não altera um `CHECK`). |
 | `store_test.go` | Sincronização, validação, paginação e a conversão de um banco v1.0 real. |
 
 Tabelas atuais:
 
 | Tabela | Conteúdo |
 |---|---|
-| `records(type, id, data, updated_at, deleted, rev)` | Categorias, lançamentos, dívidas e preferências como documentos JSON. |
+| `records(type, id, data, updated_at, deleted, rev)` | Categorias, lançamentos, dívidas, preferências e notas como documentos JSON. |
 | `sync_state(rev)` | Contador global de revisões. |
 | `settings(key, value)` | `ai_*` (provedor de IA) e `access_*` (senha, acesso pela rede). |
 | `chat_messages` | Conversa com o consultor. |
@@ -265,6 +282,7 @@ Código Go:
 | `server.go` | `New(store, Options)`, rotas, renderização de templates, middlewares (segurança, CSRF, log), service worker com a impressão digital dos arquivos. |
 | `api.go` | `POST /api/sync`. |
 | `access.go` | Login, sessões, `requireAuth` (cookie ou token do app), ligar/desligar o acesso pelo celular. |
+| `backup.go` | `GET /configuracoes/backup.db`: cópia completa do banco (`VACUUM INTO`), com configurações e chat. |
 | `pairing.go` | Pareamento do app do celular: código, página `/parear`, `POST /api/parear`, token do aparelho, CORS de `/api/`. |
 | `export.go` | `ExportApp`: grava as telas do app (casco + `static/`) para o Capacitor. |
 | `lan.go` | Endereços da rede local para o celular e QR code. |
@@ -301,6 +319,9 @@ Arquivos do navegador (`static/`):
 | `js/pages/transactions.js` | Lançamentos: formulário (categorias filtradas por entrada/saída), lista do mês, apagar, "copiar do mês anterior". |
 | `js/pages/debts.js` | Dívidas: cadastro e edição, simulação pagando o mínimo, ordem avalanche e bola de neve. |
 | `js/pages/categories.js` | Divisão do salário (percentuais) e categorias (criar, apagar se não tiver lançamentos). |
+| `js/pages/notes.js` | Notas: criar, editar, fixar, buscar, apagar e exportar cada uma em PDF ou texto. |
+| `js/pages/export.js` | Exportar (Excel, PDF, CSV por período), backup e restauração. |
+| `js/exporter.js` | Entrega o arquivo gerado: download no navegador; no app do celular, salva e abre o menu de compartilhar (plugins Filesystem e Share do Capacitor). |
 | `js/pages/device.js`, `js/pages/advisor.js` | Só no app do celular: Ajustes (pareamento) e Consultor (abre a tela do computador). |
 
 Cada tela exporta `render(ctx)` (devolve o HTML) e, se tiver formulário, `bind(root, ctx)`
@@ -327,6 +348,7 @@ Cada tela exporta `render(ctx)` (devolve o HTML) e, se tiver formulário, `bind(
 | `e2e/package.json` | Dependência dos testes no navegador (Playwright) e o comando `npm test`. |
 | `e2e/offline.test.mjs` | Teste no Chromium: online, desligar o servidor, reabrir offline, lançar, religar, sincronizar, segundo aparelho. |
 | `e2e/app.test.mjs` | Teste do app do celular no Chromium: pareamento, sync com token, offline, aparelho removido. |
+| `e2e/export.test.mjs` | Notas, exportação (xlsx, PDF, CSV, inclusive offline), backup e restauração no Chromium. |
 | `scripts/install.sh` | Instalador de uma linha para macOS e Linux. |
 | `.github/workflows/ci.yml` | A cada PR/push na main: gera o `.wasm`, formatação, vet, testes com race, regras como WebAssembly, compilação para todos os sistemas , os testes no navegador e o APK de teste do Android. |
 | `.github/workflows/release.yml` | Publica uma versão (por tag ou pelo botão *Run workflow*) e anexa o APK do Android. |

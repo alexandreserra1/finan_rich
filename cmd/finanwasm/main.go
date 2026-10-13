@@ -26,6 +26,10 @@ func main() {
 		"parseMoney":  js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.ParseMoney(str(a, 0)) }),
 		"formatMoney": js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.FormatMoney(int64(a[0].Int())) }),
 		"monthLabel":  js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.MonthLabel(str(a, 0)) }),
+		"export": js.FuncOf(func(_ js.Value, a []js.Value) any {
+			return wasmapi.Export(str(a, 0), str(a, 1), int64(a[2].Float()))
+		}),
+		"readBackup": js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.ReadBackup(str(a, 0)) }),
 	}
 	js.Global().Set("finan", js.ValueOf(api))
 	js.Global().Call("dispatchEvent", js.Global().Get("Event").New("finan-ready"))

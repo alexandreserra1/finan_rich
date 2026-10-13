@@ -9,6 +9,11 @@ números reais. Seus dados ficam num arquivo no seu PC, sem conta e sem nuvem.
 - **Lançamentos** por categoria. O botão *Copiar do mês anterior* repete salário e contas fixas.
 - **Dívidas**: quanto tempo e quanto de juros para quitar pagando o mínimo, alerta quando o
   mínimo não cobre os juros e a ordem de pagamento pelos métodos avalanche e bola de neve.
+- **Notas**: metas, combinados e ideias, com busca e notas fixadas. O consultor lê as mais
+  recentes para entender seus planos.
+- **Exportar**: planilha do Excel (.xlsx) com abas de resumo, lançamentos, categorias,
+  divisão do salário, dívidas e notas; relatório em PDF; CSV; e cada nota em PDF ou texto.
+  Os arquivos são gerados no próprio aparelho, mesmo sem internet.
 - **Consultor IA**: tire dúvidas sobre dívidas, cortes de gastos e reserva de emergência.
   Por padrão usa modelos abertos (Qwen, DeepSeek, Llama...) rodando no seu PC pelo Ollama.
 
@@ -124,7 +129,17 @@ Tudo fica no arquivo `finan.db`, cujo caminho aparece no terminal ao abrir o app
 - **macOS**: `~/Library/Application Support/finan_rich/finan.db`
 - **Linux**: `~/.config/finan_rich/finan.db`
 
-Para fazer backup, copie esse arquivo com o app fechado.
+Para fazer backup, use **Exportar e backup** (no menu Ajustes ou em `/exportar`):
+
+- **Backup (.json)**: todos os seus registros num arquivo, em qualquer aparelho, mesmo sem
+  internet. *Restaurar backup* traz de volta tudo que estava nele (inclusive o que foi
+  apagado depois) e mantém o que você criou depois; os outros aparelhos recebem na
+  sincronização.
+- **Banco completo (.db)**: só no computador, inclui também a configuração da IA e a conversa
+  com o consultor. Para restaurar, feche o app e troque o arquivo `finan.db` por ele.
+
+Para analisar no Python: `pd.read_excel("finan_rich_2026.xlsx", sheet_name="Lançamentos")`
+ou `pd.read_csv("finan_rich_lancamentos_2026.csv", sep=";", decimal=",")`.
 
 ### Docker (alternativa)
 
@@ -174,6 +189,7 @@ cmd/finanwasm/      as regras compiladas para WebAssembly (roda no navegador)
 internal/domain/    modelos (lançamento, dívida...), validação e Ledger — Go puro
 internal/finance/   regras de negócio puras: resumo do mês, dívidas, reserva, views
 internal/money/     valores em centavos (int64) e formatação "R$ 1.234,56"
+internal/report/    exportação: .xlsx, CSV, PDF e backup .json, em Go puro (roda no aparelho)
 internal/wasmapi/   ponte JSON entre o navegador e as regras
 internal/store/     SQLite: registros sincronizáveis, chat, sessões, configurações
 internal/llm/       interface Provider + Ollama, APIs compatíveis com OpenAI e Anthropic

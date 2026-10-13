@@ -81,6 +81,10 @@ func TestSnapshot(t *testing.T) {
 		Categories:   []domain.Category{cat("sal", "Salário", domain.BucketRenda), cat("laz", "Lazer", domain.BucketDesejos)},
 		Transactions: []domain.Transaction{tx("a", domain.KindEntrada, "sal", 500000), tx("b", domain.KindSaida, "laz", 200000)},
 		Debts:        []domain.Debt{{Meta: domain.Meta{ID: "d", UpdatedAt: 1}, Name: "Cartão", BalanceCents: 400000, MonthlyRateBP: 1250, MinPaymentCents: 40000}},
+		Notes: []domain.Note{
+			{Meta: domain.Meta{ID: "n1", UpdatedAt: 5}, Title: "Viagem", Body: "Juntar R$ 3.000\naté julho"},
+			{Meta: domain.Meta{ID: "n2", UpdatedAt: 6, Deleted: true}, Title: "Apagada", Body: "não deve aparecer"},
+		},
 	}
 	got := Snapshot(BuildFacts(l, time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC)))
 	for _, want := range []string{
@@ -95,9 +99,13 @@ func TestSnapshot(t *testing.T) {
 		"Parcelas mínimas que ainda faltam pagar este mês (não estão nas saídas): R$ 400,00",
 		"Sobra livre depois de pagar as parcelas mínimas: R$ 3.000,00 - R$ 400,00 = R$ 2.600,00",
 		"pagando R$ 400,00 + R$ 2.600,00 = R$ 3.000,00 por mês",
+		"## Anotações do usuário", "- Viagem: Juntar R$ 3.000 até julho",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("snapshot sem %q:\n%s", want, got)
 		}
+	}
+	if strings.Contains(got, "Apagada") {
+		t.Error("nota apagada não pode ir para a IA")
 	}
 }

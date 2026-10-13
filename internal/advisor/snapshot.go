@@ -23,9 +23,14 @@ func BuildFacts(l domain.Ledger, today time.Time) Facts {
 			recent = append(recent, t)
 		}
 	}
+	notes := l.ActiveNotes()
+	if len(notes) > maxNotes {
+		notes = notes[:maxNotes]
+	}
 	return Facts{
 		Today: today, Month: sum, Recent: recent, Debts: debts, Plan: plan,
 		Emergency: finance.PlanEmergencyFund(all, plan.PendingMinCents),
+		Notes:     notes,
 	}
 }
 
@@ -37,7 +42,15 @@ type Facts struct {
 	Debts     finance.DebtPlan
 	Emergency finance.EmergencyFund
 	Plan      finance.MonthPlan
+	Notes     []domain.Note // as mais recentes (fixadas primeiro)
 }
+
+// Quantas notas e quanto de cada uma vão para o modelo: o suficiente para ele
+// conhecer os planos da pessoa sem encher o contexto de modelos pequenos.
+const (
+	maxNotes     = 5
+	maxNoteRunes = 400
+)
 
 // Snapshot descreve os dados em texto para o modelo. Todas as contas vêm
 // prontas: modelos pequenos erram aritmética, então o app calcula e o modelo
@@ -124,6 +137,17 @@ func Snapshot(f Facts) string {
 
 	writeMonthPlan(&b, f.Plan)
 
+	if len(f.Notes) > 0 {
+		b.WriteString("\n## Anotações do usuário (escritas por ele no app)\n")
+		for _, n := range f.Notes {
+			title := n.Title
+			if title == "" {
+				title = "Sem título"
+			}
+			fmt.Fprintf(&b, "- %s: %s\n", title, clip(strings.Join(strings.Fields(n.Body), " "), maxNoteRunes))
+		}
+	}
+
 	if alerts := attentionPoints(f); len(alerts) > 0 {
 		b.WriteString("\n## Pontos de atenção\n")
 		for _, a := range alerts {
@@ -131,6 +155,15 @@ func Snapshot(f Facts) string {
 		}
 	}
 	return b.String()
+}
+
+// clip corta o texto em n caracteres, com reticências.
+func clip(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return string(r[:n]) + "…"
 }
 
 // writeMonthPlan descreve para onde vai o dinheiro do mês, com as contas feitas.

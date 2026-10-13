@@ -269,3 +269,20 @@ func TestDevices(t *testing.T) {
 		t.Fatal("aparelho removido continua aceito")
 	}
 }
+
+func TestNotesSync(t *testing.T) {
+	ctx := context.Background()
+	s := newTestStore(t)
+	note := domain.Note{Meta: domain.Meta{ID: "n1", UpdatedAt: 10}, Title: "Meta", Body: "Juntar R$ 5.000 até dezembro", Pinned: true}
+	if n, err := s.ApplyChanges(ctx, []Change{change(t, TypeNote, note)}); n != 1 || err != nil {
+		t.Fatalf("nota: n=%d err=%v", n, err)
+	}
+	empty := domain.Note{Meta: domain.Meta{ID: "n2", UpdatedAt: 10}}
+	if _, err := s.ApplyChanges(ctx, []Change{change(t, TypeNote, empty)}); err == nil {
+		t.Error("nota vazia deveria ser recusada")
+	}
+	l, err := s.Ledger(ctx)
+	if err != nil || len(l.ActiveNotes()) != 1 || l.ActiveNotes()[0].Body != note.Body || !l.ActiveNotes()[0].Pinned {
+		t.Fatalf("Ledger.Notes = %+v (%v)", l.Notes, err)
+	}
+}

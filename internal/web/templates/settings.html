@@ -152,7 +152,12 @@
 
 <section class="panel">
   <h2>Seus dados</h2>
-  <p class="muted">Tudo fica num único arquivo neste computador. Para fazer backup, copie o arquivo <code>finan.db</code> da pasta de dados (o caminho aparece na janela do finan_rich ao abrir).</p>
+  <p class="muted">Tudo fica num único arquivo neste computador, o <code>finan.db</code> (o caminho aparece na janela do finan_rich ao abrir).</p>
+  <div class="row-actions">
+    <a class="button" href="/exportar">Exportar (Excel, CSV, PDF) e backup</a>
+    <a class="button secondary-link" href="/configuracoes/backup.db">Baixar o banco completo (.db)</a>
+  </div>
+  <p class="small muted">O banco completo inclui também a configuração da IA e a conversa com o consultor. Para restaurá-lo, feche o finan_rich e troque o arquivo <code>finan.db</code> da pasta de dados por ele.</p>
 </section>
 {{end}}
 

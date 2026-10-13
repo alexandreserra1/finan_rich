@@ -12,10 +12,12 @@ import * as dashboard from "./pages/dashboard.js";
 import * as transactions from "./pages/transactions.js";
 import * as debts from "./pages/debts.js";
 import * as categories from "./pages/categories.js";
+import * as notes from "./pages/notes.js";
+import * as exportPage from "./pages/export.js";
 import * as devicePage from "./pages/device.js";
 import * as advisor from "./pages/advisor.js";
 
-const ROUTES = { "/": dashboard, "/lancamentos": transactions, "/dividas": debts, "/categorias": categories };
+const ROUTES = { "/": dashboard, "/lancamentos": transactions, "/dividas": debts, "/categorias": categories, "/notas": notes, "/exportar": exportPage };
 if (device.isApp) Object.assign(ROUTES, { "/configuracoes": devicePage, "/chat": advisor });
 
 const root = document.getElementById("app");
@@ -99,10 +101,11 @@ function context(path, params) {
     async refresh(message) { await reloadAndRender(message); },
     go(url) { navigate(url); },
     error(err) { flash(err.message.replace(/^registro inválido: /, ""), "err"); },
+    flash(message) { flash(message); },
   };
 }
 
-const listOf = (type) => ({ category: ledger.categories, transaction: ledger.transactions, debt: ledger.debts, pref: ledger.prefs })[type];
+const listOf = (type) => ({ category: ledger.categories, transaction: ledger.transactions, debt: ledger.debts, pref: ledger.prefs, note: ledger.notes })[type];
 function upsert(list, record) {
   const i = list.findIndex((r) => r.id === record.id);
   if (i >= 0) list[i] = record; else list.push(record);

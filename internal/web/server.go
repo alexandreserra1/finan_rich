@@ -118,7 +118,7 @@ func (s *Server) Routes() http.Handler {
 
 	// Telas de dados: o servidor entrega só o "casco"; o aparelho monta a tela
 	// com os dados guardados nele (funciona offline) e sincroniza com /api/sync.
-	for path, page := range map[string]string{"/{$}": "dashboard", "/lancamentos": "transactions", "/dividas": "debts", "/categorias": "categories"} {
+	for path, page := range map[string]string{"/{$}": "dashboard", "/lancamentos": "transactions", "/dividas": "debts", "/categorias": "categories", "/notas": "notes", "/exportar": "export"} {
 		mux.HandleFunc("GET "+path, s.appShell(page))
 	}
 	mux.HandleFunc("POST /api/sync", s.apiSync)
@@ -138,6 +138,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /configuracoes/testar", s.testAI)
 	mux.HandleFunc("POST /configuracoes/baixar-modelo", s.pullModel)
 	mux.HandleFunc("POST /configuracoes/acesso", s.saveAccess)
+	mux.HandleFunc("GET /configuracoes/backup.db", s.backupDB)
 	return logRequests(securityHeaders(apiCORS(sameOrigin(s.requireAuth(mux)))))
 }
 

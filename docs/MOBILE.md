@@ -65,7 +65,7 @@ no navegador do celular (pede a senha de acesso na primeira vez).
 | `static/js/device.js` | Onde sincronizar: no navegador, o mesmo endereço (cookie); no app, o computador pareado (token). Pareamento, nome do aparelho, leitura do link `finanrich://`. |
 | `static/js/pages/device.js` | Tela de Ajustes do app (parear, sincronizar, desconectar, apagar dados). |
 | `static/js/pages/advisor.js` | Aba Consultor no app (abre a tela do computador). |
-| `mobile/package.json`, `capacitor.config.json` | Projeto Capacitor (Android). `CapacitorHttp` faz as chamadas pela rede nativa do celular, sem as travas de `http://` do navegador. |
+| `mobile/package.json`, `capacitor.config.json` | Projeto Capacitor (Android). `CapacitorHttp` faz as chamadas pela rede nativa do celular, sem as travas de `http://` do navegador. Os plugins `Filesystem` e `Share` salvam os arquivos exportados (Excel, PDF, CSV, backup) e abrem o menu de compartilhar do Android. |
 | `mobile/android/` | Projeto Android (gerado pelo `cap add android`, versionado). Mudanças nossas: `AndroidManifest.xml` (link `finanrich://` e `usesCleartextTraffic` para o `http://` do Wi-Fi), `app/build.gradle` (versão e assinatura pelo ambiente), ícones e tela de abertura. |
 | `mobile/scripts/icons.py` | Gera os ícones e as telas de abertura (Pillow). |
 | `e2e/app.test.mjs` | Teste no Chromium com as telas do app servidas em outra origem: pareamento, sync com token, offline, aparelho removido. |

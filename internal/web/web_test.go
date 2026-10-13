@@ -98,7 +98,7 @@ func (a *app) post(path string, form url.Values, header ...string) (int, string)
 // para pegar erros de template que só aparecem num dos dois casos.
 func TestPagesRender(t *testing.T) {
 	a := newApp(t, fakeOllama(t).URL)
-	paths := []string{"/", "/lancamentos", "/categorias", "/dividas", "/chat", "/configuracoes",
+	paths := []string{"/", "/lancamentos", "/categorias", "/dividas", "/notas", "/exportar", "/chat", "/configuracoes",
 		"/static/app.css", "/static/app.js", "/static/favicon.svg", "/manifest.webmanifest", "/sw.js", "/offline"}
 	check := func(state string) {
 		for _, path := range paths {

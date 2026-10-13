@@ -111,3 +111,10 @@ func collect[T any](rows *sql.Rows, err error, scan func(*sql.Rows) (T, error)) 
 	}
 	return out, rows.Err()
 }
+
+// BackupTo grava uma cópia completa e consistente do banco em path (que não
+// pode existir), mesmo com o app em uso.
+func (s *Store) BackupTo(ctx context.Context, path string) error {
+	_, err := s.db.ExecContext(ctx, `VACUUM INTO ?`, path)
+	return err
+}

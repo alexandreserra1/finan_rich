@@ -78,11 +78,26 @@ Para quem não quer deixar um computador ligado:
 A arquitetura local-first atual já permite isso: o celular é dono dos dados e o servidor é
 só o ponto de encontro.
 
+## Parecido com o Pierre, só que no seu aparelho
+
+O [Pierre](https://pierre.finance) é um assistente financeiro que lê suas contas pelo Open
+Finance e conversa pelo WhatsApp. O finan_rich já tem o consultor com IA e os dados no seu
+aparelho; o que falta para chegar perto, do mais simples ao mais caro:
+
+1. **Importar extratos** (OFX e CSV que todo banco exporta): a IA sugere a categoria de cada
+   lançamento e o usuário confirma. Grátis, funciona offline e cobre 90% do caso de uso.
+2. **Consultor com ferramentas**: em vez de só ler o resumo, a IA consulta os lançamentos
+   ("quanto gastei com iFood em 2026?") e propõe lançamentos e notas para o usuário aprovar.
+3. **Alertas**: vencimento de dívidas, meta estourada no mês, gasto fora do padrão
+   (notificações locais no app do celular).
+4. **Open Finance** (lançamentos automáticos dos bancos): exige um agregador pago (Pluggy,
+   Belvo) e, na prática, uma empresa responsável pelos dados; também tira os dados só do
+   aparelho. Fica como opção, desligada por padrão.
+5. **WhatsApp**: exige a API paga da Meta e um servidor sempre ligado na internet.
+
 ## Outras ideias
 
-- **Importar extratos** (OFX/CSV do banco), sugerindo categorias automaticamente.
-- **Metas** (ex.: "juntar R$ 5.000 até dezembro"), como um novo tipo de registro sincronizado.
-- **Exportar e restaurar backup** pela tela de Ajustes (hoje é copiar o arquivo `finan.db`).
+- **Metas** com valor e prazo (ex.: "juntar R$ 5.000 até dezembro"), acompanhadas no painel.
 - **Lançamentos recorrentes** automáticos, além do botão "Copiar do mês anterior".
 - **Executáveis assinados** no Windows e no macOS, para não aparecer o aviso de "editor
   desconhecido".

@@ -12,6 +12,7 @@ const (
 	TypeTransaction = "transaction"
 	TypeDebt        = "debt"
 	TypePref        = "pref"
+	TypeNote        = "note"
 )
 
 // ErrInvalidRecord indica um registro com tipo ou conteúdo inválido.
@@ -41,6 +42,9 @@ func DecodeRecord(typ string, raw []byte) (Meta, []byte, error) {
 	case TypePref:
 		var r Pref
 		err, meta, v = json.Unmarshal(raw, &r), r.Meta, &r
+	case TypeNote:
+		var r Note
+		err, meta, v = json.Unmarshal(raw, &r), r.Meta, &r
 	default:
 		return meta, nil, fmt.Errorf("%w: tipo %q", ErrInvalidRecord, typ)
 	}
@@ -64,6 +68,8 @@ func metaOf(v validator) Meta {
 	case *Debt:
 		return r.Meta
 	case *Pref:
+		return r.Meta
+	case *Note:
 		return r.Meta
 	}
 	return Meta{}

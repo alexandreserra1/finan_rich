@@ -9,13 +9,14 @@
 // __VERSION__ é trocado pelo servidor por uma impressão digital dos arquivos:
 // quando o app é atualizado, o cache antigo é descartado.
 const VERSION = "finan-__VERSION__";
-const APP_ROUTES = ["/", "/lancamentos", "/dividas", "/categorias"];
+const APP_ROUTES = ["/", "/lancamentos", "/dividas", "/categorias", "/notas", "/exportar"];
 const PRECACHE = [
   ...APP_ROUTES, "/offline",
   "/static/app.css", "/static/app.js", "/static/chat.js", "/static/settings.js", "/static/favicon.svg",
   "/static/icons/icon-192.png", "/static/finance.wasm",
   "/static/js/main.js", "/static/js/db.js", "/static/js/sync.js", "/static/js/finance.js", "/static/js/ui.js",
   "/static/js/device.js", "/static/js/pages/device.js", "/static/js/pages/advisor.js",
+  "/static/js/exporter.js", "/static/js/pages/notes.js", "/static/js/pages/export.js",
   "/static/js/wasm_exec.js", "/static/js/pages/dashboard.js", "/static/js/pages/transactions.js",
   "/static/js/pages/debts.js", "/static/js/pages/categories.js",
 ];

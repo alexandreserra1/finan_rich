@@ -31,3 +31,7 @@ export const validate = (type, record) => unwrap(window.finan.validate(type, JSO
 export const parseMoney = (text) => unwrap(window.finan.parseMoney(text));
 export const money = (cents) => window.finan.formatMoney(cents);
 export const monthLabel = (key) => window.finan.monthLabel(key);
+// exportFile gera planilha, CSV, PDF, nota ou backup: { name, mime, data (base64) }.
+export const exportFile = (ledger, options) => unwrap(window.finan.export(JSON.stringify(ledger), JSON.stringify(options), Date.now()));
+// readBackup confere um backup (.json) e devolve [{ type, record }] já validados.
+export const readBackup = (text) => unwrap(window.finan.readBackup(text));
