@@ -1,0 +1,8 @@
+Extrato Conta Corrente
+Conta ;12345678
+Período ;01/10/2026 a 13/10/2026
+
+Data Lançamento;Histórico;Descrição;Valor;Saldo
+02/10/2026;Pix enviado ;Maria Silva;-150,00;4.850,00
+03/10/2026;Compra no débito;POSTO SHELL;-200,00;4.650,00
+04/10/2026;Pix recebido;João;1.234,56;5.884,56

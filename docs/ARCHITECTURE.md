@@ -205,11 +205,29 @@ padrão, então também roda no aparelho (WebAssembly): exportar funciona sem co
 | `backup.go` | `Backup` (todos os registros num `.json`) e `ReadBackup` (confere e valida antes de restaurar). |
 | `report_test.go` | Abre os arquivos gerados: XML bem formado, tabela xref do PDF, CSV, backup de ida e volta. Roda também como WebAssembly (`make test-wasm`). |
 
+### `internal/importer/` — importação de extratos (Go puro)
+
+Lê o extrato no aparelho (WebAssembly): funciona offline e o arquivo não sai do aparelho.
+
+| Arquivo | Função |
+|---|---|
+| `parse.go` | `Parse`: descobre o formato pelo conteúdo; datas (`05/10/2026`, `2026-10-05`, `20261005`...) e valores (`-1.234,56`, `1234.56`, `(87,50)`, `87,50 D`...). |
+| `ofx.go` | OFX 1 (SGML, tags sem fechamento) e 2 (XML), conta e cartão; junta NAME e MEMO sem repetir. |
+| `csv.go` | Descobre o separador e acha o cabeçalho pelo nome das colunas (data, descrição/histórico, valor ou crédito e débito, tipo, categoria), mesmo depois de linhas de título. Fatura de cartão (quase tudo positivo) vem marcada para inverter o sinal. |
+| `text.go` | Converte arquivos em Windows-1252 para UTF-8; normaliza textos para comparar. |
+| `preview.go` | `Build`: monta a revisão. ID estável (`imp-` + hash do FITID ou de data/valor/descrição), então reimportar não duplica; marca o que parece digitado à mão (mesmo dia, tipo e valor) e o pagamento de fatura. |
+| `categories.go` | Categoria sugerida: do arquivo, do histórico (descrições parecidas que a pessoa já classificou; aprende com as correções) ou de palavras-chave de lojas e serviços. |
+| `importer_test.go`, `testdata/` | Arquivos no formato de Itaú, Nubank (conta e cartão, OFX e CSV), Inter, BB e do próprio finan_rich. |
+
+A IA (opcional) fica no servidor: `internal/advisor/categorize.go` pergunta em lotes de 40 e
+só aceita respostas que sejam uma das categorias do tipo certo; `internal/web/categorize.go`
+expõe `POST /api/categorizar`, que recebe só descrições e tipos (sem valores).
+
 ### `internal/wasmapi/` — ponte com o navegador
 
 | Arquivo | Função |
 |---|---|
-| `wasmapi.go` | Funções texto → texto (JSON) chamadas pelo JavaScript: `Dashboard`, `Debts`, `Validate`, `ParseMoney`, `FormatMoney`, `MonthLabel`, `Export` (arquivo em base64) e `ReadBackup`. Respostas no formato `{"ok": ...}` ou `{"error": "..."}`. Separado do `cmd/finanwasm` para ser testável sem navegador. |
+| `wasmapi.go` | Funções texto → texto (JSON) chamadas pelo JavaScript: `Dashboard`, `Debts`, `Validate`, `ParseMoney`, `FormatMoney`, `MonthLabel`, `Export` (arquivo em base64), `ReadBackup` e `ImportPreview`. Respostas no formato `{"ok": ...}` ou `{"error": "..."}`. Separado do `cmd/finanwasm` para ser testável sem navegador. |
 
 ### `internal/store/` — banco de dados (SQLite)
 
@@ -321,6 +339,7 @@ Arquivos do navegador (`static/`):
 | `js/pages/categories.js` | Divisão do salário (percentuais) e categorias (criar, apagar se não tiver lançamentos). |
 | `js/pages/notes.js` | Notas: criar, editar, fixar, buscar, apagar e exportar cada uma em PDF ou texto. |
 | `js/pages/export.js` | Exportar (Excel, PDF, CSV por período), backup e restauração. |
+| `js/pages/import.js` | Importar extrato: enviar o arquivo, revisar (marcar, editar descrição, escolher categoria), pedir à IA e importar. |
 | `js/exporter.js` | Entrega o arquivo gerado: download no navegador; no app do celular, salva e abre o menu de compartilhar (plugins Filesystem e Share do Capacitor). |
 | `js/pages/device.js`, `js/pages/advisor.js` | Só no app do celular: Ajustes (pareamento) e Consultor (abre a tela do computador). |
 
@@ -349,6 +368,7 @@ Cada tela exporta `render(ctx)` (devolve o HTML) e, se tiver formulário, `bind(
 | `e2e/offline.test.mjs` | Teste no Chromium: online, desligar o servidor, reabrir offline, lançar, religar, sincronizar, segundo aparelho. |
 | `e2e/app.test.mjs` | Teste do app do celular no Chromium: pareamento, sync com token, offline, aparelho removido. |
 | `e2e/export.test.mjs` | Notas, exportação (xlsx, PDF, CSV, inclusive offline), backup e restauração no Chromium. |
+| `e2e/import.test.mjs` | Importação de fatura CSV e extrato OFX, sugestões, reimportação sem duplicar e aprendizado pelo histórico. |
 | `scripts/install.sh` | Instalador de uma linha para macOS e Linux. |
 | `.github/workflows/ci.yml` | A cada PR/push na main: gera o `.wasm`, formatação, vet, testes com race, regras como WebAssembly, compilação para todos os sistemas , os testes no navegador e o APK de teste do Android. |
 | `.github/workflows/release.yml` | Publica uma versão (por tag ou pelo botão *Run workflow*) e anexa o APK do Android. |

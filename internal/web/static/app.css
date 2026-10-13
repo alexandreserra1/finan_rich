@@ -420,3 +420,28 @@ label.file-button:hover { background: var(--surface-2); }
 label.file-button:focus-within { outline: 3px solid var(--ring); outline-offset: 2px; }
 a.button.secondary-link { background: var(--surface); color: var(--text); border: 1px solid var(--border-input); font-weight: 500; }
 a.button.secondary-link:hover { background: var(--surface-2); }
+
+/* Importar extrato */
+.row-actions.tight { margin-top: 0; }
+label.file-button.primary-file { background: var(--accent); color: var(--accent-text); border-color: transparent; font-weight: 600; margin: .5rem 0 1rem; }
+label.file-button.primary-file:hover { background: var(--accent-strong); }
+.banks summary { cursor: pointer; color: var(--accent); }
+.banks ul { margin: .6rem 0 0; padding-left: 1.2rem; display: grid; gap: .35rem; }
+.import-table input[data-field="description"] { min-height: 36px; padding: .35rem .5rem; width: 100%; min-width: 180px; }
+.import-table select { min-height: 36px; padding: .3rem .5rem; min-width: 170px; }
+.import-table select.needs { border-color: var(--warn); box-shadow: 0 0 0 2px color-mix(in srgb, var(--warn) 25%, transparent); }
+.import-table td small { display: block; margin-top: .2rem; }
+.import-table tr.off td { opacity: .55; }
+.import-table tr.off td:first-child { opacity: 1; }
+.import-table input[type="checkbox"] { width: 18px; height: 18px; min-height: 0; }
+.tag.status-importado, .tag.status-fatura { --c: var(--muted); }
+.tag.status-duplicado { --c: var(--warn); }
+.import-table td.primary { width: 45%; }
+.import-table input[data-field="description"] { min-width: 240px; }
+@media (max-width: 720px) {
+  .import-table td[data-label="Categoria"] { flex-wrap: wrap; }
+  .import-table td[data-label="Categoria"] select { flex: 1 1 100%; min-width: 0; }
+  .import-table td[data-label="Categoria"] small { flex-basis: 100%; text-align: right; }
+  .import-table input[data-field="description"] { min-width: 0; }
+  .import-table td.primary { width: auto; }
+}

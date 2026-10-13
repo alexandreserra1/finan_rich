@@ -84,8 +84,8 @@ O [Pierre](https://pierre.finance) é um assistente financeiro que lê suas cont
 Finance e conversa pelo WhatsApp. O finan_rich já tem o consultor com IA e os dados no seu
 aparelho; o que falta para chegar perto, do mais simples ao mais caro:
 
-1. **Importar extratos** (OFX e CSV que todo banco exporta): a IA sugere a categoria de cada
-   lançamento e o usuário confirma. Grátis, funciona offline e cobre 90% do caso de uso.
+1. ~~**Importar extratos** (OFX e CSV)~~ — feito: categoria pelo histórico, palavras-chave ou
+   IA, sem duplicar. Próximo passo: importar a fatura em PDF (muitos bancos só dão PDF).
 2. **Consultor com ferramentas**: em vez de só ler o resumo, a IA consulta os lançamentos
    ("quanto gastei com iFood em 2026?") e propõe lançamentos e notas para o usuário aprovar.
 3. **Alertas**: vencimento de dívidas, meta estourada no mês, gasto fora do padrão

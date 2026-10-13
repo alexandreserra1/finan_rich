@@ -7,6 +7,11 @@ números reais. Seus dados ficam num arquivo no seu PC, sem conta e sem nuvem.
 - **Painel do mês**: entradas, saídas, saldo, quanto você guardou, divisão do salário
   (planejado x realizado), gastos por categoria e visão anual.
 - **Lançamentos** por categoria. O botão *Copiar do mês anterior* repete salário e contas fixas.
+- **Importar extrato** do banco (OFX ou CSV: Nubank, Itaú, BB, Bradesco, Inter, Caixa...):
+  sugere a categoria de cada lançamento pelo seu histórico e pela descrição (iFood, Uber,
+  Netflix...), aprende com as suas correções, não duplica o que já foi importado, avisa o
+  que parece já lançado à mão e deixa de fora o pagamento da fatura do cartão. Para o que
+  sobrar sem categoria, a IA pode sugerir (recebe só as descrições).
 - **Dívidas**: quanto tempo e quanto de juros para quitar pagando o mínimo, alerta quando o
   mínimo não cobre os juros e a ordem de pagamento pelos métodos avalanche e bola de neve.
 - **Notas**: metas, combinados e ideias, com busca e notas fixadas. O consultor lê as mais
@@ -190,6 +195,7 @@ internal/domain/    modelos (lançamento, dívida...), validação e Ledger — 
 internal/finance/   regras de negócio puras: resumo do mês, dívidas, reserva, views
 internal/money/     valores em centavos (int64) e formatação "R$ 1.234,56"
 internal/report/    exportação: .xlsx, CSV, PDF e backup .json, em Go puro (roda no aparelho)
+internal/importer/  importação de extratos OFX/CSV: leitura, categoria sugerida e duplicados
 internal/wasmapi/   ponte JSON entre o navegador e as regras
 internal/store/     SQLite: registros sincronizáveis, chat, sessões, configurações
 internal/llm/       interface Provider + Ollama, APIs compatíveis com OpenAI e Anthropic

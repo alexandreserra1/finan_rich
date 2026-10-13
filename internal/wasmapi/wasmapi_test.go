@@ -85,3 +85,23 @@ func TestExport(t *testing.T) {
 		t.Errorf("backup lido de volta: %d registros, erro %q", len(r.OK), r.Error)
 	}
 }
+
+func TestImportPreview(t *testing.T) {
+	csv := base64.StdEncoding.EncodeToString([]byte("Data,Valor,Descrição\n03/10/2026,-45.90,UBER *TRIP\n"))
+	var r struct {
+		OK struct {
+			Items []struct {
+				Kind        string `json:"kind"`
+				AmountCents int64  `json:"amountCents"`
+			} `json:"items"`
+		} `json:"ok"`
+		Error string `json:"error"`
+	}
+	json.Unmarshal([]byte(ImportPreview(ledger, csv, `{}`)), &r)
+	if r.Error != "" || len(r.OK.Items) != 1 || r.OK.Items[0].Kind != "saida" || r.OK.Items[0].AmountCents != 4590 {
+		t.Fatalf("prévia: %+v", r)
+	}
+	if _, errMsg := decode(t, ImportPreview(ledger, base64.StdEncoding.EncodeToString([]byte("nada")), "")); errMsg == "" {
+		t.Error("arquivo inválido deveria dar erro")
+	}
+}

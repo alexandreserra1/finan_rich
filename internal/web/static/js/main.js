@@ -14,10 +14,11 @@ import * as debts from "./pages/debts.js";
 import * as categories from "./pages/categories.js";
 import * as notes from "./pages/notes.js";
 import * as exportPage from "./pages/export.js";
+import * as importPage from "./pages/import.js";
 import * as devicePage from "./pages/device.js";
 import * as advisor from "./pages/advisor.js";
 
-const ROUTES = { "/": dashboard, "/lancamentos": transactions, "/dividas": debts, "/categorias": categories, "/notas": notes, "/exportar": exportPage };
+const ROUTES = { "/": dashboard, "/lancamentos": transactions, "/dividas": debts, "/categorias": categories, "/notas": notes, "/exportar": exportPage, "/importar": importPage };
 if (device.isApp) Object.assign(ROUTES, { "/configuracoes": devicePage, "/chat": advisor });
 
 const root = document.getElementById("app");
@@ -102,6 +103,7 @@ function context(path, params) {
     go(url) { navigate(url); },
     error(err) { flash(err.message.replace(/^registro inválido: /, ""), "err"); },
     flash(message) { flash(message); },
+    rerender() { render(); }, // redesenha sem reler os dados (estado só da tela mudou)
   };
 }
 

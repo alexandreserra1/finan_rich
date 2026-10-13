@@ -51,7 +51,10 @@ export function render({ ledger, month }) {
     <section class="panel">
       <div class="row">
         <h2>Lançamentos de ${finance.monthLabel(month)}</h2>
-        <button class="secondary" type="button" data-action="copy-previous" title="Copia salário e contas fixas do mês anterior">Copiar do mês anterior</button>
+        <div class="row-actions tight">
+          <a class="button secondary-link" href="/importar">Importar extrato</a>
+          <button class="secondary" type="button" data-action="copy-previous" title="Copia salário e contas fixas do mês anterior">Copiar do mês anterior</button>
+        </div>
       </div>
       ${txs.length ? html`
         <div class="table-wrap"><table class="cards-mobile">

@@ -6,11 +6,13 @@
 package wasmapi
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/domain"
 	"github.com/alexandreserra1/finan_rich/internal/finance"
+	"github.com/alexandreserra1/finan_rich/internal/importer"
 	"github.com/alexandreserra1/finan_rich/internal/money"
 	"github.com/alexandreserra1/finan_rich/internal/report"
 )
@@ -89,4 +91,28 @@ func Export(ledgerJSON, optionsJSON string, nowMs int64) string {
 // ReadBackup confere um arquivo de backup e devolve os registros validados.
 func ReadBackup(content string) string {
 	return reply(report.ReadBackup([]byte(content)))
+}
+
+// ImportPreview lê um extrato (OFX ou CSV, em base64) e devolve as linhas
+// prontas para revisar: categoria sugerida, duplicados e o que ignorar.
+func ImportPreview(ledgerJSON, fileBase64, optionsJSON string) string {
+	var l domain.Ledger
+	if err := json.Unmarshal([]byte(ledgerJSON), &l); err != nil {
+		return reply(nil, err)
+	}
+	data, err := base64.StdEncoding.DecodeString(fileBase64)
+	if err != nil {
+		return reply(nil, err)
+	}
+	var o importer.Options
+	if optionsJSON != "" {
+		if err := json.Unmarshal([]byte(optionsJSON), &o); err != nil {
+			return reply(nil, err)
+		}
+	}
+	st, err := importer.Parse(data)
+	if err != nil {
+		return reply(nil, err)
+	}
+	return reply(importer.Build(l, st, o), nil)
 }

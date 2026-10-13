@@ -253,3 +253,30 @@ func TestPullModel(t *testing.T) {
 		t.Errorf("pull = %s", body)
 	}
 }
+
+func TestCategorizeAPI(t *testing.T) {
+	ollama := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/tags":
+			fmt.Fprint(w, `{"models":[{"name":"qwen3:4b"}]}`)
+		case "/api/chat":
+			body, _ := io.ReadAll(r.Body)
+			if !strings.Contains(string(body), "IFOOD") || strings.Contains(string(body), "8750") {
+				t.Errorf("a IA deve receber só as descrições: %s", body)
+			}
+			fmt.Fprintln(w, `{"message":{"content":"{\"1\": \"Restaurantes e delivery\", \"2\": \"?\"}"},"done":true}`)
+		}
+	}))
+	defer ollama.Close()
+	a := newApp(t, ollama.URL)
+	code, res := a.postJSON("/api/categorizar", map[string]any{"items": []map[string]string{
+		{"description": "IFOOD *RESTAURANTE", "kind": "saida"}, {"description": "XPTO 123", "kind": "saida"},
+	}})
+	cats, _ := res["categories"].([]any)
+	if code != http.StatusOK || len(cats) != 2 || cats[0] != "cat-11" || cats[1] != "" {
+		t.Fatalf("categorizar = %d %v", code, res)
+	}
+	if code, _ := a.postJSON("/api/categorizar", map[string]any{"items": []any{}}); code != http.StatusBadRequest {
+		t.Errorf("lista vazia = %d", code)
+	}
+}

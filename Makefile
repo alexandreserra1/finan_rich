@@ -3,7 +3,7 @@
 .PHONY: wasm run test test-wasm e2e build release-snapshot docker mobile apk
 
 WASM := internal/web/static/finance.wasm
-WASM_PKGS := ./internal/domain/ ./internal/finance/ ./internal/money/ ./internal/report/ ./internal/wasmapi/
+WASM_PKGS := ./internal/domain/ ./internal/finance/ ./internal/money/ ./internal/report/ ./internal/importer/ ./internal/wasmapi/
 
 wasm:             ## compila as regras para o navegador
 	go run ./tools/wasmbuild
