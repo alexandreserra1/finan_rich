@@ -63,6 +63,12 @@ func Backup(l domain.Ledger, now time.Time) ([]byte, error) {
 	for _, r := range l.Notes {
 		err = errors.Join(err, add(domain.TypeNote, r, r.Deleted))
 	}
+	for _, r := range l.Goals {
+		err = errors.Join(err, add(domain.TypeGoal, r, r.Deleted))
+	}
+	for _, r := range l.Recurring {
+		err = errors.Join(err, add(domain.TypeRecurring, r, r.Deleted))
+	}
 	if err != nil {
 		return nil, err
 	}

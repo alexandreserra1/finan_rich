@@ -103,6 +103,17 @@ try {
   await page.click("[data-action=import]");
   ok(await page.isVisible(".flash.err:has-text('escolha a categoria')"), "não importa sem categoria");
 
+  // Fatura em PDF: o texto é lido no navegador (pdf.js) e as compras pelo Go.
+  await page.goto(`${B}/importar`);
+  await page.waitForSelector("input[name=statement]", { state: "attached" });
+  await page.setInputFiles("input[name=statement]", `${TESTDATA}/fatura.pdf`);
+  await page.waitForSelector(".import-table", { timeout: 20000 });
+  const pdfRows = await page.locator(".import-table tbody tr").count();
+  ok(pdfRows === 5, `fatura em PDF: ${pdfRows} lançamentos lidos`);
+  ok((await row("Ifood *Ifood").locator("td.num").textContent()).includes("−R$ 52,30") && await page.isChecked("[data-action=invert]"), "compras do PDF entram como gastos");
+  ok(!(await row("Pagamento recebido").locator("input[type=checkbox]").isChecked()), "pagamento da fatura (PDF) vem desmarcado");
+  ok(await row("Amazon Marketplace - Parcela 2/10").locator("select option:checked").textContent() === "Compras · Desejos", "parcela da Amazon sugerida em Compras");
+
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);
 } catch (err) {
   ok(false, err.message);

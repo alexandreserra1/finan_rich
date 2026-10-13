@@ -445,3 +445,25 @@ label.file-button.primary-file:hover { background: var(--accent-strong); }
   .import-table input[data-field="description"] { min-width: 0; }
   .import-table td.primary { width: auto; }
 }
+
+/* Avisos do painel */
+.alerts { display: grid; gap: .6rem; margin-bottom: 1.25rem; }
+.alert { display: flex; flex-direction: column; gap: .15rem; padding: .75rem 1rem; border-radius: var(--radius-sm); text-decoration: none; color: var(--text);
+  border: 1px solid var(--border); border-left: 4px solid var(--c, var(--muted)); background: var(--surface); }
+.alert span { color: var(--text-2); font-size: .9rem; }
+.alert.danger { --c: var(--neg); background: var(--neg-soft); }
+.alert.warn { --c: var(--warn); background: var(--warn-soft); }
+.alert.ok { --c: var(--pos); background: var(--accent-soft); }
+.alert:hover { border-color: var(--c); }
+
+/* Metas e recorrentes */
+.goals { list-style: none; margin: 0; padding: 0; display: grid; gap: .9rem; }
+.goal { --c: var(--accent); display: grid; gap: .35rem; }
+.goal.done { --c: var(--pos); }
+.goal.late { --c: var(--neg); }
+.recurring { list-style: none; margin: 0; padding: 0; }
+.recurring li { display: grid; grid-template-columns: 1fr auto auto; gap: .5rem 1rem; align-items: center; padding: .55rem 0; border-top: 1px solid var(--border); }
+.recurring li.paused { opacity: .6; }
+.recurring .actions { display: flex; gap: .25rem; }
+label.check.repeat { align-self: center; }
+@media (max-width: 720px) { .recurring li { grid-template-columns: 1fr auto; } .recurring .actions { grid-column: 1 / -1; justify-content: flex-end; } }

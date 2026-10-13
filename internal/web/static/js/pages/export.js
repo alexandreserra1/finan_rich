@@ -8,7 +8,7 @@ import { exportData } from "../exporter.js";
 import { html } from "../ui.js";
 import { pageHead } from "./dashboard.js";
 
-const TYPE_LABEL = { category: "categorias", transaction: "lançamentos", debt: "dívidas", pref: "preferências", note: "notas" };
+const TYPE_LABEL = { category: "categorias", transaction: "lançamentos", debt: "dívidas", pref: "preferências", note: "notas", goal: "metas", recurring: "recorrentes" };
 
 export const needsData = false; // o backup também serve para restaurar num aparelho vazio
 
@@ -119,7 +119,7 @@ export function bind(root, ctx) {
 }
 
 function* listAll(ledger) {
-  for (const [type, list] of [["category", ledger.categories], ["transaction", ledger.transactions], ["debt", ledger.debts], ["pref", ledger.prefs], ["note", ledger.notes]]) {
+  for (const [type, list] of [["category", ledger.categories], ["transaction", ledger.transactions], ["debt", ledger.debts], ["pref", ledger.prefs], ["note", ledger.notes], ["goal", ledger.goals], ["recurring", ledger.recurring]]) {
     for (const r of list) yield [type, r];
   }
 }

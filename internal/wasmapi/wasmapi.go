@@ -116,3 +116,68 @@ func ImportPreview(ledgerJSON, fileBase64, optionsJSON string) string {
 	}
 	return reply(importer.Build(l, st, o), nil)
 }
+
+// planInput lê o livro-caixa e a data de hoje do aparelho ("2026-10-15").
+func planInput(ledgerJSON, today string) (domain.Ledger, time.Time, error) {
+	var l domain.Ledger
+	if err := json.Unmarshal([]byte(ledgerJSON), &l); err != nil {
+		return l, time.Time{}, err
+	}
+	day, err := time.Parse(domain.DateLayout, today)
+	return l, day, err
+}
+
+// Goals devolve as metas com o progresso.
+func Goals(ledgerJSON, today string) string {
+	l, day, err := planInput(ledgerJSON, today)
+	if err != nil {
+		return reply(nil, err)
+	}
+	return reply(finance.Goals(l, day), nil)
+}
+
+// RecurringDue devolve os lançamentos que as recorrências devem gerar.
+func RecurringDue(ledgerJSON, today string) string {
+	l, day, err := planInput(ledgerJSON, today)
+	if err != nil {
+		return reply(nil, err)
+	}
+	due := finance.RecurringDue(l, day)
+	if due == nil {
+		due = []domain.Transaction{}
+	}
+	return reply(due, nil)
+}
+
+// Alerts devolve os avisos do painel.
+func Alerts(ledgerJSON, today string) string {
+	l, day, err := planInput(ledgerJSON, today)
+	if err != nil {
+		return reply(nil, err)
+	}
+	return reply(finance.Alerts(l, day), nil)
+}
+
+// ImportPreviewText é a ImportPreview de uma fatura em PDF: o aparelho extrai
+// o texto (pdf.js) e manda as linhas; today ("2026-10-15") ajuda a achar o ano.
+func ImportPreviewText(ledgerJSON, text, optionsJSON, today string) string {
+	var l domain.Ledger
+	if err := json.Unmarshal([]byte(ledgerJSON), &l); err != nil {
+		return reply(nil, err)
+	}
+	var o importer.Options
+	if optionsJSON != "" {
+		if err := json.Unmarshal([]byte(optionsJSON), &o); err != nil {
+			return reply(nil, err)
+		}
+	}
+	day, err := time.Parse(domain.DateLayout, today)
+	if err != nil {
+		day = time.Now()
+	}
+	st, err := importer.ParseText(text, day)
+	if err != nil {
+		return reply(nil, err)
+	}
+	return reply(importer.Build(l, st, o), nil)
+}

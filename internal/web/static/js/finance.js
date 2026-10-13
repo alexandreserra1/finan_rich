@@ -35,5 +35,11 @@ export const monthLabel = (key) => window.finan.monthLabel(key);
 export const exportFile = (ledger, options) => unwrap(window.finan.export(JSON.stringify(ledger), JSON.stringify(options), Date.now()));
 // importPreview lê um extrato (OFX/CSV em base64) e devolve as linhas para revisar.
 export const importPreview = (ledger, base64, options) => unwrap(window.finan.importPreview(JSON.stringify(ledger), base64, JSON.stringify(options || {})));
+// importPreviewText faz o mesmo com o texto de uma fatura em PDF.
+export const importPreviewText = (ledger, text, options, day) => unwrap(window.finan.importPreviewText(JSON.stringify(ledger), text, JSON.stringify(options || {}), day));
 // readBackup confere um backup (.json) e devolve [{ type, record }] já validados.
 export const readBackup = (text) => unwrap(window.finan.readBackup(text));
+// Metas, recorrências e alertas dependem do dia de hoje (do aparelho).
+export const goals = (ledger, day) => unwrap(window.finan.goals(JSON.stringify(ledger), day));
+export const recurringDue = (ledger, day) => unwrap(window.finan.recurringDue(JSON.stringify(ledger), day));
+export const alerts = (ledger, day) => unwrap(window.finan.alerts(JSON.stringify(ledger), day));

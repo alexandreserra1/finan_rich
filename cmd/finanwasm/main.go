@@ -29,7 +29,13 @@ func main() {
 		"export": js.FuncOf(func(_ js.Value, a []js.Value) any {
 			return wasmapi.Export(str(a, 0), str(a, 1), int64(a[2].Float()))
 		}),
-		"readBackup": js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.ReadBackup(str(a, 0)) }),
+		"readBackup":   js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.ReadBackup(str(a, 0)) }),
+		"goals":        js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Goals(str(a, 0), str(a, 1)) }),
+		"recurringDue": js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.RecurringDue(str(a, 0), str(a, 1)) }),
+		"alerts":       js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Alerts(str(a, 0), str(a, 1)) }),
+		"importPreviewText": js.FuncOf(func(_ js.Value, a []js.Value) any {
+			return wasmapi.ImportPreviewText(str(a, 0), str(a, 1), str(a, 2), str(a, 3))
+		}),
 		"importPreview": js.FuncOf(func(_ js.Value, a []js.Value) any {
 			return wasmapi.ImportPreview(str(a, 0), str(a, 1), str(a, 2))
 		}),

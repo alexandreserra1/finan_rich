@@ -13,6 +13,8 @@ type Ledger struct {
 	Debts        []Debt        `json:"debts"`
 	Prefs        []Pref        `json:"prefs"`
 	Notes        []Note        `json:"notes"`
+	Goals        []Goal        `json:"goals"`
+	Recurring    []Recurring   `json:"recurring"`
 }
 
 // CategoryIndex dá acesso às categorias por ID, inclusive apagadas: um
@@ -74,6 +76,35 @@ func (l Ledger) ActiveNotes() []Note {
 		}
 		return out[i].UpdatedAt > out[j].UpdatedAt
 	})
+	return out
+}
+
+// ActiveGoals devolve as metas não apagadas, pelo prazo (sem prazo por último).
+func (l Ledger) ActiveGoals() []Goal {
+	out := make([]Goal, 0, len(l.Goals))
+	for _, g := range l.Goals {
+		if !g.Deleted {
+			out = append(out, g)
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		a, b := out[i].Deadline, out[j].Deadline
+		if (a == "") != (b == "") {
+			return b == ""
+		}
+		return a < b
+	})
+	return out
+}
+
+// ActiveRecurring devolve as recorrências não apagadas.
+func (l Ledger) ActiveRecurring() []Recurring {
+	out := make([]Recurring, 0, len(l.Recurring))
+	for _, r := range l.Recurring {
+		if !r.Deleted {
+			out = append(out, r)
+		}
+	}
 	return out
 }
 

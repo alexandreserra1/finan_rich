@@ -7,7 +7,7 @@ import * as db from "./db.js";
 import * as device from "./device.js";
 import * as finance from "./finance.js";
 import * as sync from "./sync.js";
-import { currentMonth, flash, newId, toString } from "./ui.js";
+import { currentMonth, flash, newId, today, toString } from "./ui.js";
 import * as dashboard from "./pages/dashboard.js";
 import * as transactions from "./pages/transactions.js";
 import * as debts from "./pages/debts.js";
@@ -15,10 +15,11 @@ import * as categories from "./pages/categories.js";
 import * as notes from "./pages/notes.js";
 import * as exportPage from "./pages/export.js";
 import * as importPage from "./pages/import.js";
+import * as goals from "./pages/goals.js";
 import * as devicePage from "./pages/device.js";
 import * as advisor from "./pages/advisor.js";
 
-const ROUTES = { "/": dashboard, "/lancamentos": transactions, "/dividas": debts, "/categorias": categories, "/notas": notes, "/exportar": exportPage, "/importar": importPage };
+const ROUTES = { "/": dashboard, "/lancamentos": transactions, "/dividas": debts, "/categorias": categories, "/notas": notes, "/exportar": exportPage, "/importar": importPage, "/metas": goals };
 if (device.isApp) Object.assign(ROUTES, { "/configuracoes": devicePage, "/chat": advisor });
 
 const root = document.getElementById("app");
@@ -89,6 +90,7 @@ function context(path, params) {
       const normalized = finance.validate(type, record);
       await db.saveLocal(type, normalized);
       upsert(list, normalized);
+      if (type === "recurring") await applyRecurring();
       sync.soon();
       if (rerender) render(message);
     },
@@ -107,7 +109,10 @@ function context(path, params) {
   };
 }
 
-const listOf = (type) => ({ category: ledger.categories, transaction: ledger.transactions, debt: ledger.debts, pref: ledger.prefs, note: ledger.notes })[type];
+const listOf = (type) => ({
+  category: ledger.categories, transaction: ledger.transactions, debt: ledger.debts, pref: ledger.prefs,
+  note: ledger.notes, goal: ledger.goals, recurring: ledger.recurring,
+})[type];
 function upsert(list, record) {
   const i = list.findIndex((r) => r.id === record.id);
   if (i >= 0) list[i] = record; else list.push(record);
@@ -139,6 +144,20 @@ function render(message) {
 
 async function load() {
   [ledger, server] = await Promise.all([db.loadLedger(), device.server()]);
+  await applyRecurring();
+}
+
+// applyRecurring grava os lançamentos recorrentes que já venceram e ainda não
+// existem. O ID é fixo por recorrência e mês: outro aparelho que gerar o mesmo
+// lançamento não duplica.
+async function applyRecurring() {
+  const due = finance.recurringDue(ledger, today());
+  if (!due.length) return;
+  const stamp = Date.now();
+  const items = due.map((t) => ({ type: "transaction", record: finance.validate("transaction", { ...t, updatedAt: stamp }) }));
+  await db.saveManyLocal(items);
+  for (const { record } of items) upsert(ledger.transactions, record);
+  sync.soon();
 }
 
 async function reloadAndRender(message) {

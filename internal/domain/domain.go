@@ -1,5 +1,5 @@
 // Package domain define os dados do finan_rich: categorias, lançamentos,
-// dívidas, preferências e notas. É Go puro (sem banco, sem HTTP), então roda tanto no
+// dívidas, preferências, notas, metas e lançamentos recorrentes. É Go puro (sem banco, sem HTTP), então roda tanto no
 // servidor quanto no navegador (compilado para WebAssembly).
 //
 // Cada registro tem um ID universal (UUID) gerado por quem o cria, e a hora da
@@ -85,6 +85,38 @@ type Note struct {
 	Body   string `json:"body"`
 	Pinned bool   `json:"pinned,omitempty"` // fixada no topo da lista
 }
+
+// Goal é uma meta de dinheiro: juntar TargetCents até Deadline (opcional).
+// O progresso é SavedCents (o que já existia ao criar a meta, atualizável à
+// mão) mais as saídas lançadas em CategoryID (ex.: "Reserva de emergência")
+// a partir de StartDate.
+type Goal struct {
+	Meta
+	Name        string `json:"name"`
+	TargetCents int64  `json:"targetCents"`
+	SavedCents  int64  `json:"savedCents"`
+	Deadline    string `json:"deadline,omitempty"`   // "2026-12" (opcional)
+	CategoryID  string `json:"categoryId,omitempty"` // aportes = saídas nesta categoria
+	StartDate   string `json:"startDate"`            // AAAA-MM-DD: aportes contam a partir daqui
+}
+
+// Recurring é um lançamento que se repete todo mês (salário, aluguel,
+// assinaturas). Cada aparelho gera os lançamentos do mês com o mesmo ID
+// ("rec-<id>-<AAAA-MM>"), então não há duplicados entre aparelhos.
+type Recurring struct {
+	Meta
+	Kind        string `json:"kind"`
+	Description string `json:"description"`
+	AmountCents int64  `json:"amountCents"`
+	CategoryID  string `json:"categoryId"`
+	Day         int    `json:"day"`           // dia do mês (31 vira o último dia em meses curtos)
+	Start       string `json:"start"`         // primeiro mês: "2026-10"
+	End         string `json:"end,omitempty"` // último mês (opcional)
+	Paused      bool   `json:"paused,omitempty"`
+}
+
+// RecurringTxID é o ID do lançamento que a recorrência gera em um mês.
+func RecurringTxID(recurringID string, m Month) string { return "rec-" + recurringID + "-" + m.Key() }
 
 // Limites das notas (em caracteres).
 const (
@@ -210,6 +242,61 @@ func (n Note) Validate() error {
 	}
 	if len([]rune(n.Body)) > NoteBodyMax {
 		return fmt.Errorf("nota muito longa (máximo %d caracteres)", NoteBodyMax)
+	}
+	return nil
+}
+
+func validMonth(s string) bool {
+	_, err := time.Parse("2006-01", s)
+	return err == nil
+}
+
+func (g Goal) Validate() error {
+	if err := g.validate(); err != nil || g.Deleted {
+		return err
+	}
+	if strings.TrimSpace(g.Name) == "" {
+		return errors.New("dê um nome para a meta")
+	}
+	if g.TargetCents <= 0 {
+		return errors.New("informe quanto quer juntar")
+	}
+	if g.SavedCents < 0 {
+		return errors.New("o valor já guardado não pode ser negativo")
+	}
+	if g.Deadline != "" && !validMonth(g.Deadline) {
+		return errors.New("prazo inválido")
+	}
+	if _, err := time.Parse(DateLayout, g.StartDate); err != nil {
+		return errors.New("data de início inválida")
+	}
+	return nil
+}
+
+func (r Recurring) Validate() error {
+	if err := r.validate(); err != nil || r.Deleted {
+		return err
+	}
+	if r.Kind != KindEntrada && r.Kind != KindSaida {
+		return errors.New("tipo inválido")
+	}
+	if strings.TrimSpace(r.Description) == "" {
+		return errors.New("informe uma descrição")
+	}
+	if r.AmountCents <= 0 {
+		return errors.New("informe o valor")
+	}
+	if r.CategoryID == "" {
+		return errors.New("escolha uma categoria")
+	}
+	if r.Day < 1 || r.Day > 31 {
+		return errors.New("dia deve ser de 1 a 31")
+	}
+	if !validMonth(r.Start) || r.End != "" && (!validMonth(r.End) || r.End < r.Start) {
+		return errors.New("meses de início e fim inválidos")
+	}
+	if len(r.ID) > 40 {
+		return errors.New("id da recorrência muito longo")
 	}
 	return nil
 }

@@ -42,6 +42,7 @@ export function render({ ledger, month }) {
         </label>
         <label class="half">Valor (R$) <input name="amount" required inputmode="decimal" placeholder="1.234,56"></label>
         <label class="half">Data <input type="date" name="date" value="${defaultDate}" required></label>
+        <label class="check repeat"><input type="checkbox" name="repeat"> Repetir todo mês</label>
         <button type="submit">Adicionar</button>
       </form>
     </section>
@@ -64,7 +65,7 @@ export function render({ ledger, month }) {
               const c = byId[t.categoryId] || { name: "Sem categoria", bucket: "" };
               return html`<tr>
                 <td data-label="Data">${t.date.slice(8, 10)}/${t.date.slice(5, 7)}</td>
-                <td data-label="Descrição" class="primary">${t.description}</td>
+                <td data-label="Descrição" class="primary">${t.description}${t.id.startsWith("rec-") ? html` <small class="muted" title="Lançamento recorrente">↻</small>` : ""}</td>
                 <td data-label="Categoria"><span class="tag b-${c.bucket}">${c.name}</span></td>
                 <td data-label="Valor" class="num amount ${t.kind === "entrada" ? "pos" : ""}">${t.kind === "entrada" ? "+" : "−"}${m(t.amountCents)}</td>
                 <td class="num actions"><button class="link" type="button" data-delete="${t.id}">apagar</button></td>
@@ -73,7 +74,28 @@ export function render({ ledger, month }) {
           </tbody>
         </table></div>`
         : html`<p class="empty">Nenhum lançamento neste mês. Use o formulário acima ou copie do mês anterior.</p>`}
-    </section>`;
+    </section>
+    ${recurringPanel(ledger, byId, m)}`;
+}
+
+// recurringPanel lista o que se repete todo mês (com pausar e apagar).
+function recurringPanel(ledger, byId, m) {
+  const list = ledger.recurring.filter((r) => !r.deleted).sort((a, b) => a.day - b.day);
+  if (!list.length) return "";
+  return html`<section class="panel" id="recorrentes">
+    <h2>Recorrentes</h2>
+    <p class="small muted">Entram sozinhos todo mês, no dia marcado (em todos os aparelhos). Apagar um lançamento gerado não apaga a recorrência.</p>
+    <ul class="recurring">
+      ${list.map((r) => html`<li class="${r.paused ? "paused" : ""}">
+        <span><strong>${r.description}</strong> <small class="muted">dia ${r.day} · ${(byId[r.categoryId] || {}).name || "Sem categoria"}${r.paused ? " · pausado" : ""}</small></span>
+        <span class="${r.kind === "entrada" ? "pos" : ""}">${r.kind === "entrada" ? "+" : "−"}${m(r.amountCents)}</span>
+        <span class="actions">
+          <button type="button" class="link plain" data-pause="${r.id}">${r.paused ? "retomar" : "pausar"}</button>
+          <button type="button" class="link" data-stop="${r.id}">apagar</button>
+        </span>
+      </li>`)}
+    </ul>
+  </section>`;
 }
 
 // filterCategories mostra só categorias de renda para entradas, e de gasto para saídas.
@@ -98,6 +120,14 @@ export function bind(root, ctx) {
     const f = form.elements;
     try {
       const amountCents = finance.parseMoney(f.amount.value);
+      if (f.repeat.checked) {
+        // A recorrência gera este mês e os próximos (o gerador roda ao salvar).
+        await ctx.save("recurring", {
+          kind: f.kind.value, description: f.description.value.trim(), amountCents,
+          categoryId: f.category_id.value, day: Number(f.date.value.slice(8, 10)), start: f.date.value.slice(0, 7),
+        }, `Recorrente salvo: entra todo dia ${Number(f.date.value.slice(8, 10))}.`);
+        return;
+      }
       await ctx.save("transaction", {
         kind: f.kind.value, description: f.description.value.trim(), amountCents,
         categoryId: f.category_id.value, date: f.date.value,
@@ -107,6 +137,16 @@ export function bind(root, ctx) {
       ctx.error(err);
     }
   });
+
+  root.querySelectorAll("[data-pause]").forEach((btn) => btn.addEventListener("click", async () => {
+    const r = ctx.ledger.recurring.find((x) => x.id === btn.dataset.pause);
+    await ctx.save("recurring", { id: r.id, paused: !r.paused }, r.paused ? "Recorrente retomado." : "Recorrente pausado.");
+  }));
+  root.querySelectorAll("[data-stop]").forEach((btn) => btn.addEventListener("click", async () => {
+    const r = ctx.ledger.recurring.find((x) => x.id === btn.dataset.stop);
+    if (!confirm(`Parar de lançar "${r.description}" todo mês? Os lançamentos que já entraram continuam.`)) return;
+    await ctx.remove("recurring", r, "Recorrente apagado.");
+  }));
 
   root.querySelectorAll("[data-delete]").forEach((btn) => btn.addEventListener("click", async () => {
     if (!confirm("Apagar este lançamento?")) return;

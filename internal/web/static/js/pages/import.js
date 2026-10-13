@@ -6,14 +6,23 @@ import * as db from "../db.js";
 import * as finance from "../finance.js";
 import * as sync from "../sync.js";
 import { endpoint } from "../device.js";
-import { BUCKETS, html } from "../ui.js";
+import { isPDF, pdfText } from "../pdftext.js";
+import { BUCKETS, html, today } from "../ui.js";
 import { pageHead } from "./dashboard.js";
 
 export const needsData = false;
 
 // O extrato em revisão fica aqui (e não na tela): a tela é redesenhada quando
 // chegam dados da sincronização, e a revisão não pode se perder.
-let state = null; // { fileName, base64, invert, preview, aiMessage }
+let state = null; // { fileName, base64 ou text (PDF), preview, aiMessage }
+
+// buildPreview lê o arquivo guardado no estado (OFX/CSV em base64, ou o texto
+// já extraído do PDF) com as opções da tela.
+function buildPreview(ledger, s, options) {
+  return s.text != null
+    ? finance.importPreviewText(ledger, s.text, options, today())
+    : finance.importPreview(ledger, s.base64, options);
+}
 
 const STATUS = {
   novo: "",
@@ -84,13 +93,14 @@ function renderUpload() {
     <section class="panel">
       <h2>Traga os lançamentos do banco</h2>
       <p class="muted">Exporte o extrato da conta ou a fatura do cartão no app ou site do banco e escolha o arquivo aqui. O finan_rich sugere a categoria de cada lançamento, aprende com as suas correções e avisa o que já foi importado. O arquivo é lido neste aparelho e não vai para a internet.</p>
-      <label class="button file-button primary-file">Escolher arquivo OFX ou CSV… <input type="file" name="statement" accept=".ofx,.qfx,.csv,.txt,text/csv,application/x-ofx" class="visually-hidden"></label>
+      <label class="button file-button primary-file">Escolher arquivo (OFX, CSV ou fatura em PDF)… <input type="file" name="statement" accept=".ofx,.qfx,.csv,.txt,.pdf,text/csv,application/x-ofx,application/pdf" class="visually-hidden"></label>
       <details class="banks">
         <summary>Onde encontro o extrato no meu banco?</summary>
         <ul class="small">
           <li><strong>Nubank</strong>: no app, Conta → Extrato → ícone de compartilhar → OFX ou CSV. Fatura do cartão: no site (app.nubank.com.br) → Cartão → Exportar fatura.</li>
           <li><strong>Itaú, Bradesco, Banco do Brasil, Santander, Caixa</strong>: no internet banking, Extrato → Exportar / Salvar como → OFX (Money) ou CSV/Excel.</li>
           <li><strong>Inter, C6, PicPay, Mercado Pago</strong>: no app, Extrato → Exportar → CSV, OFX ou Excel (salve como CSV).</li>
+          <li><strong>Fatura do cartão em PDF</strong> (quando o banco só oferece PDF): escolha o PDF da fatura. As compras são lidas do texto; confira as datas e os valores antes de importar. PDF com senha também funciona (a senha não é guardada).</li>
           <li>Planilha própria: salve como CSV com colunas de <em>data</em>, <em>descrição</em> e <em>valor</em> (gastos negativos ou uma coluna <em>tipo</em>).</li>
         </ul>
       </details>
@@ -104,8 +114,16 @@ export function bind(root, ctx) {
     e.target.value = "";
     if (!file) return;
     try {
-      const base64 = toBase64(new Uint8Array(await file.arrayBuffer()));
-      state = { fileName: file.name, base64, invert: null, preview: finance.importPreview(ctx.ledger, base64, {}), aiMessage: "" };
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const next = { fileName: file.name, aiMessage: "" };
+      if (isPDF(bytes)) {
+        ctx.flash("Lendo o PDF…");
+        next.text = await pdfText(bytes, (msg) => prompt(msg));
+      } else {
+        next.base64 = toBase64(bytes);
+      }
+      next.preview = buildPreview(ctx.ledger, next, {});
+      state = next;
       rerender();
     } catch (err) {
       state = null;
@@ -118,7 +136,7 @@ export function bind(root, ctx) {
   root.querySelector('[data-action="cancel"]').addEventListener("click", () => { state = null; rerender(); });
   root.querySelector('[data-action="invert"]').addEventListener("change", (e) => {
     try {
-      state.preview = finance.importPreview(ctx.ledger, state.base64, { invert: e.target.checked });
+      state.preview = buildPreview(ctx.ledger, state, { invert: e.target.checked });
       rerender();
     } catch (err) {
       ctx.error(err);

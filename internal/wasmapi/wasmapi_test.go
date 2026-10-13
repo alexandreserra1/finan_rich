@@ -105,3 +105,27 @@ func TestImportPreview(t *testing.T) {
 		t.Error("arquivo inválido deveria dar erro")
 	}
 }
+
+func TestPlans(t *testing.T) {
+	withPlans := strings.Replace(ledger, `"prefs": []`, `"prefs": [],
+  "goals": [{"id":"g","updatedAt":1,"name":"Reserva","targetCents":100000,"savedCents":0,"startDate":"2026-01-01"}],
+  "recurring": [{"id":"r","updatedAt":1,"kind":"saida","description":"Aluguel","amountCents":150000,"categoryId":"laz","day":5,"start":"2026-10"}]`, 1)
+	var goals struct{ OK []map[string]any }
+	json.Unmarshal([]byte(Goals(withPlans, "2026-10-10")), &goals)
+	if len(goals.OK) != 1 || goals.OK[0]["name"] != "Reserva" {
+		t.Errorf("metas: %+v", goals)
+	}
+	var due struct{ OK []map[string]any }
+	json.Unmarshal([]byte(RecurringDue(withPlans, "2026-10-10")), &due)
+	if len(due.OK) != 1 || due.OK[0]["id"] != "rec-r-2026-10" {
+		t.Errorf("recorrentes: %+v", due)
+	}
+	var alerts struct{ OK []map[string]any }
+	json.Unmarshal([]byte(Alerts(withPlans, "2026-10-10")), &alerts)
+	if len(alerts.OK) == 0 {
+		t.Errorf("alertas: %+v", alerts)
+	}
+	if _, errMsg := decode(t, Goals(withPlans, "ontem")); errMsg == "" {
+		t.Error("data inválida deveria dar erro")
+	}
+}

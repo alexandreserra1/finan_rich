@@ -1,6 +1,7 @@
 // Painel do mês: totais, divisão do salário, gastos por categoria e visão anual.
 import * as finance from "../finance.js";
-import { BUCKETS, barPct, html, raw, shiftMonth } from "../ui.js";
+import { BUCKETS, barPct, html, raw, shiftMonth, today } from "../ui.js";
+import { goalCards } from "./goals.js";
 
 export function monthNav(month) {
   return html`<div class="monthnav">
@@ -50,8 +51,14 @@ export function render({ ledger, month }) {
   const yearOut = v.year.reduce((s, t) => s + t.outCents, 0);
   const monthAbbr = (key) => finance.monthLabel(key).slice(0, 3);
 
+  const day = today();
+  const alerts = month === day.slice(0, 7) ? finance.alerts(ledger, day) : [];
+  const goalViews = finance.goals(ledger, day).filter((g) => !g.done || g.deadline >= month);
   return html`
     ${pageHead("Painel", month)}
+    ${alerts.length ? html`<section class="alerts" aria-label="Avisos">
+      ${alerts.map((a) => html`<a class="alert ${a.level}" href="${a.link}"><strong>${a.title}</strong><span>${a.text}</span></a>`)}
+    </section>` : ""}
     ${totalsCards(v, true)}
 
     <section class="panel">
@@ -71,6 +78,11 @@ export function render({ ledger, month }) {
           </div>`)}
       </div>
     </section>
+
+    ${goalViews.length ? html`<section class="panel">
+      <div class="row"><h2>Metas</h2><a class="small" href="/metas">Ver todas</a></div>
+      ${goalCards(goalViews.slice(0, 3), m, { compact: true })}
+    </section>` : ""}
 
     <div class="grid-2">
     <section class="panel">
