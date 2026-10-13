@@ -1,0 +1,18 @@
+{{define "content"}}
+<section class="panel login pair">
+  <p class="brand big">finan<span>_rich</span></p>
+  {{if .Code}}
+  <p>Para conectar o <strong>app do finan_rich</strong> a este computador:</p>
+  <p><a class="button" href="{{.AppLink}}">Abrir no app</a></p>
+  <p class="small muted">Se o botão não abrir o app, abra-o e digite em <em>Ajustes</em>:</p>
+  <dl class="pair-data">
+    <dt>Endereço</dt><dd><code>{{.Base}}</code></dd>
+    <dt>Código</dt><dd><code class="pair-code">{{.Code}}</code></dd>
+  </dl>
+  {{else}}
+  <p class="notice warn">Este link está sem o código de pareamento. Gere um novo no computador, em Ajustes → App do celular.</p>
+  {{end}}
+  <hr>
+  <p class="small muted">Ainda não tem o app? No Android, baixe o arquivo <code>.apk</code> em <a href="{{.Download}}" target="_blank" rel="noopener">finan_rich no GitHub</a>. Prefere não instalar nada? <a href="/">Use pelo navegador</a>.</p>
+</section>
+{{end}}

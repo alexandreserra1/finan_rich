@@ -81,7 +81,9 @@ window.Finan = (function () {
 
   // PWA: o service worker só funciona em https ou no próprio computador
   // (localhost); pelo Wi-Fi em http o navegador ignora, e o app segue normal.
-  if ("serviceWorker" in navigator && window.isSecureContext && location.pathname !== "/entrar") {
+  // No app do celular as telas já vêm dentro do app: não precisa.
+  const inApp = document.documentElement.dataset.app === "mobile";
+  if ("serviceWorker" in navigator && window.isSecureContext && !inApp && location.pathname !== "/entrar") {
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   }
 

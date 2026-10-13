@@ -181,3 +181,12 @@ summary { cursor: pointer; color: var(--accent); margin-bottom: .5rem; }
 .sync-pill[data-status="login"], .sync-pill[data-status="error"] { color: var(--neg); cursor: pointer; }
 .loading { text-align: center; padding: 3rem 0; }
 @media (max-width: 720px) { .sync-pill { font-size: .7rem; } }
+
+/* Pareamento do app do celular. */
+a.button { display: inline-block; padding: .6rem 1.2rem; border-radius: 8px; background: var(--accent); color: var(--accent-text); text-decoration: none; font-weight: 600; }
+.pair-code { font-size: 1.3rem; letter-spacing: .12em; font-weight: 700; }
+.pair-data { display: grid; grid-template-columns: auto 1fr; gap: .3rem .8rem; align-items: baseline; }
+.pair-data dd { margin: 0; overflow-wrap: anywhere; }
+.devices { list-style: none; padding: 0; margin: 0; }
+.devices li { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .5rem 0; border-top: 1px solid var(--border); }
+.devices form { margin: 0; }

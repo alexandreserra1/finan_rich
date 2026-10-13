@@ -2,7 +2,9 @@
 // - em todas: sincronização em segundo plano e indicador de status;
 // - nas telas de dados (Painel, Lançamentos, Dívidas, Categorias): monta a tela
 //   com os dados guardados no aparelho, que funcionam sem conexão.
+// No app do celular (Capacitor), Ajustes e Consultor também são telas daqui.
 import * as db from "./db.js";
+import * as device from "./device.js";
 import * as finance from "./finance.js";
 import * as sync from "./sync.js";
 import { currentMonth, flash, newId, toString } from "./ui.js";
@@ -10,12 +12,15 @@ import * as dashboard from "./pages/dashboard.js";
 import * as transactions from "./pages/transactions.js";
 import * as debts from "./pages/debts.js";
 import * as categories from "./pages/categories.js";
+import * as devicePage from "./pages/device.js";
+import * as advisor from "./pages/advisor.js";
 
 const ROUTES = { "/": dashboard, "/lancamentos": transactions, "/dividas": debts, "/categorias": categories };
-const NAV_PAGE = { "/": "dashboard", "/lancamentos": "transactions", "/dividas": "debts", "/categorias": "categories" };
+if (device.isApp) Object.assign(ROUTES, { "/configuracoes": devicePage, "/chat": advisor });
 
 const root = document.getElementById("app");
 let ledger = null;
+let server = null; // computador pareado (só no app do celular)
 let booted = false; // as regras (WebAssembly) já carregaram e a primeira tela foi desenhada
 let changedDuringBoot = false; // chegaram dados novos enquanto o app iniciava
 let dirty = false; // há um formulário sendo preenchido: não redesenhar por baixo
@@ -28,7 +33,8 @@ const LABELS = {
   ok: () => "Sincronizado",
   syncing: () => "Sincronizando…",
   offline: (s) => s.pending ? `Offline · ${s.pending} pendente(s)` : "Offline",
-  login: () => "Entre de novo para sincronizar",
+  login: () => device.isApp ? "Pareie de novo" : "Entre de novo para sincronizar",
+  unpaired: () => "Conectar ao computador",
   error: () => "Erro ao sincronizar",
 };
 function showStatus(s) {
@@ -39,7 +45,9 @@ function showStatus(s) {
   pill.title = s.status === "offline"
     ? "Sem conexão com o computador. Tudo que você fizer fica salvo neste aparelho e é enviado quando a conexão voltar."
     : s.message || (s.lastSync ? `Última sincronização: ${s.lastSync.toLocaleTimeString("pt-BR")}` : "");
-  if (s.status === "login") pill.onclick = () => { location.href = "/entrar?volta=" + encodeURIComponent(location.pathname); };
+  pill.onclick = null;
+  if (device.isApp && (s.status === "login" || s.status === "unpaired")) pill.onclick = () => navigate("/configuracoes");
+  else if (s.status === "login") pill.onclick = () => { location.href = "/entrar?volta=" + encodeURIComponent(location.pathname); };
 }
 window.addEventListener("finan-sync", (e) => {
   showStatus(e.detail);
@@ -65,6 +73,7 @@ sync.start();
 function context(path, params) {
   return {
     ledger,
+    server,
     params,
     month: /^\d{4}-\d{2}$/.test(params.get("mes") || "") ? params.get("mes") : currentMonth(),
     // save valida (mesma regra do servidor), grava no aparelho e agenda o envio.
@@ -103,10 +112,12 @@ function render(message) {
   const path = location.pathname;
   const page = ROUTES[path];
   if (!page || !ledger) return;
-  if (!ledger.categories.length) {
-    root.innerHTML = sync.state.status === "offline"
-      ? `<p class="notice warn">Este aparelho ainda não tem seus dados. Conecte-se ao computador onde o finan_rich está aberto uma vez para baixá-los; depois ele funciona sem conexão.</p>`
-      : `<p class="muted loading">Baixando seus dados…</p>`;
+  if (!ledger.categories.length && page.needsData !== false) {
+    root.innerHTML = device.isApp && !server
+      ? `<p class="notice warn">Este celular ainda não está conectado ao computador. <a href="/configuracoes">Conectar agora</a></p>`
+      : sync.state.status === "offline"
+        ? `<p class="notice warn">Este aparelho ainda não tem seus dados. Conecte-se ao computador onde o finan_rich está aberto uma vez para baixá-los; depois ele funciona sem conexão.</p>`
+        : `<p class="muted loading">Baixando seus dados…</p>`;
     return;
   }
   const ctx = context(path, new URLSearchParams(location.search));
@@ -115,14 +126,18 @@ function render(message) {
   dirty = false;
   rerenderPending = false;
   document.querySelectorAll("nav.tabs a").forEach((a) => {
-    if (NAV_PAGE[new URL(a.href).pathname] === NAV_PAGE[path]) a.setAttribute("aria-current", "page");
+    if (new URL(a.href).pathname === path) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
   });
   if (message) flash(message);
 }
 
+async function load() {
+  [ledger, server] = await Promise.all([db.loadLedger(), device.server()]);
+}
+
 async function reloadAndRender(message) {
-  ledger = await db.loadLedger();
+  await load();
   if (dirty && !message) {
     rerenderPending = true; // redesenha quando o usuário terminar de preencher
     return;
@@ -159,9 +174,8 @@ if (root) {
   // Primeiro as regras; só depois lê os dados, para pegar também o que uma
   // sincronização que terminou durante a carga já gravou no aparelho.
   finance.load()
-    .then(() => db.loadLedger())
-    .then((l) => {
-      ledger = l;
+    .then(load)
+    .then(() => {
       booted = true;
       render();
       if (changedDuringBoot) reloadAndRender();
@@ -169,4 +183,18 @@ if (root) {
     .catch((err) => {
       root.innerHTML = `<p class="notice warn">Não foi possível iniciar o app: ${String(err.message || err).replace(/</g, "&lt;")}</p>`;
     });
+}
+
+// App do celular: links finanrich://parear?url=...&codigo=... (QR code do
+// computador) abrem a tela de Ajustes já preenchida, para a pessoa confirmar.
+const capApp = window.Capacitor?.Plugins?.App;
+if (device.isApp && capApp) {
+  const openLink = (link) => {
+    const p = link && device.pairingLink(link);
+    if (p) navigate("/configuracoes?" + new URLSearchParams({ url: p.url, codigo: p.code }));
+  };
+  capApp.addListener("appUrlOpen", (e) => openLink(e.url));
+  capApp.getLaunchUrl().then((r) => openLink(r?.url)).catch(() => {});
+  // Voltar do Android: volta uma tela; na primeira, fecha o app.
+  capApp.addListener("backButton", ({ canGoBack }) => (canGoBack ? history.back() : capApp.exitApp()));
 }

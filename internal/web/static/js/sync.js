@@ -6,13 +6,14 @@
 // conexão, nada se perde: a fila fica guardada até dar certo.
 
 import { applyRemote, clearSent, getMeta, pending, setMeta } from "./db.js";
+import { endpoint } from "./device.js";
 
 const PERIOD_MS = 30_000;
 let running = null;
 let again = false;
 let timer = null;
 
-// status: "ok" | "syncing" | "offline" | "login" | "error"
+// status: "ok" | "syncing" | "offline" | "login" | "unpaired" | "error"
 export const state = { status: "syncing", pending: 0, lastSync: null, message: "" };
 
 function emit(dataChanged = false) {
@@ -25,11 +26,13 @@ async function round() {
   let cursor = await getMeta("cursor", 0);
   let changed = false;
   let toSend = out;
+  const api = await endpoint("/api/sync");
+  if (!api) throw Object.assign(new Error("unpaired"), { kind: "unpaired" });
   for (;;) {
-    const res = await fetch("/api/sync", {
+    const res = await fetch(api.url, {
+      ...api.init,
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "same-origin",
+      headers: { ...api.init.headers, "Content-Type": "application/json" },
       body: JSON.stringify({ cursor, changes: toSend.map(({ type, record }) => ({ type, record })) }),
     });
     if (res.status === 401) throw Object.assign(new Error("login"), { kind: "login" });
@@ -68,7 +71,7 @@ export async function sync() {
       } while (again);
     } catch (err) {
       state.pending = (await pending()).length;
-      if (err.kind === "login") state.status = "login";
+      if (err.kind === "login" || err.kind === "unpaired") state.status = err.kind;
       else if (err.kind === "error") { state.status = "error"; state.message = err.message; }
       else state.status = "offline"; // fetch falhou: sem conexão com o computador
       emit();

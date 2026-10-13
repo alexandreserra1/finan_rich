@@ -80,6 +80,43 @@
   {{end}}
 </section>
 
+<section class="panel" id="app">
+  <h2>App do celular</h2>
+  <p class="muted">Com o app do finan_rich instalado (Android), o celular guarda seus dados, abre sem internet e sincroniza com este computador quando estiver no mesmo Wi-Fi. Baixe o <code>.apk</code> em <a href="{{.App.Download}}" target="_blank" rel="noopener">finan_rich no GitHub</a>.</p>
+  {{if not .App.Base}}
+    <p class="notice warn">Primeiro ligue o <a href="#acesso">acesso pelo celular</a> acima: é por esse endereço que o app conversa com este computador.</p>
+  {{else if .App.Code}}
+    <div class="lan">
+      <img src="{{.App.QR}}" alt="QR code para parear o app" width="174" height="174">
+      <div>
+        <p>Aponte a câmera do celular para o QR code e toque em <strong>Abrir no app</strong>. Ou, no app, vá em <em>Ajustes</em> e digite:</p>
+        <p class="lan-url">Endereço: <code>{{.App.Base}}</code></p>
+        <p class="lan-url">Código: <code class="pair-code">{{.App.Code}}</code></p>
+        <p class="small muted">O código vale até {{.App.Expires}} e serve para um aparelho só.</p>
+      </div>
+    </div>
+    <form method="post" action="/configuracoes/parear" class="row-actions">
+      <button type="submit" class="secondary">Gerar outro código</button>
+      <button type="submit" class="secondary" name="acao" value="cancelar">Cancelar</button>
+    </form>
+  {{else}}
+    <form method="post" action="/configuracoes/parear" class="row-actions">
+      <button type="submit">Parear um celular</button>
+    </form>
+  {{end}}
+  {{with .App.Devices}}
+    <h3>Aparelhos pareados</h3>
+    <ul class="devices">
+      {{range .}}
+      <li>
+        <span><strong>{{.Name}}</strong><br><small class="muted">pareado em {{.CreatedAt.Local.Format "02/01/2006"}}{{if not .LastSeen.IsZero}} · última sincronização {{.LastSeen.Local.Format "02/01 15:04"}}{{end}}</small></span>
+        <form method="post" action="/configuracoes/aparelhos/remover"><input type="hidden" name="id" value="{{.ID}}"><button type="submit" class="secondary small-btn">Desconectar</button></form>
+      </li>
+      {{end}}
+    </ul>
+  {{end}}
+</section>
+
 <section class="panel" id="offline-celular">
   <h2>Usar no celular sem conexão e fora de casa</h2>
   <p class="muted">Pelo Wi-Fi o celular já guarda seus dados e continua funcionando se a conexão cair com o app aberto. Para <strong>abrir o app sem conexão</strong> e <strong>sincronizar de qualquer lugar</strong>, o celular precisa de um endereço seguro (https). O jeito grátis e simples é o <strong>Tailscale</strong>: só os seus aparelhos acessam, nada fica exposto na internet.</p>

@@ -1,0 +1,13 @@
+{
+  "appId": "io.github.alexandreserra1.finanrich",
+  "appName": "finan_rich",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

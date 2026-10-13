@@ -1,0 +1,6 @@
+# O Docker só precisa do código Go; isto deixa o contexto de build pequeno.
+.git
+dist
+e2e/node_modules
+mobile
+*.db

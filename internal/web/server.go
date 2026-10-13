@@ -37,6 +37,7 @@ type Server struct {
 	limiter         *auth.Limiter
 	onNetworkChange func()
 	assetsVersion   string // impressão digital de static/ e templates/
+	pairing         pairing
 }
 
 // Options configura o servidor.
@@ -122,6 +123,12 @@ func (s *Server) Routes() http.Handler {
 	}
 	mux.HandleFunc("POST /api/sync", s.apiSync)
 
+	// App do celular: pareamento por código (veja pairing.go).
+	mux.HandleFunc("GET /parear", s.pairPage)
+	mux.HandleFunc("POST /api/parear", s.apiPair)
+	mux.HandleFunc("POST /configuracoes/parear", s.startPairing)
+	mux.HandleFunc("POST /configuracoes/aparelhos/remover", s.removeDevice)
+
 	mux.HandleFunc("GET /chat", s.chat)
 	mux.HandleFunc("POST /chat/enviar", s.chatSend)
 	mux.HandleFunc("POST /chat/limpar", s.chatClear)
@@ -131,7 +138,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /configuracoes/testar", s.testAI)
 	mux.HandleFunc("POST /configuracoes/baixar-modelo", s.pullModel)
 	mux.HandleFunc("POST /configuracoes/acesso", s.saveAccess)
-	return logRequests(securityHeaders(sameOrigin(s.requireAuth(mux))))
+	return logRequests(securityHeaders(apiCORS(sameOrigin(s.requireAuth(mux)))))
 }
 
 // render executa a página; dados comuns (página ativa, avisos) vão no mapa.
@@ -161,7 +168,10 @@ func serverError(w http.ResponseWriter, err error) {
 // aberta no navegador poderia enviar formulários para o app.
 func sameOrigin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet && r.Method != http.MethodHead && !isSameOrigin(r) {
+		// O app do celular se identifica pelo token (ou pelo código de pareamento),
+		// que o navegador nunca envia sozinho: aí não há risco de CSRF.
+		_, hasToken := bearerToken(r)
+		if r.Method != http.MethodGet && r.Method != http.MethodHead && !hasToken && r.URL.Path != "/api/parear" && !isSameOrigin(r) {
 			http.Error(w, "requisição de outra origem bloqueada", http.StatusForbidden)
 			return
 		}

@@ -30,6 +30,18 @@ func (s *Server) settings(w http.ResponseWriter, r *http.Request) {
 		data["LANURLs"] = urls
 		data["LANQR"] = qrDataURI(urls[0])
 	}
+	// Endereço que o app do celular usa: o do Wi-Fi (se o acesso estiver
+	// ligado) ou o do Tailscale.
+	base, _ := data["TailscaleURL"].(string)
+	if urls, _ := data["LANURLs"].([]string); len(urls) > 0 && data["LAN"] == true {
+		base = urls[0]
+	}
+	app, err := s.pairingView(ctx, base)
+	if err != nil {
+		serverError(w, err)
+		return
+	}
+	data["App"] = app
 	s.render(w, r, "settings", data)
 }
 

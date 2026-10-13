@@ -42,3 +42,52 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # App Android: compila e anexa o .apk à mesma release.
+  android:
+    needs: release
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.version || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.version || github.ref }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: go generate ./internal/web
+      - run: go run ./tools/mobilebuild mobile/www
+      - name: Compila o APK
+        working-directory: mobile
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          FINAN_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          FINAN_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          FINAN_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          npm ci --no-audit --no-fund
+          npx cap sync android
+          export FINAN_VERSION="${TAG#v}"
+          cd android
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            # Assinado com a chave do projeto: atualiza por cima da versão anterior.
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/finan.jks"
+            FINAN_KEYSTORE_FILE="$RUNNER_TEMP/finan.jks" ./gradlew assembleRelease --no-daemon
+            cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/finan_rich_${FINAN_VERSION}_android.apk"
+          else
+            # Sem a chave (secrets não configurados): APK de teste.
+            ./gradlew assembleDebug --no-daemon
+            cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/finan_rich_${FINAN_VERSION}_android-teste.apk"
+          fi
+      - name: Anexa à release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$TAG" "$RUNNER_TEMP"/finan_rich_*.apk --clobber

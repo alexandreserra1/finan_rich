@@ -243,3 +243,29 @@ func TestSessions(t *testing.T) {
 		t.Error("sessão apagada continua válida")
 	}
 }
+
+func TestDevices(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	id, err := s.CreateDevice(ctx, "Celular", "hash1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok, _ := s.DeviceByToken(ctx, "outro", time.Now()); ok {
+		t.Fatal("token desconhecido aceito")
+	}
+	d, ok, err := s.DeviceByToken(ctx, "hash1", time.Now())
+	if err != nil || !ok || d.ID != id || d.Name != "Celular" {
+		t.Fatalf("DeviceByToken = %+v %v %v", d, ok, err)
+	}
+	list, err := s.Devices(ctx)
+	if err != nil || len(list) != 1 || list[0].LastSeen.IsZero() || list[0].CreatedAt.IsZero() {
+		t.Fatalf("Devices = %+v %v", list, err)
+	}
+	if err := s.DeleteDevice(ctx, id); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok, _ := s.DeviceByToken(ctx, "hash1", time.Now()); ok {
+		t.Fatal("aparelho removido continua aceito")
+	}
+}

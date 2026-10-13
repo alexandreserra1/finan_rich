@@ -20,6 +20,7 @@ type accessApp struct {
 	t       *testing.T
 	h       http.Handler
 	st      *store.Store
+	srv     *Server
 	changes atomic.Int32
 }
 
@@ -38,6 +39,7 @@ func newAccessApp(t *testing.T, envPassword string) *accessApp {
 	if err != nil {
 		t.Fatal(err)
 	}
+	a.srv = s
 	a.h = s.Routes()
 	return a
 }

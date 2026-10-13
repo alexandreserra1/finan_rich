@@ -25,7 +25,7 @@ const (
 // publicPaths não exigem login (tela de login, arquivos estáticos e do PWA).
 func isPublicPath(path string) bool {
 	switch path {
-	case "/entrar", "/healthz", "/manifest.webmanifest", "/sw.js", "/offline":
+	case "/entrar", "/healthz", "/manifest.webmanifest", "/sw.js", "/offline", "/parear", "/api/parear":
 		return true
 	}
 	return strings.HasPrefix(path, "/static/")
@@ -66,7 +66,21 @@ func (s *Server) LANEnabled(ctx context.Context) bool {
 // (modo servidor, onde um proxy reverso faria tudo parecer local).
 func (s *Server) requireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if isPublicPath(r.URL.Path) || (s.envPasswordHash == "" && isLoopback(r)) {
+		if isPublicPath(r.URL.Path) {
+			next.ServeHTTP(w, r)
+			return
+		}
+		// App pareado: vale só o token, mesmo vindo deste computador (assim uma
+		// página de outro site não usa o acesso local para ler os dados).
+		if token, ok := bearerToken(r); ok {
+			if !s.validDevice(r.Context(), token) {
+				writeJSONError(w, http.StatusUnauthorized, "aparelho não pareado; pareie de novo em Ajustes → App do celular")
+				return
+			}
+			next.ServeHTTP(w, r)
+			return
+		}
+		if s.envPasswordHash == "" && isLoopback(r) {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -197,16 +211,19 @@ func (s *Server) saveAccess(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		values[keyPasswordHash] = hash
-		msg = "Senha atualizada. Os aparelhos conectados precisam entrar de novo."
+		msg = "Senha atualizada. Os aparelhos conectados precisam entrar (ou parear o app) de novo."
 		if action == "ligar" {
 			values[keyLAN] = "1"
 			msg = "Acesso pelo celular ligado. Abra o endereço abaixo no celular, no mesmo Wi-Fi."
 		}
 		s.store.DeleteAllSessions(ctx)
+		s.store.DeleteAllDevices(ctx)
 	case "desligar":
 		values[keyLAN] = "0"
 		msg = "Acesso pelo celular desligado: o app voltou a aceitar só este computador."
 		s.store.DeleteAllSessions(ctx)
+		s.store.DeleteAllDevices(ctx)
+		s.pairing.cancel()
 	default:
 		redirect(w, r, "/configuracoes", "", errors.New("ação inválida"))
 		return

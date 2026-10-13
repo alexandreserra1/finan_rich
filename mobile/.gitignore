@@ -1,0 +1,3 @@
+node_modules/
+# Gerado por "npm run www" a partir de internal/web (go run ./tools/mobilebuild).
+www/

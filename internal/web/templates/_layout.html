@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR"{{if .Mobile}} data-app="mobile"{{end}}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -11,18 +11,18 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="finan_rich">
-<link rel="manifest" href="/manifest.webmanifest">
+{{if not .Mobile}}<link rel="manifest" href="/manifest.webmanifest">{{end}}
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
 <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
-{{if ne .Page "login"}}
+{{if not (or (eq .Page "login") (eq .Page "pair"))}}
 <header class="top">
   <a class="brand" href="/">finan<span>_rich</span></a>
   <div class="top-actions">
     <span id="sync-status" class="sync-pill" role="status" hidden></span>
-    <button type="button" class="secondary small-btn" data-install hidden>Instalar app</button>
+    {{if not .Mobile}}<button type="button" class="secondary small-btn" data-install hidden>Instalar app</button>{{end}}
     {{if .Remote}}<form method="post" action="/sair"><button type="submit" class="secondary small-btn">Sair</button></form>{{end}}
   </div>
 </header>
