@@ -1,6 +1,7 @@
 // Dívidas: cadastro, simulação pagando o mínimo e ordem de pagamento.
 import * as finance from "../finance.js";
 import { centsInput, html, ratePct } from "../ui.js";
+import { pageHead } from "./dashboard.js";
 
 export function render({ ledger, params }) {
   const v = finance.debts(ledger);
@@ -9,6 +10,7 @@ export function render({ ledger, params }) {
   const e = editing || {};
 
   return html`
+    ${pageHead("Dívidas")}
     <section class="cards">
       <div class="card"><span class="muted">Total devido</span><strong class="neg">${m(v.totalCents)}</strong></div>
       <div class="card"><span class="muted">Parcelas mínimas / mês</span><strong>${m(v.totalMinCents)}</strong></div>
@@ -20,19 +22,21 @@ export function render({ ledger, params }) {
       <form data-form="debt" class="grid-form">
         <label>Nome <input name="name" required value="${e.name || ""}" placeholder="Ex.: Cartão Nubank"></label>
         <label>Credor <input name="creditor" value="${e.creditor || ""}" placeholder="Banco/loja"></label>
-        <label>Saldo devedor (R$) <input name="balance" required inputmode="decimal" value="${editing ? centsInput(e.balanceCents) : ""}"></label>
-        <label>Juros ao mês (%) <input name="rate" inputmode="decimal" value="${editing ? centsInput(e.monthlyRateBp) : ""}" placeholder="Ex.: 12,5"></label>
-        <label>Parcela / pagamento mínimo (R$) <input name="min_payment" inputmode="decimal" value="${editing ? centsInput(e.minPaymentCents) : ""}"></label>
-        <label>Dia do vencimento <input type="number" name="due_day" min="1" max="31" value="${e.dueDay || ""}"></label>
-        <button type="submit">Salvar</button>
-        ${editing ? html`<a href="/dividas">cancelar</a>` : ""}
+        <label class="half">Saldo devedor (R$) <input name="balance" required inputmode="decimal" value="${editing ? centsInput(e.balanceCents) : ""}"></label>
+        <label class="half">Juros ao mês (%) <input name="rate" inputmode="decimal" value="${editing ? centsInput(e.monthlyRateBp) : ""}" placeholder="Ex.: 12,5"></label>
+        <label class="half">Parcela mínima (R$) <input name="min_payment" inputmode="decimal" value="${editing ? centsInput(e.minPaymentCents) : ""}"></label>
+        <label class="half">Dia do vencimento <input type="number" name="due_day" min="1" max="31" value="${e.dueDay || ""}"></label>
+        <div class="form-actions">
+          <button type="submit">Salvar</button>
+          ${editing ? html`<a href="/dividas">Cancelar</a>` : ""}
+        </div>
       </form>
     </section>
 
     <section class="panel">
       <h2>Suas dívidas</h2>
       ${v.debts.length ? html`
-        <table class="cards-mobile">
+        <div class="table-wrap"><table class="cards-mobile">
           <thead><tr><th>Dívida</th><th class="num">Saldo</th><th class="num">Juros a.m.</th><th class="num">Mínimo</th><th>Só pagando o mínimo</th><th></th></tr></thead>
           <tbody>
             ${v.debts.map((d) => html`<tr>
@@ -49,8 +53,8 @@ export function render({ ledger, params }) {
               </td>
             </tr>`)}
           </tbody>
-        </table>`
-        : html`<p class="muted">Nenhuma dívida cadastrada. 🎉</p>`}
+        </table></div>`
+        : html`<p class="empty">Nenhuma dívida cadastrada. Ótimo sinal!</p>`}
     </section>
 
     ${v.debts.length > 1 ? html`
@@ -66,7 +70,7 @@ export function render({ ledger, params }) {
           <ol>${v.snowball.map((n) => html`<li>${n}</li>`)}</ol>
         </div>
       </section>` : ""}
-    <p><a href="/chat">Conversar com o consultor IA sobre um plano para sair das dívidas →</a></p>`;
+    <p class="small"><a href="/chat">Conversar com o consultor IA sobre um plano para sair das dívidas →</a></p>`;
 }
 
 export function bind(root, ctx) {

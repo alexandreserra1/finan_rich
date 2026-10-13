@@ -1,13 +1,13 @@
 {{define "content"}}
+<div class="page-head">
+  <h1>Consultor IA</h1>
+  {{if .History}}
+  <form method="post" action="/chat/limpar" onsubmit="return confirm('Apagar toda a conversa?')">
+    <button class="secondary small-btn" type="submit">Nova conversa</button>
+  </form>
+  {{end}}
+</div>
 <section class="panel chat">
-  <div class="row">
-    <h2>Consultor financeiro IA</h2>
-    {{if .History}}
-    <form method="post" action="/chat/limpar" onsubmit="return confirm('Apagar toda a conversa?')">
-      <button class="secondary" type="submit">Nova conversa</button>
-    </form>
-    {{end}}
-  </div>
   {{template "aistatus" .}}
   <p class="small muted">Usando <strong>{{.AI.Preset.Name}}</strong> · <code>{{.AI.Model}}</code> (<a href="/configuracoes">trocar</a>). O consultor vê seus números atuais (mês, divisão do salário, dívidas) a cada pergunta.</p>
   <div id="messages" class="messages">

@@ -1,7 +1,7 @@
 // Lançamentos do mês: formulário, lista e "copiar do mês anterior".
 import * as finance from "../finance.js";
 import { BUCKETS, html, shiftMonth, today } from "../ui.js";
-import { monthNav, totalsCards } from "./dashboard.js";
+import { pageHead, totalsCards } from "./dashboard.js";
 
 const ORDER = { renda: 0, necessidades: 1, desejos: 2, investimentos: 3 };
 
@@ -24,7 +24,7 @@ export function render({ ledger, month }) {
   const m = finance.money;
 
   return html`
-    ${monthNav(month)}
+    ${pageHead("Lançamentos", month)}
     <section class="panel">
       <h2>Novo lançamento</h2>
       <form data-form="transaction" class="grid-form">
@@ -34,14 +34,14 @@ export function render({ ledger, month }) {
             <option value="entrada">Entrada (salário, renda)</option>
           </select>
         </label>
-        <label>Descrição <input name="description" required placeholder="Ex.: Aluguel"></label>
-        <label>Valor (R$) <input name="amount" required inputmode="decimal" placeholder="1.234,56"></label>
+        <label class="wide">Descrição <input name="description" required placeholder="Ex.: Aluguel"></label>
         <label>Categoria
           <select name="category_id" required>
             ${cats.map((c) => html`<option value="${c.id}" data-bucket="${c.bucket}">${c.name} · ${BUCKETS[c.bucket]}</option>`)}
           </select>
         </label>
-        <label>Data <input type="date" name="date" value="${defaultDate}" required></label>
+        <label class="half">Valor (R$) <input name="amount" required inputmode="decimal" placeholder="1.234,56"></label>
+        <label class="half">Data <input type="date" name="date" value="${defaultDate}" required></label>
         <button type="submit">Adicionar</button>
       </form>
     </section>
@@ -54,7 +54,7 @@ export function render({ ledger, month }) {
         <button class="secondary" type="button" data-action="copy-previous" title="Copia salário e contas fixas do mês anterior">Copiar do mês anterior</button>
       </div>
       ${txs.length ? html`
-        <table class="cards-mobile">
+        <div class="table-wrap"><table class="cards-mobile">
           <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th class="num">Valor</th><th></th></tr></thead>
           <tbody>
             ${txs.map((t) => {
@@ -68,8 +68,8 @@ export function render({ ledger, month }) {
               </tr>`;
             })}
           </tbody>
-        </table>`
-        : html`<p class="muted">Nenhum lançamento neste mês.</p>`}
+        </table></div>`
+        : html`<p class="empty">Nenhum lançamento neste mês. Use o formulário acima ou copie do mês anterior.</p>`}
     </section>`;
 }
 

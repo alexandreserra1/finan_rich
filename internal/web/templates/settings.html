@@ -1,11 +1,12 @@
 {{define "content"}}
+<div class="page-head"><h1>Ajustes</h1></div>
 <a class="panel link-card" href="/categorias"><span>{{template "icon" "tag"}} <strong>Categorias e divisão do salário</strong></span><span aria-hidden="true">›</span></a>
 
 <section class="panel" id="ia">
   <h2>Assistente de IA</h2>
   <p class="muted">Escolha qual inteligência artificial o consultor usa. A recomendada é o <strong>Ollama</strong>: é grátis, não precisa de chave e seus dados financeiros não saem do computador.</p>
   {{template "aistatus" .}}
-  {{if .Status.Ready}}<p class="notice ok">✅ Pronto para usar: <strong>{{.AI.Preset.Name}}</strong> com o modelo <code>{{.AI.Model}}</code>.</p>{{end}}
+  {{if .Status.Ready}}<p class="notice ok">Pronto para usar: <strong>{{.AI.Preset.Name}}</strong> com o modelo <code>{{.AI.Model}}</code>.</p>{{end}}
 
   <form method="post" action="/configuracoes" id="ai-form">
     <fieldset class="presets">
@@ -45,7 +46,7 @@
   {{if .EnvPassword}}
     <p class="muted">O acesso pela rede está protegido pela senha definida em <code>FINAN_PASSWORD</code> (modo servidor).</p>
   {{else if .LAN}}
-    <p class="notice ok">✅ Ligado. No celular, conectado ao <strong>mesmo Wi-Fi</strong> deste computador, abra:</p>
+    <p class="notice ok"><strong>Ligado.</strong> No celular, conectado ao <strong>mesmo Wi-Fi</strong> deste computador, abra:</p>
     {{if .LANURLs}}
     <div class="lan">
       {{with .LANQR}}<img src="{{.}}" alt="QR code com o endereço do finan_rich" width="174" height="174">{{end}}
@@ -73,7 +74,7 @@
     <p class="muted">Use o finan_rich no celular enquanto ele roda neste computador, pelo Wi-Fi de casa. Os dados e a IA continuam aqui; o celular só abre as telas. Para proteger seus dados, crie uma senha: ela será pedida no celular (neste computador, não).</p>
     <form method="post" action="/configuracoes/acesso" class="grid-form">
       <input type="hidden" name="acao" value="ligar">
-      <label>Crie uma senha <input type="password" name="senha" minlength="8" autocomplete="new-password" required placeholder="mínimo 8 caracteres"></label>
+      <label class="wide">Crie uma senha <input type="password" name="senha" minlength="8" autocomplete="new-password" required placeholder="mínimo 8 caracteres"></label>
       <label>Repita a senha <input type="password" name="confirmar" minlength="8" autocomplete="new-password" required></label>
       <button type="submit">Ligar acesso pelo celular</button>
     </form>
@@ -121,7 +122,7 @@
   <h2>Usar no celular sem conexão e fora de casa</h2>
   <p class="muted">Pelo Wi-Fi o celular já guarda seus dados e continua funcionando se a conexão cair com o app aberto. Para <strong>abrir o app sem conexão</strong> e <strong>sincronizar de qualquer lugar</strong>, o celular precisa de um endereço seguro (https). O jeito grátis e simples é o <strong>Tailscale</strong>: só os seus aparelhos acessam, nada fica exposto na internet.</p>
   {{if .TailscaleURL}}
-    <p class="notice ok">✅ Tailscale encontrado neste computador.</p>
+    <p class="notice ok">Tailscale encontrado neste computador.</p>
     <ol class="small">
       <li>Neste computador, rode uma vez no terminal: <code>tailscale serve --bg {{.Port}}</code></li>
       <li>No celular, com o Tailscale ligado (mesma conta), abra:</li>

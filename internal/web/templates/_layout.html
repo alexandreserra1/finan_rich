@@ -6,7 +6,7 @@
 <title>finan_rich</title>
 <meta name="description" content="Controle financeiro pessoal com consultor de IA">
 <meta name="theme-color" content="#0f7a5c" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#12161b" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#0e1412" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -16,10 +16,11 @@
 <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
 <link rel="stylesheet" href="/static/app.css">
 </head>
-<body>
-{{if not (or (eq .Page "login") (eq .Page "pair"))}}
+{{$nav := not (or (eq .Page "login") (eq .Page "pair"))}}
+<body{{if $nav}} class="has-nav"{{end}}>
+{{if $nav}}
 <header class="top">
-  <a class="brand" href="/">finan<span>_rich</span></a>
+  <a class="brand" href="/" aria-label="finan_rich, ir para o painel">finan<span>_rich</span></a>
   <div class="top-actions">
     <span id="sync-status" class="sync-pill" role="status" hidden></span>
     {{if not .Mobile}}<button type="button" class="secondary small-btn" data-install hidden>Instalar app</button>{{end}}
