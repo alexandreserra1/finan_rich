@@ -5,10 +5,11 @@ A arquitetura atual está em [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## App mobile
 
-> **Status:** começou na v1.2. Já existe o app Android com Capacitor (passos 1 a 4 e a
-> distribuição do `.apk` abaixo). Como usar e como foi feito: [MOBILE.md](MOBILE.md).
-> Faltam: iOS, notificações locais, leitor de QR dentro do app, consultor dentro do app,
-> Play Store e testes num emulador Android no CI.
+> **Status:** app Android desde a v1.2; na v1.5, leitor de QR, consultor dentro do app,
+> lembretes de vencimento (notificações locais), projeto iOS compilado no CI e teste do APK
+> num emulador Android no CI. Como usar e como foi feito: [MOBILE.md](MOBILE.md).
+> Falta só o que depende de contas pagas: Play Store, App Store/TestFlight (conta Apple) e a
+> chave fixa de assinatura do APK (secrets do GitHub, ver MOBILE.md).
 
 ### Por que
 
@@ -84,12 +85,13 @@ O [Pierre](https://pierre.finance) é um assistente financeiro que lê suas cont
 Finance e conversa pelo WhatsApp. O finan_rich já tem o consultor com IA e os dados no seu
 aparelho; o que falta para chegar perto, do mais simples ao mais caro:
 
-1. ~~**Importar extratos** (OFX e CSV)~~ — feito: categoria pelo histórico, palavras-chave ou
-   IA, sem duplicar. Próximo passo: importar a fatura em PDF (muitos bancos só dão PDF).
-2. **Consultor com ferramentas**: em vez de só ler o resumo, a IA consulta os lançamentos
-   ("quanto gastei com iFood em 2026?") e propõe lançamentos e notas para o usuário aprovar.
-3. **Alertas**: vencimento de dívidas, meta estourada no mês, gasto fora do padrão
-   (notificações locais no app do celular).
+1. ~~**Importar extratos** (OFX, CSV e fatura em PDF)~~ — feito: categoria pelo histórico,
+   palavras-chave ou IA, sem duplicar.
+2. ~~**Consultor mais completo**~~ — feito em parte: a IA recebe os gastos por estabelecimento
+   (12 meses), metas, recorrentes e notas, e as respostas podem virar nota. Próximo passo:
+   *ferramentas* de verdade (a IA chama funções para buscar lançamentos e propõe
+   lançamentos para aprovar), quando os modelos locais pequenos fizerem isso bem.
+3. ~~**Alertas**~~ — feito: avisos no painel e lembrete de vencimento no celular.
 4. **Open Finance** (lançamentos automáticos dos bancos): exige um agregador pago (Pluggy,
    Belvo) e, na prática, uma empresa responsável pelos dados; também tira os dados só do
    aparelho. Fica como opção, desligada por padrão.
@@ -97,7 +99,7 @@ aparelho; o que falta para chegar perto, do mais simples ao mais caro:
 
 ## Outras ideias
 
-- **Metas** com valor e prazo (ex.: "juntar R$ 5.000 até dezembro"), acompanhadas no painel.
-- **Lançamentos recorrentes** automáticos, além do botão "Copiar do mês anterior".
+- ~~**Metas** com valor e prazo~~ — feito (tela Metas e painel).
+- ~~**Lançamentos recorrentes** automáticos~~ — feito ("Repetir todo mês").
 - **Executáveis assinados** no Windows e no macOS, para não aparecer o aviso de "editor
   desconhecido".

@@ -6,8 +6,14 @@ números reais. Seus dados ficam num arquivo no seu PC, sem conta e sem nuvem.
 
 - **Painel do mês**: entradas, saídas, saldo, quanto você guardou, divisão do salário
   (planejado x realizado), gastos por categoria e visão anual.
-- **Lançamentos** por categoria. O botão *Copiar do mês anterior* repete salário e contas fixas.
-- **Importar extrato** do banco (OFX ou CSV: Nubank, Itaú, BB, Bradesco, Inter, Caixa...):
+- **Avisos no painel**: dívida vencendo, dívida que cresce, grupo acima da meta do mês,
+  gasto fora do padrão e meta atrasada ou atingida. No app do celular, lembrete de
+  vencimento das dívidas mesmo sem internet.
+- **Lançamentos** por categoria, com *Repetir todo mês* (salário, aluguel, assinaturas entram
+  sozinhos) e *Copiar do mês anterior*.
+- **Metas** com valor e prazo: quanto já juntou e quanto guardar por mês para chegar lá.
+- **Importar extrato** do banco (OFX, CSV ou a fatura do cartão em PDF: Nubank, Itaú, BB,
+  Bradesco, Inter, Caixa...):
   sugere a categoria de cada lançamento pelo seu histórico e pela descrição (iFood, Uber,
   Netflix...), aprende com as suas correções, não duplica o que já foi importado, avisa o
   que parece já lançado à mão e deixa de fora o pagamento da fatura do cartão. Para o que
@@ -19,7 +25,9 @@ números reais. Seus dados ficam num arquivo no seu PC, sem conta e sem nuvem.
 - **Exportar**: planilha do Excel (.xlsx) com abas de resumo, lançamentos, categorias,
   divisão do salário, dívidas e notas; relatório em PDF; CSV; e cada nota em PDF ou texto.
   Os arquivos são gerados no próprio aparelho, mesmo sem internet.
-- **Consultor IA**: tire dúvidas sobre dívidas, cortes de gastos e reserva de emergência.
+- **Consultor IA**: tire dúvidas sobre dívidas, cortes de gastos, metas e reserva de
+  emergência; pergunte "quanto gastei com iFood este ano?"; salve respostas como nota.
+  Também dentro do app do celular.
   Por padrão usa modelos abertos (Qwen, DeepSeek, Llama...) rodando no seu PC pelo Ollama.
 
 ## Como usar

@@ -64,7 +64,8 @@ no navegador do celular (pede a senha de acesso na primeira vez).
 | `tools/mobilebuild/main.go` | `go run ./tools/mobilebuild mobile/www` chama o `ExportApp`. |
 | `static/js/device.js` | Onde sincronizar: no navegador, o mesmo endereço (cookie); no app, o computador pareado (token). Pareamento, nome do aparelho, leitura do link `finanrich://`. |
 | `static/js/pages/device.js` | Tela de Ajustes do app (parear, sincronizar, desconectar, apagar dados). |
-| `static/js/pages/advisor.js` | Aba Consultor no app (abre a tela do computador). |
+| `static/js/pages/advisor.js` | Aba Consultor no app: conversa com a IA do computador (`/api/chat`, com o token). |
+| `static/js/native.js` | Leitor de QR code e lembretes de vencimento (plugins do Capacitor). |
 | `mobile/package.json`, `capacitor.config.json` | Projeto Capacitor (Android). `CapacitorHttp` faz as chamadas pela rede nativa do celular, sem as travas de `http://` do navegador. Os plugins `Filesystem` e `Share` salvam os arquivos exportados (Excel, PDF, CSV, backup) e abrem o menu de compartilhar do Android. |
 | `mobile/android/` | Projeto Android (gerado pelo `cap add android`, versionado). Mudanças nossas: `AndroidManifest.xml` (link `finanrich://` e `usesCleartextTraffic` para o `http://` do Wi-Fi), `app/build.gradle` (versão e assinatura pelo ambiente), ícones e tela de abertura. |
 | `mobile/scripts/icons.py` | Gera os ícones e as telas de abertura (Pillow). |
@@ -73,6 +74,8 @@ no navegador do celular (pede a senha de acesso na primeira vez).
 `mobile/www/` e `mobile/node_modules/` são gerados e não ficam no git.
 
 ## Desenvolvimento
+
+O app roda em Android 8.0 ou mais novo e iOS 15 ou mais novo.
 
 Precisa de Go, Node 22, Java 21 e o Android SDK (o jeito mais simples é instalar o
 [Android Studio](https://developer.android.com/studio)).
@@ -119,13 +122,39 @@ E cadastrar em **GitHub → Settings → Secrets and variables → Actions**:
 
 A versão do app vem da tag (`v1.2.0` → `versionName 1.2.0`, `versionCode 10200`).
 
+## Recursos do celular
+
+- **Ler QR code** (Ajustes do app → *Ler QR code*): `@capacitor/barcode-scanner`. Lê o QR dos
+  Ajustes do computador (`http://…/parear?codigo=…`) e conecta.
+- **Lembretes de vencimento**: `@capacitor/local-notifications` agenda, para cada dívida com dia
+  de vencimento, um aviso mensal 2 dias antes, às 9h. É o próprio Android/iOS que avisa,
+  então funciona sem internet. Liga e desliga em Ajustes do app (`js/native.js`).
+- **Consultor dentro do app**: `js/pages/advisor.js` usa `GET/POST /api/chat` com o token do
+  aparelho; a resposta vem em SSE (no app, chega inteira ao final). Respostas podem ser
+  salvas como nota.
+
+## iOS
+
+O projeto está em `mobile/ios` (Capacitor 8 com Swift Package Manager). Já vem com o esquema
+`finanrich://` (`CFBundleURLTypes`), `http://` liberado só na rede local
+(`NSAllowsLocalNetworking`), as descrições de rede local e câmera, ícone e tela de abertura.
+O CI compila para o simulador (sem assinatura) a cada execução.
+
+Para instalar num iPhone: num Mac com Xcode, `make mobile`, depois
+`cd mobile && npx cap open ios`, escolha sua conta em *Signing & Capabilities* e rode no
+aparelho. Com conta gratuita da Apple o app vale 7 dias; para TestFlight/App Store é
+preciso a conta de desenvolvedor (anual).
+
+## Testes no CI
+
+- `e2e/app.test.mjs`: o fluxo do app (pareamento, sync com token, offline, consultor com uma
+  IA falsa, salvar como nota) no Chromium.
+- Job `android`: compila o APK e o abre num emulador Android 14
+  (`mobile/scripts/smoke-android.sh`): confere que a tela inicial aparece (WebView carregou
+  as telas e o WebAssembly) e que não houve erro fatal.
+- Job `ios`: compila para o simulador.
+
 ## Próximos passos
 
-- **iOS**: `npx cap add ios` num Mac com Xcode. No `Info.plist`, liberar `http://` na rede
-  local (`NSAppTransportSecurity` → `NSAllowsLocalNetworking`), registrar o esquema
-  `finanrich` em `CFBundleURLTypes` e a descrição de acesso à rede local
-  (`NSLocalNetworkUsageDescription`). Publicar exige conta de desenvolvedor da Apple.
-- **Leitor de QR code dentro do app** (hoje a câmera do sistema abre o link).
-- **Consultor dentro do app**, chamando a IA do computador com o token do aparelho.
-- **Notificações locais** de vencimento das dívidas.
-- **Play Store**.
+- **Play Store** (taxa única) e **App Store/TestFlight** (conta Apple anual): dependem das contas.
+- **Chave de assinatura fixa do APK** (veja *Publicação* acima): para atualizar por cima.

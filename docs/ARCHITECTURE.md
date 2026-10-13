@@ -166,7 +166,7 @@ aparelho                                      servidor
 
 | Arquivo | Função |
 |---|---|
-| `domain.go` | Tipos `Category`, `Transaction`, `Debt`, `Pref`, `Split`; campos de sincronização em `Meta` (`id`, `updatedAt`, `deleted`); constantes (buckets, tipos); **validação** de cada tipo. |
+| `domain.go` | Tipos `Category`, `Transaction`, `Debt`, `Pref`, `Split`, `Note`, `Goal`, `Recurring`; campos de sincronização em `Meta` (`id`, `updatedAt`, `deleted`); constantes (buckets, tipos); **validação** de cada tipo. |
 | `record.go` | `DecodeRecord`: lê um registro em JSON pelo tipo, valida e devolve a versão normalizada. Usado pelo servidor ao receber e pelo navegador antes de salvar. |
 | `ledger.go` | `Ledger`: todos os dados juntos; filtros de ativos, índice de categorias, divisão do salário salva. |
 | `month.go` | `Month`: navegação e rótulos em português ("outubro de 2026"). |
@@ -179,6 +179,10 @@ aparelho                                      servidor
 | `summary.go` | `Summarize` (resumo do mês e divisão planejado × realizado), `YearTotals`, `RecentTotals`. |
 | `debts.go` | `Payoff` (simulação mês a mês), `PlanDebts` (totais, juros mensais, ordem avalanche e bola de neve). |
 | `emergency.go` | `PlanEmergencyFund`: reserva de 3 e 6 meses e prazo com a sobra livre. |
+| `goals.go` | `Goals`: progresso das metas (já guardado + aportes na categoria), quanto guardar por mês, atrasada ou atingida. |
+| `recurring.go` | `RecurringDue`: lançamentos que as recorrências já deveriam ter gerado (ID fixo `rec-<id>-<AAAA-MM>`, sem duplicar entre aparelhos). |
+| `alerts.go` | `Alerts`: avisos do painel (vencimento em até 3 dias, dívida que cresce, grupo acima da meta, gasto fora do padrão, metas). |
+| `merchants.go` | `TopMerchants`: gastos por estabelecimento nos últimos 12 meses (para o consultor). |
 | `monthplan.go` | `PlanMonth`: parcelas mínimas pendentes, sobra livre, quanto pagar na dívida de maior juros. |
 | `view.go` | `Dashboard` e `Debts`: o que cada tela mostra, já calculado, em structs com tags JSON (o que o navegador recebe). |
 | `finance_test.go` | Testes de todas as regras com casos de valores conhecidos. |
@@ -213,6 +217,7 @@ Lê o extrato no aparelho (WebAssembly): funciona offline e o arquivo não sai d
 |---|---|
 | `parse.go` | `Parse`: descobre o formato pelo conteúdo; datas (`05/10/2026`, `2026-10-05`, `20261005`...) e valores (`-1.234,56`, `1234.56`, `(87,50)`, `87,50 D`...). |
 | `ofx.go` | OFX 1 (SGML, tags sem fechamento) e 2 (XML), conta e cartão; junta NAME e MEMO sem repetir. |
+| `pdftext.go` | `ParseText`: compras de uma fatura em PDF a partir do texto que o pdf.js extrai no aparelho (data com ou sem ano, mês abreviado, duas colunas, ano pelo vencimento, créditos com sinal ou "C"). |
 | `csv.go` | Descobre o separador e acha o cabeçalho pelo nome das colunas (data, descrição/histórico, valor ou crédito e débito, tipo, categoria), mesmo depois de linhas de título. Fatura de cartão (quase tudo positivo) vem marcada para inverter o sinal. |
 | `text.go` | Converte arquivos em Windows-1252 para UTF-8; normaliza textos para comparar. |
 | `preview.go` | `Build`: monta a revisão. ID estável (`imp-` + hash do FITID ou de data/valor/descrição), então reimportar não duplica; marca o que parece digitado à mão (mesmo dia, tipo e valor) e o pagamento de fatura. |
@@ -244,6 +249,7 @@ expõe `POST /api/categorizar`, que recebe só descrições e tipos (sem valores
 | `migrations/003_sync_records.sql` | v1.1: cria `records` e `sync_state`, **converte** os dados da v1.0 e remove as tabelas antigas. |
 | `migrations/004_devices.sql` | Tabela `devices` (app do celular). |
 | `migrations/005_notes.sql` | v1.3: recria `records` aceitando o tipo `note` (o SQLite não altera um `CHECK`). |
+| `migrations/006_open_types.sql` | v1.5: `records` sem lista fixa de tipos (quem valida é o `domain.DecodeRecord`); vieram `goal` e `recurring`. |
 | `store_test.go` | Sincronização, validação, paginação e a conversão de um banco v1.0 real. |
 
 Tabelas atuais:
@@ -307,7 +313,7 @@ Código Go:
 | `tailscale.go` | Detecta o Tailscale e o endereço `https://` deste computador. |
 | `aiconfig.go` | Lê e grava a configuração da IA; verifica se o Ollama e o modelo estão prontos. |
 | `settings.go` | Tela de Ajustes, testar conexão, baixar modelo. |
-| `chat.go` | Tela do consultor e envio de perguntas (SSE). |
+| `chat.go` | Tela do consultor e envio de perguntas (SSE); `GET/POST /api/chat` e `/api/chat/limpar` para o app do celular (token). |
 | `sse.go` | Envio de Server-Sent Events. |
 | `redirect.go` | Redirecionamento com mensagem (padrão POST/redirect/GET). |
 | `generate.go` | `//go:generate` que cria `static/finance.wasm`. |
@@ -340,8 +346,13 @@ Arquivos do navegador (`static/`):
 | `js/pages/notes.js` | Notas: criar, editar, fixar, buscar, apagar e exportar cada uma em PDF ou texto. |
 | `js/pages/export.js` | Exportar (Excel, PDF, CSV por período), backup e restauração. |
 | `js/pages/import.js` | Importar extrato: enviar o arquivo, revisar (marcar, editar descrição, escolher categoria), pedir à IA e importar. |
+| `js/pdftext.js` | Extrai o texto de PDFs com o pdf.js (carregado só quando preciso), linha por linha, com suporte a senha. |
+| `vendor/pdfjs/` | pdf.js 6.3 (Mozilla, Apache-2.0), build legacy, embutido para funcionar offline. |
+| `js/pages/goals.js` | Metas: criar, editar, apagar; cartões de progresso (também usados no painel). |
+| `js/notes-save.js` | Salva uma resposta do consultor como nota (usado pelo chat do navegador e do app). |
+| `js/native.js` | Só no app do celular: leitor de QR e lembretes de vencimento. |
 | `js/exporter.js` | Entrega o arquivo gerado: download no navegador; no app do celular, salva e abre o menu de compartilhar (plugins Filesystem e Share do Capacitor). |
-| `js/pages/device.js`, `js/pages/advisor.js` | Só no app do celular: Ajustes (pareamento) e Consultor (abre a tela do computador). |
+| `js/pages/device.js`, `js/pages/advisor.js` | Só no app do celular: Ajustes (pareamento, QR, lembretes) e Consultor (conversa pela `/api/chat`). |
 
 Cada tela exporta `render(ctx)` (devolve o HTML) e, se tiver formulário, `bind(root, ctx)`
 (liga os eventos). O `ctx` traz os dados (`ledger`), o mês, os parâmetros da URL e as ações
@@ -368,9 +379,10 @@ Cada tela exporta `render(ctx)` (devolve o HTML) e, se tiver formulário, `bind(
 | `e2e/offline.test.mjs` | Teste no Chromium: online, desligar o servidor, reabrir offline, lançar, religar, sincronizar, segundo aparelho. |
 | `e2e/app.test.mjs` | Teste do app do celular no Chromium: pareamento, sync com token, offline, aparelho removido. |
 | `e2e/export.test.mjs` | Notas, exportação (xlsx, PDF, CSV, inclusive offline), backup e restauração no Chromium. |
-| `e2e/import.test.mjs` | Importação de fatura CSV e extrato OFX, sugestões, reimportação sem duplicar e aprendizado pelo histórico. |
+| `e2e/import.test.mjs` | Importação de fatura CSV, extrato OFX e fatura em PDF, sugestões, reimportação sem duplicar e aprendizado pelo histórico. |
+| `e2e/plans.test.mjs` | Recorrentes (gera os meses, não duplica, apagado não volta), aviso de vencimento e metas no painel. |
 | `scripts/install.sh` | Instalador de uma linha para macOS e Linux. |
-| `.github/workflows/ci.yml` | A cada PR/push na main: gera o `.wasm`, formatação, vet, testes com race, regras como WebAssembly, compilação para todos os sistemas , os testes no navegador e o APK de teste do Android. |
+| `.github/workflows/ci.yml` | A cada PR/push na main: gera o `.wasm`, formatação, vet, testes com race, regras como WebAssembly, compilação para todos os sistemas, os testes no navegador, o APK de teste do Android aberto num emulador e o app iOS compilado para o simulador. |
 | `.github/workflows/release.yml` | Publica uma versão (por tag ou pelo botão *Run workflow*) e anexa o APK do Android. |
 
 ---
