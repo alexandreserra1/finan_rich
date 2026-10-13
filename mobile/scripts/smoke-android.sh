@@ -17,8 +17,10 @@ for i in $(seq 1 45); do
   if adb shell cat /sdcard/ui.xml | grep -q "ainda não está conectado"; then
     echo "OK: a tela inicial do app apareceu (${i}x2 s)"
     adb shell pidof "$PKG" >/dev/null || { echo "FALHA: o app não está rodando"; exit 1; }
-    if adb logcat -d | grep -E "FATAL EXCEPTION|AndroidRuntime: Process: $PKG" ; then
-      echo "FALHA: erro fatal no logcat"; exit 1
+    # Só conta erro fatal do próprio app (o uiautomator, usado acima, às vezes
+    # registra erros dele mesmo no logcat).
+    if adb logcat -d -b crash | grep -A3 "FATAL EXCEPTION" | grep "Process: $PKG" ; then
+      echo "FALHA: o app fechou com erro"; exit 1
     fi
     exit 0
   fi
