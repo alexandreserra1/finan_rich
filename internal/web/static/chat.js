@@ -20,7 +20,29 @@
     return el;
   }
 
+  // "Salvar como nota" nas respostas: a pergunta vira o título.
+  function addSave(el) {
+    if (!window.finanSaveNote || el.querySelector(".save-note")) return;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "link plain save-note";
+    b.textContent = "Salvar como nota";
+    b.addEventListener("click", async () => {
+      const question = el.previousElementSibling?.classList.contains("user") ? el.previousElementSibling.dataset.raw : "";
+      try {
+        await window.finanSaveNote(question, el.dataset.raw);
+        b.textContent = "Salvo em Notas ✓";
+        b.disabled = true;
+      } catch (err) {
+        b.textContent = "Erro: " + err.message;
+      }
+    });
+    el.appendChild(b);
+  }
+
   document.querySelectorAll("[data-md]").forEach((el) => render(el, el.textContent));
+  // main.js (módulo) carrega depois deste script: espera para ligar os botões.
+  window.addEventListener("load", () => document.querySelectorAll(".msg.assistant").forEach(addSave));
 
   document.querySelectorAll(".suggestions button").forEach((b) =>
     b.addEventListener("click", () => { input.value = b.textContent; form.requestSubmit(); }));
@@ -47,6 +69,7 @@
         render(reply, answer);
         reply.scrollIntoView({ block: "end" });
       });
+      addSave(reply);
     } catch (err) {
       reply.className = "msg error";
       render(reply, "Erro: " + err.message + "\n\nSua pergunta não foi salva. Tente de novo.");

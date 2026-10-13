@@ -123,6 +123,9 @@ func (s *Server) Routes() http.Handler {
 	}
 	mux.HandleFunc("POST /api/sync", s.apiSync)
 	mux.HandleFunc("POST /api/categorizar", s.apiCategorize)
+	mux.HandleFunc("GET /api/chat", s.apiChatHistory)
+	mux.HandleFunc("POST /api/chat", s.apiChatSend)
+	mux.HandleFunc("POST /api/chat/limpar", s.apiChatClear)
 
 	// App do celular: pareamento por código (veja pairing.go).
 	mux.HandleFunc("GET /parear", s.pairPage)

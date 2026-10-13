@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -43,7 +44,13 @@ func (s *Server) snapshot(ctx context.Context) (string, error) {
 // chatSend responde em SSE: {"text": "..."} a cada pedaço, {"error": "..."}
 // em caso de falha e {"done": true} ao final.
 func (s *Server) chatSend(w http.ResponseWriter, r *http.Request) {
-	question := strings.TrimSpace(r.FormValue("message"))
+	s.answer(w, r, r.FormValue("message"))
+}
+
+// answer responde à pergunta em SSE e grava a conversa (tela do navegador e
+// app do celular usam o mesmo caminho).
+func (s *Server) answer(w http.ResponseWriter, r *http.Request, question string) {
+	question = strings.TrimSpace(question)
 	if question == "" {
 		http.Error(w, "mensagem vazia", http.StatusBadRequest)
 		return
@@ -92,4 +99,59 @@ func (s *Server) chatSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sse.Done()
+}
+
+// ---- API do consultor para o app do celular (JSON, com o token do aparelho) ----
+
+type chatMessageJSON struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type chatInfo struct {
+	History []chatMessageJSON `json:"history"`
+	Model   string            `json:"model"`
+	Ready   bool              `json:"ready"`
+	Problem string            `json:"problem,omitempty"`
+}
+
+// apiChatHistory devolve a conversa e se a IA está pronta.
+func (s *Server) apiChatHistory(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	history, err := s.store.ListChat(ctx)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	ai, err := s.aiSettings(ctx)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	st := s.aiStatus(ctx, ai)
+	info := chatInfo{History: []chatMessageJSON{}, Model: ai.Preset.Name + " · " + ai.Model, Ready: st.Ready, Problem: st.Problem}
+	for _, m := range history {
+		info.History = append(info.History, chatMessageJSON{m.Role, m.Content})
+	}
+	writeJSON(w, http.StatusOK, info)
+}
+
+// apiChatSend recebe {"message": "..."} e responde em SSE, como /chat/enviar.
+func (s *Server) apiChatSend(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "pedido inválido")
+		return
+	}
+	s.answer(w, r, req.Message)
+}
+
+func (s *Server) apiChatClear(w http.ResponseWriter, r *http.Request) {
+	if err := s.store.ClearChat(r.Context()); err != nil {
+		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }

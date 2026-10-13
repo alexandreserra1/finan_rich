@@ -16,6 +16,7 @@ const BIN = process.env.FINANRICH_BIN || "../dist/finanrich";
 const WWW = process.env.APP_WWW || "../mobile/www";
 const PORT = 18098;
 const APP_PORT = 18097;
+const OLLAMA_PORT = 18083;
 const B = `http://127.0.0.1:${PORT}`;
 const APP = `http://127.0.0.1:${APP_PORT}`;
 const dataDir = mkdtempSync(join(tmpdir(), "finan-e2e-app-"));
@@ -36,7 +37,10 @@ async function waitHealthy() {
   throw new Error("o servidor não subiu");
 }
 async function startServer() {
-  server = spawn(BIN, ["-data", dataDir, "-no-browser", "-addr", `127.0.0.1:${PORT}`], { stdio: "ignore" });
+  server = spawn(BIN, ["-data", dataDir, "-no-browser", "-addr", `127.0.0.1:${PORT}`], {
+    stdio: "ignore",
+    env: { ...process.env, FINAN_AI_PRESET: "ollama", FINAN_AI_MODEL: "qwen3.5:9b", FINAN_AI_BASE_URL: `http://127.0.0.1:${OLLAMA_PORT}` },
+  });
   await waitHealthy();
 }
 async function stopServer() {
@@ -77,6 +81,17 @@ const appServer = createServer((req, res) => {
   }
 });
 await new Promise((r) => appServer.listen(APP_PORT, "127.0.0.1", r));
+
+// Ollama falso: responde como o modelo, para testar o consultor no app.
+const ollama = createServer((req, res) => {
+  if (req.url === "/api/tags") return res.end(JSON.stringify({ models: [{ name: "qwen3.5:9b" }] }));
+  if (req.url === "/api/chat") {
+    res.write(JSON.stringify({ message: { content: "Você gastou **R$ 250,00** com mercado." }, done: false }) + "\n");
+    return res.end(JSON.stringify({ message: { content: "" }, done: true }) + "\n");
+  }
+  res.writeHead(404).end();
+});
+await new Promise((r) => ollama.listen(OLLAMA_PORT, "127.0.0.1", r));
 
 const status = (page) => page.locator("#sync-status").getAttribute("data-status");
 const waitStatus = (page, s, timeout = 15000) =>
@@ -155,9 +170,18 @@ try {
   await waitStatus(page, "ok");
   ok((await serverRecords()).some((r) => r.description === "Padaria (offline)"), "ao reconectar, o lançamento offline chegou ao computador");
 
-  // Consultor abre a tela do computador.
+  // Consultor dentro do app: fala com a IA do computador pelo token.
   await page.click("nav.tabs a[href='/chat']");
-  ok(await page.getAttribute("a.button", "href") === `${B}/chat`, "Consultor IA aponta para o computador pareado");
+  await page.waitForSelector("form[data-form=ask]", { timeout: 15000 });
+  await page.fill("textarea[name=message]", "Quanto gastei com mercado?");
+  await page.click("form[data-form=ask] button");
+  await page.waitForSelector(".msg.assistant:has-text('R$ 250,00')", { timeout: 20000 });
+  ok(true, "consultor responde dentro do app (IA do computador, com o token)");
+  await page.click(".msg.assistant [data-save]");
+  await page.waitForSelector(".flash.ok:has-text('Resposta salva em Notas')");
+  await page.goto(`${APP}/notas`);
+  await page.waitForSelector(".note:has-text('Consultor: Quanto gastei com mercado?')", { timeout: 10000 });
+  ok(true, "resposta do consultor salva como nota");
 
   // Desconectado no computador: o app avisa para parear de novo.
   await form("/configuracoes/aparelhos/remover", { id: "1" });
@@ -173,6 +197,7 @@ try {
   await browser.close();
   await stopServer();
   appServer.close();
+  ollama.close();
   rmSync(dataDir, { recursive: true, force: true });
 }
 console.log(failures ? `\n${failures} falha(s)` : "\nTudo certo.");

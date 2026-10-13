@@ -2,6 +2,7 @@
 import * as db from "../db.js";
 import * as device from "../device.js";
 import * as sync from "../sync.js";
+import { canScan, hasReminders, remindersEnabled, scanPairingQR, setRemindersEnabled } from "../native.js";
 import { html } from "../ui.js";
 
 export const needsData = false; // funciona antes de baixar qualquer dado
@@ -15,10 +16,15 @@ function pairForm(params, paired) {
       <label>Código de pareamento
         <input name="code" required autocapitalize="characters" autocomplete="off" placeholder="ABCD-EFGH" value="${params.get("codigo") || ""}">
       </label>
-      <button type="submit">${paired ? "Conectar a este computador" : "Conectar"}</button>
+      <div class="row-actions tight">
+        <button type="submit">${paired ? "Conectar a este computador" : "Conectar"}</button>
+        ${canScan() ? html`<button type="button" class="secondary" data-action="scan">Ler QR code</button>` : ""}
+      </div>
     </form>
     <p class="small muted">No computador, abra o finan_rich e vá em <strong>Ajustes → App do celular → Parear um celular</strong>. Aponte a câmera para o QR code ou digite aqui o endereço e o código que aparecem lá.</p>`;
 }
+
+let remindersOn = true;
 
 export function render({ server, params }) {
   const fromLink = params.has("codigo");
@@ -49,6 +55,12 @@ export function render({ server, params }) {
           ${pairForm(params, false)}`}
     </section>
 
+    ${hasReminders() ? html`<section class="panel">
+      <h2>Lembretes</h2>
+      <label class="check"><input type="checkbox" data-action="reminders" ${remindersOn ? "checked" : ""}> Avisar 2 dias antes do vencimento das dívidas (às 9h)</label>
+      <p class="small muted">O aviso é do próprio celular: funciona sem internet. Cadastre o dia do vencimento em Dívidas.</p>
+    </section>` : ""}
+
     <section class="panel">
       <h2>Dados deste celular</h2>
       <p class="muted small">Apaga os lançamentos, dívidas e categorias guardados neste celular e desconecta do computador. Os dados que já estão no computador continuam lá.</p>
@@ -57,6 +69,27 @@ export function render({ server, params }) {
 }
 
 export function bind(root, ctx) {
+  if (hasReminders()) remindersEnabled().then((on) => { if (on !== remindersOn) { remindersOn = on; ctx.rerender(); } });
+  root.querySelector('[data-action="scan"]')?.addEventListener("click", async () => {
+    try {
+      const found = await scanPairingQR();
+      if (!found) {
+        ctx.error(new Error("esse QR code não é o de pareamento do finan_rich"));
+        return;
+      }
+      const form = root.querySelector('[data-form="pair"]');
+      form.elements.url.value = found.url;
+      form.elements.code.value = found.code;
+      form.requestSubmit();
+    } catch (err) {
+      if (!/cancel/i.test(String(err?.message || err))) ctx.error(err);
+    }
+  });
+  root.querySelector('[data-action="reminders"]')?.addEventListener("change", async (e) => {
+    remindersOn = e.target.checked;
+    await setRemindersEnabled(remindersOn, ctx.ledger);
+    ctx.flash(remindersOn ? "Lembretes ligados." : "Lembretes desligados.");
+  });
   root.querySelector('[data-form="pair"]')?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const f = e.target.elements;

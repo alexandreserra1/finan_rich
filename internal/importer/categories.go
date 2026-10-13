@@ -41,7 +41,7 @@ func newCategoryMatcher(l domain.Ledger) *categoryMatcher {
 		if _, ok := active[t.CategoryID]; !ok {
 			continue
 		}
-		key := descKey(t.Description)
+		key := DescKey(t.Description)
 		count(m.history, key, t.CategoryID)
 		count(m.first, firstWord(key), t.CategoryID)
 	}
@@ -55,7 +55,7 @@ func (m *categoryMatcher) suggest(r Row, kind string) (string, string) {
 	if c, ok := m.byName[normalize(r.Category)]; ok && r.Category != "" && fits(c) {
 		return c.ID, ReasonFile
 	}
-	key := descKey(r.Description)
+	key := DescKey(r.Description)
 	if id := best(m.history[key], 1); id != "" {
 		return id, ReasonHistory
 	}
@@ -94,10 +94,10 @@ func best(counts map[string]int, min int) string {
 	return id
 }
 
-// descKey é a "assinatura" de uma descrição para comparar com o histórico:
+// DescKey é a "assinatura" de uma descrição para comparar com o histórico:
 // sem números (datas, parcelas, códigos) e sem palavras genéricas do banco.
 // "Compra no débito - IFOOD *RESTAURANTE 1234" → "ifood restaurante".
-func descKey(desc string) string {
+func DescKey(desc string) string {
 	var words []string
 	for _, w := range strings.Fields(normalize(desc)) {
 		if stopwords[w] || len(w) < 2 || strings.IndexFunc(w, func(r rune) bool { return r >= '0' && r <= '9' }) >= 0 {

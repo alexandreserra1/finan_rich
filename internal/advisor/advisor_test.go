@@ -79,12 +79,15 @@ func TestSnapshot(t *testing.T) {
 	}
 	l := domain.Ledger{
 		Categories:   []domain.Category{cat("sal", "Salário", domain.BucketRenda), cat("laz", "Lazer", domain.BucketDesejos)},
-		Transactions: []domain.Transaction{tx("a", domain.KindEntrada, "sal", 500000), tx("b", domain.KindSaida, "laz", 200000)},
+		Transactions: []domain.Transaction{tx("a", domain.KindEntrada, "sal", 500000), tx("Bar do Zé", domain.KindSaida, "laz", 200000)},
 		Debts:        []domain.Debt{{Meta: domain.Meta{ID: "d", UpdatedAt: 1}, Name: "Cartão", BalanceCents: 400000, MonthlyRateBP: 1250, MinPaymentCents: 40000}},
 		Notes: []domain.Note{
 			{Meta: domain.Meta{ID: "n1", UpdatedAt: 5}, Title: "Viagem", Body: "Juntar R$ 3.000\naté julho"},
 			{Meta: domain.Meta{ID: "n2", UpdatedAt: 6, Deleted: true}, Title: "Apagada", Body: "não deve aparecer"},
 		},
+		Goals: []domain.Goal{{Meta: domain.Meta{ID: "g", UpdatedAt: 1}, Name: "Reserva", TargetCents: 600000, SavedCents: 150000, Deadline: "2027-03", StartDate: "2026-10-01"}},
+		Recurring: []domain.Recurring{{Meta: domain.Meta{ID: "r", UpdatedAt: 1}, Kind: domain.KindSaida, Description: "Academia",
+			AmountCents: 9990, CategoryID: "laz", Day: 5, Start: "2026-01"}},
 	}
 	got := Snapshot(BuildFacts(l, time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC)))
 	for _, want := range []string{
@@ -100,6 +103,9 @@ func TestSnapshot(t *testing.T) {
 		"Sobra livre depois de pagar as parcelas mínimas: R$ 3.000,00 - R$ 400,00 = R$ 2.600,00",
 		"pagando R$ 400,00 + R$ 2.600,00 = R$ 3.000,00 por mês",
 		"## Anotações do usuário", "- Viagem: Juntar R$ 3.000 até julho",
+		"- Reserva: juntou R$ 1.500,00 de R$ 6.000,00 (25%); prazo março de 2027; precisa guardar R$ 750,00 por mês nos próximos 6 meses",
+		"- Academia: saída de R$ 99,90 todo dia 5, categoria Lazer",
+		"## Gastos por estabelecimento", "- Bar do Zé: R$ 2.000,00 em 1 compra(s) nos últimos 12 meses; R$ 2.000,00 em 2026; R$ 2.000,00 neste mês; última em 05/10/2026",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("snapshot sem %q:\n%s", want, got)

@@ -223,8 +223,8 @@ func TestDescKey(t *testing.T) {
 		"SUPERMERCADO BOA COMPRA 01/02":              "supermercado boa", // "compra" é palavra genérica de extrato
 		"Pix enviado - Maria Silva":                  "maria silva",
 	} {
-		if got := descKey(in); got != want {
-			t.Errorf("descKey(%q) = %q; quer %q", in, got, want)
+		if got := DescKey(in); got != want {
+			t.Errorf("DescKey(%q) = %q; quer %q", in, got, want)
 		}
 	}
 }

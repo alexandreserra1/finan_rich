@@ -31,6 +31,11 @@ func BuildFacts(l domain.Ledger, today time.Time) Facts {
 		Today: today, Month: sum, Recent: recent, Debts: debts, Plan: plan,
 		Emergency: finance.PlanEmergencyFund(all, plan.PendingMinCents),
 		Notes:     notes,
+		Goals:     finance.Goals(l, today),
+		Recurring: l.ActiveRecurring(),
+		Merchants: finance.TopMerchants(l, today, maxMerchants),
+		Alerts:    finance.Alerts(l, today),
+		Names:     categoryNames(l),
 	}
 }
 
@@ -43,6 +48,22 @@ type Facts struct {
 	Emergency finance.EmergencyFund
 	Plan      finance.MonthPlan
 	Notes     []domain.Note // as mais recentes (fixadas primeiro)
+	Goals     []finance.GoalView
+	Recurring []domain.Recurring
+	Merchants []finance.Merchant // onde mais gastou nos últimos 12 meses
+	Alerts    []finance.Alert
+	Names     map[string]string // categoria: ID → nome
+}
+
+// maxMerchants: quantos estabelecimentos vão para o modelo.
+const maxMerchants = 25
+
+func categoryNames(l domain.Ledger) map[string]string {
+	out := map[string]string{}
+	for _, c := range l.Categories {
+		out[c.ID] = c.Name
+	}
+	return out
 }
 
 // Quantas notas e quanto de cada uma vão para o modelo: o suficiente para ele
@@ -137,6 +158,47 @@ func Snapshot(f Facts) string {
 
 	writeMonthPlan(&b, f.Plan)
 
+	if len(f.Goals) > 0 {
+		b.WriteString("\n## Metas do usuário\n")
+		for _, g := range f.Goals {
+			fmt.Fprintf(&b, "- %s: juntou %s de %s (%d%%)", g.Name, brl(g.ProgressCents), brl(g.TargetCents), g.Pct)
+			switch {
+			case g.Done:
+				b.WriteString("; meta atingida")
+			case g.Late:
+				fmt.Fprintf(&b, "; prazo (%s) já passou, faltam %s", domain.ParseMonth(g.Deadline).Label(), brl(g.RemainingCents))
+			case g.PerMonthCents > 0:
+				fmt.Fprintf(&b, "; prazo %s; precisa guardar %s por mês nos próximos %d meses", domain.ParseMonth(g.Deadline).Label(), brl(g.PerMonthCents), g.MonthsLeft)
+			default:
+				fmt.Fprintf(&b, "; sem prazo, faltam %s", brl(g.RemainingCents))
+			}
+			b.WriteString("\n")
+		}
+	}
+
+	if len(f.Recurring) > 0 {
+		b.WriteString("\n## Lançamentos que se repetem todo mês\n")
+		for _, r := range f.Recurring {
+			kind := "saída"
+			if r.Kind == domain.KindEntrada {
+				kind = "entrada"
+			}
+			status := ""
+			if r.Paused {
+				status = " (pausado)"
+			}
+			fmt.Fprintf(&b, "- %s: %s de %s todo dia %d, categoria %s%s\n", r.Description, kind, brl(r.AmountCents), r.Day, f.Names[r.CategoryID], status)
+		}
+	}
+
+	if len(f.Merchants) > 0 {
+		fmt.Fprintf(&b, "\n## Gastos por estabelecimento (últimos 12 meses, os %d maiores)\n", len(f.Merchants))
+		for _, m := range f.Merchants {
+			fmt.Fprintf(&b, "- %s: %s em %d compra(s) nos últimos 12 meses; %s em %d; %s neste mês; última em %s\n",
+				m.Name, brl(m.Last12Cents), m.Count, brl(m.YearCents), f.Today.Year(), brl(m.MonthCents), m.LastDate[8:10]+"/"+m.LastDate[5:7]+"/"+m.LastDate[:4])
+		}
+	}
+
 	if len(f.Notes) > 0 {
 		b.WriteString("\n## Anotações do usuário (escritas por ele no app)\n")
 		for _, n := range f.Notes {
@@ -148,7 +210,13 @@ func Snapshot(f Facts) string {
 		}
 	}
 
-	if alerts := attentionPoints(f); len(alerts) > 0 {
+	alerts := attentionPoints(f)
+	for _, a := range f.Alerts {
+		if a.Kind == "debt-due" || a.Kind == "unusual" || a.Kind == "goal-late" {
+			alerts = append(alerts, a.Title+": "+a.Text)
+		}
+	}
+	if len(alerts) > 0 {
 		b.WriteString("\n## Pontos de atenção\n")
 		for _, a := range alerts {
 			fmt.Fprintf(&b, "- %s\n", a)

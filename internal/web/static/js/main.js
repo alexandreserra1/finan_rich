@@ -5,6 +5,8 @@
 // No app do celular (Capacitor), Ajustes e Consultor também são telas daqui.
 import * as db from "./db.js";
 import * as device from "./device.js";
+import { saveNote } from "./notes-save.js";
+import { scheduleDebtReminders } from "./native.js";
 import * as finance from "./finance.js";
 import * as sync from "./sync.js";
 import { currentMonth, flash, newId, today, toString } from "./ui.js";
@@ -62,6 +64,8 @@ window.addEventListener("finan-sync", (e) => {
 
 // O chat chama isto antes de perguntar, para a IA ver os dados mais recentes.
 window.finanSync = () => sync.sync();
+// E isto para guardar uma resposta em Notas.
+window.finanSaveNote = saveNote;
 
 // Ao sair da conta, apaga os dados guardados neste aparelho.
 document.querySelectorAll('form[action="/sair"]').forEach((form) => form.addEventListener("submit", async (e) => {
@@ -91,6 +95,7 @@ function context(path, params) {
       await db.saveLocal(type, normalized);
       upsert(list, normalized);
       if (type === "recurring") await applyRecurring();
+      if (type === "debt") scheduleDebtReminders(ledger).catch(() => {});
       sync.soon();
       if (rerender) render(message);
     },
@@ -145,6 +150,7 @@ function render(message) {
 async function load() {
   [ledger, server] = await Promise.all([db.loadLedger(), device.server()]);
   await applyRecurring();
+  scheduleDebtReminders(ledger).catch(() => {}); // no app: avisos de vencimento
 }
 
 // applyRecurring grava os lançamentos recorrentes que já venceram e ainda não

@@ -467,3 +467,4 @@ label.file-button.primary-file:hover { background: var(--accent-strong); }
 .recurring .actions { display: flex; gap: .25rem; }
 label.check.repeat { align-self: center; }
 @media (max-width: 720px) { .recurring li { grid-template-columns: 1fr auto; } .recurring .actions { grid-column: 1 / -1; justify-content: flex-end; } }
+.msg .save-note { display: block; margin-top: .4rem; font-size: .82rem; padding: .15rem .3rem; }

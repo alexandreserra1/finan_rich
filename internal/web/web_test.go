@@ -280,3 +280,36 @@ func TestCategorizeAPI(t *testing.T) {
 		t.Errorf("lista vazia = %d", code)
 	}
 }
+
+func TestChatAPI(t *testing.T) {
+	a := newApp(t, fakeOllama(t).URL)
+	getInfo := func() map[string]any {
+		resp, err := http.Get(a.srv.URL + "/api/chat")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		var v map[string]any
+		json.NewDecoder(resp.Body).Decode(&v)
+		return v
+	}
+	if info := getInfo(); info["ready"] != true || len(info["history"].([]any)) != 0 {
+		t.Fatalf("info = %v", info)
+	}
+	b, _ := json.Marshal(map[string]string{"message": "Quanto gastei com iFood?"})
+	resp, err := http.Post(a.srv.URL+"/api/chat", "application/json", bytes.NewReader(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if !strings.Contains(string(body), `"text":"Pague o cartão."`) {
+		t.Fatalf("resposta = %s", body)
+	}
+	if h := getInfo()["history"].([]any); len(h) != 2 {
+		t.Errorf("histórico = %v", h)
+	}
+	if code, _ := a.postJSON("/api/chat/limpar", map[string]any{}); code != http.StatusOK || len(getInfo()["history"].([]any)) != 0 {
+		t.Error("limpar a conversa")
+	}
+}

@@ -77,3 +77,41 @@ jobs:
         with:
           name: finan_rich-android-teste
           path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+      # O app abre de verdade num emulador Android (WebView + WebAssembly).
+      - name: Habilita KVM para o emulador
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Abre o app num emulador Android
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          working-directory: mobile
+          script: ./scripts/smoke-android.sh
+
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: go generate ./internal/web
+      - run: go run ./tools/mobilebuild mobile/www
+      - name: Compila o app iOS para o simulador (sem assinatura)
+        working-directory: mobile
+        run: |
+          set -o pipefail
+          npm ci --no-audit --no-fund
+          npx cap sync ios
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -30

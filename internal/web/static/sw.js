@@ -16,7 +16,7 @@ const PRECACHE = [
   "/static/icons/icon-192.png", "/static/finance.wasm",
   "/static/js/main.js", "/static/js/db.js", "/static/js/sync.js", "/static/js/finance.js", "/static/js/ui.js",
   "/static/js/device.js", "/static/js/pages/device.js", "/static/js/pages/advisor.js",
-  "/static/js/exporter.js", "/static/js/pages/notes.js", "/static/js/pages/export.js", "/static/js/pages/import.js", "/static/js/pages/goals.js", "/static/js/pdftext.js",
+  "/static/js/exporter.js", "/static/js/pages/notes.js", "/static/js/pages/export.js", "/static/js/pages/import.js", "/static/js/pages/goals.js", "/static/js/pdftext.js", "/static/js/notes-save.js", "/static/js/native.js",
   "/static/vendor/pdfjs/pdf.min.js", "/static/vendor/pdfjs/pdf.worker.min.js",
   "/static/js/wasm_exec.js", "/static/js/pages/dashboard.js", "/static/js/pages/transactions.js",
   "/static/js/pages/debts.js", "/static/js/pages/categories.js",

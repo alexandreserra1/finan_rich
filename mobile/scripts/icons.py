@@ -1,5 +1,5 @@
 # Gera os ícones e a tela de abertura do app Android a partir do desenho do favicon.svg.
-# Uso (precisa do Pillow): python3 mobile/scripts/icons.py mobile/android/app/src/main/res
+# Uso (precisa do Pillow): python3 mobile/scripts/icons.py mobile/android/app/src/main/res [mobile/ios/App/App/Assets.xcassets]
 import sys, os
 from PIL import Image, ImageDraw
 res = sys.argv[1]
@@ -48,3 +48,20 @@ for folder in os.listdir(res):
     icon = render(int(min(w, h) * 0.3), "none")
     img.paste(icon, ((w - icon.width) // 2, (h - icon.height) // 2), icon)
     img.save(p)
+
+# iOS: ícone de 1024 px sem cantos arredondados (o sistema arredonda) e telas de abertura.
+if len(sys.argv) > 2:
+    xc = sys.argv[2]
+    icon = render(1024, "none")
+    full = Image.new("RGB", (1024, 1024), GREEN[:3])
+    full.paste(icon, (0, 0), icon)
+    full.save(os.path.join(xc, "AppIcon.appiconset", "AppIcon-512@2x.png"))
+    splash_dir = os.path.join(xc, "Splash.imageset")
+    for name in os.listdir(splash_dir):
+        if name.endswith(".png"):
+            p = os.path.join(splash_dir, name)
+            w, h = Image.open(p).size
+            img = Image.new("RGB", (w, h), GREEN[:3])
+            ic = render(int(min(w, h) * 0.3), "none")
+            img.paste(ic, ((w - ic.width) // 2, (h - ic.height) // 2), ic)
+            img.save(p)
