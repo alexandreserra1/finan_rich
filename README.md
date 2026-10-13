@@ -91,7 +91,13 @@ O que precisa do computador ligado: o **Consultor IA** (a IA roda nele) e os **A
 
 ### No celular
 
-O finan_rich roda no seu computador, e o celular acessa pelo Wi-Fi de casa:
+**App Android** (novo): baixe o `.apk` da [última versão](https://github.com/alexandreserra1/finan_rich/releases/latest),
+instale e, no computador, vá em **Ajustes → App do celular → Parear um celular**. Aponte a
+câmera para o QR code e confirme no app. O app abre sem internet, guarda os dados no
+celular e sincroniza com o computador pelo Wi-Fi. Detalhes em [docs/MOBILE.md](docs/MOBILE.md).
+
+**Pelo navegador** (Android ou iPhone, sem instalar nada): o finan_rich roda no seu
+computador, e o celular acessa pelo Wi-Fi de casa:
 
 1. No computador, abra **Ajustes → Acesso pelo celular**, crie uma senha e clique em
    **Ligar acesso pelo celular**.
@@ -99,8 +105,6 @@ O finan_rich roda no seu computador, e o celular acessa pelo Wi-Fi de casa:
    algo como `http://192.168.0.10:8080`) e entre com a senha.
 3. Para ter o ícone na tela inicial: no Android (Chrome), menu ⋮ → *Adicionar à tela
    inicial*; no iPhone (Safari), Compartilhar → *Adicionar à Tela de Início*.
-
-Um app mobile de verdade (Android/iOS) está nos planos: veja o [ROADMAP](docs/ROADMAP.md).
 
 A interface se adapta ao celular (menu no rodapé, listas em cartões). Os dados e a IA
 continuam no computador, que precisa ficar ligado com o finan_rich aberto. No computador
@@ -175,9 +179,11 @@ internal/store/     SQLite: registros sincronizáveis, chat, sessões, configura
 internal/llm/       interface Provider + Ollama, APIs compatíveis com OpenAI e Anthropic
 internal/advisor/   prompt do consultor e retrato financeiro enviado à IA
 internal/auth/      senha (PBKDF2), tokens de sessão e limite de tentativas
-internal/web/       HTTP, /api/sync, templates, service worker e o app do aparelho (static/js)
+internal/web/       HTTP, /api/sync, pareamento, templates, service worker e o app do aparelho (static/js)
 tools/wasmbuild/    gera static/finance.wasm (go generate ./internal/web)
-e2e/                testes no navegador: offline e sincronização entre aparelhos
+tools/mobilebuild/  gera mobile/www, as telas que vão dentro do app do celular
+mobile/             app Android (Capacitor): veja docs/MOBILE.md
+e2e/                testes no navegador: offline, sincronização entre aparelhos e app do celular
 ```
 
 ### Como funciona o modo offline
@@ -207,7 +213,7 @@ e2e/                testes no navegador: offline e sincronização entre aparelh
   `http.ServeMux` e páginas com `html/template`. O único JavaScript é o do chat e o das
   configurações.
 - **Dinheiro em centavos** para evitar arredondamento. Juros em pontos-base (1,99% = 199).
-- **Migrations**: para mudar o schema, crie `internal/store/migrations/004_algo.sql`. Elas
+- **Migrations**: para mudar o schema, crie `internal/store/migrations/005_algo.sql`. Elas
   rodam em ordem, uma vez cada, ao abrir o app. Nunca edite uma que já foi publicada.
 - **Segurança**: no próprio computador não há login. Por padrão o app só escuta em
   `127.0.0.1`. Ao ligar o acesso pelo celular, ele passa a escutar na rede e exige senha de
@@ -237,7 +243,9 @@ As regras de negócio rodam duas vezes: compiladas normalmente e como WebAssembl
 
 `make e2e` abre um Chromium de verdade e testa o ciclo completo: lançar online, desligar o
 servidor, reabrir o app sem conexão, lançar e recarregar, religar e conferir que tudo
-sincronizou, e um segundo aparelho recebendo (e apagando) os dados do primeiro.
+sincronizou, e um segundo aparelho recebendo (e apagando) os dados do primeiro. Também
+testa o app do celular: pareamento por código, sincronização com token, uso offline e
+aparelho desconectado no computador.
 
 ### Publicar uma versão
 
@@ -246,7 +254,9 @@ git tag v1.0.0 && git push origin v1.0.0
 ```
 
 Ou pelo site: **Actions → Release → Run workflow**, informando a versão. O GitHub Actions
-roda os testes, cria a tag e o GoReleaser publica os executáveis em Releases.
+roda os testes, cria a tag e o GoReleaser publica os executáveis em Releases. Em seguida o
+APK do Android é compilado e anexado à mesma versão (veja [docs/MOBILE.md](docs/MOBILE.md)
+para assiná-lo com a chave do projeto).
 
 ## Licença
 

@@ -3,7 +3,12 @@
 Ideias para as próximas versões, com o que já foi pensado sobre cada uma.
 A arquitetura atual está em [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## App mobile (futuro)
+## App mobile
+
+> **Status:** começou na v1.2. Já existe o app Android com Capacitor (passos 1 a 4 e a
+> distribuição do `.apk` abaixo). Como usar e como foi feito: [MOBILE.md](MOBILE.md).
+> Faltam: iOS, notificações locais, leitor de QR dentro do app, consultor dentro do app,
+> Play Store e testes num emulador Android no CI.
 
 ### Por que
 

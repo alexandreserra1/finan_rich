@@ -129,6 +129,9 @@ aparelho                                      servidor
 - `web.requireAuth`: pedidos de `127.0.0.1` entram direto; os da rede precisam de sessão
   (cookie). Pedidos repassados por proxy (`X-Forwarded-For`, `Tailscale-User-Login`) contam
   como "da rede". Com `FINAN_PASSWORD` (modo servidor), todos precisam de login.
+- O **app do celular** não usa cookie: no pareamento troca um código curto por um token
+  (`Authorization: Bearer`). Com esse cabeçalho, vale só o token, mesmo vindo de
+  `127.0.0.1`. Detalhes em [MOBILE.md](MOBILE.md).
 
 ---
 
@@ -139,12 +142,14 @@ aparelho                                      servidor
 | Arquivo | Função |
 |---|---|
 | `go.mod`, `go.sum` | Módulo Go e versões das dependências. |
-| `Makefile` | Tarefas: `wasm`, `run`, `test`, `test-wasm`, `e2e`, `build`, `docker`. |
+| `Makefile` | Tarefas: `wasm`, `run`, `test`, `test-wasm`, `e2e`, `build`, `docker`, `mobile`, `apk`. |
 | `Dockerfile` | Imagem do app: gera o `.wasm`, compila sem CGO, roda em `distroless`. |
 | `docker-compose.yml` | Sobe o app (e opcionalmente o Ollama) em containers. |
 | `.goreleaser.yaml` | Gera os executáveis de cada versão (Windows, macOS, Linux). |
 | `.env.example` | Variáveis de ambiente opcionais (`FINAN_*`). |
 | `.gitignore` | Ignora o `.wasm` gerado, `dist/`, bancos locais, `node_modules`. |
+| `.dockerignore` | Deixa fora da imagem Docker o que não é código Go (`mobile/`, `node_modules`). |
+| `mobile/` | App Android (Capacitor). Explicado em [MOBILE.md](MOBILE.md). |
 | `LICENSE` | Licença MIT. |
 | `README.md` | Como instalar, usar e desenvolver. |
 | `docs/` | Esta documentação e o roadmap. |
@@ -199,9 +204,11 @@ aparelho                                      servidor
 | `settings.go` | Chave-valor de configurações do servidor (IA, acesso). **Não** sincroniza com os aparelhos (tem chave de API e hash de senha). |
 | `chat.go`, `chatmodel.go` | Histórico do Consultor IA (fica só no servidor). |
 | `sessions.go` | Sessões de login (só o hash SHA-256 do token). |
+| `devices.go` | Aparelhos pareados (app do celular): criar, achar pelo hash do token, listar, remover. |
 | `migrations/001_init.sql` | Schema da v1.0 e dados iniciais (categorias, 50/30/20). |
 | `migrations/002_sessions.sql` | Tabela de sessões. |
 | `migrations/003_sync_records.sql` | v1.1: cria `records` e `sync_state`, **converte** os dados da v1.0 e remove as tabelas antigas. |
+| `migrations/004_devices.sql` | Tabela `devices` (app do celular). |
 | `store_test.go` | Sincronização, validação, paginação e a conversão de um banco v1.0 real. |
 
 Tabelas atuais:
@@ -213,6 +220,7 @@ Tabelas atuais:
 | `settings(key, value)` | `ai_*` (provedor de IA) e `access_*` (senha, acesso pela rede). |
 | `chat_messages` | Conversa com o consultor. |
 | `sessions` | Logins ativos. |
+| `devices` | Apps do celular pareados (nome, hash do token, última sincronização). |
 | `schema_migrations` | Quais migrations já rodaram. |
 
 ### `internal/llm/` — provedores de IA
@@ -256,7 +264,9 @@ Código Go:
 |---|---|
 | `server.go` | `New(store, Options)`, rotas, renderização de templates, middlewares (segurança, CSRF, log), service worker com a impressão digital dos arquivos. |
 | `api.go` | `POST /api/sync`. |
-| `access.go` | Login, sessões, `requireAuth`, ligar/desligar o acesso pelo celular. |
+| `access.go` | Login, sessões, `requireAuth` (cookie ou token do app), ligar/desligar o acesso pelo celular. |
+| `pairing.go` | Pareamento do app do celular: código, página `/parear`, `POST /api/parear`, token do aparelho, CORS de `/api/`. |
+| `export.go` | `ExportApp`: grava as telas do app (casco + `static/`) para o Capacitor. |
 | `lan.go` | Endereços da rede local para o celular e QR code. |
 | `tailscale.go` | Detecta o Tailscale e o endereço `https://` deste computador. |
 | `aiconfig.go` | Lê e grava a configuração da IA; verifica se o Ollama e o modelo estão prontos. |
@@ -275,6 +285,7 @@ Templates (`templates/`, renderizados no servidor; arquivos com `_` são parciai
 | `_aistatus.html` | Avisos de Ollama ausente ou modelo não baixado, com o botão de baixar. |
 | `app.html` | Casco das telas de dados (`<div id="app">`), preenchido pelo JavaScript. |
 | `chat.html`, `settings.html`, `login.html` | Telas que dependem do servidor. |
+| `pair.html` | Página aberta pelo QR code de pareamento: leva ao app ou explica como instalá-lo. |
 
 Arquivos do navegador (`static/`):
 
@@ -283,12 +294,14 @@ Arquivos do navegador (`static/`):
 | `js/main.js` | Entrada do app: carrega dados e regras, monta a tela, salva alterações, navega sem recarregar, mostra o status da sincronização, apaga os dados do aparelho ao sair. |
 | `js/db.js` | IndexedDB: `records` (cópia dos dados), `outbox` (fila), `meta` (cursor). |
 | `js/sync.js` | Ciclo de sincronização e seus gatilhos. |
+| `js/device.js` | Para onde sincronizar: o próprio servidor (navegador) ou o computador pareado (app do celular, com token). |
 | `js/finance.js` | Carrega o `finance.wasm` e expõe as funções em JavaScript. |
 | `js/ui.js` | `html` com escape automático (evita injeção), UUID, datas, mensagens. |
 | `js/pages/dashboard.js` | Painel do mês: totais, divisão do salário, gastos por categoria, visão anual. Também exporta o seletor de mês e os cartões de totais usados pelos lançamentos. |
 | `js/pages/transactions.js` | Lançamentos: formulário (categorias filtradas por entrada/saída), lista do mês, apagar, "copiar do mês anterior". |
 | `js/pages/debts.js` | Dívidas: cadastro e edição, simulação pagando o mínimo, ordem avalanche e bola de neve. |
 | `js/pages/categories.js` | Divisão do salário (percentuais) e categorias (criar, apagar se não tiver lançamentos). |
+| `js/pages/device.js`, `js/pages/advisor.js` | Só no app do celular: Ajustes (pareamento) e Consultor (abre a tela do computador). |
 
 Cada tela exporta `render(ctx)` (devolve o HTML) e, se tiver formulário, `bind(root, ctx)`
 (liga os eventos). O `ctx` traz os dados (`ledger`), o mês, os parâmetros da URL e as ações
@@ -310,11 +323,13 @@ Cada tela exporta `render(ctx)` (devolve o HTML) e, se tiver formulário, `bind(
 | Arquivo | Função |
 |---|---|
 | `tools/wasmbuild/main.go` | Compila `cmd/finanwasm` para `static/finance.wasm` e copia o `wasm_exec.js` (funciona em qualquer sistema). |
+| `tools/mobilebuild/main.go` | Grava `mobile/www` (as telas do app do celular) com `web.ExportApp`. |
 | `e2e/package.json` | Dependência dos testes no navegador (Playwright) e o comando `npm test`. |
 | `e2e/offline.test.mjs` | Teste no Chromium: online, desligar o servidor, reabrir offline, lançar, religar, sincronizar, segundo aparelho. |
+| `e2e/app.test.mjs` | Teste do app do celular no Chromium: pareamento, sync com token, offline, aparelho removido. |
 | `scripts/install.sh` | Instalador de uma linha para macOS e Linux. |
-| `.github/workflows/ci.yml` | A cada PR/push na main: gera o `.wasm`, formatação, vet, testes com race, regras como WebAssembly, compilação para todos os sistemas e os testes no navegador. |
-| `.github/workflows/release.yml` | Publica uma versão (por tag ou pelo botão *Run workflow*). |
+| `.github/workflows/ci.yml` | A cada PR/push na main: gera o `.wasm`, formatação, vet, testes com race, regras como WebAssembly, compilação para todos os sistemas , os testes no navegador e o APK de teste do Android. |
+| `.github/workflows/release.yml` | Publica uma versão (por tag ou pelo botão *Run workflow*) e anexa o APK do Android. |
 
 ---
 
@@ -337,7 +352,7 @@ Cada tela exporta `render(ctx)` (devolve o HTML) e, se tiver formulário, `bind(
 |---|---|
 | `make test` | `gofmt`, `go vet`, todos os testes Go e as regras rodando como WebAssembly no Node. |
 | `go test -race ./...` | Os mesmos testes com o detector de race conditions (o CI roda assim). |
-| `make e2e` | O ciclo offline completo num navegador de verdade. |
+| `make e2e` | O ciclo offline completo num navegador de verdade, e o app do celular (pareamento e sync com token). |
 
 Nada usa a rede: o banco é SQLite em memória e os provedores de IA são servidores falsos que
 imitam o Ollama, a OpenAI e a Anthropic.
