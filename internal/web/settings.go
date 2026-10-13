@@ -36,6 +36,9 @@ func (s *Server) settings(w http.ResponseWriter, r *http.Request) {
 	if urls, _ := data["LANURLs"].([]string); len(urls) > 0 && data["LAN"] == true {
 		base = urls[0]
 	}
+	if s.envPasswordHash != "" {
+		base = requestBase(r) // modo servidor: o endereço pelo qual se chegou aqui
+	}
 	app, err := s.pairingView(ctx, base)
 	if err != nil {
 		serverError(w, err)

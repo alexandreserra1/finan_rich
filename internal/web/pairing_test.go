@@ -134,3 +134,13 @@ func TestPairingNeedsAddress(t *testing.T) {
 		t.Error("sem acesso pela rede, Ajustes deveria pedir para ligar")
 	}
 }
+
+func TestPairingServerModeUsesRequestAddress(t *testing.T) {
+	a := newAccessApp(t, "senha-do-servidor")
+	rec := a.do("POST", "/entrar", phone, url.Values{"senha": {"senha-do-servidor"}})
+	cookie := sessionFrom(rec)
+	a.do("POST", "/configuracoes/parear", phone, url.Values{}, cookie)
+	if body := a.do("GET", "/configuracoes", phone, nil, cookie).Body.String(); !strings.Contains(body, "http://example.com</code>") {
+		t.Error("no modo servidor, o endereço do app deveria ser o desta página")
+	}
+}
