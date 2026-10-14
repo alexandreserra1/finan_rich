@@ -41,7 +41,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Instala
         shell: powershell
-        run: Get-Content scripts/install.ps1 -Raw | Invoke-Expression
+        run: Get-Content scripts/install.ps1 -Raw -Encoding UTF8 | Invoke-Expression
       - name: Confere
         shell: powershell
         run: |
@@ -57,5 +57,5 @@ jobs:
       - name: Desinstala
         shell: powershell
         run: |
-          & ([scriptblock]::Create((Get-Content scripts/install.ps1 -Raw))) -Uninstall
+          & ([scriptblock]::Create((Get-Content scripts/install.ps1 -Raw -Encoding UTF8))) -Uninstall
           if (Test-Path (Join-Path $env:LOCALAPPDATA 'Programs\finan_rich')) { throw 'não removeu' }

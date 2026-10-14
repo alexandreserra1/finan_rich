@@ -17,12 +17,16 @@ $desktop = Join-Path ([Environment]::GetFolderPath('Desktop')) 'finan_rich.lnk'
 # Fecha o finan_rich aberto: o Windows não deixa trocar um .exe em uso.
 function Stop-Finan {
     try { Invoke-WebRequest -UseBasicParsing -Method Post -TimeoutSec 3 'http://127.0.0.1:8080/configuracoes/fechar' | Out-Null; Start-Sleep 1 } catch {}
-    Get-Process finanrich -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    foreach ($p in Get-Process finanrich -ErrorAction SilentlyContinue) {
+        try { $p.Kill() } catch {}
+        $p.WaitForExit(5000) | Out-Null # o Windows só libera o .exe depois que o processo sai
+    }
 }
 
 if ($Uninstall) {
     Stop-Finan
-    Remove-Item -Recurse -Force $dest, $startMenu, $desktop -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force $startMenu, $desktop -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force $dest
     Write-Host 'finan_rich removido. Seus dados continuam na pasta de dados (veja o README) e voltam se você instalar de novo.'
     return
 }
