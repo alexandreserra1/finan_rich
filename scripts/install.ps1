@@ -26,7 +26,7 @@ function Stop-Finan {
 if ($Uninstall) {
     Stop-Finan
     Remove-Item -Recurse -Force $startMenu, $desktop -ErrorAction SilentlyContinue
-    Remove-Item -Recurse -Force $dest
+    if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
     Write-Host 'finan_rich removido. Seus dados continuam na pasta de dados (veja o README) e voltam se você instalar de novo.'
     return
 }
