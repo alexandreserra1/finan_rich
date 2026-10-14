@@ -26,8 +26,6 @@ jobs:
           open("/tmp/prebuild.sh", "w").write("set -eux\ncd " + b["subdir"] + "\n" + " && ".join(b["prebuild"]) + "\n")
           PY
           cat /tmp/sudo.sh /tmp/prebuild.sh
-      - name: sha256 dos pacotes baixados (para conferir a receita)
-        run: curl -fsSL https://go.dev/dl/go1.26.0.linux-amd64.tar.gz | sha256sum
       - name: sudo
         run: sudo bash /tmp/sudo.sh
       - name: prebuild
