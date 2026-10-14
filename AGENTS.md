@@ -61,6 +61,14 @@ leva o comentário `// shortcut: <limite>, <quando melhorar>` (listados por `/po
 Terminar a resposta com uma ou duas linhas: o que ficou de fora e o risco que a pessoa
 precisa saber.
 
+**Caveman está ligado por padrão** (skill `caveman`, de
+[JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman), Apache-2.0): as respostas
+do agente para a pessoa são curtas, resposta primeiro, sem cerimônia, com todo fato técnico,
+código, caminho e erro exatos. Vale **só para a conversa**: telas, mensagens do app, docs,
+comentários, commits e PRs continuam em português claro e completo (regra 5 da própria
+skill). Perguntas à pessoa, avisos de segurança e ações irreversíveis vão em frases
+completas. "normal mode" ou "stop caveman" desliga na conversa.
+
 **Ciclo** (cada fase chama as skills dela; pedido pequeno passa rápido pelas fases, mas
 passa):
 
