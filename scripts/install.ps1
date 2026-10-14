@@ -32,7 +32,12 @@ if ($Uninstall) {
 }
 
 $arch = if ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture -eq 'Arm64') { 'arm64' } else { 'amd64' }
-$tag = (Invoke-RestMethod "https://api.github.com/repos/$repo/releases/latest").tag_name
+# A última versão sai do redirecionamento de /releases/latest (a API do GitHub
+# limita as consultas por IP e falha em redes compartilhadas).
+$resp = Invoke-WebRequest -UseBasicParsing "https://github.com/$repo/releases/latest"
+$final = if ($resp.BaseResponse.ResponseUri) { $resp.BaseResponse.ResponseUri } else { $resp.BaseResponse.RequestMessage.RequestUri }
+$tag = ($final.AbsoluteUri -split '/releases/tag/')[1]
+if (-not $tag) { throw "Não encontrei nenhuma versão publicada em https://github.com/$repo/releases" }
 $version = $tag.TrimStart('v')
 $file = "finan_rich_${version}_windows_$arch.zip"
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ("finan_rich_" + [guid]::NewGuid())

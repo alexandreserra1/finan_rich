@@ -39,7 +39,9 @@ case "$(uname -m)" in
   *) echo "Processador não suportado: $(uname -m)" >&2; exit 1 ;;
 esac
 
-tag=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1)
+# A última versão sai do redirecionamento de /releases/latest (a API do
+# GitHub limita as consultas por IP e falha em redes compartilhadas).
+tag=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$REPO/releases/latest" | sed -n 's|.*/releases/tag/||p')
 if [ -z "$tag" ]; then
   echo "Não encontrei nenhuma versão publicada em https://github.com/$REPO/releases" >&2
   exit 1
