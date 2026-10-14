@@ -1,0 +1,3 @@
+• Much smaller app (3 MB): the QR code reader is now open source (jsQR).
+• Runs on Android 7.0 again.
+• All dependencies are open source.

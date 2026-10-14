@@ -350,6 +350,7 @@ body:not(.has-nav) > main { width: 100%; padding: 1.5rem 1.25rem; }
   .cards-mobile td { border: 0; padding: .15rem 0; text-align: left; display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
   .cards-mobile td[data-label]::before { content: attr(data-label); color: var(--muted); font-size: .8rem; }
   .cards-mobile td.primary { font-weight: 600; display: block; font-size: 1rem; }
+  .cards-mobile td.primary::before { content: none; } /* o título do cartão dispensa rótulo */
   .cards-mobile td.amount { font-size: 1.05rem; }
   .cards-mobile td.actions { justify-content: flex-end; gap: .5rem; width: 100%; border-top: 1px solid var(--border); margin-top: .4rem; padding-top: .4rem; }
   .cards-mobile td.actions:empty { display: none; }

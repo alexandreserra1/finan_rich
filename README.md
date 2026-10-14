@@ -294,3 +294,5 @@ para assiná-lo com a chave do projeto).
 
 Todas as dependências (do programa e do app do celular) também são código aberto; a lista
 e as licenças estão em [docs/LICENSES.md](docs/LICENSES.md), e o CI confere a cada mudança.
+Como o app chega ao celular sem pagar loja (IzzyOnDroid, F-Droid e iPhone pelo Safari):
+[docs/DISTRIBUICAO.md](docs/DISTRIBUICAO.md).

@@ -1,0 +1,41 @@
+name: F-Droid
+# Roda a receita do F-Droid (fdroid/*.yml) num ambiente limpo: instala Go e
+# Node como ela manda (conferindo o sha256), faz o prebuild e compila o APK
+# sem assinatura, como o servidor do F-Droid faz.
+on:
+  push:
+    branches: [main]
+    paths: ["fdroid/**", "mobile/**", "go.mod", ".github/workflows/fdroid.yml"]
+  workflow_dispatch:
+
+jobs:
+  receita:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Monta os comandos da receita
+        run: |
+          python3 - <<'PY'
+          import yaml
+          r = yaml.safe_load(open("fdroid/io.github.alexandreserra1.finanrich.yml"))
+          b = r["Builds"][-1]
+          open("/tmp/sudo.sh", "w").write("set -eux\n" + " && ".join(b["sudo"]) + "\n")
+          open("/tmp/prebuild.sh", "w").write("set -eux\ncd " + b["subdir"] + "\n" + " && ".join(b["prebuild"]) + "\n")
+          PY
+          cat /tmp/sudo.sh /tmp/prebuild.sh
+      - name: sha256 dos pacotes baixados (para conferir a receita)
+        run: curl -fsSL https://go.dev/dl/go1.26.0.linux-amd64.tar.gz | sha256sum
+      - name: sudo
+        run: sudo bash /tmp/sudo.sh
+      - name: prebuild
+        run: bash /tmp/prebuild.sh
+      - name: build (gradle, sem assinatura)
+        working-directory: mobile/android
+        run: |
+          ./gradlew assembleRelease --no-daemon
+          ls -la app/build/outputs/apk/release/
+          test -f app/build/outputs/apk/release/app-release-unsigned.apk

@@ -1,0 +1,3 @@
+• App bem menor (3 MB): o leitor de QR code agora é de código aberto (jsQR).
+• Volta a funcionar no Android 7.0.
+• Todas as dependências são de código aberto.

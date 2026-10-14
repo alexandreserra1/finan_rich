@@ -1,7 +1,16 @@
 {{define "content"}}
 <section class="panel login pair">
   <p class="brand big">finan<span>_rich</span></p>
-  {{if .Code}}
+  {{if .IOS}}
+  <p>No iPhone, o finan_rich funciona pelo <strong>Safari</strong>, sem baixar nada da App Store:</p>
+  <p><a class="button" href="/">Abrir o finan_rich</a></p>
+  <ol>
+    <li>Entre com a senha do computador.</li>
+    <li>Toque em <strong>Compartilhar</strong> <span aria-hidden="true">(□↑)</span> e depois em <strong>Adicionar à Tela de Início</strong>.</li>
+    <li>Pronto: o ícone do finan_rich aparece junto com os outros apps.</li>
+  </ol>
+  <p class="small muted">Para abrir sem internet e sincronizar fora de casa, use o endereço seguro do Tailscale (no computador: Ajustes → Usar no celular sem conexão e fora de casa).</p>
+  {{else if .Code}}
   <p>Para conectar o <strong>app do finan_rich</strong> a este computador:</p>
   <p><a class="button" href="{{.AppLink}}">Abrir no app</a></p>
   <p class="small muted">Se o botão não abrir o app, abra-o e digite em <em>Ajustes</em>:</p>
@@ -12,7 +21,9 @@
   {{else}}
   <p class="notice warn">Este link está sem o código de pareamento. Gere um novo no computador, em Ajustes → App do celular.</p>
   {{end}}
+  {{if not .IOS}}
   <hr>
   <p class="small muted">Ainda não tem o app? No Android, baixe o arquivo <code>.apk</code> em <a href="{{.Download}}" target="_blank" rel="noopener">finan_rich no GitHub</a>. Prefere não instalar nada? <a href="/">Use pelo navegador</a>.</p>
+  {{end}}
 </section>
 {{end}}

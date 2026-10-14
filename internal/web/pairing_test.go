@@ -64,6 +64,16 @@ func TestPairingFlow(t *testing.T) {
 		t.Errorf("página /parear: %d\n%s", page.Code, page.Body.String())
 	}
 
+	// No iPhone (sem app na App Store), a página ensina a usar pelo Safari.
+	iphone := httptest.NewRequest("GET", "/parear?codigo="+code, nil)
+	iphone.Header.Set("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1")
+	iphone.RemoteAddr = phone
+	rec := httptest.NewRecorder()
+	a.h.ServeHTTP(rec, iphone)
+	if body := rec.Body.String(); !strings.Contains(body, "Adicionar à Tela de Início") || strings.Contains(body, "finanrich://") {
+		t.Errorf("página /parear no iPhone:\n%s", body)
+	}
+
 	// Digitado com minúsculas e hífen também vale; depois de usado, não vale mais.
 	token, status := a.pair(strings.ToLower(formatCode(code)))
 	if status != http.StatusOK || token == "" {
@@ -73,7 +83,7 @@ func TestPairingFlow(t *testing.T) {
 		t.Errorf("código reaproveitado = %d", status)
 	}
 
-	rec := a.api("POST", "/api/sync", phone, token, emptySync)
+	rec = a.api("POST", "/api/sync", phone, token, emptySync)
 	if rec.Code != http.StatusOK || rec.Header().Get("Access-Control-Allow-Origin") != "*" {
 		t.Fatalf("sync com token = %d %s", rec.Code, rec.Body.String())
 	}

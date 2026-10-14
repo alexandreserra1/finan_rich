@@ -1,7 +1,10 @@
 apply plugin: 'com.android.application'
 
-// Versão do app: vem da tag da release (FINAN_VERSION=1.2.0); "dev" em builds locais.
-def finanVersion = System.getenv("FINAN_VERSION") ?: "0.0.0"
+// Versão do app: de version.properties (atualizado a cada release) ou, se
+// informado, de FINAN_VERSION (ex.: 1.6.0, vindo da tag).
+def versionProps = new Properties()
+file("version.properties").withInputStream { versionProps.load(it) }
+def finanVersion = System.getenv("FINAN_VERSION") ?: versionProps.getProperty("versionName")
 def (vMajor, vMinor, vPatch) = finanVersion.tokenize('.').collect { it.toInteger() }
 
 // Assinatura da versão publicada: com o keystore informado pelo ambiente
@@ -16,8 +19,8 @@ android {
         applicationId "io.github.alexandreserra1.finanrich"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode Math.max(1, vMajor * 10000 + vMinor * 100 + vPatch)
-        versionName finanVersion == "0.0.0" ? "dev" : finanVersion
+        versionCode vMajor * 10000 + vMinor * 100 + vPatch
+        versionName finanVersion
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

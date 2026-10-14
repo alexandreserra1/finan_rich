@@ -145,7 +145,17 @@ func (s *Server) pairPage(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, "pair", map[string]any{
 		// template.URL: o html/template bloquearia o esquema finanrich:// (montado aqui, é seguro).
 		"Code": formatCode(code), "Base": base, "AppLink": template.URL(appLink(base, code)), "Download": appDownloadURL,
+		"IOS": isIOS(r),
 	})
+}
+
+// isIOS: iPhone ou iPad. Lá o app ainda não está na App Store, então a página
+// de pareamento ensina a usar pelo Safari (Adicionar à Tela de Início).
+func isIOS(r *http.Request) bool {
+	ua := r.UserAgent()
+	// O iPad se apresenta como Mac ("Macintosh"), mas com "Mobile/".
+	return strings.Contains(ua, "iPhone") || strings.Contains(ua, "iPad") ||
+		strings.Contains(ua, "Macintosh") && strings.Contains(ua, "Mobile/")
 }
 
 type pairRequest struct {

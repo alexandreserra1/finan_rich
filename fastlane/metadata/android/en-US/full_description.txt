@@ -1,0 +1,10 @@
+<p><b>finan_rich</b> is a personal finance app for Brazil (interface in Portuguese). Your data stays on your phone and your own computer, never in the cloud, and the app works offline.</p>
+<ul>
+<li>Income and expenses with categories and a 50/30/20 salary split.</li>
+<li>Bank statement and credit card bill import (OFX, CSV and PDF) with automatic category suggestions.</li>
+<li>Debts: monthly interest, payoff time and the avalanche method.</li>
+<li>Savings goals, recurring entries and offline due-date reminders.</li>
+<li>Notes and export to Excel, CSV and PDF.</li>
+<li>AI advisor that runs on your own computer (Ollama).</li>
+</ul>
+<p>Sync with the finan_rich desktop app (Windows, macOS, Linux) over your home Wi-Fi or Tailscale. No ads, no tracking, no account. Open source (MIT).</p>

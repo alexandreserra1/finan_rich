@@ -1,0 +1,17 @@
+<p>O <b>finan_rich</b> organiza o seu dinheiro sem mandar os seus dados para a nuvem. Tudo fica guardado no celular e no seu computador, e o app funciona sem internet.</p>
+
+<p><b>O que ele faz</b></p>
+<ul>
+<li>Lançamentos de entradas e saídas, com categorias e divisão do salário (necessidades, desejos e poupança).</li>
+<li>Importação de extratos e faturas: OFX, CSV e PDF do cartão, com a categoria sugerida automaticamente (o app aprende com as suas correções).</li>
+<li>Dívidas: juros do mês, quanto tempo leva pagando só o mínimo e a ordem certa para quitar (método avalanche).</li>
+<li>Metas de economia e lançamentos recorrentes.</li>
+<li>Lembretes de vencimento das dívidas, avisados pelo próprio celular, mesmo sem internet.</li>
+<li>Notas e exportação para Excel, CSV e PDF.</li>
+<li>Consultor financeiro com IA que roda no seu computador (Ollama), sem enviar seus dados para fora.</li>
+</ul>
+
+<p><b>Como funciona</b></p>
+<p>O app guarda os dados no celular. Para manter tudo igual entre o celular e o computador, instale o finan_rich no computador (Windows, macOS ou Linux), gere um código em Ajustes e leia o QR code pelo app. A sincronização acontece pelo Wi-Fi de casa ou, de qualquer lugar, pelo Tailscale.</p>
+
+<p>Sem anúncios, sem rastreamento, sem conta e sem cadastro. Código aberto (licença MIT).</p>

@@ -120,7 +120,7 @@ E cadastrar em **GitHub → Settings → Secrets and variables → Actions**:
 | `ANDROID_KEY_ALIAS` | `finan_rich` |
 | `ANDROID_KEY_PASSWORD` | senha da chave |
 
-A versão do app vem da tag (`v1.2.0` → `versionName 1.2.0`, `versionCode 10200`).
+A versão do app fica em `mobile/android/app/version.properties`: o workflow de release (Actions → Release → Run workflow) atualiza o arquivo, faz o commit na main e cria a tag (`v1.6.0` → `versionName 1.6.0`, `versionCode 10600`). O F-Droid e o IzzyOnDroid leem a versão desse arquivo.
 
 ## Recursos do celular
 
@@ -159,7 +159,7 @@ preciso a conta de desenvolvedor (anual).
 
 ## Próximos passos
 
-- **F-Droid / IzzyOnDroid**: lojas de apps de código aberto, sem custo; o app já não tem
-  peças fechadas.
+- **F-Droid / IzzyOnDroid**: receita, textos e capturas prontos; veja
+  [DISTRIBUICAO.md](DISTRIBUICAO.md).
 - **Play Store** (taxa única) e **App Store/TestFlight** (conta Apple anual): dependem das contas.
 - **Chave de assinatura fixa do APK** (veja *Publicação* acima): para atualizar por cima.
