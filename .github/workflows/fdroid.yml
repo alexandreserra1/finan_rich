@@ -4,7 +4,6 @@ name: F-Droid
 # sem assinatura, como o servidor do F-Droid faz.
 on:
   push:
-    branches: [main]
     paths: ["fdroid/**", "mobile/**", "go.mod", ".github/workflows/fdroid.yml"]
   workflow_dispatch:
 
