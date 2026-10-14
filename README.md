@@ -291,3 +291,6 @@ para assiná-lo com a chave do projeto).
 ## Licença
 
 [MIT](LICENSE): pode usar, modificar e distribuir livremente, inclusive comercialmente, mantendo o aviso de copyright.
+
+Todas as dependências (do programa e do app do celular) também são código aberto; a lista
+e as licenças estão em [docs/LICENSES.md](docs/LICENSES.md), e o CI confere a cada mudança.

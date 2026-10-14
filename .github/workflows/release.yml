@@ -83,9 +83,10 @@ jobs:
             FINAN_KEYSTORE_FILE="$RUNNER_TEMP/finan.jks" ./gradlew assembleRelease --no-daemon
             cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/finan_rich_${FINAN_VERSION}_android.apk"
           else
-            # Sem a chave (secrets não configurados): APK de teste.
-            ./gradlew assembleDebug --no-daemon
-            cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/finan_rich_${FINAN_VERSION}_android-teste.apk"
+            # Sem a chave (secrets não configurados): APK de teste, assinado
+            # com a chave de depuração.
+            ./gradlew assembleRelease --no-daemon
+            cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/finan_rich_${FINAN_VERSION}_android-teste.apk"
           fi
       - name: Anexa à release
         env:

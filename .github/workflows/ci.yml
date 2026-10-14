@@ -24,6 +24,10 @@ jobs:
       - run: go test -race ./...
       - name: Regras rodando como WebAssembly
         run: make test-wasm
+      - name: Só dependências de código aberto
+        run: |
+          (cd mobile && npm ci --no-audit --no-fund --ignore-scripts)
+          ./scripts/check-licenses.sh
       - name: Compila para todos os sistemas
         run: |
           for target in windows/amd64 darwin/arm64 darwin/amd64 linux/amd64; do
@@ -67,16 +71,21 @@ jobs:
           java-version: 21
       - run: go generate ./internal/web
       - run: go run ./tools/mobilebuild mobile/www
-      - name: Compila o app Android (APK de teste)
+      - name: Compila o app Android (release, assinado com a chave de teste)
         working-directory: mobile
         run: |
           npm ci --no-audit --no-fund
           npx cap sync android
-          cd android && ./gradlew assembleDebug --no-daemon
+          cd android && ./gradlew assembleRelease --no-daemon
+      - name: Tamanho do APK (falha acima de 12 MB)
+        run: |
+          size=$(stat -c %s mobile/android/app/build/outputs/apk/release/app-release.apk)
+          echo "APK: $((size / 1024)) KB"
+          test "$size" -lt $((12 * 1024 * 1024))
       - uses: actions/upload-artifact@v4
         with:
           name: finan_rich-android-teste
-          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
       # O app abre de verdade num emulador Android (WebView + WebAssembly).
       - name: Habilita KVM para o emulador
         run: |
@@ -92,7 +101,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           working-directory: mobile
-          script: ./scripts/smoke-android.sh
+          script: ./scripts/smoke-android.sh android/app/build/outputs/apk/release/app-release.apk
 
   ios:
     runs-on: macos-latest

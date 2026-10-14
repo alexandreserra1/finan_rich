@@ -75,7 +75,7 @@ no navegador do celular (pede a senha de acesso na primeira vez).
 
 ## Desenvolvimento
 
-O app roda em Android 8.0 ou mais novo e iOS 15 ou mais novo.
+O app roda em Android 7.0 ou mais novo e iOS 15 ou mais novo.
 
 Precisa de Go, Node 22, Java 21 e o Android SDK (o jeito mais simples é instalar o
 [Android Studio](https://developer.android.com/studio)).
@@ -124,8 +124,10 @@ A versão do app vem da tag (`v1.2.0` → `versionName 1.2.0`, `versionCode 1020
 
 ## Recursos do celular
 
-- **Ler QR code** (Ajustes do app → *Ler QR code*): `@capacitor/barcode-scanner`. Lê o QR dos
-  Ajustes do computador (`http://…/parear?codigo=…`) e conecta.
+- **Ler QR code** (Ajustes do app → *Ler QR code*): câmera do WebView (`getUserMedia`) +
+  [jsQR](https://github.com/cozmo/jsQR) (Apache-2.0), em `js/qrscan.js`. Lê o QR dos Ajustes
+  do computador (`http://…/parear?codigo=…`) e conecta. Sem bibliotecas fechadas (veja
+  [LICENSES.md](LICENSES.md)).
 - **Lembretes de vencimento**: `@capacitor/local-notifications` agenda, para cada dívida com dia
   de vencimento, um aviso mensal 2 dias antes, às 9h. É o próprio Android/iOS que avisa,
   então funciona sem internet. Liga e desliga em Ajustes do app (`js/native.js`).
@@ -149,12 +151,15 @@ preciso a conta de desenvolvedor (anual).
 
 - `e2e/app.test.mjs`: o fluxo do app (pareamento, sync com token, offline, consultor com uma
   IA falsa, salvar como nota) no Chromium.
-- Job `android`: compila o APK e o abre num emulador Android 14
+- Job `test`: `scripts/check-licenses.sh` (só dependências de código aberto).
+- Job `android`: compila o APK de release (R8 ligado; falha se passar de 12 MB) e o abre num emulador Android 14
   (`mobile/scripts/smoke-android.sh`): confere que a tela inicial aparece (WebView carregou
   as telas e o WebAssembly) e que não houve erro fatal.
 - Job `ios`: compila para o simulador.
 
 ## Próximos passos
 
+- **F-Droid / IzzyOnDroid**: lojas de apps de código aberto, sem custo; o app já não tem
+  peças fechadas.
 - **Play Store** (taxa única) e **App Store/TestFlight** (conta Apple anual): dependem das contas.
 - **Chave de assinatura fixa do APK** (veja *Publicação* acima): para atualizar por cima.

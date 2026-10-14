@@ -189,6 +189,31 @@ try {
   await waitStatus(page, "login");
   ok((await page.textContent("#sync-status")) === "Pareie de novo", "aparelho removido no computador pede novo pareamento");
 
+  // Pareia de novo lendo o QR code com a câmera (jsQR). A "câmera" é um
+  // canvas com a imagem do QR que o computador mostra.
+  await form("/configuracoes/parear", {});
+  const qr = (await (await fetch(`${B}/configuracoes`)).text()).match(/<img src="(data:image\/png;base64,[^"]+)" alt="QR code para parear o app"/)?.[1]?.replaceAll("&#43;", "+").replaceAll("&#x2b;", "+");
+  ok(!!qr, "computador mostra o QR code de pareamento");
+  await page.addInitScript((src) => {
+    navigator.mediaDevices.getUserMedia = async () => {
+      const img = new Image();
+      img.src = src;
+      await img.decode();
+      const canvas = Object.assign(document.createElement("canvas"), { width: 480, height: 480 });
+      const g = canvas.getContext("2d");
+      const draw = () => { g.fillStyle = "#fff"; g.fillRect(0, 0, 480, 480); g.drawImage(img, 60, 60, 360, 360); };
+      draw();
+      setInterval(draw, 100);
+      return canvas.captureStream(10);
+    };
+  }, qr);
+  await page.goto(`${APP}/configuracoes`);
+  await page.click("summary:has-text('Conectar a outro computador')");
+  await page.click("[data-action=scan]");
+  await page.waitForSelector("text=Conectado a", { timeout: 15000 });
+  await waitStatus(page, "ok");
+  ok(await page.locator(".qr-overlay").count() === 0, "leu o QR code pela câmera, fechou a câmera e pareou de novo");
+
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);
 } catch (err) {
   ok(false, err.message);

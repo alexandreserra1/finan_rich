@@ -4,8 +4,9 @@ apply plugin: 'com.android.application'
 def finanVersion = System.getenv("FINAN_VERSION") ?: "0.0.0"
 def (vMajor, vMinor, vPatch) = finanVersion.tokenize('.').collect { it.toInteger() }
 
-// Assinatura da versão publicada: só existe com o keystore informado pelo
-// ambiente (secrets do GitHub). Sem ele, o build de release sai sem assinar.
+// Assinatura da versão publicada: com o keystore informado pelo ambiente
+// (secrets do GitHub). Sem ele, o build de release é assinado com a chave de
+// depuração (APK de teste: instala, mas não atualiza por cima de outra chave).
 def keystoreFile = System.getenv("FINAN_KEYSTORE_FILE")
 
 android {
@@ -36,9 +37,11 @@ android {
     }
     buildTypes {
         release {
-            if (keystoreFile) signingConfig signingConfigs.release
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig keystoreFile ? signingConfigs.release : signingConfigs.debug
+            // R8 tira o código e os recursos que o app não usa: APK bem menor.
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }

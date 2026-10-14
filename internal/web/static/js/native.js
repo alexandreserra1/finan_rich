@@ -1,21 +1,22 @@
 // Recursos do celular no app (Capacitor): leitor de QR code e lembretes de
-// vencimento das dívidas. No navegador, nada disso existe e as funções avisam.
+// vencimento das dívidas. No navegador, os lembretes não existem.
 import { getMeta, setMeta } from "./db.js";
 import { isApp, pairingLink } from "./device.js";
+import { cameraAvailable, scanQR } from "./qrscan.js";
 
 const plugins = () => window.Capacitor?.Plugins || {};
 
-export const canScan = () => isApp && !!plugins().CapacitorBarcodeScanner;
+export const canScan = cameraAvailable;
 
 // scanPairingQR abre a câmera e lê o QR code dos Ajustes do computador.
-// Devolve { url, code } ou null se a pessoa cancelar.
+// Devolve { url, code }, null se a pessoa cancelar, ou lança erro se o QR
+// não for o de pareamento.
 export async function scanPairingQR() {
-  const { ScanResult } = await plugins().CapacitorBarcodeScanner.scanBarcode({
-    hint: 0, // QR code
-    scanInstructions: "Aponte para o QR code em Ajustes → App do celular, no computador",
-    scanButton: false, scanText: " ", cameraDirection: 1, scanOrientation: 3,
-  });
-  return parsePairingQR(ScanResult);
+  const text = await scanQR("Aponte para o QR code em Ajustes → App do celular, no computador");
+  if (text == null) return null;
+  const found = parsePairingQR(text);
+  if (!found) throw new Error("esse QR code não é o de pareamento do finan_rich");
+  return found;
 }
 
 // O QR leva a http://computador:porta/parear?codigo=...; também aceitamos o

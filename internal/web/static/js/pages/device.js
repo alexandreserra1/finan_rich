@@ -73,16 +73,13 @@ export function bind(root, ctx) {
   root.querySelector('[data-action="scan"]')?.addEventListener("click", async () => {
     try {
       const found = await scanPairingQR();
-      if (!found) {
-        ctx.error(new Error("esse QR code não é o de pareamento do finan_rich"));
-        return;
-      }
+      if (!found) return; // cancelou
       const form = root.querySelector('[data-form="pair"]');
       form.elements.url.value = found.url;
       form.elements.code.value = found.code;
       form.requestSubmit();
     } catch (err) {
-      if (!/cancel/i.test(String(err?.message || err))) ctx.error(err);
+      ctx.error(err);
     }
   });
   root.querySelector('[data-action="reminders"]')?.addEventListener("change", async (e) => {
