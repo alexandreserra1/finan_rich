@@ -144,11 +144,19 @@
 <section class="panel" id="instalar">
   <h2>Instalar como aplicativo</h2>
   <ul class="small">
-    <li><strong>Computador</strong> (Chrome ou Edge): clique em <em>Instalar app</em> no topo, ou no ícone de instalar na barra de endereço. O finan_rich abre em janela própria, com ícone.</li>
+    <li><strong>Computador</strong>: instale pelo terminal com um comando (veja o README) e o finan_rich ganha ícone no menu de aplicativos e abre em janela própria.</li>
     <li><strong>Android</strong> (Chrome): menu ⋮ → <em>Adicionar à tela inicial</em>.</li>
     <li><strong>iPhone</strong> (Safari): botão Compartilhar → <em>Adicionar à Tela de Início</em>.</li>
   </ul>
 </section>
+
+{{if .CanQuit}}
+<section class="panel" id="fechar">
+  <h2>Fechar o finan_rich</h2>
+  <p class="muted small">Desliga o programa neste computador. Seus dados ficam salvos; o celular continua funcionando e sincroniza quando o finan_rich abrir de novo.</p>
+  <form method="post" action="/configuracoes/fechar"><button type="submit" class="secondary">Fechar o finan_rich</button></form>
+</section>
+{{end}}
 
 <section class="panel">
   <h2>Seus dados</h2>

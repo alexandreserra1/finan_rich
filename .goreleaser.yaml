@@ -24,7 +24,13 @@ archives:
     # finan_rich_1.0.0_macos_arm64.tar.gz, finan_rich_1.0.0_windows_amd64.zip...
     name_template: >-
       {{ .ProjectName }}_{{ .Version }}_{{ if eq .Os "darwin" }}macos{{ else }}{{ .Os }}{{ end }}_{{ .Arch }}
-    files: [README.md, LICENSE]
+    files:
+      - README.md
+      - LICENSE
+      # Ícones usados pelos instaladores (menu de aplicativos, atalhos).
+      - src: packaging/icon.*
+        dst: .
+        strip_parent: true
 
 checksum:
   name_template: checksums.txt

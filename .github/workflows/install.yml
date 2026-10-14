@@ -1,0 +1,61 @@
+name: Instaladores
+# Roda os instaladores (scripts/install.sh e install.ps1) contra a última
+# versão publicada, nos três sistemas, e confere atalhos e desinstalação.
+on:
+  push:
+    paths: ["scripts/install.*", ".github/workflows/install.yml"]
+  workflow_dispatch:
+
+jobs:
+  unix:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instala
+        run: sh scripts/install.sh
+      - name: Confere
+        run: |
+          test -x "$HOME/.local/bin/finanrich"
+          if [ "$RUNNER_OS" = Linux ]; then
+            grep -q "Exec=$HOME/.local/bin/finanrich" "$HOME/.local/share/applications/finanrich.desktop"
+            test -s "$HOME/.local/share/icons/hicolor/512x512/apps/finanrich.png"
+          else
+            test -x "$HOME/Applications/finan_rich.app/Contents/MacOS/finan_rich"
+            plutil -lint "$HOME/Applications/finan_rich.app/Contents/Info.plist"
+            test -s "$HOME/Applications/finan_rich.app/Contents/Resources/icon.icns"
+          fi
+          "$HOME/.local/bin/finanrich" -no-browser -data "$RUNNER_TEMP/dados" &
+          for i in $(seq 1 50); do curl -fs http://127.0.0.1:8080/healthz && break; sleep 0.2; done
+          curl -fs http://127.0.0.1:8080/healthz
+      - name: Desinstala
+        run: |
+          sh scripts/install.sh --uninstall
+          test ! -e "$HOME/.local/bin/finanrich"
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instala
+        shell: powershell
+        run: Get-Content scripts/install.ps1 -Raw | Invoke-Expression
+      - name: Confere
+        shell: powershell
+        run: |
+          $exe = Join-Path $env:LOCALAPPDATA 'Programs\finan_rich\finanrich.exe'
+          if (-not (Test-Path $exe)) { throw 'sem o executável' }
+          $lnk = Join-Path ([Environment]::GetFolderPath('Programs')) 'finan_rich.lnk'
+          if ((New-Object -ComObject WScript.Shell).CreateShortcut($lnk).TargetPath -ne $exe) { throw 'atalho errado' }
+          if (-not (Test-Path (Join-Path $env:LOCALAPPDATA 'Programs\finan_rich\icon.ico'))) { throw 'sem ícone' }
+          Start-Process $exe -ArgumentList '-no-browser', '-data', "$env:RUNNER_TEMP\dados"
+          $ok = $false
+          foreach ($i in 1..50) { try { Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8080/healthz | Out-Null; $ok = $true; break } catch { Start-Sleep -Milliseconds 200 } }
+          if (-not $ok) { throw 'o programa não respondeu' }
+      - name: Desinstala
+        shell: powershell
+        run: |
+          & ([scriptblock]::Create((Get-Content scripts/install.ps1 -Raw))) -Uninstall
+          if (Test-Path (Join-Path $env:LOCALAPPDATA 'Programs\finan_rich')) { throw 'não removeu' }

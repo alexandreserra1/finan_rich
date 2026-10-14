@@ -32,22 +32,36 @@ números reais. Seus dados ficam num arquivo no seu PC, sem conta e sem nuvem.
 
 ## Como usar
 
-### 1. Baixe o finan_rich
+### 1. Instale o finan_rich (um comando)
 
-**Windows**: baixe o `.zip` de Windows na página de
-[Releases](https://github.com/alexandreserra1/finan_rich/releases), extraia e dê dois
-cliques em `finanrich.exe`. Se o Windows avisar sobre "editor desconhecido", clique em
-*Mais informações → Executar assim mesmo*.
+**Windows**: abra o **PowerShell** (menu Iniciar → digite *PowerShell*) e cole:
 
-**macOS e Linux**: no Terminal, rode:
+```powershell
+irm https://raw.githubusercontent.com/alexandreserra1/finan_rich/main/scripts/install.ps1 | iex
+```
+
+**macOS e Linux**: abra o **Terminal** e cole:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/alexandreserra1/finan_rich/main/scripts/install.sh | sh
-finanrich
 ```
 
-O navegador abre sozinho em http://127.0.0.1:8080. Para fechar, feche a janela do
-terminal (ou aperte Ctrl+C).
+Pronto: o finan_rich aparece no menu Iniciar e na Área de Trabalho (Windows), em
+Aplicativos e no Launchpad (macOS) ou no menu de aplicativos (Linux). Ele abre em janela
+própria, como um programa (usa o Edge, Chrome, Brave ou Chromium que você tiver; sem
+nenhum deles, abre no navegador padrão). Para fechar: **Ajustes → Fechar o finan_rich**.
+
+- **Atualizar**: rode o mesmo comando de novo. Seus dados ficam onde estão.
+- **Desinstalar** (os dados ficam): no Terminal,
+  `curl -fsSL https://raw.githubusercontent.com/alexandreserra1/finan_rich/main/scripts/install.sh | sh -s -- --uninstall`;
+  no PowerShell,
+  `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/alexandreserra1/finan_rich/main/scripts/install.ps1))) -Uninstall`.
+- O instalador confere o arquivo baixado com o `checksums.txt` da versão antes de instalar.
+  Instalando pelo terminal, o Windows e o macOS não mostram o aviso de "editor
+  desconhecido" (que só aparece em arquivo baixado pelo navegador).
+- Prefere baixar à mão? Os arquivos estão em
+  [Releases](https://github.com/alexandreserra1/finan_rich/releases): extraia e abra o
+  `finanrich` (`finanrich.exe` no Windows).
 
 ### 2. (Opcional) Ative o consultor com IA
 
@@ -130,9 +144,9 @@ a senha não é pedida.
 
 ### Como aplicativo no computador
 
-No Chrome ou no Edge, clique em **Instalar app** no topo da página (ou no ícone de
-instalar na barra de endereço). O finan_rich ganha ícone próprio e abre em janela
-própria, como um programa. Se ele estiver fechado, a janela mostra um aviso em vez de erro.
+O instalador (passo 1) já cria o ícone e abre o finan_rich em janela própria. Se você
+baixou à mão, dá para fazer o mesmo no Chrome ou no Edge: **Instalar app** no topo da
+página (ou o ícone de instalar na barra de endereço).
 
 ### Seus dados e backup
 

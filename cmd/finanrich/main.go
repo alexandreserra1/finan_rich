@@ -38,6 +38,10 @@ func main() {
 }
 
 func run(args []string) error {
+	if len(args) == 1 && (args[0] == "-version" || args[0] == "--version") {
+		fmt.Println("finan_rich", version)
+		return nil
+	}
 	cfg, err := config.Load(args)
 	if err != nil {
 		return err
@@ -63,6 +67,7 @@ func run(args []string) error {
 	reload := make(chan struct{}, 1)
 	srv, err := web.New(st, web.Options{
 		AIPreset: cfg.AIPreset, AIDefaults: cfg.AI, Port: port, Password: cfg.Password,
+		OnQuit: stop,
 		OnNetworkChange: func() {
 			select {
 			case reload <- struct{}{}:
@@ -90,7 +95,7 @@ func run(args []string) error {
 			if first && alreadyRunning(localURL) {
 				log.Printf("finan_rich já está aberto em %s", localURL)
 				if cfg.OpenBrowser {
-					return openBrowser(localURL)
+					return openApp(localURL)
 				}
 				return nil
 			}
@@ -100,7 +105,7 @@ func run(args []string) error {
 		if first {
 			printBanner(localURL, cfg.DBPath())
 			if cfg.OpenBrowser {
-				if err := openBrowser(localURL); err != nil {
+				if err := openApp(localURL); err != nil {
 					log.Printf("abra %s no navegador (%v)", localURL, err)
 				}
 			}

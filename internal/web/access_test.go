@@ -22,6 +22,7 @@ type accessApp struct {
 	st      *store.Store
 	srv     *Server
 	changes atomic.Int32
+	quits   atomic.Int32
 }
 
 func newAccessApp(t *testing.T, envPassword string) *accessApp {
@@ -35,6 +36,7 @@ func newAccessApp(t *testing.T, envPassword string) *accessApp {
 	s, err := New(st, Options{
 		AIPreset: "ollama", AIDefaults: llm.Config{Kind: llm.KindOllama, BaseURL: "http://127.0.0.1:1", Model: "m"},
 		Port: "8080", Password: envPassword, OnNetworkChange: func() { a.changes.Add(1) },
+		OnQuit: func() { a.quits.Add(1) },
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -257,5 +259,25 @@ func TestBackupDB(t *testing.T) {
 	a.enableLAN("senha-forte-1")
 	if rec := a.do("GET", "/configuracoes/backup.db", phone, nil); rec.Code != http.StatusSeeOther {
 		t.Errorf("backup pela rede sem login = %d", rec.Code)
+	}
+}
+
+func TestQuitOnlyFromThisComputer(t *testing.T) {
+	a := newAccessApp(t, "")
+	a.enableLAN("senha-forte-1")
+	if body := a.do("GET", "/configuracoes", local, nil).Body.String(); !strings.Contains(body, "/configuracoes/fechar") {
+		t.Error("Ajustes no computador deveria mostrar o botão de fechar")
+	}
+	if rec := a.do("POST", "/configuracoes/fechar", phone, nil); rec.Code == http.StatusOK {
+		t.Errorf("fechar pelo celular = %d", rec.Code)
+	}
+	if rec := a.do("POST", "/configuracoes/fechar", local, nil); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "fechado") {
+		t.Fatalf("fechar no computador = %d", rec.Code)
+	}
+	for i := 0; i < 50 && a.quits.Load() == 0; i++ {
+		time.Sleep(20 * time.Millisecond)
+	}
+	if a.quits.Load() != 1 {
+		t.Errorf("OnQuit chamado %d vezes", a.quits.Load())
 	}
 }

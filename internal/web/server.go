@@ -36,6 +36,7 @@ type Server struct {
 	envPasswordHash string // senha de FINAN_PASSWORD (modo servidor), já com hash
 	limiter         *auth.Limiter
 	onNetworkChange func()
+	onQuit          func()
 	assetsVersion   string // impressão digital de static/ e templates/
 	pairing         pairing
 }
@@ -51,6 +52,8 @@ type Options struct {
 	// OnNetworkChange é chamado quando o acesso pelo celular é ligado ou
 	// desligado, para o programa reabrir a porta no endereço certo.
 	OnNetworkChange func()
+	// OnQuit fecha o programa (botão "Fechar o finan_rich" nos Ajustes).
+	OnQuit func()
 }
 
 var funcs = template.FuncMap{
@@ -68,6 +71,7 @@ func New(st *store.Store, opts Options) (*Server, error) {
 		port:            opts.Port,
 		limiter:         auth.NewLimiter(5, 10*time.Minute),
 		onNetworkChange: opts.OnNetworkChange,
+		onQuit:          opts.OnQuit,
 		assetsVersion:   assetsFingerprint(),
 	}
 	if _, err := staticFS.ReadFile("static/finance.wasm"); err != nil {
@@ -142,6 +146,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /configuracoes/testar", s.testAI)
 	mux.HandleFunc("POST /configuracoes/baixar-modelo", s.pullModel)
 	mux.HandleFunc("POST /configuracoes/acesso", s.saveAccess)
+	mux.HandleFunc("POST /configuracoes/fechar", s.quit)
 	mux.HandleFunc("GET /configuracoes/backup.db", s.backupDB)
 	return logRequests(securityHeaders(apiCORS(sameOrigin(s.requireAuth(mux)))))
 }

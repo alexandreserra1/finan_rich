@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -20,6 +21,7 @@ func (s *Server) settings(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{
 		"AI": ai, "Status": s.aiStatus(ctx, ai), "Presets": llm.Presets, "HasKey": ai.APIKey != "",
 		"LAN": s.LANEnabled(ctx), "EnvPassword": s.envPasswordHash != "",
+		"CanQuit": s.onQuit != nil && isLoopback(r),
 	}
 	data["Port"] = s.port
 	if ts := tailscaleURL(ctx); ts != "" {
@@ -117,4 +119,22 @@ func (s *Server) pullModel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sse.Done()
+}
+
+// quit fecha o finan_rich. Só vale neste computador: pelo celular ou pela
+// rede, ninguém desliga o programa de quem está usando.
+func (s *Server) quit(w http.ResponseWriter, r *http.Request) {
+	if s.onQuit == nil || !isLoopback(r) {
+		http.Error(w, "só dá para fechar o finan_rich no próprio computador", http.StatusForbidden)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	io.WriteString(w, `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>finan_rich</title><body style="font-family:system-ui,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem">
+<h1>finan_rich fechado</h1><p>Seus dados estão salvos. Pode fechar esta janela.</p>
+<p>Para abrir de novo, use o ícone do finan_rich.</p></body>`)
+	go func() { // fecha depois que a resposta sair
+		time.Sleep(300 * time.Millisecond)
+		s.onQuit()
+	}()
 }

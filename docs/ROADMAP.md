@@ -101,5 +101,11 @@ aparelho; o que falta para chegar perto, do mais simples ao mais caro:
 
 - ~~**Metas** com valor e prazo~~ — feito (tela Metas e painel).
 - ~~**Lançamentos recorrentes** automáticos~~ — feito ("Repetir todo mês").
-- **Executáveis assinados** no Windows e no macOS, para não aparecer o aviso de "editor
-  desconhecido".
+- ~~**Instalar como aplicativo no computador**~~ — feito: um comando no terminal
+  (`install.sh`/`install.ps1`) instala, cria o ícone no menu e abre em janela própria; sem o
+  aviso de "editor desconhecido", porque não passa pelo navegador.
+- **Executáveis assinados** no Windows e no macOS: só faz diferença para quem baixa o
+  arquivo pelo navegador (custa a conta Apple e um certificado de código no Windows).
+- **Pacotes nos gerenciadores** (Homebrew, Scoop/winget, Flathub, .deb/.rpm): todos
+  gratuitos e de código aberto; o GoReleaser já gera boa parte. Vale quando houver mais
+  usuários pedindo.
