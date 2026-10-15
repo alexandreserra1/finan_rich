@@ -51,6 +51,8 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Opcional: abre o pedido no winget (ver docs/DISTRIBUICAO.md).
+          WINGET_GITHUB_TOKEN: ${{ secrets.WINGET_GITHUB_TOKEN }}
 
   # App Android: compila e anexa o .apk à mesma release.
   android:

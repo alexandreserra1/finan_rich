@@ -65,6 +65,24 @@ Observação: como o F-Droid assina com a chave deles, quem instalou pelo F-Droi
 atualiza com o APK do GitHub (e vice-versa). Para unificar, dá para tornar o build
 reproduzível e o F-Droid passa a publicar o nosso APK (campo `Binaries:` da receita).
 
+## Computador: Homebrew, Scoop e winget
+
+Todos gratuitos e de código aberto. Este repositório serve de *tap* do Homebrew
+(`Casks/`) e de *bucket* do Scoop (`bucket/`): o GoReleaser atualiza os dois a cada release
+e o workflow **Pacotes** instala, abre e desinstala nos três sistemas para conferir.
+
+**winget** (o gerenciador que já vem no Windows 10/11): os pacotes ficam no repositório
+`microsoft/winget-pkgs`, e cada versão nova vira um pedido (pull request) revisado pela
+Microsoft, de graça. Para o GoReleaser abrir esse pedido sozinho:
+
+1. Faça um fork de <https://github.com/microsoft/winget-pkgs> na sua conta.
+2. Crie um token em GitHub → Settings → Developer settings → *Fine-grained tokens*, com
+   acesso ao fork (`Contents` e `Pull requests`: leitura e escrita).
+3. Cadastre o token como secret `WINGET_GITHUB_TOKEN` neste repositório.
+
+Na release seguinte, o pedido é aberto; depois de aprovado, funciona
+`winget install alexandreserra1.finan_rich`. Sem o secret, essa etapa é pulada.
+
 ## iPhone sem App Store
 
 A Apple não deixa instalar apps de fora da App Store sem a conta paga. O caminho grátis é

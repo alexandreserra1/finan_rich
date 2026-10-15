@@ -59,6 +59,13 @@ nenhum deles, abre no navegador padrão). Para fechar: **Ajustes → Fechar o fi
   `curl -fsSL https://raw.githubusercontent.com/alexandreserra1/finan_rich/main/scripts/install.sh | sh -s -- --uninstall`;
   no PowerShell,
   `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/alexandreserra1/finan_rich/main/scripts/install.ps1))) -Uninstall`.
+- **Prefere um gerenciador de pacotes?**
+  - Homebrew (macOS e Linux):
+    `brew tap alexandreserra1/finan_rich https://github.com/alexandreserra1/finan_rich && brew install --cask finan_rich`
+    (atualiza com `brew upgrade`; pelo brew o programa abre pelo terminal, com `finanrich`).
+  - Scoop (Windows):
+    `scoop bucket add finan_rich https://github.com/alexandreserra1/finan_rich; scoop install finan_rich`
+    (cria o atalho no menu Iniciar; atualiza com `scoop update finan_rich`).
 - O instalador confere o arquivo baixado com o `checksums.txt` da versão antes de instalar.
   Instalando pelo terminal, o Windows e o macOS não mostram o aviso de "editor
   desconhecido" (que só aparece em arquivo baixado pelo navegador).

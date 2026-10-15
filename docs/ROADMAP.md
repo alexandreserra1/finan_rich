@@ -107,6 +107,6 @@ aparelho; o que falta para chegar perto, do mais simples ao mais caro:
   sai versão nova, com o comando de atualizar.
 - **Executáveis assinados** no Windows e no macOS: só faz diferença para quem baixa o
   arquivo pelo navegador (custa a conta Apple e um certificado de código no Windows).
-- **Pacotes nos gerenciadores** (Homebrew, Scoop/winget, Flathub, .deb/.rpm): todos
-  gratuitos e de código aberto; o GoReleaser já gera boa parte. Vale quando houver mais
-  usuários pedindo.
+- ~~**Homebrew e Scoop**~~ — feito (este repositório é o tap e o bucket). **winget**:
+  configurado, liga com o secret `WINGET_GITHUB_TOKEN` (ver DISTRIBUICAO.md).
+- **Flathub, .deb/.rpm**: gratuitos; vale quando houver mais usuários de Linux pedindo.
