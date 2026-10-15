@@ -61,7 +61,7 @@ nenhum deles, abre no navegador padrão). Para fechar: **Ajustes → Fechar o fi
   `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/alexandreserra1/finan_rich/main/scripts/install.ps1))) -Uninstall`.
 - **Prefere um gerenciador de pacotes?**
   - Homebrew (macOS e Linux):
-    `brew tap alexandreserra1/finan_rich https://github.com/alexandreserra1/finan_rich && brew install --cask finan_rich`
+    `brew tap alexandreserra1/finan_rich https://github.com/alexandreserra1/finan_rich && brew trust alexandreserra1/finan_rich && brew install --cask finan_rich`
     (atualiza com `brew upgrade`; pelo brew o programa abre pelo terminal, com `finanrich`).
   - Scoop (Windows):
     `scoop bucket add finan_rich https://github.com/alexandreserra1/finan_rich; scoop install finan_rich`

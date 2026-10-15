@@ -27,6 +27,7 @@ jobs:
         run: |
           [ -x /home/linuxbrew/.linuxbrew/bin/brew ] && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
           brew tap alexandreserra1/finan_rich "$GITHUB_WORKSPACE"
+          brew trust alexandreserra1/finan_rich
           brew install --cask finan_rich
           echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
       - name: Abre
@@ -58,7 +59,8 @@ jobs:
       - name: Instala pelo scoop
         shell: powershell
         run: |
-          scoop bucket add finan_rich $env:GITHUB_WORKSPACE
+          scoop bucket add finan_rich ("file:///" + ($env:GITHUB_WORKSPACE -replace '\\', '/'))
+          if ($LASTEXITCODE) { throw 'scoop bucket add falhou' }
           scoop install finan_rich/finan_rich
           if ($LASTEXITCODE) { throw 'scoop install falhou' }
       - name: Abre
