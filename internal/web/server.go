@@ -14,6 +14,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"runtime"
 	"strings"
 	"time"
 
@@ -37,6 +38,7 @@ type Server struct {
 	limiter         *auth.Limiter
 	onNetworkChange func()
 	onQuit          func()
+	updates         *updateChecker
 	assetsVersion   string // impressão digital de static/ e templates/
 	pairing         pairing
 }
@@ -54,6 +56,9 @@ type Options struct {
 	OnNetworkChange func()
 	// OnQuit fecha o programa (botão "Fechar o finan_rich" nos Ajustes).
 	OnQuit func()
+	// Version é a versão rodando, para avisar quando sair uma nova; vazia
+	// desliga o aviso.
+	Version string
 }
 
 var funcs = template.FuncMap{
@@ -72,6 +77,7 @@ func New(st *store.Store, opts Options) (*Server, error) {
 		limiter:         auth.NewLimiter(5, 10*time.Minute),
 		onNetworkChange: opts.OnNetworkChange,
 		onQuit:          opts.OnQuit,
+		updates:         newUpdateCheckerIf(opts.Version),
 		assetsVersion:   assetsFingerprint(),
 	}
 	if _, err := staticFS.ReadFile("static/finance.wasm"); err != nil {
@@ -159,6 +165,10 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, page string, dat
 	data["Flash"] = r.URL.Query().Get("msg")
 	data["Error"] = r.URL.Query().Get("erro")
 	data["Remote"] = !isLoopback(r) // acesso pela rede: mostra o botão de sair
+	// Aviso de versão nova: só no próprio computador, que é onde se atualiza.
+	if v, ok := s.updates.available(); ok && isLoopback(r) && data["Mobile"] != true {
+		data["Update"], data["UpdateCmd"], data["UpdateOS"] = v, updateCommand(), runtime.GOOS
+	}
 	// Renderiza num buffer: se o template falhar, devolve 500 em vez de meia página.
 	var buf bytes.Buffer
 	if err := s.pages[page].Execute(&buf, data); err != nil {

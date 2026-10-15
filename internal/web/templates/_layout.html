@@ -39,6 +39,12 @@
 </nav>
 {{end}}
 <main>
+  {{with .Update}}<div class="notice ok update" role="status">
+    <strong>Saiu a versão {{.}} do finan_rich.</strong>
+    <a href="https://github.com/alexandreserra1/finan_rich/releases/latest" target="_blank" rel="noopener">O que mudou</a>
+    <p class="small">Para atualizar, cole no {{if eq $.UpdateOS "windows"}}PowerShell{{else}}Terminal{{end}} (seus dados ficam):</p>
+    <code class="cmd">{{$.UpdateCmd}}</code>
+  </div>{{end}}
   {{with .Flash}}<p class="flash ok">{{.}}</p>{{end}}
   {{with .Error}}<p class="flash err">{{.}}</p>{{end}}
   {{template "content" .}}

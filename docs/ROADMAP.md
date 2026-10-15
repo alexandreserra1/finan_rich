@@ -103,7 +103,8 @@ aparelho; o que falta para chegar perto, do mais simples ao mais caro:
 - ~~**Lançamentos recorrentes** automáticos~~ — feito ("Repetir todo mês").
 - ~~**Instalar como aplicativo no computador**~~ — feito: um comando no terminal
   (`install.sh`/`install.ps1`) instala, cria o ícone no menu e abre em janela própria; sem o
-  aviso de "editor desconhecido", porque não passa pelo navegador.
+  aviso de "editor desconhecido", porque não passa pelo navegador. O programa avisa quando
+  sai versão nova, com o comando de atualizar.
 - **Executáveis assinados** no Windows e no macOS: só faz diferença para quem baixa o
   arquivo pelo navegador (custa a conta Apple e um certificado de código no Windows).
 - **Pacotes nos gerenciadores** (Homebrew, Scoop/winget, Flathub, .deb/.rpm): todos

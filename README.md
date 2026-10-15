@@ -51,7 +51,10 @@ Aplicativos e no Launchpad (macOS) ou no menu de aplicativos (Linux). Ele abre e
 própria, como um programa (usa o Edge, Chrome, Brave ou Chromium que você tiver; sem
 nenhum deles, abre no navegador padrão). Para fechar: **Ajustes → Fechar o finan_rich**.
 
-- **Atualizar**: rode o mesmo comando de novo. Seus dados ficam onde estão.
+- **Atualizar**: rode o mesmo comando de novo. Seus dados ficam onde estão. Quando sai
+  versão nova, o finan_rich avisa no topo da tela, já com o comando. Para isso ele consulta
+  uma vez por dia o endereço `github.com/.../releases/latest` (nenhum dado seu vai junto);
+  `FINAN_UPDATE_CHECK=0` desliga.
 - **Desinstalar** (os dados ficam): no Terminal,
   `curl -fsSL https://raw.githubusercontent.com/alexandreserra1/finan_rich/main/scripts/install.sh | sh -s -- --uninstall`;
   no PowerShell,

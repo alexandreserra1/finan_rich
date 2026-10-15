@@ -67,7 +67,8 @@ func run(args []string) error {
 	reload := make(chan struct{}, 1)
 	srv, err := web.New(st, web.Options{
 		AIPreset: cfg.AIPreset, AIDefaults: cfg.AI, Port: port, Password: cfg.Password,
-		OnQuit: stop,
+		OnQuit:  stop,
+		Version: updateVersion(),
 		OnNetworkChange: func() {
 			select {
 			case reload <- struct{}{}:
@@ -135,6 +136,15 @@ func run(args []string) error {
 			shutdown(httpSrv) // reabre no novo endereço na próxima volta
 		}
 	}
+}
+
+// updateVersion é a versão usada no aviso de versão nova; FINAN_UPDATE_CHECK=0
+// desliga o aviso (e a consulta diária ao GitHub).
+func updateVersion() string {
+	if os.Getenv("FINAN_UPDATE_CHECK") == "0" {
+		return ""
+	}
+	return version
 }
 
 func printBanner(url, dbPath string) {
