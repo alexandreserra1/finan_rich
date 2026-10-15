@@ -1,0 +1,83 @@
+name: Pacotes
+# Instala o finan_rich pelo Homebrew (macOS e Linux) e pelo Scoop (Windows)
+# usando os arquivos de Casks/ e bucket/ deste repositório, e confere que o
+# programa abre. Roda quando eles mudam e depois de cada release.
+on:
+  push:
+    paths: ["Casks/**", "bucket/**", ".github/workflows/packages.yml"]
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  homebrew:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && 'main' || github.ref }}
+          fetch-depth: 0
+      - name: Instala pelo brew
+        run: |
+          [ -x /home/linuxbrew/.linuxbrew/bin/brew ] && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          brew tap alexandreserra1/finan_rich "$GITHUB_WORKSPACE"
+          brew install --cask finan_rich
+          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+      - name: Abre
+        run: |
+          finanrich -version | tee /dev/stderr | grep -q "finan_rich $(sed -n 's/.*version "\(.*\)"/\1/p' Casks/finan_rich.rb)"
+          finanrich -no-browser -data "$RUNNER_TEMP/dados" &
+          for i in $(seq 1 50); do curl -fs http://127.0.0.1:8080/healthz && break; sleep 0.2; done
+          curl -fs http://127.0.0.1:8080/healthz
+          curl -fs -X POST http://127.0.0.1:8080/configuracoes/fechar >/dev/null
+      - name: Desinstala
+        run: |
+          [ -x /home/linuxbrew/.linuxbrew/bin/brew ] && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          brew uninstall --cask finan_rich
+          ! command -v finanrich
+
+  scoop:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && 'main' || github.ref }}
+          fetch-depth: 0
+      - name: Instala o Scoop
+        shell: powershell
+        run: |
+          iex "& {$(irm get.scoop.sh)} -RunAsAdmin"
+          "$env:USERPROFILE\scoop\shims" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+      - name: Instala pelo scoop
+        shell: powershell
+        run: |
+          scoop bucket add finan_rich $env:GITHUB_WORKSPACE
+          scoop install finan_rich/finan_rich
+          if ($LASTEXITCODE) { throw 'scoop install falhou' }
+      - name: Abre
+        shell: powershell
+        run: |
+          $want = (Get-Content bucket/finan_rich.json -Raw | ConvertFrom-Json).version
+          $got = finanrich -version
+          Write-Host $got
+          if ($got -ne "finan_rich $want") { throw "versão errada: $got" }
+          $lnk = Join-Path ([Environment]::GetFolderPath('Programs')) 'Scoop Apps\finan_rich.lnk'
+          if (-not (Test-Path $lnk)) { throw "sem atalho no menu Iniciar: $lnk" }
+          Start-Process finanrich -ArgumentList '-no-browser', '-data', "$env:RUNNER_TEMP\dados"
+          $ok = $false
+          foreach ($i in 1..50) { try { Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8080/healthz | Out-Null; $ok = $true; break } catch { Start-Sleep -Milliseconds 200 } }
+          if (-not $ok) { throw 'o programa não respondeu' }
+          Invoke-WebRequest -UseBasicParsing -Method Post http://127.0.0.1:8080/configuracoes/fechar | Out-Null
+          Start-Sleep 2
+      - name: Desinstala
+        shell: powershell
+        run: |
+          scoop uninstall finan_rich
+          if (Get-Command finanrich -ErrorAction SilentlyContinue) { throw 'não removeu' }

@@ -37,3 +37,65 @@ checksum:
 
 changelog:
   sort: asc
+
+# Homebrew (macOS e Linux) e Scoop (Windows). O próprio repositório serve de
+# "tap" e de "bucket": cada release atualiza Casks/ e bucket/ na main.
+#   brew tap alexandreserra1/finan_rich https://github.com/alexandreserra1/finan_rich
+#   brew install --cask finan_rich
+#   scoop bucket add finan_rich https://github.com/alexandreserra1/finan_rich
+#   scoop install finan_rich
+homebrew_casks:
+  - name: finan_rich
+    repository: { owner: alexandreserra1, name: finan_rich }
+    directory: Casks
+    commit_author:
+      name: "github-actions[bot]"
+      email: "41898282+github-actions[bot]@users.noreply.github.com"
+    commit_msg_template: "Homebrew: finan_rich {{ .Tag }}"
+    homepage: https://github.com/alexandreserra1/finan_rich
+    description: Finanças pessoais offline, com seus dados no seu computador
+    license: MIT
+    binaries: [finanrich]
+    hooks:
+      post:
+        # Sem assinatura da Apple (paga): tira a marca de "baixado da internet"
+        # para o macOS não bloquear o programa.
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/finanrich"]
+          end
+
+scoops:
+  - name: finan_rich
+    repository: { owner: alexandreserra1, name: finan_rich }
+    directory: bucket
+    commit_author:
+      name: "github-actions[bot]"
+      email: "41898282+github-actions[bot]@users.noreply.github.com"
+    commit_msg_template: "Scoop: finan_rich {{ .Tag }}"
+    homepage: https://github.com/alexandreserra1/finan_rich
+    description: Finanças pessoais offline, com seus dados no seu computador
+    license: MIT
+    shortcuts: [["finanrich.exe", "finan_rich", "", "icon.ico"]]
+
+# winget (Windows): manda um pedido ao repositório da Microsoft. Só liga com o
+# secret WINGET_GITHUB_TOKEN (veja docs/DISTRIBUICAO.md).
+winget:
+  - name: finan_rich
+    publisher: alexandreserra1
+    package_identifier: alexandreserra1.finan_rich
+    short_description: Finanças pessoais offline, com seus dados no seu computador
+    license: MIT
+    homepage: https://github.com/alexandreserra1/finan_rich
+    publisher_url: https://github.com/alexandreserra1
+    release_notes_url: https://github.com/alexandreserra1/finan_rich/releases/tag/{{ .Tag }}
+    tags: [financas, finance, budget, offline]
+    skip_upload: '{{ if not (index .Env "WINGET_GITHUB_TOKEN") }}true{{ end }}'
+    repository:
+      owner: alexandreserra1
+      name: winget-pkgs
+      branch: "finan_rich-{{ .Version }}"
+      token: '{{ index .Env "WINGET_GITHUB_TOKEN" }}'
+      pull_request:
+        enabled: true
+        base: { owner: microsoft, name: winget-pkgs, branch: master }

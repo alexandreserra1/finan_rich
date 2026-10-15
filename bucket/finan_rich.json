@@ -1,0 +1,30 @@
+{
+    "version": "1.7.0",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/alexandreserra1/finan_rich/releases/download/v1.7.0/finan_rich_1.7.0_windows_amd64.zip",
+            "bin": [
+                "finanrich.exe"
+            ],
+            "hash": "ae22bd87357e810f1186663f1bbfb9c7867fb702e4a3cec6abcabc0f76cd97dc"
+        },
+        "arm64": {
+            "url": "https://github.com/alexandreserra1/finan_rich/releases/download/v1.7.0/finan_rich_1.7.0_windows_arm64.zip",
+            "bin": [
+                "finanrich.exe"
+            ],
+            "hash": "d89fc5730c86d0ae805b9ebc2ea2fbf54a4222b7a56f573a86b2c181bcc5e52d"
+        }
+    },
+    "homepage": "https://github.com/alexandreserra1/finan_rich",
+    "license": "MIT",
+    "description": "Finanças pessoais offline, com seus dados no seu computador",
+    "shortcuts": [
+        [
+            "finanrich.exe",
+            "finan_rich",
+            "",
+            "icon.ico"
+        ]
+    ]
+}
