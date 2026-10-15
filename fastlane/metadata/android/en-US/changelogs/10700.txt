@@ -1,0 +1,4 @@
+• Desktop: one-command install, menu icon and its own app window.
+• The desktop app tells you when a new version is out, with the update command.
+• "Close finan_rich" button in Settings.
+• On iPhone, the pairing link explains how to use it from Safari.

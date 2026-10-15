@@ -71,12 +71,18 @@ jobs:
           java-version: 21
       - run: go generate ./internal/web
       - run: go run ./tools/mobilebuild mobile/www
-      - name: Compila o app Android (release, assinado com a chave de teste)
+      - name: Compila o app Android (release, assinado como na publicação)
         working-directory: mobile
         run: |
           npm ci --no-audit --no-fund
           npx cap sync android
+          # Uma chave descartável criada pelo mesmo script que gera a chave de
+          # verdade: prova que a assinatura da release funciona.
+          PATH=/usr/bin:/bin sh ../scripts/android-key.sh
+          export FINAN_KEYSTORE_FILE=$PWD/../finan_rich-chave/finan_rich.p12
+          export $(cat ../finan_rich-chave/senhas.txt | sed 's/^ANDROID_/FINAN_/')
           cd android && ./gradlew assembleRelease --no-daemon
+          "$(ls -d "$ANDROID_HOME"/build-tools/* | tail -1)/apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk | grep "CN=finan_rich"
       - name: Tamanho do APK (falha acima de 12 MB)
         run: |
           size=$(stat -c %s mobile/android/app/build/outputs/apk/release/app-release.apk)

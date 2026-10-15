@@ -106,19 +106,21 @@ Para criar a chave (uma vez só; **guarde o arquivo e as senhas**, sem eles não
 publicar atualizações):
 
 ```bash
-keytool -genkeypair -v -keystore finan_rich.jks -alias finan_rich \
-  -keyalg RSA -keysize 4096 -validity 10000
-base64 -w0 finan_rich.jks > finan_rich.jks.b64   # no macOS: base64 -i finan_rich.jks -o finan_rich.jks.b64
+sh scripts/android-key.sh
 ```
 
-E cadastrar em **GitHub → Settings → Secrets and variables → Actions**:
+O script usa só o OpenSSL (já vem no macOS e no Linux; no Windows, rode pelo Git Bash).
+Ele cria a chave na pasta `finan_rich-chave/` (fora do git) e, se o
+[GitHub CLI](https://cli.github.com) (`gh`) estiver instalado e logado, já cadastra os
+secrets. Sem o `gh`, ele mostra o que colar em **GitHub → Settings → Secrets and variables
+→ Actions**:
 
 | Secret | Valor |
 |---|---|
-| `ANDROID_KEYSTORE_BASE64` | conteúdo de `finan_rich.jks.b64` |
-| `ANDROID_KEYSTORE_PASSWORD` | senha do keystore |
+| `ANDROID_KEYSTORE_BASE64` | conteúdo de `finan_rich-chave/keystore-base64.txt` |
+| `ANDROID_KEYSTORE_PASSWORD` | em `finan_rich-chave/senhas.txt` |
 | `ANDROID_KEY_ALIAS` | `finan_rich` |
-| `ANDROID_KEY_PASSWORD` | senha da chave |
+| `ANDROID_KEY_PASSWORD` | em `finan_rich-chave/senhas.txt` |
 
 A versão do app fica em `mobile/android/app/version.properties`: o workflow de release (Actions → Release → Run workflow) atualiza o arquivo, faz o commit na main e cria a tag (`v1.6.0` → `versionName 1.6.0`, `versionCode 10600`). O F-Droid e o IzzyOnDroid leem a versão desse arquivo.
 

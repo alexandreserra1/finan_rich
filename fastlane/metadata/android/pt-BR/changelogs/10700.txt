@@ -1,0 +1,4 @@
+• Computador: instala com um comando, ganha ícone no menu e abre em janela própria.
+• O programa avisa quando sai versão nova, já com o comando de atualizar.
+• Botão "Fechar o finan_rich" nos Ajustes.
+• No iPhone, o link de pareamento ensina a usar pelo Safari.

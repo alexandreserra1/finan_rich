@@ -7,3 +7,8 @@
 /internal/web/static/js/wasm_exec.js
 /e2e/node_modules
 /e2e/package-lock.json
+
+# Chave de assinatura do app Android (scripts/android-key.sh): nunca no git.
+/finan_rich-chave/
+*.p12
+*.jks
