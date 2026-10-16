@@ -479,3 +479,8 @@ label.check.repeat { align-self: center; }
 
 /* Aviso de versão nova: o comando inteiro seleciona com um clique. */
 .update .cmd { display: block; margin-top: .3rem; padding: .5rem .65rem; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); font-size: .82rem; overflow-wrap: anywhere; user-select: all; }
+
+/* Lançamento proposto pelo consultor: só entra com o "Adicionar". */
+.proposals { display: grid; gap: .4rem; margin: -.2rem 0 .6rem; }
+.proposal { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .55rem .75rem; border: 1px dashed var(--border); border-radius: 10px; background: var(--surface-2); font-size: .9rem; }
+.proposal button { flex: none; }

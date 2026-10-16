@@ -86,8 +86,22 @@ await new Promise((r) => appServer.listen(APP_PORT, "127.0.0.1", r));
 const ollama = createServer((req, res) => {
   if (req.url === "/api/tags") return res.end(JSON.stringify({ models: [{ name: "qwen3.5:9b" }] }));
   if (req.url === "/api/chat") {
-    res.write(JSON.stringify({ message: { content: "Você gastou **R$ 250,00** com mercado." }, done: false }) + "\n");
-    return res.end(JSON.stringify({ message: { content: "" }, done: true }) + "\n");
+    // Responde como um modelo com ferramentas: pede a busca ou a proposta e,
+    // quando o app devolve o resultado, responde com base nele.
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      const { messages, tools } = JSON.parse(body);
+      const last = messages.at(-1);
+      const question = last.content.split("</dados_financeiros>").at(-1); // sem o bloco de dados
+      const reply = (message) => res.end(JSON.stringify({ message: { role: "assistant", content: "", ...message }, done: true }) + "\n");
+      const ask = (name, args) => reply({ tool_calls: [{ function: { name, arguments: args } }] });
+      if (last.role === "tool") return reply({ content: last.tool_name === "buscar_lancamentos" ? "Pela busca: " + last.content.split("\n")[0] : "Deixei o lançamento pronto para você confirmar." });
+      if (tools && /padaria/i.test(question)) return ask("buscar_lancamentos", { texto: "padaria" });
+      if (tools && /lança/i.test(question)) return ask("propor_lancamento", { descricao: "Cinema", valor: "30,00", categoria: "Lazer" });
+      reply({ content: "Você gastou **R$ 250,00** com mercado." });
+    });
+    return;
   }
   res.writeHead(404).end();
 });
@@ -183,6 +197,25 @@ try {
   await page.waitForSelector(".note:has-text('Consultor: Quanto gastei com mercado?')", { timeout: 10000 });
   ok(true, "resposta do consultor salva como nota");
 
+  // Consultor com ferramentas: busca lançamentos e propõe um lançamento, que só
+  // entra depois do "Adicionar".
+  await page.click("nav.tabs a[href='/chat']");
+  await page.waitForSelector("form[data-form=ask]", { timeout: 15000 });
+  await page.fill("textarea[name=message]", "Quanto gastei na padaria?");
+  await page.click("form[data-form=ask] button");
+  await page.waitForSelector(".msg.assistant:has-text('Pela busca: 1 lançamentos')", { timeout: 20000 });
+  ok((await page.textContent(".msg.assistant >> nth=-1")).includes("Saídas: R$ 12,50"), "consultor busca lançamentos pela ferramenta (padaria: R$ 12,50)");
+  await page.fill("textarea[name=message]", "Lança 30 reais de cinema");
+  await page.click("form[data-form=ask] button");
+  await page.waitForSelector(".proposal:has-text('Cinema')", { timeout: 20000 });
+  ok(/R\$\s30,00/.test(await page.textContent(".proposal")) && !(await serverRecords()).some((r) => r.description === "Cinema"),
+    "consultor propõe o lançamento, que ainda não foi gravado");
+  await page.click(".proposal button");
+  await page.waitForSelector(".proposal button:has-text('Adicionado')", { timeout: 10000 });
+  await page.evaluate(() => window.finanSync());
+  const cinema = (await serverRecords()).find((r) => r.description === "Cinema");
+  ok(cinema?.amountCents === 3000 && cinema.kind === "saida", "depois do Adicionar, o lançamento entra e chega ao computador");
+
   // Desconectado no computador: o app avisa para parear de novo.
   await form("/configuracoes/aparelhos/remover", { id: "1" });
   await page.evaluate(() => window.finanSync());
@@ -213,6 +246,18 @@ try {
   await page.waitForSelector("text=Conectado a", { timeout: 15000 });
   await waitStatus(page, "ok");
   ok(await page.locator(".qr-overlay").count() === 0, "leu o QR code pela câmera, fechou a câmera e pareou de novo");
+
+  // O mesmo no consultor do computador (tela do navegador).
+  const desk = await browser.newPage();
+  desk.on("pageerror", (e) => errors.push(e.message));
+  await desk.goto(`${B}/chat`);
+  await desk.fill("textarea[name=message]", "Lança 30 reais de cinema");
+  await desk.click("#chat-form button");
+  await desk.waitForSelector(".proposal:has-text('Cinema')", { timeout: 20000 });
+  await desk.click(".proposal button");
+  await desk.waitForSelector(".proposal button:has-text('Adicionado')", { timeout: 10000 });
+  await desk.evaluate(() => window.finanSync());
+  ok((await serverRecords()).filter((r) => r.description === "Cinema" && !r.deleted).length === 2, "no computador, o Adicionar da proposta também lança");
 
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);
 } catch (err) {

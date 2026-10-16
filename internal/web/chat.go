@@ -32,17 +32,9 @@ func (s *Server) chatClear(w http.ResponseWriter, r *http.Request) {
 	redirect(w, r, "/chat", "Conversa apagada.", err)
 }
 
-// snapshot monta o retrato financeiro enviado junto com cada pergunta.
-func (s *Server) snapshot(ctx context.Context) (string, error) {
-	l, err := s.store.Ledger(ctx)
-	if err != nil {
-		return "", err
-	}
-	return advisor.Snapshot(advisor.BuildFacts(l, time.Now())), nil
-}
-
-// chatSend responde em SSE: {"text": "..."} a cada pedaço, {"error": "..."}
-// em caso de falha e {"done": true} ao final.
+// chatSend responde em SSE: {"text": "..."} a cada pedaço, {"proposal": {...}}
+// a cada lançamento que a IA propõe (a tela mostra com um botão para aprovar),
+// {"error": "..."} em caso de falha e {"done": true} ao final.
 func (s *Server) chatSend(w http.ResponseWriter, r *http.Request) {
 	s.answer(w, r, r.FormValue("message"))
 }
@@ -70,17 +62,22 @@ func (s *Server) answer(w http.ResponseWriter, r *http.Request, question string)
 		fail(err)
 		return
 	}
-	snap, err := s.snapshot(ctx)
+	ledger, err := s.store.Ledger(ctx)
 	if err != nil {
 		fail(err)
 		return
 	}
+	now := time.Now()
+	snap := advisor.Snapshot(advisor.BuildFacts(ledger, now))
+	tools := advisor.NewTools(ledger, now, func(p advisor.Proposal) {
+		sse.Send(map[string]any{"proposal": p})
+	})
 	history, err := s.store.ListChat(ctx)
 	if err != nil {
 		fail(err)
 		return
 	}
-	answer, err := advisor.Ask(ctx, provider, history, question, snap, func(text string) {
+	answer, err := advisor.Ask(ctx, provider, history, question, snap, tools, func(text string) {
 		sse.Send(map[string]string{"text": text})
 	})
 	if errors.Is(err, context.Canceled) {

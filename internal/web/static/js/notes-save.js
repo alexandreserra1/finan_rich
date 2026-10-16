@@ -15,3 +15,20 @@ export async function saveNote(question, answer) {
   await db.saveLocal("note", record);
   sync.soon();
 }
+
+// Lança um lançamento proposto pelo consultor, depois que a pessoa aprova no
+// botão. Passa pelas mesmas regras (WebAssembly) de um lançamento digitado.
+export async function saveProposal(proposal) {
+  await finance.load();
+  const { categoryName, ...tx } = proposal;
+  const record = finance.validate("transaction", { ...tx, updatedAt: Date.now() });
+  await db.saveLocal("transaction", record);
+  sync.soon();
+}
+
+// Texto do cartão: "Almoço · R$ 45,90 · Restaurantes · 16/10/2026".
+export function describeProposal(p) {
+  const value = (p.amountCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const date = p.date.split("-").reverse().join("/");
+  return `${p.kind === "entrada" ? "Entrada" : "Gasto"}: ${p.description} · ${value} · ${p.categoryName} · ${date}`;
+}

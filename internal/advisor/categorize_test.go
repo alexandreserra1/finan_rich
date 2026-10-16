@@ -15,9 +15,9 @@ type fakeLLM struct {
 	asked  []llm.Request
 }
 
-func (f *fakeLLM) Chat(_ context.Context, r llm.Request, _ func(string)) (string, error) {
+func (f *fakeLLM) Chat(_ context.Context, r llm.Request, _ func(string)) (llm.Reply, error) {
 	f.asked = append(f.asked, r)
-	return f.answer, nil
+	return llm.Reply{Text: f.answer}, nil
 }
 
 func TestCategorize(t *testing.T) {

@@ -5,7 +5,7 @@
 // No app do celular (Capacitor), Ajustes e Consultor também são telas daqui.
 import * as db from "./db.js";
 import * as device from "./device.js";
-import { saveNote } from "./notes-save.js";
+import { describeProposal, saveNote, saveProposal } from "./notes-save.js";
 import { scheduleDebtReminders } from "./native.js";
 import * as finance from "./finance.js";
 import * as sync from "./sync.js";
@@ -66,6 +66,8 @@ window.addEventListener("finan-sync", (e) => {
 window.finanSync = () => sync.sync();
 // E isto para guardar uma resposta em Notas.
 window.finanSaveNote = saveNote;
+// E isto para lançar o que o consultor propôs (depois do "Adicionar").
+window.finanProposal = { save: saveProposal, describe: describeProposal };
 
 // Ao sair da conta, apaga os dados guardados neste aparelho.
 document.querySelectorAll('form[action="/sair"]').forEach((form) => form.addEventListener("submit", async (e) => {

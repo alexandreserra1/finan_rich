@@ -39,13 +39,43 @@ const contextTokens = 8192
 var ollamaSampling = map[string]any{"temperature": 0.7, "top_p": 0.8, "top_k": 20}
 
 type ollamaMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role      string           `json:"role"`
+	Content   string           `json:"content"`
+	ToolCalls []ollamaToolCall `json:"tool_calls,omitempty"`
+	ToolName  string           `json:"tool_name,omitempty"`
+}
+
+type ollamaToolCall struct {
+	ID       string `json:"id,omitempty"`
+	Function struct {
+		Name      string          `json:"name"`
+		Arguments json.RawMessage `json:"arguments"`
+	} `json:"function"`
+}
+
+// openAITool é o formato de ferramenta do Ollama e da OpenAI.
+type openAITool struct {
+	Type     string `json:"type"`
+	Function struct {
+		Name        string          `json:"name"`
+		Description string          `json:"description"`
+		Parameters  json.RawMessage `json:"parameters"`
+	} `json:"function"`
+}
+
+func openAITools(tools []Tool) []openAITool {
+	out := make([]openAITool, len(tools))
+	for i, t := range tools {
+		out[i].Type = "function"
+		out[i].Function.Name, out[i].Function.Description, out[i].Function.Parameters = t.Name, t.Description, t.Parameters
+	}
+	return out
 }
 
 type ollamaChatRequest struct {
 	Model    string          `json:"model"`
 	Messages []ollamaMessage `json:"messages"`
+	Tools    []openAITool    `json:"tools,omitempty"`
 	Stream   bool            `json:"stream"`
 	Think    bool            `json:"think"` // false: responde direto, sem raciocínio longo
 	Options  map[string]any  `json:"options,omitempty"`
@@ -57,23 +87,30 @@ type ollamaChatChunk struct {
 	Error   string        `json:"error"`
 }
 
-func (o *Ollama) Chat(ctx context.Context, req Request, onText func(string)) (string, error) {
+func (o *Ollama) Chat(ctx context.Context, req Request, onText func(string)) (Reply, error) {
 	msgs := make([]ollamaMessage, 0, len(req.Messages)+1)
 	if req.System != "" {
 		msgs = append(msgs, ollamaMessage{Role: "system", Content: req.System})
 	}
 	for _, m := range req.Messages {
-		msgs = append(msgs, ollamaMessage{Role: string(m.Role), Content: m.Content})
+		om := ollamaMessage{Role: string(m.Role), Content: m.Content, ToolName: m.ToolName}
+		for _, c := range m.ToolCalls {
+			var tc ollamaToolCall
+			tc.Function.Name, tc.Function.Arguments = c.Name, args(c.Args)
+			om.ToolCalls = append(om.ToolCalls, tc)
+		}
+		msgs = append(msgs, om)
 	}
 	resp, err := o.post(ctx, "/api/chat", ollamaChatRequest{
-		Model: o.model, Messages: msgs, Stream: true,
+		Model: o.model, Messages: msgs, Tools: openAITools(req.Tools), Stream: true,
 		Options: ollamaOptions(),
 	})
 	if err != nil {
-		return "", err
+		return Reply{}, err
 	}
 	defer resp.Body.Close()
 
+	var calls []ToolCall
 	emit, finish := streamText(onText)
 	err = readLines(resp.Body, func(line []byte) error {
 		var chunk ollamaChatChunk
@@ -84,12 +121,19 @@ func (o *Ollama) Chat(ctx context.Context, req Request, onText func(string)) (st
 			return &APIError{Status: http.StatusInternalServerError, Message: chunk.Error}
 		}
 		emit(chunk.Message.Content)
+		for _, c := range chunk.Message.ToolCalls {
+			id := c.ID
+			if id == "" {
+				id = fmt.Sprintf("call_%d", len(calls)+1)
+			}
+			calls = append(calls, ToolCall{ID: id, Name: c.Function.Name, Args: args(c.Function.Arguments)})
+		}
 		return nil
 	})
 	if err != nil {
-		return "", err
+		return Reply{}, err
 	}
-	return finish(), nil
+	return Reply{Text: finish(), ToolCalls: calls}, nil
 }
 
 func ollamaOptions() map[string]any {

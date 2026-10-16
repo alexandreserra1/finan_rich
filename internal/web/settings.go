@@ -83,13 +83,13 @@ func (s *Server) testAI(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	provider, _, err := s.provider(ctx)
 	if err == nil {
-		var answer string
+		var reply llm.Reply
 		start := time.Now()
-		answer, err = provider.Chat(ctx, llm.Request{Messages: []llm.Message{
+		reply, err = provider.Chat(ctx, llm.Request{Messages: []llm.Message{
 			{Role: llm.RoleUser, Content: "Responda apenas com a frase: Tudo certo! Estou pronto para ajudar com suas finanças."},
 		}}, func(string) {})
 		if err == nil {
-			w.Write([]byte("✅ Funcionou em " + time.Since(start).Round(100*time.Millisecond).String() + ". Resposta: " + answer))
+			w.Write([]byte("✅ Funcionou em " + time.Since(start).Round(100*time.Millisecond).String() + ". Resposta: " + reply.Text))
 			return
 		}
 	}

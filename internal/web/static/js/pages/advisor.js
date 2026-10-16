@@ -1,7 +1,7 @@
 // Consultor IA no app do celular: conversa com a IA que roda no computador
 // pareado (precisa estar ao alcance), usando o token deste aparelho.
 import { endpoint } from "../device.js";
-import { saveNote } from "../notes-save.js";
+import { describeProposal, saveNote, saveProposal } from "../notes-save.js";
 import { html, raw } from "../ui.js";
 
 export const needsData = false;
@@ -25,7 +25,9 @@ export function render({ server }) {
       ${chat.problem ? html`<p class="notice warn">${chat.problem}</p>` : html`<p class="small muted">Usando ${chat.model} no computador. O consultor vê seus números, metas e notas a cada pergunta.</p>`}
       <div class="messages">
         ${chat.history.map((m, i) => html`<div class="msg ${m.role}">${md(m.content)}
-          ${m.role === "assistant" ? html`<button type="button" class="link plain save-note" data-save="${i}">Salvar como nota</button>` : ""}</div>`)}
+          ${m.role === "assistant" ? html`<button type="button" class="link plain save-note" data-save="${i}">Salvar como nota</button>` : ""}</div>
+          ${m.proposals?.length ? html`<div class="proposals">${m.proposals.map((p, j) => html`<div class="proposal"><span>${describeProposal(p)}</span>
+            <button type="button" class="small-btn" data-propose="${i}:${j}" ${p.added ? "disabled" : ""}>${p.added ? "Adicionado ✓" : "Adicionar"}</button></div>`)}</div>` : ""}`)}
         ${chat.busy ? html`<div class="msg assistant pending">Pensando… (no computador, a primeira resposta pode demorar enquanto o modelo carrega)</div>` : ""}
         ${chat.error ? html`<div class="msg error">Erro: ${chat.error}</div>` : ""}
         ${!chat.history.length && !chat.busy ? html`<div class="suggestions">${SUGGESTIONS.map((s) => html`<button type="button" data-suggest>${s}</button>`)}</div>` : ""}
@@ -67,13 +69,15 @@ async function ask(ctx, question) {
     const text = await res.text();
     if (!res.ok) throw new Error(JSON.parse(text || "{}").error || res.statusText);
     let answer = "";
+    const proposals = []; // lançamentos que a IA propôs: entram só com o "Adicionar"
     for (const line of text.split("\n")) {
       if (!line.startsWith("data: ")) continue;
       const ev = JSON.parse(line.slice(6));
       if (ev.error) throw new Error(ev.error);
       if (ev.text) answer += ev.text;
+      if (ev.proposal) proposals.push(ev.proposal);
     }
-    chat.history.push({ role: "assistant", content: answer });
+    chat.history.push({ role: "assistant", content: answer, proposals });
   } catch (err) {
     chat.history.pop();
     chat.error = err instanceof TypeError ? "sem conexão com o computador" : err.message;
@@ -104,6 +108,17 @@ export function bind(root, ctx) {
     chat.history = [];
     ctx.rerender();
   });
+  root.querySelectorAll("[data-propose]").forEach((b) => b.addEventListener("click", async () => {
+    const [i, j] = b.dataset.propose.split(":").map(Number);
+    const p = chat.history[i].proposals[j];
+    try {
+      await saveProposal(p);
+      p.added = true;
+      await ctx.refresh("Lançamento adicionado.");
+    } catch (err) {
+      ctx.error(err);
+    }
+  }));
   root.querySelectorAll("[data-save]").forEach((b) => b.addEventListener("click", async () => {
     const i = Number(b.dataset.save);
     try {

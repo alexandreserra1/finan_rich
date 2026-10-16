@@ -23,14 +23,27 @@ func NewOpenAI(baseURL, apiKey, model string) *OpenAI {
 }
 
 type openAIMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role       string           `json:"role"`
+	Content    string           `json:"content"`
+	ToolCalls  []openAIToolCall `json:"tool_calls,omitempty"`
+	ToolCallID string           `json:"tool_call_id,omitempty"`
+}
+
+type openAIToolCall struct {
+	Index    int    `json:"index"`
+	ID       string `json:"id,omitempty"`
+	Type     string `json:"type,omitempty"`
+	Function struct {
+		Name      string `json:"name,omitempty"`
+		Arguments string `json:"arguments"` // texto JSON (vem em pedaços no streaming)
+	} `json:"function"`
 }
 
 type openAIChunk struct {
 	Choices []struct {
 		Delta struct {
-			Content string `json:"content"`
+			Content   string           `json:"content"`
+			ToolCalls []openAIToolCall `json:"tool_calls"`
 		} `json:"delta"`
 	} `json:"choices"`
 	Error *struct {
@@ -38,21 +51,31 @@ type openAIChunk struct {
 	} `json:"error"`
 }
 
-func (o *OpenAI) Chat(ctx context.Context, req Request, onText func(string)) (string, error) {
+func (o *OpenAI) Chat(ctx context.Context, req Request, onText func(string)) (Reply, error) {
 	msgs := make([]openAIMessage, 0, len(req.Messages)+1)
 	if req.System != "" {
 		msgs = append(msgs, openAIMessage{Role: "system", Content: req.System})
 	}
 	for _, m := range req.Messages {
-		msgs = append(msgs, openAIMessage{Role: string(m.Role), Content: m.Content})
+		om := openAIMessage{Role: string(m.Role), Content: m.Content, ToolCallID: m.ToolCallID}
+		for i, c := range m.ToolCalls {
+			tc := openAIToolCall{Index: i, ID: c.ID, Type: "function"}
+			tc.Function.Name, tc.Function.Arguments = c.Name, string(args(c.Args))
+			om.ToolCalls = append(om.ToolCalls, tc)
+		}
+		msgs = append(msgs, om)
 	}
-	payload, err := json.Marshal(map[string]any{"model": o.model, "messages": msgs, "stream": true})
+	body := map[string]any{"model": o.model, "messages": msgs, "stream": true}
+	if len(req.Tools) > 0 {
+		body["tools"] = openAITools(req.Tools)
+	}
+	payload, err := json.Marshal(body)
 	if err != nil {
-		return "", err
+		return Reply{}, err
 	}
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, o.baseURL+"/chat/completions", bytes.NewReader(payload))
 	if err != nil {
-		return "", err
+		return Reply{}, err
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	if o.apiKey != "" {
@@ -60,13 +83,14 @@ func (o *OpenAI) Chat(ctx context.Context, req Request, onText func(string)) (st
 	}
 	resp, err := httpClient.Do(httpReq)
 	if err != nil {
-		return "", fmt.Errorf("não foi possível conectar em %s: %w", o.baseURL, err)
+		return Reply{}, fmt.Errorf("não foi possível conectar em %s: %w", o.baseURL, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "", apiError(resp)
+		return Reply{}, apiError(resp)
 	}
 
+	var calls []ToolCall // montados aos pedaços, pelo índice
 	emit, finish := streamText(onText)
 	err = readLines(resp.Body, func(line []byte) error {
 		data, ok := bytes.CutPrefix(line, []byte("data:"))
@@ -86,13 +110,30 @@ func (o *OpenAI) Chat(ctx context.Context, req Request, onText func(string)) (st
 		}
 		if len(chunk.Choices) > 0 {
 			emit(chunk.Choices[0].Delta.Content)
+			for _, d := range chunk.Choices[0].Delta.ToolCalls {
+				for len(calls) <= d.Index {
+					calls = append(calls, ToolCall{})
+				}
+				c := &calls[d.Index]
+				if d.ID != "" {
+					c.ID = d.ID
+				}
+				c.Name += d.Function.Name
+				c.Args = append(c.Args, d.Function.Arguments...)
+			}
 		}
 		return nil
 	})
 	if err != nil && err != io.EOF {
-		return "", err
+		return Reply{}, err
 	}
-	return finish(), nil
+	for i := range calls {
+		calls[i].Args = args(calls[i].Args)
+		if calls[i].ID == "" {
+			calls[i].ID = fmt.Sprintf("call_%d", i+1)
+		}
+	}
+	return Reply{Text: finish(), ToolCalls: calls}, nil
 }
 
 // apiError lê a mensagem de erro do corpo, aceitando os formatos mais comuns:

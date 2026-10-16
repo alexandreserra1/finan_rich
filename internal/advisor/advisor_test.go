@@ -55,17 +55,17 @@ func TestBuildRequestStartsWithUser(t *testing.T) {
 
 type fakeProvider struct{ got llm.Request }
 
-func (f *fakeProvider) Chat(_ context.Context, req llm.Request, onText func(string)) (string, error) {
+func (f *fakeProvider) Chat(_ context.Context, req llm.Request, onText func(string)) (llm.Reply, error) {
 	f.got = req
 	onText("ok")
-	return "ok", nil
+	return llm.Reply{Text: "ok"}, nil
 }
 
 func TestAsk(t *testing.T) {
 	p := &fakeProvider{}
 	var streamed string
-	answer, err := Ask(context.Background(), p, nil, "oi", "dados", func(s string) { streamed += s })
-	if err != nil || answer != "ok" || streamed != "ok" || len(p.got.Messages) != 1 {
+	answer, err := Ask(context.Background(), p, nil, "oi", "dados", nil, func(s string) { streamed += s })
+	if err != nil || answer != "ok" || streamed != "ok" || len(p.got.Messages) != 1 || p.got.Tools != nil {
 		t.Errorf("answer=%q streamed=%q err=%v req=%+v", answer, streamed, err, p.got)
 	}
 }

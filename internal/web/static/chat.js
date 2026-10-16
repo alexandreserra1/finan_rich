@@ -40,6 +40,32 @@
     el.appendChild(b);
   }
 
+  // Lançamento proposto pela IA: só entra se a pessoa clicar em "Adicionar".
+  function addProposal(list, p) {
+    const card = document.createElement("div");
+    card.className = "proposal";
+    const text = document.createElement("span");
+    text.textContent = window.finanProposal ? window.finanProposal.describe(p) : p.description;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "small-btn";
+    b.textContent = "Adicionar";
+    b.addEventListener("click", async () => {
+      b.disabled = true;
+      try {
+        await window.finanProposal.save(p);
+        b.textContent = "Adicionado ✓";
+      } catch (err) {
+        b.disabled = false;
+        b.textContent = "Tentar de novo";
+        text.textContent += " — erro: " + err.message;
+      }
+    });
+    card.append(text, b);
+    list.appendChild(card);
+    card.scrollIntoView({ block: "end" });
+  }
+
   document.querySelectorAll("[data-md]").forEach((el) => render(el, el.textContent));
   // main.js (módulo) carrega depois deste script: espera para ligar os botões.
   window.addEventListener("load", () => document.querySelectorAll(".msg.assistant").forEach(addSave));
@@ -60,9 +86,19 @@
     add("user", text);
     const reply = add("assistant pending", "Pensando… Na primeira pergunta o modelo é carregado na memória, o que pode levar alguns minutos em computadores mais lentos.");
     let answer = "";
+    let proposals = null;
     try {
       await window.finanSync?.();
       await Finan.postSSE("/chat/enviar", new URLSearchParams({ message: text }), (ev) => {
+        if (ev.proposal) {
+          if (!proposals) {
+            proposals = document.createElement("div");
+            proposals.className = "proposals";
+            messages.appendChild(proposals);
+          }
+          addProposal(proposals, ev.proposal);
+          return;
+        }
         if (!ev.text) return;
         answer += ev.text;
         reply.classList.remove("pending");

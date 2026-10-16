@@ -41,13 +41,13 @@ func Categorize(ctx context.Context, p llm.Provider, cats []domain.Category, ite
 	}
 	for start := 0; start < len(items); start += categorizeBatch {
 		batch := items[start:min(start+categorizeBatch, len(items))]
-		answer, err := p.Chat(ctx, llm.Request{System: categorizeSystem, Messages: []llm.Message{
+		reply, err := p.Chat(ctx, llm.Request{System: categorizeSystem, Messages: []llm.Message{
 			{Role: llm.RoleUser, Content: categorizePrompt(income, spending, batch)},
 		}}, func(string) {})
 		if err != nil {
 			return out, err
 		}
-		names := parseCategorized(answer)
+		names := parseCategorized(reply.Text)
 		for i, it := range batch {
 			list := spending
 			if it.Kind == domain.KindEntrada {

@@ -5,6 +5,7 @@ package advisor
 
 import (
 	"context"
+	"strings"
 
 	"github.com/alexandreserra1/finan_rich/internal/llm"
 	"github.com/alexandreserra1/finan_rich/internal/store"
@@ -52,8 +53,42 @@ func BuildRequest(history []store.ChatMessage, question, snapshot string) llm.Re
 	return llm.Request{System: SystemPrompt, Messages: msgs}
 }
 
+// maxToolRounds limita as idas e voltas de ferramentas numa pergunta.
+const maxToolRounds = 4
+
 // Ask envia a pergunta ao provedor e devolve a resposta completa; onText recebe
-// os pedaços conforme chegam.
-func Ask(ctx context.Context, p llm.Provider, history []store.ChatMessage, question, snapshot string, onText func(string)) (string, error) {
-	return p.Chat(ctx, BuildRequest(history, question, snapshot), onText)
+// os pedaços conforme chegam. Com tools, a IA pode buscar lançamentos e propor
+// lançamentos; se o modelo não aceitar ferramentas, pergunta sem elas.
+func Ask(ctx context.Context, p llm.Provider, history []store.ChatMessage, question, snapshot string, tools *Tools, onText func(string)) (string, error) {
+	req := BuildRequest(history, question, snapshot)
+	if tools != nil {
+		req.System += toolsPrompt
+		req.Tools = tools.Defs()
+	}
+	var answer strings.Builder
+	for round := 1; ; round++ {
+		if round > maxToolRounds { // chega de ferramentas: agora responde
+			req.Tools = nil
+		}
+		reply, err := p.Chat(ctx, req, onText)
+		if err != nil && req.Tools != nil && llm.ToolsUnsupported(err) {
+			req.System, req.Tools = SystemPrompt, nil
+			continue
+		}
+		if err != nil {
+			return "", err
+		}
+		answer.WriteString(reply.Text)
+		if len(reply.ToolCalls) == 0 || req.Tools == nil {
+			return strings.TrimSpace(answer.String()), nil
+		}
+		if reply.Text != "" {
+			answer.WriteString("\n\n")
+			onText("\n\n")
+		}
+		req.Messages = append(req.Messages, llm.Message{Role: llm.RoleAssistant, Content: reply.Text, ToolCalls: reply.ToolCalls})
+		for _, c := range reply.ToolCalls {
+			req.Messages = append(req.Messages, llm.Message{Role: llm.RoleTool, ToolCallID: c.ID, ToolName: c.Name, Content: tools.Run(c)})
+		}
+	}
 }

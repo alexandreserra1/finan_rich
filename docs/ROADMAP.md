@@ -88,9 +88,9 @@ aparelho; o que falta para chegar perto, do mais simples ao mais caro:
 1. ~~**Importar extratos** (OFX, CSV e fatura em PDF)~~ — feito: categoria pelo histórico,
    palavras-chave ou IA, sem duplicar.
 2. ~~**Consultor mais completo**~~ — feito em parte: a IA recebe os gastos por estabelecimento
-   (12 meses), metas, recorrentes e notas, e as respostas podem virar nota. Próximo passo:
-   *ferramentas* de verdade (a IA chama funções para buscar lançamentos e propõe
-   lançamentos para aprovar), quando os modelos locais pequenos fizerem isso bem.
+   (12 meses), metas, recorrentes e notas, e as respostas podem virar nota. Com
+   *ferramentas*: busca lançamentos de qualquer período e propõe lançamentos, que só entram
+   com o botão *Adicionar*. Próximos: propor edição/remoção, metas e dívidas pelo chat.
 3. ~~**Alertas**~~ — feito: avisos no painel e lembrete de vencimento no celular.
 4. **Open Finance** (lançamentos automáticos dos bancos): exige um agregador pago (Pluggy,
    Belvo) e, na prática, uma empresa responsável pelos dados; também tira os dados só do

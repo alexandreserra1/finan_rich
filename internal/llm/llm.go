@@ -11,6 +11,7 @@ package llm
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -23,23 +24,68 @@ type Role string
 const (
 	RoleUser      Role = "user"
 	RoleAssistant Role = "assistant"
+	RoleTool      Role = "tool" // resultado de uma ferramenta pedida pelo modelo
 )
 
 type Message struct {
 	Role    Role
 	Content string
+	// Assistente: ferramentas que o modelo pediu nesta resposta.
+	ToolCalls []ToolCall
+	// RoleTool: a qual pedido este resultado responde.
+	ToolCallID, ToolName string
+}
+
+// Tool é uma função que o modelo pode pedir para o app executar (ex.: buscar
+// lançamentos). Parameters é um JSON Schema do objeto de argumentos.
+type Tool struct {
+	Name, Description string
+	Parameters        json.RawMessage
+}
+
+// ToolCall é um pedido do modelo para executar uma ferramenta.
+type ToolCall struct {
+	ID   string
+	Name string
+	Args json.RawMessage // objeto JSON
 }
 
 // Request é uma conversa completa a ser continuada pelo modelo.
 type Request struct {
 	System   string
-	Messages []Message // alternando user/assistant, terminando em user
+	Messages []Message // alternando user/assistant (e tool), terminando em user ou tool
+	Tools    []Tool    // opcional
+}
+
+// Reply é a resposta do modelo: texto, pedidos de ferramenta, ou os dois.
+type Reply struct {
+	Text      string
+	ToolCalls []ToolCall
 }
 
 // Provider gera a próxima resposta da conversa. onText recebe cada pedaço de
 // texto conforme ele chega (streaming); o retorno é a resposta completa.
 type Provider interface {
-	Chat(ctx context.Context, req Request, onText func(string)) (string, error)
+	Chat(ctx context.Context, req Request, onText func(string)) (Reply, error)
+}
+
+// ToolsUnsupported diz se o erro é do modelo não aceitar ferramentas (muitos
+// modelos locais pequenos não aceitam): aí o consultor pergunta sem elas.
+func ToolsUnsupported(err error) bool {
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) || apiErr.Status < 400 || apiErr.Status >= 500 {
+		return false
+	}
+	msg := strings.ToLower(apiErr.Message)
+	return strings.Contains(msg, "tool") || strings.Contains(msg, "function")
+}
+
+// args devolve os argumentos como objeto JSON válido (vazio vira {}).
+func args(raw json.RawMessage) json.RawMessage {
+	if len(raw) == 0 || !json.Valid(raw) {
+		return json.RawMessage("{}")
+	}
+	return raw
 }
 
 // Tipos de provedor.

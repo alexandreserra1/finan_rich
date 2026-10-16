@@ -40,8 +40,8 @@ func server(t *testing.T, body *map[string]any, handler func(w http.ResponseWrit
 func collectChat(t *testing.T, p Provider) (streamed, full string, err error) {
 	t.Helper()
 	var b strings.Builder
-	full, err = p.Chat(context.Background(), testReq, func(s string) { b.WriteString(s) })
-	return b.String(), full, err
+	reply, err := p.Chat(context.Background(), testReq, func(s string) { b.WriteString(s) })
+	return b.String(), reply.Text, err
 }
 
 func TestOllamaChat(t *testing.T) {
@@ -234,5 +234,106 @@ func TestNew(t *testing.T) {
 	}
 	if p, err := New(Config{Kind: KindOllama, Model: "qwen3:4b"}); err != nil || p.(*Ollama).baseURL != DefaultOllamaURL {
 		t.Errorf("ollama padrão: %v %v", p, err)
+	}
+}
+
+// Conversa com ferramentas: o modelo pediu uma, o app respondeu, e a pergunta
+// segue. Cada provedor tem seu formato; aqui confere ida e volta.
+var toolReq = Request{
+	System: "sistema",
+	Tools: []Tool{{Name: "buscar", Description: "busca lançamentos", Parameters: json.RawMessage(
+		`{"type":"object","properties":{"texto":{"type":"string"}},"required":["texto"]}`)}},
+	Messages: []Message{
+		{Role: RoleUser, Content: "quanto gastei com ifood?"},
+		{Role: RoleAssistant, ToolCalls: []ToolCall{{ID: "c1", Name: "buscar", Args: json.RawMessage(`{"texto":"ifood"}`)}}},
+		{Role: RoleTool, ToolCallID: "c1", ToolName: "buscar", Content: "total R$ 50,00"},
+	},
+}
+
+func TestOllamaTools(t *testing.T) {
+	var body map[string]any
+	srv := server(t, &body, func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `{"message":{"role":"assistant","content":"","tool_calls":[{"function":{"name":"buscar","arguments":{"texto":"uber"}}}]},"done":false}`)
+		fmt.Fprintln(w, `{"message":{"role":"assistant","content":""},"done":true}`)
+	})
+	reply, err := NewOllama(srv.URL, "qwen3.5:9b").Chat(context.Background(), toolReq, func(string) {})
+	if err != nil || len(reply.ToolCalls) != 1 || reply.ToolCalls[0].Name != "buscar" || string(reply.ToolCalls[0].Args) != `{"texto":"uber"}` {
+		t.Fatalf("reply=%+v err=%v", reply, err)
+	}
+	msgs := body["messages"].([]any)
+	asked := msgs[2].(map[string]any)["tool_calls"].([]any)[0].(map[string]any)["function"].(map[string]any)
+	result := msgs[3].(map[string]any)
+	tools := body["tools"].([]any)[0].(map[string]any)["function"].(map[string]any)
+	if asked["name"] != "buscar" || asked["arguments"].(map[string]any)["texto"] != "ifood" ||
+		result["role"] != "tool" || result["tool_name"] != "buscar" || tools["name"] != "buscar" {
+		t.Errorf("corpo = %v", body)
+	}
+}
+
+func TestOpenAITools(t *testing.T) {
+	var body map[string]any
+	srv := server(t, &body, func(w http.ResponseWriter, r *http.Request) {
+		for _, d := range []string{
+			`{"tool_calls":[{"index":0,"id":"x1","type":"function","function":{"name":"buscar","arguments":""}}]}`,
+			`{"tool_calls":[{"index":0,"function":{"arguments":"{\"texto\":"}}]}`,
+			`{"tool_calls":[{"index":0,"function":{"arguments":"\"uber\"}"}}]}`,
+		} {
+			fmt.Fprintf(w, "data: {\"choices\":[{\"delta\":%s}]}\n\n", d)
+		}
+		fmt.Fprint(w, "data: [DONE]\n\n")
+	})
+	reply, err := NewOpenAI(srv.URL, "", "m").Chat(context.Background(), toolReq, func(string) {})
+	if err != nil || len(reply.ToolCalls) != 1 || reply.ToolCalls[0].ID != "x1" || string(reply.ToolCalls[0].Args) != `{"texto":"uber"}` {
+		t.Fatalf("reply=%+v err=%v", reply, err)
+	}
+	msgs := body["messages"].([]any)
+	asked := msgs[2].(map[string]any)["tool_calls"].([]any)[0].(map[string]any)
+	if asked["id"] != "c1" || asked["function"].(map[string]any)["arguments"] != `{"texto":"ifood"}` ||
+		msgs[3].(map[string]any)["tool_call_id"] != "c1" || body["tools"] == nil {
+		t.Errorf("corpo = %v", body)
+	}
+}
+
+func TestAnthropicTools(t *testing.T) {
+	var body map[string]any
+	srv := server(t, &body, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		for _, e := range []string{
+			`{"type":"message_start","message":{"id":"m","type":"message","role":"assistant","model":"claude-opus-5-5","content":[],"stop_reason":null,"usage":{"input_tokens":1,"output_tokens":0}}}`,
+			`{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"t1","name":"buscar","input":{}}}`,
+			`{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"texto\": \"uber\"}"}}`,
+			`{"type":"content_block_stop","index":0}`,
+			`{"type":"message_delta","delta":{"stop_reason":"tool_use"},"usage":{"output_tokens":3}}`,
+			`{"type":"message_stop"}`,
+		} {
+			var typ struct{ Type string }
+			json.Unmarshal([]byte(e), &typ)
+			fmt.Fprintf(w, "event: %s\ndata: %s\n\n", typ.Type, e)
+		}
+	})
+	reply, err := NewAnthropic("chave", "claude-opus-5-5", srv.URL).Chat(context.Background(), toolReq, func(string) {})
+	if err != nil || len(reply.ToolCalls) != 1 || reply.ToolCalls[0].ID != "t1" {
+		t.Fatalf("reply=%+v err=%v", reply, err)
+	}
+	var got map[string]any
+	if json.Unmarshal(reply.ToolCalls[0].Args, &got); got["texto"] != "uber" {
+		t.Errorf("args = %s", reply.ToolCalls[0].Args)
+	}
+	msgs := body["messages"].([]any)
+	use := msgs[1].(map[string]any)["content"].([]any)[0].(map[string]any)
+	res := msgs[2].(map[string]any)["content"].([]any)[0].(map[string]any)
+	tool := body["tools"].([]any)[0].(map[string]any)
+	if use["type"] != "tool_use" || use["id"] != "c1" || res["type"] != "tool_result" || res["tool_use_id"] != "c1" ||
+		tool["name"] != "buscar" || tool["input_schema"].(map[string]any)["required"] == nil {
+		t.Errorf("corpo = %v", body)
+	}
+}
+
+func TestToolsUnsupported(t *testing.T) {
+	if !ToolsUnsupported(&APIError{Status: 400, Message: "registry.ollama.ai/library/gemma:2b does not support tools"}) {
+		t.Error("deveria reconhecer modelo sem ferramentas")
+	}
+	if ToolsUnsupported(&APIError{Status: 500, Message: "tools"}) || ToolsUnsupported(errors.New("tools")) {
+		t.Error("só erro 4xx do provedor conta")
 	}
 }

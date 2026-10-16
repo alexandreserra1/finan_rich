@@ -118,8 +118,17 @@ aparelho                                      servidor
    o retrato em texto (`advisor.Snapshot`): juros de cada dívida, sobra livre, reserva,
    pontos de atenção. **As contas vão prontas**, porque modelos pequenos erram aritmética.
 3. `advisor.Ask` monta a conversa (system prompt + histórico recente + pergunta com o retrato)
-   e chama o `llm.Provider` configurado.
+   e chama o `llm.Provider` configurado, com duas **ferramentas** (`advisor/tools.go`):
+   - `buscar_lancamentos`: filtra lançamentos por texto, categoria, tipo e período e devolve
+     os totais (calculados em Go) e os 30 mais recentes;
+   - `propor_lancamento`: monta e valida um lançamento, mas **não grava**: a proposta vai para
+     a tela (evento SSE `proposal`) com um botão *Adicionar*, que grava pelo cliente offline
+     (`notes-save.js`, mesma validação em WebAssembly) e sincroniza.
+   O laço pede ferramentas até 4 vezes por pergunta. Ferramentas usam o formato nativo de cada
+   provedor (Ollama, OpenAI-compatível, Anthropic); se o modelo não aceitar ferramentas, o
+   consultor pergunta de novo sem elas.
 4. A resposta volta em streaming (Server-Sent Events) e é gravada em `chat_messages`.
+   As propostas não ficam no histórico (só a resposta em texto).
 
 ### 5. Acesso pelo celular e login
 
