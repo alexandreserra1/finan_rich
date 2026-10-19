@@ -122,7 +122,7 @@ aparelho                                      servidor
    - `buscar_lancamentos`: filtra lançamentos por texto, categoria, tipo e período e devolve
      os totais (calculados em Go) e os 30 mais recentes, com o `[id]` de cada um;
    - `propor_lancamento`, `alterar_lancamento`, `apagar_lancamento`, `criar_meta`,
-     `criar_divida`: montam e validam o registro como vai ficar (`domain.DecodeRecord`), mas
+     `criar_divida`, `registrar_aporte`, `registrar_pagamento`: montam e validam o registro como vai ficar (`domain.DecodeRecord`), mas
      **não gravam**: viram uma `advisor.Proposal` (ação, tipo, registro, texto do cartão) que vai
      para a tela (evento SSE `proposal`) com um botão. O botão grava pelo cliente offline
      (`notes-save.js`, mesma validação em WebAssembly) e sincroniza.

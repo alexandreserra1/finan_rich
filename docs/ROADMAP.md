@@ -94,8 +94,8 @@ aparelho; o que falta para chegar perto, do mais simples ao mais caro:
 2. ~~**Consultor mais completo**~~ — feito em parte: a IA recebe os gastos por estabelecimento
    (12 meses), metas, recorrentes e notas, e as respostas podem virar nota. Com
    *ferramentas*: busca lançamentos de qualquer período; lança, corrige, apaga, cria metas e
-   dívidas por mensagem, sempre com um cartão para confirmar (salvo na conversa). Próximos:
-   aporte em meta e pagamento de dívida pelo chat.
+   dívidas por mensagem, registra aportes em metas e pagamentos de dívidas, sempre com um
+   cartão para confirmar (salvo na conversa).
 3. ~~**Alertas**~~ — feito: avisos no painel e lembrete de vencimento no celular.
 4. **Open Finance** (lançamentos automáticos dos bancos): exige um agregador pago (Pluggy,
    Belvo) e, na prática, uma empresa responsável pelos dados; também tira os dados só do

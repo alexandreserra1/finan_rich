@@ -25,7 +25,7 @@ const toolsPrompt = `
 
 Ferramentas:
 - buscar_lancamentos: use quando a pergunta precisar de lançamentos que não estão no bloco de dados (outro mês, um período, um estabelecimento, uma categoria). Responda com os totais que ela devolver. Cada lançamento vem com o [id], que serve para alterar ou apagar.
-- propor_lancamento, alterar_lancamento, apagar_lancamento, criar_meta, criar_divida: use quando o usuário pedir para registrar, corrigir ou apagar algo. Para alterar ou apagar, busque antes para achar o id. Cada pedido vira um cartão com um botão para ele confirmar; nada é gravado sozinho. Nunca diga que já fez: diga que deixou pronto para ele confirmar.`
+- propor_lancamento, alterar_lancamento, apagar_lancamento, criar_meta, criar_divida, registrar_aporte (guardou dinheiro numa meta), registrar_pagamento (pagou uma dívida): use quando o usuário pedir para registrar, corrigir ou apagar algo. Para alterar ou apagar, busque antes para achar o id. Cada pedido vira um cartão com um botão para ele confirmar; nada é gravado sozinho. Nunca diga que já fez: diga que deixou pronto para ele confirmar.`
 
 // Ações de uma proposta.
 const (
@@ -103,6 +103,18 @@ func (t *Tools) Defs() []llm.Tool {
 				"parcela_minima":{"type":"string","description":"em reais"},
 				"vencimento":{"type":"integer","description":"dia do vencimento (1 a 31, opcional)"}},
 				"required":["nome","saldo","juros_mes","parcela_minima"]}`),
+		tool("registrar_aporte", "Prepara um aporte (dinheiro guardado) numa meta existente, para o usuário confirmar.",
+			`{"type":"object","properties":{
+				"meta":{"type":"string","description":"nome da meta"},
+				"valor":{"type":"string","description":"em reais"},
+				"data":{"type":"string","description":"AAAA-MM-DD; padrão: hoje"}},
+				"required":["meta","valor"]}`),
+		tool("registrar_pagamento", "Prepara o pagamento de uma dívida existente (baixa o saldo e lança o gasto), para o usuário confirmar.",
+			`{"type":"object","properties":{
+				"divida":{"type":"string","description":"nome da dívida"},
+				"valor":{"type":"string","description":"quanto pagou, em reais"},
+				"data":{"type":"string","description":"AAAA-MM-DD; padrão: hoje"}},
+				"required":["divida","valor"]}`),
 	}
 }
 
@@ -121,8 +133,9 @@ func (t *Tools) Run(c llm.ToolCall) string {
 		return strings.TrimSpace(s)
 	}
 	var (
-		p   Proposal
-		err error
+		p     Proposal
+		extra []Proposal // um pedido pode virar mais de um cartão (pagamento = dívida + lançamento)
+		err   error
 	)
 	switch c.Name {
 	case "buscar_lancamentos":
@@ -137,16 +150,24 @@ func (t *Tools) Run(c llm.ToolCall) string {
 		p, err = t.newGoal(str("nome"), str("valor"), str("prazo"), str("ja_guardado"))
 	case "criar_divida":
 		p, err = t.newDebt(str("nome"), str("credor"), str("saldo"), str("juros_mes"), str("parcela_minima"), str("vencimento"))
+	case "registrar_aporte":
+		p, err = t.contribute(str("meta"), str("valor"), str("data"))
+	case "registrar_pagamento":
+		p, extra, err = t.payDebt(str("divida"), str("valor"), str("data"))
 	default:
 		return "ferramenta desconhecida: " + c.Name
 	}
 	if err != nil {
 		return "não deu para preparar: " + err.Error()
 	}
-	if t.onPropose != nil {
-		t.onPropose(p)
+	labels := []string{}
+	for _, q := range append([]Proposal{p}, extra...) {
+		if t.onPropose != nil {
+			t.onPropose(q)
+		}
+		labels = append(labels, q.Label)
 	}
-	return "Pronto na tela para o usuário confirmar (" + p.Label + "). Ainda NÃO foi feito."
+	return "Pronto na tela para o usuário confirmar (" + strings.Join(labels, "; ") + "). Ainda NÃO foi feito."
 }
 
 func (t *Tools) search(text, category, kind, from, to string) string {
@@ -384,6 +405,91 @@ func (t *Tools) newDebt(name, creditor, balance, rate, minPay, due string) (Prop
 		label += fmt.Sprintf(" · vence dia %d", day)
 	}
 	return proposal(ActionCreate, domain.TypeDebt, d, label)
+}
+
+func (t *Tools) goal(name string) (domain.Goal, error) {
+	goals := t.ledger.ActiveGoals()
+	names := make([]string, len(goals))
+	for i, g := range goals {
+		if fold(g.Name) == fold(name) {
+			return g, nil
+		}
+		names[i] = g.Name
+	}
+	if len(goals) == 0 {
+		return domain.Goal{}, fmt.Errorf("o usuário não tem metas; crie uma com criar_meta")
+	}
+	return domain.Goal{}, fmt.Errorf("meta %q não existe. Metas: %s", name, strings.Join(names, ", "))
+}
+
+// contribute: com categoria de aportes, o aporte é um lançamento nela (é assim
+// que a meta conta); sem categoria, soma no "já guardado" da meta.
+func (t *Tools) contribute(goalName, value, date string) (Proposal, error) {
+	g, err := t.goal(goalName)
+	if err != nil {
+		return Proposal{}, err
+	}
+	v, err := cents(value, "valor do aporte")
+	if err != nil {
+		return Proposal{}, err
+	}
+	if g.CategoryID != "" {
+		if date == "" {
+			date = t.today.Format(domain.DateLayout)
+		}
+		tx := domain.Transaction{Meta: t.meta(), Kind: domain.KindSaida, Description: "Aporte: " + g.Name, AmountCents: v, CategoryID: g.CategoryID, Date: date}
+		return proposal(ActionCreate, domain.TypeTransaction, tx, "Aporte na meta "+g.Name+": "+t.txLabel(tx))
+	}
+	saved := g
+	saved.SavedCents += v
+	saved.UpdatedAt = max(t.today.UnixMilli(), g.UpdatedAt+1)
+	return proposal(ActionEdit, domain.TypeGoal, saved, fmt.Sprintf("Aporte na meta %s: guardado %s → %s (de %s)",
+		g.Name, money.Format(g.SavedCents), money.Format(saved.SavedCents), money.Format(g.TargetCents)))
+}
+
+// payDebt baixa o saldo da dívida e, se houver a categoria "Pagamento de
+// dívidas", também lança o gasto (dois cartões; a pessoa confirma cada um).
+func (t *Tools) payDebt(debtName, value, date string) (Proposal, []Proposal, error) {
+	debts := t.ledger.ActiveDebts()
+	var d domain.Debt
+	names := make([]string, len(debts))
+	for i, x := range debts {
+		names[i] = x.Name
+		if fold(x.Name) == fold(debtName) {
+			d = x
+		}
+	}
+	if d.ID == "" {
+		if len(debts) == 0 {
+			return Proposal{}, nil, fmt.Errorf("o usuário não tem dívidas cadastradas; cadastre com criar_divida")
+		}
+		return Proposal{}, nil, fmt.Errorf("dívida %q não existe. Dívidas: %s", debtName, strings.Join(names, ", "))
+	}
+	v, err := cents(value, "valor do pagamento")
+	if err != nil {
+		return Proposal{}, nil, err
+	}
+	paid := d
+	paid.BalanceCents = max(0, d.BalanceCents-v)
+	paid.UpdatedAt = max(t.today.UnixMilli(), d.UpdatedAt+1)
+	label := fmt.Sprintf("Pagamento de %s em %s: saldo %s → %s", money.Format(v), d.Name, money.Format(d.BalanceCents), money.Format(paid.BalanceCents))
+	debt, err := proposal(ActionEdit, domain.TypeDebt, paid, label)
+	if err != nil {
+		return Proposal{}, nil, err
+	}
+	catID, err := t.category("Pagamento de dívidas", domain.KindSaida)
+	if err != nil {
+		return debt, nil, nil // sem essa categoria, só baixa o saldo
+	}
+	if date == "" {
+		date = t.today.Format(domain.DateLayout)
+	}
+	tx := domain.Transaction{Meta: t.meta(), Kind: domain.KindSaida, Description: "Pagamento: " + d.Name, AmountCents: v, CategoryID: catID, Date: date}
+	spend, err := proposal(ActionCreate, domain.TypeTransaction, tx, "Novo gasto: "+t.txLabel(tx))
+	if err != nil {
+		return Proposal{}, nil, err
+	}
+	return debt, []Proposal{spend}, nil
 }
 
 // Applied diz se a proposta já está valendo nos dados (a pessoa confirmou):

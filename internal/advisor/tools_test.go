@@ -197,7 +197,7 @@ func TestAskWithTools(t *testing.T) {
 	second := fake.asked[1]
 	last := second.Messages[len(second.Messages)-1]
 	if len(fake.asked) != 2 || last.Role != llm.RoleTool || !strings.Contains(last.Content, "R$ 82,30") ||
-		len(second.Tools) != 6 || !strings.Contains(second.System, "propor_lancamento") {
+		len(second.Tools) != 8 || !strings.Contains(second.System, "propor_lancamento") {
 		t.Errorf("segunda rodada = %+v", second)
 	}
 }
@@ -219,5 +219,53 @@ func TestAskStopsCallingTools(t *testing.T) {
 	answer, err := Ask(context.Background(), fake, nil, "oi", "resumo", NewTools(toolsLedger(), time.Now(), nil), func(string) {})
 	if err != nil || answer != "Fim." || len(fake.asked) != maxToolRounds+1 || fake.asked[maxToolRounds].Tools != nil {
 		t.Fatalf("answer=%q err=%v rodadas=%d", answer, err, len(fake.asked))
+	}
+}
+
+func TestContributeAndPay(t *testing.T) {
+	l := toolsLedger()
+	l.Goals = []domain.Goal{
+		{Meta: domain.Meta{ID: "g1", UpdatedAt: 1}, Name: "Viagem", TargetCents: 600000, SavedCents: 100000, StartDate: "2026-01-01"},
+		{Meta: domain.Meta{ID: "g2", UpdatedAt: 1}, Name: "Reserva", TargetCents: 900000, CategoryID: "res", StartDate: "2026-01-01"},
+	}
+	l.Debts = []domain.Debt{{Meta: domain.Meta{ID: "d1", UpdatedAt: 1}, Name: "Cartão Nubank", BalanceCents: 320000, MonthlyRateBP: 1290, MinPaymentCents: 48000}}
+	var got []Proposal
+	tools := NewTools(l, time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC), func(p Proposal) { got = append(got, p) })
+
+	// Meta sem categoria: soma no "já guardado".
+	tools.Run(call("registrar_aporte", `{"meta":"viagem","valor":"500"}`))
+	if g := record[domain.Goal](t, got[0]); got[0].Action != ActionEdit || g.SavedCents != 150000 || g.ID != "g1" ||
+		got[0].Label != "Aporte na meta Viagem: guardado R$ 1.000,00 → R$ 1.500,00 (de R$ 6.000,00)" {
+		t.Errorf("aporte = %+v %+v", got[0], g)
+	}
+	// Meta com categoria: o aporte é um lançamento nela.
+	tools.Run(call("registrar_aporte", `{"meta":"Reserva","valor":"200"}`))
+	if tx := record[domain.Transaction](t, got[1]); got[1].Action != ActionCreate || tx.CategoryID != "res" || tx.AmountCents != 20000 || tx.Description != "Aporte: Reserva" {
+		t.Errorf("aporte com categoria = %+v %+v", got[1], tx)
+	}
+	// Sem a categoria "Pagamento de dívidas": só baixa o saldo.
+	tools.Run(call("registrar_pagamento", `{"divida":"cartão nubank","valor":"500"}`))
+	if d := record[domain.Debt](t, got[2]); len(got) != 3 || d.BalanceCents != 270000 ||
+		got[2].Label != "Pagamento de R$ 500,00 em Cartão Nubank: saldo R$ 3.200,00 → R$ 2.700,00" {
+		t.Errorf("pagamento = %+v %+v (%d cartões)", got[2], d, len(got))
+	}
+	// Com a categoria: baixa o saldo e lança o gasto (dois cartões); pagar mais que o saldo zera.
+	l.Categories = append(l.Categories, domain.Category{Meta: domain.Meta{ID: "pd", UpdatedAt: 1}, Name: "Pagamento de dívidas", Bucket: domain.BucketNecessidades})
+	got = nil
+	tools = NewTools(l, time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC), func(p Proposal) { got = append(got, p) })
+	out := tools.Run(call("registrar_pagamento", `{"divida":"Cartão Nubank","valor":"4000"}`))
+	if len(got) != 2 || record[domain.Debt](t, got[0]).BalanceCents != 0 || record[domain.Transaction](t, got[1]).CategoryID != "pd" || !strings.Contains(out, "; Novo gasto") {
+		t.Errorf("pagamento com lançamento = %+v %q", got, out)
+	}
+	for args, want := range map[string]string{
+		`{"meta":"Casa","valor":"10"}`:  "Metas: Viagem, Reserva",
+		`{"meta":"Viagem","valor":"0"}`: "valor do aporte inválido",
+	} {
+		if out := tools.Run(call("registrar_aporte", args)); !strings.Contains(out, want) {
+			t.Errorf("%s = %q", args, out)
+		}
+	}
+	if out := tools.Run(call("registrar_pagamento", `{"divida":"Carro","valor":"10"}`)); !strings.Contains(out, "Dívidas: Cartão Nubank") {
+		t.Errorf("dívida inexistente = %q", out)
 	}
 }
