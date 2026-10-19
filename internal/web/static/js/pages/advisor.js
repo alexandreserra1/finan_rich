@@ -1,7 +1,7 @@
 // Consultor IA no app do celular: conversa com a IA que roda no computador
 // pareado (precisa estar ao alcance), usando o token deste aparelho.
 import { endpoint } from "../device.js";
-import { describeProposal, saveNote, saveProposal } from "../notes-save.js";
+import { applyProposal, proposalButton, saveNote } from "../notes-save.js";
 import { html, raw } from "../ui.js";
 
 export const needsData = false;
@@ -26,8 +26,8 @@ export function render({ server }) {
       <div class="messages">
         ${chat.history.map((m, i) => html`<div class="msg ${m.role}">${md(m.content)}
           ${m.role === "assistant" ? html`<button type="button" class="link plain save-note" data-save="${i}">Salvar como nota</button>` : ""}</div>
-          ${m.proposals?.length ? html`<div class="proposals">${m.proposals.map((p, j) => html`<div class="proposal"><span>${describeProposal(p)}</span>
-            <button type="button" class="small-btn" data-propose="${i}:${j}" ${p.added ? "disabled" : ""}>${p.added ? "Adicionado ✓" : "Adicionar"}</button></div>`)}</div>` : ""}`)}
+          ${m.proposals?.length ? html`<div class="proposals">${m.proposals.map((p, j) => html`<div class="proposal"><span>${p.label}</span>
+            <button type="button" class="small-btn${p.action === "apagar" ? " danger" : ""}" data-propose="${i}:${j}" ${p.applied ? "disabled" : ""}>${proposalButton(p)[p.applied ? 1 : 0]}</button></div>`)}</div>` : ""}`)}
         ${chat.busy ? html`<div class="msg assistant pending">Pensando… (no computador, a primeira resposta pode demorar enquanto o modelo carrega)</div>` : ""}
         ${chat.error ? html`<div class="msg error">Erro: ${chat.error}</div>` : ""}
         ${!chat.history.length && !chat.busy ? html`<div class="suggestions">${SUGGESTIONS.map((s) => html`<button type="button" data-suggest>${s}</button>`)}</div>` : ""}
@@ -112,9 +112,9 @@ export function bind(root, ctx) {
     const [i, j] = b.dataset.propose.split(":").map(Number);
     const p = chat.history[i].proposals[j];
     try {
-      await saveProposal(p);
-      p.added = true;
-      await ctx.refresh("Lançamento adicionado.");
+      await applyProposal(p);
+      p.applied = true;
+      await ctx.refresh("Pronto: " + p.label);
     } catch (err) {
       ctx.error(err);
     }

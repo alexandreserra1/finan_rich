@@ -16,19 +16,15 @@ export async function saveNote(question, answer) {
   sync.soon();
 }
 
-// Lança um lançamento proposto pelo consultor, depois que a pessoa aprova no
-// botão. Passa pelas mesmas regras (WebAssembly) de um lançamento digitado.
-export async function saveProposal(proposal) {
+// Aplica uma mudança proposta pelo consultor (lançar, alterar, apagar, criar
+// meta ou dívida), depois que a pessoa toca no botão. Passa pelas mesmas regras
+// (WebAssembly) de uma mudança feita à mão.
+export async function applyProposal(p) {
   await finance.load();
-  const { categoryName, ...tx } = proposal;
-  const record = finance.validate("transaction", { ...tx, updatedAt: Date.now() });
-  await db.saveLocal("transaction", record);
+  const record = finance.validate(p.type, { ...p.record, updatedAt: Math.max(Date.now(), p.record.updatedAt + 1) });
+  await db.saveLocal(p.type, record);
   sync.soon();
 }
 
-// Texto do cartão: "Almoço · R$ 45,90 · Restaurantes · 16/10/2026".
-export function describeProposal(p) {
-  const value = (p.amountCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  const date = p.date.split("-").reverse().join("/");
-  return `${p.kind === "entrada" ? "Entrada" : "Gasto"}: ${p.description} · ${value} · ${p.categoryName} · ${date}`;
-}
+// Texto do botão: o que ele faz e como fica depois de feito.
+export const proposalButton = (p) => ({ criar: ["Adicionar", "Adicionado ✓"], alterar: ["Alterar", "Alterado ✓"], apagar: ["Apagar", "Apagado ✓"] })[p.action] || ["Confirmar", "Feito ✓"];

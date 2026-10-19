@@ -11,7 +11,8 @@
   {{template "aistatus" .}}
   <p class="small muted">Usando <strong>{{.AI.Preset.Name}}</strong> · <code>{{.AI.Model}}</code> (<a href="/configuracoes">trocar</a>). O consultor vê seus números atuais (mês, divisão do salário, dívidas) a cada pergunta.</p>
   <div id="messages" class="messages">
-    {{range .History}}<div class="msg {{.Role}}" data-md>{{.Content}}</div>{{end}}
+    {{range .History}}<div class="msg {{.Role}}" data-md>{{.Content}}</div>
+      {{with .Proposals}}<div class="proposals" data-proposals="{{jsonText .}}"></div>{{end}}{{end}}
     {{if not .History}}
     <div class="suggestions">
       <button type="button">Como posso dividir melhor meu salário?</button>

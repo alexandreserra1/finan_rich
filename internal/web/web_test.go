@@ -109,7 +109,7 @@ func TestPagesRender(t *testing.T) {
 	}
 	check("vazio")
 	seed(t, a.st)
-	a.st.AppendChatTurn(context.Background(), "oi", "**olá**")
+	a.st.AppendChatTurn(context.Background(), "oi", "**olá**", nil)
 	check("com dados")
 
 	// O casco das telas de dados diz qual tela o JavaScript deve montar.
@@ -311,5 +311,50 @@ func TestChatAPI(t *testing.T) {
 	}
 	if code, _ := a.postJSON("/api/chat/limpar", map[string]any{}); code != http.StatusOK || len(getInfo()["history"].([]any)) != 0 {
 		t.Error("limpar a conversa")
+	}
+}
+
+// O consultor propõe um lançamento: o cartão vai no SSE, fica salvo na
+// conversa e aparece como feito depois que a pessoa confirma.
+func TestChatProposalsAreSaved(t *testing.T) {
+	ollama := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/tags" {
+			fmt.Fprint(w, `{"models":[{"name":"qwen3:4b"}]}`)
+			return
+		}
+		body, _ := io.ReadAll(r.Body)
+		if strings.Contains(string(body), `"role":"tool"`) {
+			fmt.Fprintln(w, `{"message":{"content":"Deixei pronto para você confirmar."},"done":true}`)
+			return
+		}
+		fmt.Fprintln(w, `{"message":{"content":"","tool_calls":[{"function":{"name":"propor_lancamento","arguments":{"descricao":"Cinema","valor":"30","categoria":"Lazer"}}}]},"done":true}`)
+	}))
+	t.Cleanup(ollama.Close)
+	a := newApp(t, ollama.URL)
+	_, body := a.post("/chat/enviar", url.Values{"message": {"lança 30 do cinema"}})
+	if !strings.Contains(body, `"proposal":{"action":"criar","type":"transaction"`) || !strings.Contains(body, "Deixei pronto") {
+		t.Fatalf("SSE = %s", body)
+	}
+	if _, page := a.get("/chat"); !strings.Contains(page, `data-proposals="[{&#34;action&#34;:&#34;criar&#34;`) || strings.Contains(page, "&#34;applied&#34;:true") {
+		t.Fatalf("a proposta deveria ficar na conversa, ainda não feita: %s", page)
+	}
+	// A pessoa confirma: o aparelho grava o registro proposto e sincroniza.
+	msgs, _ := a.st.ListChat(context.Background())
+	var props []struct {
+		Type   string
+		Record json.RawMessage
+	}
+	json.Unmarshal(msgs[1].Proposals, &props)
+	if _, err := a.st.ApplyChanges(context.Background(), []store.Change{{Type: props[0].Type, Record: props[0].Record}}); err != nil {
+		t.Fatal(err)
+	}
+	resp, err := http.Get(a.srv.URL + "/api/chat")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	api, _ := io.ReadAll(resp.Body)
+	if !strings.Contains(string(api), `"applied":true`) || !strings.Contains(string(api), `"label":"Novo gasto:`) {
+		t.Errorf("API do app: %s", api)
 	}
 }

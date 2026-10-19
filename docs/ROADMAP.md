@@ -68,7 +68,11 @@ Ficam três limitações que só um app de verdade resolve:
      App Store; ou TestFlight para testes.
 7. **Testes.** Rodar o `e2e/` também contra o app Android num emulador, no CI.
 
-### Modo "só no celular" (opcional)
+### Modo "só no celular"
+
+> **Feito em parte:** Ajustes do app → *Usar só neste celular* cria as categorias no aparelho e
+> tudo (menos o consultor) funciona sem computador. Se depois parear, as categorias padrão se
+> juntam às do computador sem duplicar. Falta: consultor com IA na nuvem direto do celular.
 
 Para quem não quer deixar um computador ligado:
 
@@ -89,8 +93,9 @@ aparelho; o que falta para chegar perto, do mais simples ao mais caro:
    palavras-chave ou IA, sem duplicar.
 2. ~~**Consultor mais completo**~~ — feito em parte: a IA recebe os gastos por estabelecimento
    (12 meses), metas, recorrentes e notas, e as respostas podem virar nota. Com
-   *ferramentas*: busca lançamentos de qualquer período e propõe lançamentos, que só entram
-   com o botão *Adicionar*. Próximos: propor edição/remoção, metas e dívidas pelo chat.
+   *ferramentas*: busca lançamentos de qualquer período; lança, corrige, apaga, cria metas e
+   dívidas por mensagem, sempre com um cartão para confirmar (salvo na conversa). Próximos:
+   aporte em meta e pagamento de dívida pelo chat.
 3. ~~**Alertas**~~ — feito: avisos no painel e lembrete de vencimento no celular.
 4. **Open Finance** (lançamentos automáticos dos bancos): exige um agregador pago (Pluggy,
    Belvo) e, na prática, uma empresa responsável pelos dados; também tira os dados só do

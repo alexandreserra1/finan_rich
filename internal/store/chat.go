@@ -3,27 +3,32 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 )
 
 func (s *Store) ListChat(ctx context.Context) ([]ChatMessage, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id, role, content FROM chat_messages ORDER BY id`)
+	rows, err := s.db.QueryContext(ctx, `SELECT id, role, content, proposals FROM chat_messages ORDER BY id`)
 	return collect(rows, err, func(r *sql.Rows) (ChatMessage, error) {
 		var m ChatMessage
-		err := r.Scan(&m.ID, &m.Role, &m.Content)
+		var proposals string
+		err := r.Scan(&m.ID, &m.Role, &m.Content, &proposals)
+		if proposals != "" {
+			m.Proposals = json.RawMessage(proposals)
+		}
 		return m, err
 	})
 }
 
 // AppendChatTurn grava a pergunta e a resposta juntas, para o histórico nunca
-// ficar com uma pergunta sem resposta.
-func (s *Store) AppendChatTurn(ctx context.Context, question, answer string) error {
+// ficar com uma pergunta sem resposta. proposals (JSON, opcional) são as
+// mudanças que o consultor propôs nessa resposta.
+func (s *Store) AppendChatTurn(ctx context.Context, question, answer string, proposals json.RawMessage) error {
 	return s.inTx(ctx, func(tx *sql.Tx) error {
-		for _, m := range []ChatMessage{{Role: RoleUser, Content: question}, {Role: RoleAssistant, Content: answer}} {
-			if _, err := tx.ExecContext(ctx, `INSERT INTO chat_messages (role, content) VALUES (?, ?)`, m.Role, m.Content); err != nil {
-				return err
-			}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO chat_messages (role, content) VALUES (?, ?)`, RoleUser, question); err != nil {
+			return err
 		}
-		return nil
+		_, err := tx.ExecContext(ctx, `INSERT INTO chat_messages (role, content, proposals) VALUES (?, ?, ?)`, RoleAssistant, answer, string(proposals))
+		return err
 	})
 }
 

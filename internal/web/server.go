@@ -62,6 +62,11 @@ type Options struct {
 }
 
 var funcs = template.FuncMap{
+	// jsonText é o JSON como texto comum (para atributos data-*).
+	"jsonText": func(v any) (string, error) {
+		b, err := json.Marshal(v)
+		return string(b), err
+	},
 	"json": func(v any) (template.JS, error) {
 		b, err := json.Marshal(v)
 		return template.JS(b), err

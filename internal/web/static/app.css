@@ -484,3 +484,4 @@ label.check.repeat { align-self: center; }
 .proposals { display: grid; gap: .4rem; margin: -.2rem 0 .6rem; }
 .proposal { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .55rem .75rem; border: 1px dashed var(--border); border-radius: 10px; background: var(--surface-2); font-size: .9rem; }
 .proposal button { flex: none; }
+.proposal button.danger { background: var(--neg); border-color: var(--neg); color: #fff; }

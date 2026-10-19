@@ -40,33 +40,39 @@
     el.appendChild(b);
   }
 
-  // Lançamento proposto pela IA: só entra se a pessoa clicar em "Adicionar".
+  // Mudança proposta pela IA (lançar, alterar, apagar, meta, dívida): só vale
+  // se a pessoa tocar no botão.
   function addProposal(list, p) {
     const card = document.createElement("div");
     card.className = "proposal";
     const text = document.createElement("span");
-    text.textContent = window.finanProposal ? window.finanProposal.describe(p) : p.description;
+    text.textContent = p.label;
     const b = document.createElement("button");
     b.type = "button";
-    b.className = "small-btn";
-    b.textContent = "Adicionar";
+    b.className = "small-btn" + (p.action === "apagar" ? " danger" : "");
+    const [todo, done] = window.finanProposal ? window.finanProposal.button(p) : ["Confirmar", "Feito ✓"];
+    b.textContent = p.applied ? done : todo;
+    b.disabled = !!p.applied;
     b.addEventListener("click", async () => {
       b.disabled = true;
       try {
-        await window.finanProposal.save(p);
-        b.textContent = "Adicionado ✓";
+        await window.finanProposal.apply(p);
+        b.textContent = done;
       } catch (err) {
         b.disabled = false;
         b.textContent = "Tentar de novo";
-        text.textContent += " — erro: " + err.message;
+        text.textContent = p.label + " — erro: " + err.message;
       }
     });
     card.append(text, b);
     list.appendChild(card);
-    card.scrollIntoView({ block: "end" });
+    return card;
   }
 
   document.querySelectorAll("[data-md]").forEach((el) => render(el, el.textContent));
+  // Cartões salvos na conversa (main.js carrega depois: espera para os botões).
+  window.addEventListener("load", () => document.querySelectorAll("[data-proposals]").forEach((list) =>
+    JSON.parse(list.dataset.proposals).forEach((p) => addProposal(list, p))));
   // main.js (módulo) carrega depois deste script: espera para ligar os botões.
   window.addEventListener("load", () => document.querySelectorAll(".msg.assistant").forEach(addSave));
 
@@ -96,7 +102,7 @@
             proposals.className = "proposals";
             messages.appendChild(proposals);
           }
-          addProposal(proposals, ev.proposal);
+          addProposal(proposals, ev.proposal).scrollIntoView({ block: "end" });
           return;
         }
         if (!ev.text) return;

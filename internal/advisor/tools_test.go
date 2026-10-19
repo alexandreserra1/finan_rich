@@ -50,22 +50,36 @@ func TestSearchTool(t *testing.T) {
 	}
 }
 
-func TestProposeTool(t *testing.T) {
+func proposeAll(t *testing.T) (*Tools, *[]Proposal) {
 	var got []Proposal
-	tools := NewTools(toolsLedger(), time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC), func(p Proposal) { got = append(got, p) })
+	return NewTools(toolsLedger(), time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC), func(p Proposal) { got = append(got, p) }), &got
+}
 
-	out := tools.Run(call("propor_lancamento", `{"descricao":"Almoço","valor":"45,90","categoria":"restaurantes e delivery"}`))
-	if len(got) != 1 || !strings.Contains(out, "NÃO foi lançada") {
-		t.Fatalf("proposta: %v %q", got, out)
+func record[T any](t *testing.T, p Proposal) T {
+	t.Helper()
+	var r T
+	if err := json.Unmarshal(p.Record, &r); err != nil {
+		t.Fatal(err)
 	}
-	p := got[0]
-	if p.Kind != domain.KindSaida || p.AmountCents != 4590 || p.CategoryID != "res" || p.Date != "2026-10-16" || !strings.HasPrefix(p.ID, "ia-") || p.CategoryName != "Restaurantes e delivery" {
-		t.Errorf("proposta = %+v", p)
+	return r
+}
+
+func TestProposeTransaction(t *testing.T) {
+	tools, got := proposeAll(t)
+	out := tools.Run(call("propor_lancamento", `{"descricao":"Almoço","valor":"45,90","categoria":"restaurantes e delivery"}`))
+	if len(*got) != 1 || !strings.Contains(out, "NÃO foi feito") {
+		t.Fatalf("proposta: %v %q", *got, out)
+	}
+	p := (*got)[0]
+	tx := record[domain.Transaction](t, p)
+	if p.Action != ActionCreate || p.Type != domain.TypeTransaction || tx.Kind != domain.KindSaida || tx.AmountCents != 4590 || tx.CategoryID != "res" ||
+		tx.Date != "2026-10-16" || !strings.HasPrefix(tx.ID, "ia-") || p.Label != "Novo gasto: 16/10/2026 · Almoço · Restaurantes e delivery · -R$ 45,90" {
+		t.Errorf("proposta = %+v %+v", p, tx)
 	}
 	// Valor como número JSON também vale; entrada só em categoria de renda.
 	tools.Run(call("propor_lancamento", `{"descricao":"Freela","valor":1500.5,"tipo":"entrada","categoria":"Salário","data":"2026-10-01"}`))
-	if len(got) != 2 || got[1].AmountCents != 150050 || got[1].Kind != domain.KindEntrada {
-		t.Errorf("entrada = %+v", got[1])
+	if tx := record[domain.Transaction](t, (*got)[1]); tx.AmountCents != 150050 || tx.Kind != domain.KindEntrada {
+		t.Errorf("entrada = %+v", tx)
 	}
 	for args, want := range map[string]string{
 		`{"descricao":"x","valor":"10","categoria":"Viagem"}`:                   "Use uma destas: Restaurantes e delivery, Transporte",
@@ -78,8 +92,78 @@ func TestProposeTool(t *testing.T) {
 			t.Errorf("%s = %q; quer %q", args, out, want)
 		}
 	}
-	if len(got) != 2 {
-		t.Errorf("pedidos inválidos não podem virar proposta: %d", len(got))
+	if len(*got) != 2 {
+		t.Errorf("pedidos inválidos não podem virar proposta: %d", len(*got))
+	}
+}
+
+func TestEditAndDeleteTransaction(t *testing.T) {
+	tools, got := proposeAll(t)
+	if out := tools.Run(call("buscar_lancamentos", `{"texto":"uber"}`)); !strings.Contains(out, "[3] 05/09/2026 · Uber") {
+		t.Fatalf("a busca precisa dar o id: %q", out)
+	}
+	tools.Run(call("alterar_lancamento", `{"id":"3","valor":"30","categoria":"Restaurantes e delivery"}`))
+	p := (*got)[0]
+	tx := record[domain.Transaction](t, p)
+	if p.Action != ActionEdit || tx.ID != "3" || tx.AmountCents != 3000 || tx.CategoryID != "res" || tx.Description != "Uber" || tx.UpdatedAt <= 1 ||
+		p.Label != "Alterar Uber (05/09/2026): valor R$ 25,00 → R$ 30,00; categoria Transporte → Restaurantes e delivery" {
+		t.Errorf("alterar = %+v %+v", p, tx)
+	}
+	tools.Run(call("apagar_lancamento", `{"id":"3"}`))
+	p = (*got)[1]
+	if tx := record[domain.Transaction](t, p); p.Action != ActionDelete || !tx.Deleted || tx.ID != "3" || p.Label != "Apagar: 05/09/2026 · Uber · Transporte · -R$ 25,00" {
+		t.Errorf("apagar = %+v %+v", p, tx)
+	}
+	for args, want := range map[string]string{
+		`{"id":"nao-existe"}`: "não encontrado",
+		`{"id":"5"}`:          "não encontrado", // apagado não conta
+	} {
+		if out := tools.Run(call("apagar_lancamento", args)); !strings.Contains(out, want) {
+			t.Errorf("apagar %s = %q", args, out)
+		}
+	}
+	if out := tools.Run(call("alterar_lancamento", `{"id":"3","valor":"25,00"}`)); !strings.Contains(out, "nada muda") {
+		t.Errorf("alterar sem mudança = %q", out)
+	}
+}
+
+func TestGoalAndDebt(t *testing.T) {
+	tools, got := proposeAll(t)
+	tools.Run(call("criar_meta", `{"nome":"Viagem","valor":"6.000","prazo":"2027-06","ja_guardado":"1500"}`))
+	g := record[domain.Goal](t, (*got)[0])
+	if (*got)[0].Type != domain.TypeGoal || g.TargetCents != 600000 || g.SavedCents != 150000 || g.Deadline != "2027-06" || g.StartDate != "2026-10-16" ||
+		(*got)[0].Label != "Nova meta: Viagem · R$ 6.000,00 até junho de 2027 · já guardado R$ 1.500,00" {
+		t.Errorf("meta = %+v %+v", (*got)[0], g)
+	}
+	tools.Run(call("criar_divida", `{"nome":"Cartão","saldo":"3200","juros_mes":"12,9%","parcela_minima":"480","vencimento":15}`))
+	d := record[domain.Debt](t, (*got)[1])
+	if (*got)[1].Type != domain.TypeDebt || d.BalanceCents != 320000 || d.MonthlyRateBP != 1290 || d.MinPaymentCents != 48000 || d.DueDay != 15 {
+		t.Errorf("dívida = %+v %+v", (*got)[1], d)
+	}
+	if out := tools.Run(call("criar_meta", `{"nome":"X","valor":"100","prazo":"junho"}`)); !strings.Contains(out, "não deu para preparar") {
+		t.Errorf("prazo inválido = %q", out)
+	}
+}
+
+func TestApplied(t *testing.T) {
+	l := toolsLedger()
+	tools, got := proposeAll(t)
+	tools.Run(call("propor_lancamento", `{"descricao":"Almoço","valor":"45,90","categoria":"Restaurantes e delivery"}`))
+	tools.Run(call("alterar_lancamento", `{"id":"3","valor":"30"}`))
+	tools.Run(call("apagar_lancamento", `{"id":"2"}`))
+	create, edit, del := (*got)[0], (*got)[1], (*got)[2]
+	if Applied(l, create) || Applied(l, edit) || Applied(l, del) {
+		t.Fatal("nada foi confirmado ainda")
+	}
+	// A pessoa confirmou (o aparelho grava com updatedAt novo).
+	newTx := record[domain.Transaction](t, create)
+	l.Transactions = append(l.Transactions, newTx)
+	edited := record[domain.Transaction](t, edit)
+	edited.UpdatedAt += 50
+	l.Transactions[2] = edited
+	l.Transactions[1].Deleted = true
+	if !Applied(l, create) || !Applied(l, edit) || !Applied(l, del) {
+		t.Error("confirmadas deveriam aparecer como feitas")
 	}
 }
 
@@ -113,7 +197,7 @@ func TestAskWithTools(t *testing.T) {
 	second := fake.asked[1]
 	last := second.Messages[len(second.Messages)-1]
 	if len(fake.asked) != 2 || last.Role != llm.RoleTool || !strings.Contains(last.Content, "R$ 82,30") ||
-		len(second.Tools) != 2 || !strings.Contains(second.System, "propor_lancamento") {
+		len(second.Tools) != 6 || !strings.Contains(second.System, "propor_lancamento") {
 		t.Errorf("segunda rodada = %+v", second)
 	}
 }

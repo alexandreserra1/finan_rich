@@ -10,11 +10,46 @@ import (
 	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/advisor"
+	"github.com/alexandreserra1/finan_rich/internal/domain"
 )
+
+// chatEntry é uma mensagem da conversa com as propostas (e se já valem).
+type chatEntry struct {
+	Role      string             `json:"role"`
+	Content   string             `json:"content"`
+	Proposals []advisor.Proposal `json:"proposals,omitempty"`
+}
+
+// chatHistory lê a conversa e marca as propostas que a pessoa já confirmou.
+func (s *Server) chatHistory(ctx context.Context) ([]chatEntry, error) {
+	history, err := s.store.ListChat(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var ledger *domain.Ledger
+	out := make([]chatEntry, len(history))
+	for i, m := range history {
+		out[i] = chatEntry{Role: m.Role, Content: m.Content}
+		if len(m.Proposals) == 0 || json.Unmarshal(m.Proposals, &out[i].Proposals) != nil {
+			continue
+		}
+		if ledger == nil {
+			l, err := s.store.Ledger(ctx)
+			if err != nil {
+				return nil, err
+			}
+			ledger = &l
+		}
+		for j := range out[i].Proposals {
+			out[i].Proposals[j].Applied = advisor.Applied(*ledger, out[i].Proposals[j])
+		}
+	}
+	return out, nil
+}
 
 func (s *Server) chat(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	history, err := s.store.ListChat(ctx)
+	history, err := s.chatHistory(ctx)
 	if err != nil {
 		serverError(w, err)
 		return
@@ -69,7 +104,9 @@ func (s *Server) answer(w http.ResponseWriter, r *http.Request, question string)
 	}
 	now := time.Now()
 	snap := advisor.Snapshot(advisor.BuildFacts(ledger, now))
+	var proposals []advisor.Proposal
 	tools := advisor.NewTools(ledger, now, func(p advisor.Proposal) {
+		proposals = append(proposals, p)
 		sse.Send(map[string]any{"proposal": p})
 	})
 	history, err := s.store.ListChat(ctx)
@@ -91,7 +128,11 @@ func (s *Server) answer(w http.ResponseWriter, r *http.Request, question string)
 		return
 	}
 	// Contexto sem cancelamento: se a conexão cair agora, a resposta não se perde.
-	if err := s.store.AppendChatTurn(context.WithoutCancel(ctx), question, answer); err != nil {
+	var saved json.RawMessage
+	if len(proposals) > 0 {
+		saved, _ = json.Marshal(proposals)
+	}
+	if err := s.store.AppendChatTurn(context.WithoutCancel(ctx), question, answer, saved); err != nil {
 		fail(err)
 		return
 	}
@@ -100,22 +141,17 @@ func (s *Server) answer(w http.ResponseWriter, r *http.Request, question string)
 
 // ---- API do consultor para o app do celular (JSON, com o token do aparelho) ----
 
-type chatMessageJSON struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
-
 type chatInfo struct {
-	History []chatMessageJSON `json:"history"`
-	Model   string            `json:"model"`
-	Ready   bool              `json:"ready"`
-	Problem string            `json:"problem,omitempty"`
+	History []chatEntry `json:"history"`
+	Model   string      `json:"model"`
+	Ready   bool        `json:"ready"`
+	Problem string      `json:"problem,omitempty"`
 }
 
 // apiChatHistory devolve a conversa e se a IA está pronta.
 func (s *Server) apiChatHistory(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	history, err := s.store.ListChat(ctx)
+	history, err := s.chatHistory(ctx)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -126,10 +162,7 @@ func (s *Server) apiChatHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	st := s.aiStatus(ctx, ai)
-	info := chatInfo{History: []chatMessageJSON{}, Model: ai.Preset.Name + " · " + ai.Model, Ready: st.Ready, Problem: st.Problem}
-	for _, m := range history {
-		info.History = append(info.History, chatMessageJSON{m.Role, m.Content})
-	}
+	info := chatInfo{History: append([]chatEntry{}, history...), Model: ai.Preset.Name + " · " + ai.Model, Ready: st.Ready, Problem: st.Problem}
 	writeJSON(w, http.StatusOK, info)
 }
 

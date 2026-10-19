@@ -1,5 +1,7 @@
 package store
 
+import "encoding/json"
+
 const (
 	RoleUser      = "user"
 	RoleAssistant = "assistant"
@@ -11,4 +13,6 @@ type ChatMessage struct {
 	ID      int64
 	Role    string // RoleUser ou RoleAssistant
 	Content string
+	// Proposals: mudanças propostas pelo consultor nesta resposta (JSON, ou vazio).
+	Proposals json.RawMessage
 }

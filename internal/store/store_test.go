@@ -207,7 +207,7 @@ func mustChanges(t *testing.T, s *Store) []Change {
 func TestChat(t *testing.T) {
 	ctx := context.Background()
 	s := newTestStore(t)
-	if err := s.AppendChatTurn(ctx, "oi", "olá!"); err != nil {
+	if err := s.AppendChatTurn(ctx, "oi", "olá!", nil); err != nil {
 		t.Fatal(err)
 	}
 	msgs, _ := s.ListChat(ctx)

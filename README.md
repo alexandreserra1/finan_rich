@@ -27,9 +27,11 @@ números reais. Seus dados ficam num arquivo no seu PC, sem conta e sem nuvem.
   Os arquivos são gerados no próprio aparelho, mesmo sem internet.
 - **Consultor IA**: tire dúvidas sobre dívidas, cortes de gastos, metas e reserva de
   emergência; pergunte "quanto gastei com iFood este ano?"; salve respostas como nota.
-  Ele busca lançamentos de qualquer período por conta própria e, se você pedir ("lança 30
-  reais do cinema"), deixa o lançamento pronto com um botão **Adicionar**: nada entra sem
-  você aprovar. Também dentro do app do celular.
+  Ele busca lançamentos de qualquer período por conta própria e faz o que você pedir por
+  mensagem: lançar ("lança 30 reais do cinema"), corrigir ("o Uber de ontem foi 32,50"),
+  apagar, criar metas e cadastrar dívidas. Cada mudança vira um cartão com um botão
+  (**Adicionar**, **Alterar**, **Apagar**): nada muda sem você tocar nele, e os cartões
+  ficam na conversa. Também dentro do app do celular.
   Por padrão usa modelos abertos (Qwen, DeepSeek, Llama...) rodando no seu PC pelo Ollama.
 
 ## Como usar

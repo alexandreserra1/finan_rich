@@ -93,11 +93,17 @@ const ollama = createServer((req, res) => {
     req.on("end", () => {
       const { messages, tools } = JSON.parse(body);
       const last = messages.at(-1);
-      const question = last.content.split("</dados_financeiros>").at(-1); // sem o bloco de dados
+      const question = messages.findLast((m) => m.role === "user").content.split("</dados_financeiros>").at(-1); // sem o bloco de dados
       const reply = (message) => res.end(JSON.stringify({ message: { role: "assistant", content: "", ...message }, done: true }) + "\n");
       const ask = (name, args) => reply({ tool_calls: [{ function: { name, arguments: args } }] });
-      if (last.role === "tool") return reply({ content: last.tool_name === "buscar_lancamentos" ? "Pela busca: " + last.content.split("\n")[0] : "Deixei o lançamento pronto para você confirmar." });
+      if (last.role === "tool") {
+        // Para apagar, primeiro busca; com o [id] da busca, pede a remoção.
+        if (last.tool_name === "buscar_lancamentos" && /apaga/i.test(question)) return ask("apagar_lancamento", { id: last.content.match(/\[([^\]]+)\]/)[1] });
+        return reply({ content: last.tool_name === "buscar_lancamentos" ? "Pela busca: " + last.content.split("\n")[0] : "Deixei pronto para você confirmar." });
+      }
       if (tools && /padaria/i.test(question)) return ask("buscar_lancamentos", { texto: "padaria" });
+      if (tools && /apaga/i.test(question)) return ask("buscar_lancamentos", { texto: "cinema" });
+      if (tools && /meta/i.test(question)) return ask("criar_meta", { nome: "Viagem", valor: "6000", prazo: "2027-06" });
       if (tools && /lança/i.test(question)) return ask("propor_lancamento", { descricao: "Cinema", valor: "30,00", categoria: "Lazer" });
       reply({ content: "Você gastou **R$ 250,00** com mercado." });
     });
@@ -232,6 +238,26 @@ try {
   const cinema = (await serverRecords()).find((r) => r.description === "Cinema");
   ok(cinema?.amountCents === 3000 && cinema.kind === "saida", "depois do Adicionar, o lançamento entra e chega ao computador");
 
+  // Apagar e criar meta pelo chat, também só com o toque no botão.
+  await page.fill("textarea[name=message]", "Apaga o cinema");
+  await page.click("form[data-form=ask] button");
+  await page.waitForSelector(".proposal:has-text('Apagar: ') button:has-text('Apagar')", { timeout: 20000 });
+  await page.click(".proposal:has-text('Apagar: ') button");
+  await page.waitForSelector(".proposal button:has-text('Apagado')", { timeout: 10000 });
+  await page.fill("textarea[name=message]", "Cria uma meta de viagem");
+  await page.click("form[data-form=ask] button");
+  await page.waitForSelector(".proposal:has-text('Nova meta: Viagem')", { timeout: 20000 });
+  await page.click(".proposal:has-text('Nova meta') button");
+  await page.waitForSelector(".proposal:has-text('Nova meta') button:has-text('Adicionado')", { timeout: 10000 });
+  await page.evaluate(() => window.finanSync());
+  const after = await serverRecords();
+  ok(after.find((r) => r.description === "Cinema")?.deleted === true && after.some((r) => r.name === "Viagem" && r.targetCents === 600000 && r.deadline === "2027-06"),
+    "pelo chat, apagou o lançamento e criou a meta (depois do toque)");
+  await page.reload();
+  await page.waitForSelector(".proposal", { timeout: 20000 });
+  const cards = await page.locator(".proposal button").allTextContents();
+  ok(cards.join("|") === "Adicionado ✓|Apagado ✓|Adicionado ✓", `os cartões continuam na conversa depois de recarregar, marcados como feitos (${cards.join(" | ")})`);
+
   // Desconectado no computador: o app avisa para parear de novo.
   await form("/configuracoes/aparelhos/remover", { id: "1" });
   await page.evaluate(() => window.finanSync());
@@ -267,13 +293,16 @@ try {
   const desk = await browser.newPage();
   desk.on("pageerror", (e) => errors.push(e.message));
   await desk.goto(`${B}/chat`);
+  await desk.waitForSelector(".proposal");
+  const before = await desk.locator(".proposal").count(); // os da conversa do celular também aparecem aqui
   await desk.fill("textarea[name=message]", "Lança 30 reais de cinema");
   await desk.click("#chat-form button");
-  await desk.waitForSelector(".proposal:has-text('Cinema')", { timeout: 20000 });
-  await desk.click(".proposal button");
-  await desk.waitForSelector(".proposal button:has-text('Adicionado')", { timeout: 10000 });
+  await desk.waitForFunction((n) => document.querySelectorAll(".proposal").length > n, before, { timeout: 20000 });
+  const fresh = desk.locator(".proposal >> nth=-1");
+  await fresh.locator("button").click();
+  await fresh.locator("button:has-text('Adicionado')").waitFor({ timeout: 10000 });
   await desk.evaluate(() => window.finanSync());
-  ok((await serverRecords()).filter((r) => r.description === "Cinema" && !r.deleted).length === 2, "no computador, o Adicionar da proposta também lança");
+  ok((await serverRecords()).filter((r) => r.description === "Cinema" && !r.deleted).length === 1, "no computador, o Adicionar da proposta também lança");
 
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);
 } catch (err) {

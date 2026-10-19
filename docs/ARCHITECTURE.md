@@ -118,17 +118,20 @@ aparelho                                      servidor
    o retrato em texto (`advisor.Snapshot`): juros de cada dívida, sobra livre, reserva,
    pontos de atenção. **As contas vão prontas**, porque modelos pequenos erram aritmética.
 3. `advisor.Ask` monta a conversa (system prompt + histórico recente + pergunta com o retrato)
-   e chama o `llm.Provider` configurado, com duas **ferramentas** (`advisor/tools.go`):
+   e chama o `llm.Provider` configurado, com **ferramentas** (`advisor/tools.go`):
    - `buscar_lancamentos`: filtra lançamentos por texto, categoria, tipo e período e devolve
-     os totais (calculados em Go) e os 30 mais recentes;
-   - `propor_lancamento`: monta e valida um lançamento, mas **não grava**: a proposta vai para
-     a tela (evento SSE `proposal`) com um botão *Adicionar*, que grava pelo cliente offline
+     os totais (calculados em Go) e os 30 mais recentes, com o `[id]` de cada um;
+   - `propor_lancamento`, `alterar_lancamento`, `apagar_lancamento`, `criar_meta`,
+     `criar_divida`: montam e validam o registro como vai ficar (`domain.DecodeRecord`), mas
+     **não gravam**: viram uma `advisor.Proposal` (ação, tipo, registro, texto do cartão) que vai
+     para a tela (evento SSE `proposal`) com um botão. O botão grava pelo cliente offline
      (`notes-save.js`, mesma validação em WebAssembly) e sincroniza.
    O laço pede ferramentas até 4 vezes por pergunta. Ferramentas usam o formato nativo de cada
    provedor (Ollama, OpenAI-compatível, Anthropic); se o modelo não aceitar ferramentas, o
    consultor pergunta de novo sem elas.
-4. A resposta volta em streaming (Server-Sent Events) e é gravada em `chat_messages`.
-   As propostas não ficam no histórico (só a resposta em texto).
+4. A resposta volta em streaming (Server-Sent Events) e é gravada em `chat_messages`, com as
+   propostas (coluna `proposals`, JSON). Ao mostrar a conversa, `advisor.Applied` compara cada
+   proposta com os dados atuais para marcar o cartão como feito.
 
 ### 5. Acesso pelo celular e login
 
