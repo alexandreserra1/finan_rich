@@ -131,7 +131,7 @@ function render(message) {
   if (!page || !ledger) return;
   if (!ledger.categories.length && page.needsData !== false) {
     root.innerHTML = device.isApp && !server
-      ? `<p class="notice warn">Este celular ainda não está conectado ao computador. <a href="/configuracoes">Conectar agora</a></p>`
+      ? `<p class="notice warn">Este celular ainda não está conectado ao computador. <a href="/configuracoes">Conectar agora</a> ou <a href="/configuracoes#sozinho">usar só neste celular</a>.</p>`
       : sync.state.status === "offline"
         ? `<p class="notice warn">Este aparelho ainda não tem seus dados. Conecte-se ao computador onde o finan_rich está aberto uma vez para baixá-los; depois ele funciona sem conexão.</p>`
         : `<p class="muted loading">Baixando seus dados…</p>`;

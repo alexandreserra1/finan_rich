@@ -26,6 +26,9 @@ func main() {
 		"parseMoney":  js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.ParseMoney(str(a, 0)) }),
 		"formatMoney": js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.FormatMoney(int64(a[0].Int())) }),
 		"monthLabel":  js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.MonthLabel(str(a, 0)) }),
+		"defaultCategories": js.FuncOf(func(_ js.Value, a []js.Value) any {
+			return wasmapi.DefaultCategories(int64(a[0].Float()))
+		}),
 		"export": js.FuncOf(func(_ js.Value, a []js.Value) any {
 			return wasmapi.Export(str(a, 0), str(a, 1), int64(a[2].Float()))
 		}),

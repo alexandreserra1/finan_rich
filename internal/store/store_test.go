@@ -286,3 +286,74 @@ func TestNotesSync(t *testing.T) {
 		t.Fatalf("Ledger.Notes = %+v (%v)", l.Notes, err)
 	}
 }
+
+func TestDefaultCategoriesMatchComputer(t *testing.T) {
+	s := newTestStore(t)
+	l, err := s.Ledger(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	have := map[string]string{}
+	for _, c := range l.Categories {
+		have[c.Name] = c.Bucket
+	}
+	for _, c := range domain.DefaultCategories(1) {
+		if have[c.Name] != c.Bucket {
+			t.Errorf("categoria padrão %q (%s) não existe igual no computador", c.Name, c.Bucket)
+		}
+	}
+}
+
+// Celular usado sozinho e depois pareado: as categorias padrão dele se juntam
+// às do computador, sem duplicar, e os lançamentos passam para as do computador.
+func TestPhoneDefaultsMergeIntoComputer(t *testing.T) {
+	ctx := context.Background()
+	s := newTestStore(t)
+	l, _ := s.Ledger(ctx)
+	mercado := ""
+	for _, c := range l.Categories {
+		if c.Name == "Mercado" {
+			mercado = c.ID
+		}
+	}
+	rec := func(v any) json.RawMessage { b, _ := json.Marshal(v); return b }
+	phone := []Change{
+		// O lançamento vem antes da categoria: a ordem do envio não importa.
+		{TypeTransaction, rec(domain.Transaction{Meta: domain.Meta{ID: "t1", UpdatedAt: 100}, Kind: domain.KindSaida, Description: "Feira", AmountCents: 5000, CategoryID: "padrao-mercado", Date: "2026-10-01"})},
+		{TypeGoal, rec(domain.Goal{Meta: domain.Meta{ID: "g1", UpdatedAt: 100}, Name: "Reserva", TargetCents: 100000, CategoryID: "padrao-mercado", StartDate: "2026-10-01"})},
+	}
+	for _, c := range domain.DefaultCategories(50) {
+		phone = append(phone, Change{TypeCategory, rec(c)})
+	}
+	// Categoria criada no celular, sem par no computador: fica.
+	phone = append(phone, Change{TypeCategory, rec(domain.Category{Meta: domain.Meta{ID: "pet", UpdatedAt: 50}, Name: "Pet", Bucket: domain.BucketDesejos})})
+	if _, err := s.ApplyChanges(ctx, phone); err != nil {
+		t.Fatal(err)
+	}
+	l, _ = s.Ledger(ctx)
+	active := 0
+	for _, c := range l.Categories {
+		if !c.Deleted {
+			active++
+		}
+	}
+	if active != len(domain.DefaultCategories(0))+1 {
+		t.Errorf("categorias ativas = %d; as padrão do celular deveriam se juntar às do computador", active)
+	}
+	for _, tx := range l.Transactions {
+		if tx.ID == "t1" && (tx.CategoryID != mercado || tx.UpdatedAt != 101) {
+			t.Errorf("lançamento = %+v; quer categoria %s e updatedAt 101 (volta ao celular)", tx, mercado)
+		}
+	}
+	if l.Goals[0].CategoryID != mercado {
+		t.Errorf("meta = %+v", l.Goals[0])
+	}
+	// Um lançamento novo do celular, mais tarde, com a categoria antiga: também vai para a do computador.
+	s.ApplyChanges(ctx, []Change{{TypeTransaction, rec(domain.Transaction{Meta: domain.Meta{ID: "t2", UpdatedAt: 200}, Kind: domain.KindSaida, Description: "Pão", AmountCents: 800, CategoryID: "padrao-mercado", Date: "2026-10-02"})}})
+	l, _ = s.Ledger(ctx)
+	for _, tx := range l.Transactions {
+		if tx.ID == "t2" && tx.CategoryID != mercado {
+			t.Errorf("lançamento tardio = %+v", tx)
+		}
+	}
+}

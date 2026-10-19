@@ -316,3 +316,38 @@ func (s Split) Validate() error {
 	}
 	return nil
 }
+
+// Categorias padrão, as mesmas que o computador cria na instalação. Um celular
+// usado sozinho as cria com IDs "padrao-…"; se depois for pareado com um
+// computador, o servidor junta cada uma à de mesmo nome (store.ApplyChanges).
+var defaultCategories = []struct{ slug, name, bucket string }{
+	{"salario", "Salário", BucketRenda},
+	{"renda-extra", "Renda extra", BucketRenda},
+	{"moradia", "Moradia", BucketNecessidades},
+	{"contas-casa", "Contas da casa (luz, água, internet)", BucketNecessidades},
+	{"mercado", "Mercado", BucketNecessidades},
+	{"transporte", "Transporte", BucketNecessidades},
+	{"saude", "Saúde", BucketNecessidades},
+	{"educacao", "Educação", BucketNecessidades},
+	{"dividas", "Pagamento de dívidas", BucketNecessidades},
+	{"lazer", "Lazer", BucketDesejos},
+	{"restaurantes", "Restaurantes e delivery", BucketDesejos},
+	{"compras", "Compras", BucketDesejos},
+	{"assinaturas", "Assinaturas", BucketDesejos},
+	{"reserva", "Reserva de emergência", BucketInvestimentos},
+	{"investimentos", "Investimentos", BucketInvestimentos},
+}
+
+const defaultCategoryPrefix = "padrao-"
+
+// DefaultCategories devolve as categorias padrão para um aparelho sem computador.
+func DefaultCategories(updatedAt int64) []Category {
+	out := make([]Category, len(defaultCategories))
+	for i, c := range defaultCategories {
+		out[i] = Category{Meta: Meta{ID: defaultCategoryPrefix + c.slug, UpdatedAt: updatedAt}, Name: c.name, Bucket: c.bucket}
+	}
+	return out
+}
+
+// IsDefaultCategoryID diz se a categoria foi criada como padrão num celular sozinho.
+func IsDefaultCategoryID(id string) bool { return strings.HasPrefix(id, defaultCategoryPrefix) }

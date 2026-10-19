@@ -146,10 +146,16 @@ try {
   await waitStatus(page, "unpaired");
   ok(true, "app novo pede para conectar ao computador");
 
+  // Usar só no celular: cria as categorias no aparelho e já dá para lançar.
+  await page.goto(`${APP}/configuracoes`);
+  await page.click("[data-action=solo]");
+  await page.waitForSelector("form[data-form=transaction]", { timeout: 20000 });
+  await addTransaction(page, "Feira (só celular)", "40");
+  ok(true, "sem computador, o app funciona só no celular (categorias criadas no aparelho)");
+
   // Link de pareamento (QR code) abre Ajustes preenchido, sem conectar sozinho.
   const code = await newPairingCode();
   ok(/^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code || ""), `computador mostra o código de pareamento (${code})`);
-  await page.click("text=Conectar agora");
   await page.goto(`${APP}/configuracoes?` + new URLSearchParams({ url: `127.0.0.1:${PORT}`, codigo: "ERRADO22" }));
   await page.waitForSelector("form[data-form=pair]");
   ok(await page.inputValue("input[name=url]") === `127.0.0.1:${PORT}`, "link de pareamento preenche o endereço");
@@ -164,6 +170,16 @@ try {
   await waitStatus(page, "ok");
   ok(true, "pareou com o código e sincronizou");
   ok((await (await fetch(`${B}/configuracoes`)).text()).includes("Pixel 7"), "computador lista o aparelho pareado pelo nome");
+  {
+    const recs = await serverRecords();
+    const cats = recs.filter((r) => r.name && r.bucket && !r.deleted);
+    const feira = recs.find((r) => r.description === "Feira (só celular)");
+    ok(cats.length === 15 && feira && !feira.categoryId.startsWith("padrao-") && cats.some((c) => c.id === feira.categoryId),
+      `ao parear, o que foi feito só no celular vai para o computador sem duplicar categorias (${cats.length} categorias)`);
+    await page.evaluate(() => window.finanSync());
+    const phoneCats = await page.evaluate(async () => (await import("/static/js/db.js")).loadLedger().then((l) => l.categories.filter((c) => !c.deleted).length));
+    ok(phoneCats === 15, `o celular também fica sem categorias repetidas (${phoneCats})`);
+  }
 
   // Dados vão e voltam com o token do aparelho.
   await page.click("nav.tabs a[href='/lancamentos']");

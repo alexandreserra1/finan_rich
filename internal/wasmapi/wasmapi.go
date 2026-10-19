@@ -181,3 +181,8 @@ func ImportPreviewText(ledgerJSON, text, optionsJSON, today string) string {
 	}
 	return reply(importer.Build(l, st, o), nil)
 }
+
+// DefaultCategories devolve as categorias padrão, para usar o app só no celular.
+func DefaultCategories(now int64) string {
+	return reply(domain.DefaultCategories(now), nil)
+}

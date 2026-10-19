@@ -1,6 +1,7 @@
 // Ajustes do app do celular: pareamento com o computador.
 import * as db from "../db.js";
 import * as device from "../device.js";
+import * as finance from "../finance.js";
 import * as sync from "../sync.js";
 import { canScan, hasReminders, remindersEnabled, scanPairingQR, setRemindersEnabled } from "../native.js";
 import { html } from "../ui.js";
@@ -26,7 +27,7 @@ function pairForm(params, paired) {
 
 let remindersOn = true;
 
-export function render({ server, params }) {
+export function render({ server, params, ledger }) {
   const fromLink = params.has("codigo");
   const status = sync.state;
   return html`
@@ -55,6 +56,14 @@ export function render({ server, params }) {
           ${pairForm(params, false)}`}
     </section>
 
+    ${!server ? html`<section class="panel" id="sozinho">
+      <h2>Sem computador?</h2>
+      ${ledger.categories.length
+        ? html`<p class="small muted">Você está usando o finan_rich só neste celular. Faça um backup de vez em quando em <a href="/exportar">Exportar</a>. Se um dia conectar a um computador, tudo vai para lá, sem duplicar categorias.</p>`
+        : html`<p class="small muted">Dá para usar só neste celular: lançamentos, dívidas, metas, importação de extratos, notas e exportação funcionam sem computador. O consultor com IA precisa do computador. Se depois conectar a um, seus dados vão junto.</p>
+          <button type="button" class="secondary" data-action="solo">Usar só neste celular</button>`}
+    </section>` : ""}
+
     ${hasReminders() ? html`<section class="panel">
       <h2>Lembretes</h2>
       <label class="check"><input type="checkbox" data-action="reminders" ${remindersOn ? "checked" : ""}> Avisar 2 dias antes do vencimento das dívidas (às 9h)</label>
@@ -78,6 +87,17 @@ export function bind(root, ctx) {
       form.elements.url.value = found.url;
       form.elements.code.value = found.code;
       form.requestSubmit();
+    } catch (err) {
+      ctx.error(err);
+    }
+  });
+  root.querySelector('[data-action="solo"]')?.addEventListener("click", async () => {
+    try {
+      await finance.load();
+      const cats = finance.defaultCategories(Date.now());
+      await db.saveManyLocal(cats.map((record) => ({ type: "category", record })));
+      await ctx.refresh();
+      ctx.go("/lancamentos");
     } catch (err) {
       ctx.error(err);
     }
