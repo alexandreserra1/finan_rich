@@ -287,6 +287,21 @@ func TestNotesSync(t *testing.T) {
 	}
 }
 
+func TestAccountsSync(t *testing.T) {
+	ctx := context.Background()
+	s := newTestStore(t)
+	card := domain.Account{Meta: domain.Meta{ID: "c1", UpdatedAt: 10}, Name: "Cartão Nubank", Kind: domain.AccountCartao, ClosingDay: 3, DueDay: 10}
+	tx := txRecord("t1", 10, "Geladeira")
+	tx.AccountID = "c1"
+	if n, err := s.ApplyChanges(ctx, []Change{change(t, TypeAccount, card), change(t, TypeTransaction, tx)}); n != 2 || err != nil {
+		t.Fatalf("conta: n=%d err=%v", n, err)
+	}
+	l, err := s.Ledger(ctx)
+	if err != nil || len(l.ActiveAccounts()) != 1 || l.Accounts[0].ClosingDay != 3 || l.Transactions[0].AccountID != "c1" {
+		t.Fatalf("Ledger = %+v %+v (%v)", l.Accounts, l.Transactions, err)
+	}
+}
+
 func TestDefaultCategoriesMatchComputer(t *testing.T) {
 	s := newTestStore(t)
 	l, err := s.Ledger(context.Background())

@@ -140,3 +140,33 @@ func TestRecurringValidate(t *testing.T) {
 		}
 	}
 }
+
+func TestAccountValidate(t *testing.T) {
+	card := Account{Meta: Meta{ID: "c1", UpdatedAt: 1}, Name: "Cartão Nubank", Kind: AccountCartao, ClosingDay: 3, DueDay: 10}
+	bank := Account{Meta: Meta{ID: "b1", UpdatedAt: 1}, Name: "Itaú", Kind: AccountCorrente, InitialCents: -5000}
+	for _, a := range []Account{card, bank} {
+		if err := a.Validate(); err != nil {
+			t.Fatalf("%s válida: %v", a.Name, err)
+		}
+	}
+	for name, change := range map[string]func(*Account){
+		"sem nome":              func(a *Account) { a.Name = " " },
+		"tipo inválido":         func(a *Account) { a.Kind = "outro" },
+		"conta com fechamento":  func(a *Account) { a.ClosingDay = 5 },
+		"cartão sem fechamento": func(a *Account) { a.Kind, a.DueDay = AccountCartao, 10 },
+		"vencimento 32":         func(a *Account) { a.Kind, a.ClosingDay, a.DueDay = AccountCartao, 3, 32 },
+	} {
+		a := bank
+		change(&a)
+		if a.Validate() == nil {
+			t.Errorf("%s: deveria recusar", name)
+		}
+	}
+	// Lançamento antigo, sem conta, continua válido; o tipo novo passa pelo DecodeRecord.
+	if _, _, err := DecodeRecord(TypeTransaction, []byte(`{"id":"t","updatedAt":1,"kind":"saida","description":"x","amountCents":1,"categoryId":"c","date":"2026-10-01"}`)); err != nil {
+		t.Errorf("lançamento sem conta: %v", err)
+	}
+	if _, data, err := DecodeRecord(TypeAccount, []byte(`{"id":"b","updatedAt":1,"name":"Carteira","kind":"carteira","initialCents":1000,"extra":1}`)); err != nil || strings.Contains(string(data), "extra") {
+		t.Errorf("conta = %s, %v", data, err)
+	}
+}

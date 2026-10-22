@@ -1,5 +1,5 @@
 // Package domain define os dados do finan_rich: categorias, lançamentos,
-// dívidas, preferências, notas, metas e lançamentos recorrentes. É Go puro (sem banco, sem HTTP), então roda tanto no
+// dívidas, preferências, notas, metas, lançamentos recorrentes e contas. É Go puro (sem banco, sem HTTP), então roda tanto no
 // servidor quanto no navegador (compilado para WebAssembly).
 //
 // Cada registro tem um ID universal (UUID) gerado por quem o cria, e a hora da
@@ -58,7 +58,8 @@ type Transaction struct {
 	Description string `json:"description"`
 	AmountCents int64  `json:"amountCents"`
 	CategoryID  string `json:"categoryId"`
-	Date        string `json:"date"` // AAAA-MM-DD
+	Date        string `json:"date"`                // AAAA-MM-DD
+	AccountID   string `json:"accountId,omitempty"` // conta ou cartão (opcional)
 }
 
 // Day devolve a data do lançamento (zero se inválida).
@@ -75,6 +76,27 @@ type Debt struct {
 	MonthlyRateBP   int    `json:"monthlyRateBp"` // juros ao mês em pontos-base: 199 = 1,99%
 	MinPaymentCents int64  `json:"minPaymentCents"`
 	DueDay          int    `json:"dueDay,omitempty"` // 0 = não informado
+}
+
+// Tipos de conta.
+const (
+	AccountCorrente = "corrente"
+	AccountPoupanca = "poupanca"
+	AccountCarteira = "carteira"
+	AccountCartao   = "cartao"
+)
+
+// Account é uma conta (banco, poupança, carteira) ou um cartão de crédito.
+// Saldo = InitialCents + entradas − saídas lançadas nela. No cartão, saldo
+// negativo é o que está em aberto; a compra entra na fatura conforme o dia de
+// fechamento (compra depois do fechamento cai na fatura do mês seguinte).
+type Account struct {
+	Meta
+	Name         string `json:"name"`
+	Kind         string `json:"kind"`
+	InitialCents int64  `json:"initialCents"`
+	ClosingDay   int    `json:"closingDay,omitempty"` // só cartão: dia de fechamento da fatura
+	DueDay       int    `json:"dueDay,omitempty"`     // só cartão: dia de vencimento
 }
 
 // Note é uma anotação livre do usuário (metas, combinados, lembretes...).
@@ -196,6 +218,31 @@ func (t Transaction) Validate() error {
 	}
 	if _, err := time.Parse(DateLayout, t.Date); err != nil {
 		return errors.New("data inválida")
+	}
+	if len(t.AccountID) > 64 {
+		return errors.New("conta inválida")
+	}
+	return nil
+}
+
+func (a Account) Validate() error {
+	if err := a.validate(); err != nil || a.Deleted {
+		return err
+	}
+	if strings.TrimSpace(a.Name) == "" {
+		return errors.New("informe o nome da conta")
+	}
+	switch a.Kind {
+	case AccountCorrente, AccountPoupanca, AccountCarteira:
+		if a.ClosingDay != 0 || a.DueDay != 0 {
+			return errors.New("fechamento e vencimento são só para cartão")
+		}
+	case AccountCartao:
+		if a.ClosingDay < 1 || a.ClosingDay > 31 || a.DueDay < 1 || a.DueDay > 31 {
+			return errors.New("dias de fechamento e vencimento devem ser de 1 a 31")
+		}
+	default:
+		return fmt.Errorf("tipo de conta inválido: %q", a.Kind)
 	}
 	return nil
 }

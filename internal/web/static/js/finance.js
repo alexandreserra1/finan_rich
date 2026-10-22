@@ -45,3 +45,7 @@ export const goals = (ledger, day) => unwrap(window.finan.goals(JSON.stringify(l
 export const recurringDue = (ledger, day) => unwrap(window.finan.recurringDue(JSON.stringify(ledger), day));
 export const alerts = (ledger, day) => unwrap(window.finan.alerts(JSON.stringify(ledger), day));
 export const insights = (ledger, day) => unwrap(window.finan.insights(JSON.stringify(ledger), day));
+// Contas e cartões (saldo, fatura atual e próxima), patrimônio mês a mês e compra parcelada.
+export const accounts = (ledger, day) => unwrap(window.finan.accounts(JSON.stringify(ledger), day));
+export const netWorth = (ledger, day) => unwrap(window.finan.netWorth(JSON.stringify(ledger), day));
+export const installments = (tx, n) => unwrap(window.finan.installments(JSON.stringify(tx), n));

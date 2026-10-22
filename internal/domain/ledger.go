@@ -15,6 +15,7 @@ type Ledger struct {
 	Notes        []Note        `json:"notes"`
 	Goals        []Goal        `json:"goals"`
 	Recurring    []Recurring   `json:"recurring"`
+	Accounts     []Account     `json:"accounts"`
 }
 
 // CategoryIndex dá acesso às categorias por ID, inclusive apagadas: um
@@ -105,6 +106,23 @@ func (l Ledger) ActiveRecurring() []Recurring {
 			out = append(out, r)
 		}
 	}
+	return out
+}
+
+// ActiveAccounts devolve as contas não apagadas, cartões por último, pelo nome.
+func (l Ledger) ActiveAccounts() []Account {
+	out := make([]Account, 0, len(l.Accounts))
+	for _, a := range l.Accounts {
+		if !a.Deleted {
+			out = append(out, a)
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if ci, cj := out[i].Kind == AccountCartao, out[j].Kind == AccountCartao; ci != cj {
+			return cj
+		}
+		return out[i].Name < out[j].Name
+	})
 	return out
 }
 

@@ -136,6 +136,7 @@ func (s *Server) Routes() http.Handler {
 	for path, page := range map[string]string{"/{$}": "dashboard", "/lancamentos": "transactions", "/dividas": "debts", "/categorias": "categories", "/notas": "notes", "/exportar": "export", "/importar": "import", "/metas": "goals", "/analise": "insights"} {
 		mux.HandleFunc("GET "+path, s.appShell(page))
 	}
+	mux.HandleFunc("GET /contas", s.appShell("accounts"))
 	mux.HandleFunc("POST /api/sync", s.apiSync)
 	mux.HandleFunc("POST /api/categorizar", s.apiCategorize)
 	mux.HandleFunc("GET /api/chat", s.apiChatHistory)

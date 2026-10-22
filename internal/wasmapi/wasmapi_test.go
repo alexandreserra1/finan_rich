@@ -129,3 +129,28 @@ func TestPlans(t *testing.T) {
 		t.Error("data inválida deveria dar erro")
 	}
 }
+
+func TestAccountsAndInstallments(t *testing.T) {
+	withCard := strings.Replace(ledger, `"prefs": []`, `"prefs": [],
+  "accounts": [{"id":"c","updatedAt":1,"name":"Cartão","kind":"cartao","initialCents":0,"closingDay":3,"dueDay":10}]`, 1)
+	var parts struct {
+		OK    []map[string]any
+		Error string
+	}
+	json.Unmarshal([]byte(Installments(`{"id":"g","kind":"saida","description":"Geladeira","amountCents":1000,"categoryId":"laz","date":"2026-10-02","accountId":"c"}`, 3)), &parts)
+	if parts.Error != "" || len(parts.OK) != 3 || parts.OK[0]["amountCents"] != float64(334) || parts.OK[2]["description"] != "Geladeira (3/3)" {
+		t.Fatalf("parcelas: %+v", parts)
+	}
+	if _, errMsg := decode(t, Installments(`{"id":"g","amountCents":1,"date":"2026-10-02"}`, 3)); errMsg == "" {
+		t.Error("valor menor que as parcelas deveria dar erro")
+	}
+	v, errMsg := decode(t, Accounts(withCard, "2026-10-05"))
+	if errMsg != "" || v["cardsOpenCents"] != float64(0) || len(v["accounts"].([]any)) != 1 {
+		t.Errorf("contas: %v %s", v, errMsg)
+	}
+	var nw struct{ OK []map[string]any }
+	json.Unmarshal([]byte(NetWorth(withCard, "2026-10-05")), &nw)
+	if len(nw.OK) != 12 || nw.OK[11]["netCents"] != float64(-320000) {
+		t.Errorf("patrimônio: %+v", nw)
+	}
+}

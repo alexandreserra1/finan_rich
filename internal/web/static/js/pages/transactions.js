@@ -1,6 +1,6 @@
 // Lançamentos do mês: formulário, lista e "copiar do mês anterior".
 import * as finance from "../finance.js";
-import { BUCKETS, html, shiftMonth, today } from "../ui.js";
+import { BUCKETS, html, newId, shiftMonth, today } from "../ui.js";
 import { pageHead, totalsCards } from "./dashboard.js";
 
 const ORDER = { renda: 0, necessidades: 1, desejos: 2, investimentos: 3 };
@@ -42,6 +42,8 @@ export function render({ ledger, month }) {
         </label>
         <label class="half">Valor (R$) <input name="amount" required inputmode="decimal" placeholder="1.234,56"></label>
         <label class="half">Data <input type="date" name="date" value="${defaultDate}" required></label>
+        ${accountOptions(ledger)}
+        <label class="half">Parcelas <input type="number" name="installments" min="1" max="72" value="1" title="Compra parcelada: o valor é o total, dividido em parcelas mensais"></label>
         <label class="check repeat"><input type="checkbox" name="repeat"> Repetir todo mês</label>
         <button type="submit">Adicionar</button>
       </form>
@@ -76,6 +78,15 @@ export function render({ ledger, month }) {
         : html`<p class="empty">Nenhum lançamento neste mês. Use o formulário acima ou copie do mês anterior.</p>`}
     </section>
     ${recurringPanel(ledger, byId, m)}`;
+}
+
+// accountOptions é a escolha da conta ou cartão (só aparece com contas cadastradas).
+function accountOptions(ledger) {
+  const list = ledger.accounts.filter((a) => !a.deleted).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  if (!list.length) return "";
+  return html`<label>Conta ou cartão
+    <select name="account_id"><option value="">Sem conta</option>${list.map((a) => html`<option value="${a.id}">${a.name}</option>`)}</select>
+  </label>`;
 }
 
 // recurringPanel lista o que se repete todo mês (com pausar e apagar).
@@ -120,6 +131,20 @@ export function bind(root, ctx) {
     const f = form.elements;
     try {
       const amountCents = finance.parseMoney(f.amount.value);
+      const accountId = f.account_id?.value || undefined;
+      const parts = Number(f.installments.value) || 1;
+      if (parts > 1) {
+        if (f.repeat.checked) throw new Error("Escolha repetir todo mês ou parcelar, não os dois.");
+        // As parcelas (regra em Go) têm ID fixo a partir do da compra: não duplicam entre aparelhos.
+        const list = finance.installments({ id: newId(), kind: f.kind.value, description: f.description.value.trim(), amountCents,
+          categoryId: f.category_id.value, date: f.date.value, accountId }, parts);
+        for (const [i, p] of list.entries()) {
+          const last = i === list.length - 1;
+          await ctx.save("transaction", p, last ? `Compra parcelada em ${parts}x salva.` : null, { rerender: last });
+        }
+        if (!f.date.value.startsWith(ctx.month)) ctx.go(`/lancamentos?mes=${f.date.value.slice(0, 7)}`);
+        return;
+      }
       if (f.repeat.checked) {
         // A recorrência gera este mês e os próximos (o gerador roda ao salvar).
         await ctx.save("recurring", {
@@ -130,7 +155,7 @@ export function bind(root, ctx) {
       }
       await ctx.save("transaction", {
         kind: f.kind.value, description: f.description.value.trim(), amountCents,
-        categoryId: f.category_id.value, date: f.date.value,
+        categoryId: f.category_id.value, date: f.date.value, accountId,
       }, "Lançamento salvo.");
       if (!f.date.value.startsWith(ctx.month)) ctx.go(`/lancamentos?mes=${f.date.value.slice(0, 7)}`);
     } catch (err) {
