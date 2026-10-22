@@ -40,7 +40,7 @@ const LABELS = {
   syncing: () => "Sincronizando…",
   offline: (s) => s.pending ? `Offline · ${s.pending} pendente(s)` : "Offline",
   login: () => device.isApp ? "Pareie de novo" : "Entre de novo para sincronizar",
-  unpaired: () => "Conectar ao computador",
+  unpaired: () => "Só neste celular", // não é erro: toca para conectar a um computador
   error: () => "Erro ao sincronizar",
 };
 function showStatus(s) {

@@ -120,6 +120,7 @@ export function bind(root, ctx) {
     return;
   }
   const form = root.querySelector('[data-form="ask"]');
+  if (!form) return; // só o aviso de configurar a IA
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     const q = form.elements.message.value.trim();

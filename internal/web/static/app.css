@@ -287,7 +287,9 @@ body:not(.has-nav) > main { width: 100%; padding: 1.5rem 1.25rem; }
 .sync-pill[data-status="syncing"]::before { background: var(--warn); animation: pulse 1s ease-in-out infinite alternate; }
 .sync-pill[data-status="offline"] { background: var(--warn-soft); color: var(--warn-text); }
 .sync-pill[data-status="offline"]::before { background: transparent; border: 1.5px solid currentColor; }
-.sync-pill[data-status="login"], .sync-pill[data-status="unpaired"], .sync-pill[data-status="error"] { background: var(--neg-soft); color: var(--neg); cursor: pointer; }
+.sync-pill[data-status="unpaired"] { background: var(--surface-2); color: var(--muted); cursor: pointer; }
+.sync-pill[data-status="unpaired"]::before { background: var(--muted); }
+.sync-pill[data-status="login"], .sync-pill[data-status="error"] { background: var(--neg-soft); color: var(--neg); cursor: pointer; }
 @keyframes pulse { from { opacity: .35; } to { opacity: 1; } }
 
 /* ---------- Tablet ---------- */
