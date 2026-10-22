@@ -46,7 +46,9 @@ números reais. Seus dados ficam num arquivo no seu PC, sem conta e sem nuvem.
   (**Adicionar**, **Alterar**, **Apagar**): nada muda sem você tocar nele, e os cartões
   ficam na conversa. Também dentro do app do celular, inclusive **sem computador**: o
   celular chama uma IA na nuvem com plano grátis (Groq, Gemini) com os nomes de lojas,
-  dívidas e metas trocados por apelidos antes de sair, e a chave guardada cifrada.
+  dívidas e metas trocados por apelidos antes de sair, e a chave guardada cifrada. Ou
+  com a **IA dentro do celular**: um modelo aberto pequeno (Qwen2.5 0.5B, baixado uma vez)
+  roda no próprio aparelho, sem internet e sem nada sair dele.
   Por padrão usa modelos abertos (Qwen, DeepSeek, Llama...) rodando no seu PC pelo Ollama.
 
 ## Como usar

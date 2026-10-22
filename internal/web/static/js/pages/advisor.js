@@ -1,14 +1,16 @@
 // Consultor IA no app do celular. Duas formas:
 // - pelo computador pareado (a IA roda lá; precisa estar ao alcance);
-// - pela nuvem, direto do celular, com os nomes anonimizados (cloud-ai.js).
+// - pela nuvem, direto do celular, com os nomes anonimizados (cloud-ai.js);
+// - dentro do celular, sem internet e sem nada sair do aparelho (local-ai.js).
 import * as cloud from "../cloud-ai.js";
+import * as local from "../local-ai.js";
 import { endpoint } from "../device.js";
 import { applyProposal, proposalButton, saveNote } from "../notes-save.js";
 import { html, raw } from "../ui.js";
 
 export const needsData = false;
 
-let chat = null; // { history: [{role, content, proposals}], model, ready, problem, busy, error, cloud }
+let chat = null; // { history: [{role, content, proposals}], model, ready, problem, busy, error, cloud, local }
 
 const SUGGESTIONS = ["Onde estou gastando demais este mês?", "Qual dívida devo pagar primeiro?", "Quanto gastei com iFood este ano?", "Como chego na minha meta mais rápido?"];
 
@@ -25,7 +27,9 @@ export function render() {
     <div class="page-head"><h1>Consultor IA</h1>
       ${chat.history.length ? html`<button type="button" class="secondary small-btn" data-action="clear">Nova conversa</button>` : ""}</div>
     <section class="panel chat">
-      ${chat.problem ? html`<p class="notice warn">${chat.problem}</p>` : chat.cloud
+      ${chat.problem ? html`<p class="notice warn">${chat.problem}</p>` : chat.local
+        ? html`<p class="small muted">Usando ${chat.model} dentro deste celular: nada sai do aparelho, nem precisa de internet. É uma IA pequena: responde mais devagar, erra mais e não lança nada por você.</p>`
+        : chat.cloud
         ? html`<p class="small muted">Usando ${chat.model} na nuvem, direto deste celular. Nomes de lojas, dívidas e metas vão com apelidos, e as notas não vão; a IA vê só valores, datas e categorias.</p>`
         : html`<p class="small muted">Usando ${chat.model} no computador. O consultor vê seus números, metas e notas a cada pergunta.</p>`}
       <div class="messages">
@@ -33,7 +37,7 @@ export function render() {
           ${m.role === "assistant" ? html`<button type="button" class="link plain save-note" data-save="${i}">Salvar como nota</button>` : ""}</div>
           ${m.proposals?.length ? html`<div class="proposals">${m.proposals.map((p, j) => html`<div class="proposal"><span>${p.label}</span>
             <button type="button" class="small-btn${p.action === "apagar" ? " danger" : ""}" data-propose="${i}:${j}" ${p.applied ? "disabled" : ""}>${proposalButton(p)[p.applied ? 1 : 0]}</button></div>`)}</div>` : ""}`)}
-        ${chat.busy ? html`<div class="msg assistant pending">Pensando… (no computador, a primeira resposta pode demorar enquanto o modelo carrega)</div>` : ""}
+        ${chat.busy ? html`<div class="msg assistant pending">${chat.partial ? md(chat.partial) : chat.local ? "Pensando… (dentro do celular, a primeira resposta pode levar um minuto)" : "Pensando… (no computador, a primeira resposta pode demorar enquanto o modelo carrega)"}</div>` : ""}
         ${chat.error ? html`<div class="msg error">Erro: ${chat.error}</div>` : ""}
         ${!chat.history.length && !chat.busy ? html`<div class="suggestions">${SUGGESTIONS.map((s) => html`<button type="button" data-suggest>${s}</button>`)}</div>` : ""}
       </div>
@@ -51,6 +55,12 @@ async function call(path, init = {}) {
 }
 
 async function loadChat(ctx) {
+  // A IA dentro do celular, quando ligada, vale sobre as outras: nada sai do aparelho.
+  if (await local.ready().catch(() => false)) {
+    chat = { history: await cloud.loadChat(), model: local.MODEL.name, ready: true, problem: "", busy: false, error: "", cloud: true, local: true };
+    ctx.rerender();
+    return;
+  }
   const cfg = await cloud.config().catch(() => null);
   if (cloud.ready(cfg) && (cfg.enabled || !ctx.server)) {
     const history = await cloud.loadChat();
@@ -77,6 +87,13 @@ async function loadChat(ctx) {
   ctx.rerender();
 }
 
+// showPartial mostra a resposta enquanto ela é gerada, sem redesenhar a tela toda.
+function showPartial(text) {
+  chat.partial = text;
+  const el = document.querySelector(".msg.pending");
+  if (el) el.innerHTML = window.Finan?.markdown ? window.Finan.markdown(text) : text.replace(/</g, "&lt;");
+}
+
 async function ask(ctx, question) {
   chat.history.push({ role: "user", content: question });
   chat.busy = true;
@@ -84,7 +101,10 @@ async function ask(ctx, question) {
   ctx.rerender();
   try {
     if (chat.cloud) {
-      const { answer, proposals } = await cloud.ask(ctx.ledger, chat.history.slice(0, -1), question);
+      const { answer, proposals } = chat.local
+        ? await local.ask(ctx.ledger, chat.history.slice(0, -1), question, (text) => showPartial(text))
+        : await cloud.ask(ctx.ledger, chat.history.slice(0, -1), question);
+      chat.partial = "";
       chat.history.push({ role: "assistant", content: answer, proposals });
       await cloud.saveChat(chat.history);
       chat.busy = false;
@@ -107,6 +127,7 @@ async function ask(ctx, question) {
     }
     chat.history.push({ role: "assistant", content: answer, proposals });
   } catch (err) {
+    chat.partial = "";
     chat.history.pop();
     // TypeError: fetch daqui; "network error": fetch do Go (IA na nuvem) que caiu no meio.
     chat.error = err instanceof TypeError || /network error/.test(err.message) ? (chat.cloud ? "sem internet" : "sem conexão com o computador") : err.message;

@@ -254,6 +254,46 @@ try {
   await page.waitForSelector(".msg.assistant:has-text('Oi!')", { timeout: 30000 });
   ok(await page.locator(".msg.error").count() === 0, "depois da queda, a próxima pergunta funciona");
 
+  // IA dentro do celular, com um wllama falso no lugar do de verdade (o de
+  // verdade só entra no app pelo cap sync, e o modelo tem 470 MB).
+  await page.route("**/static/vendor/wllama/index.js", (route) => route.fulfill({ contentType: "text/javascript", body: `
+    export class ModelManager {
+      async getModels() { const url = localStorage.getItem("fake-model"); return url ? [{ url, remove: async () => localStorage.removeItem("fake-model") }] : []; }
+      async downloadModel(url, { progressCallback }) {
+        for (const p of [25, 50, 100]) { progressCallback({ loaded: p, total: 100 }); await new Promise((r) => setTimeout(r, 50)); }
+        localStorage.setItem("fake-model", url);
+      }
+    }
+    export class Wllama {
+      async loadModel() {}
+      async exit() {}
+      async createChatCompletion({ messages, stream }) {
+        window.localMessages = messages;
+        return (async function* () {
+          for (const piece of ["Guarde ", "**10%** ", "do salário."]) { await new Promise((r) => setTimeout(r, 30)); yield { choices: [{ delta: { content: piece } }] }; }
+        })();
+      }
+    }` }));
+  await page.goto(`${APP}/configuracoes`);
+  await page.click("[data-action=local-download]", { timeout: 20000 });
+  await page.waitForSelector(".flash:has-text('Modelo baixado')", { timeout: 15000 });
+  await page.goto(`${APP}/chat`);
+  await page.waitForSelector(".chat:has-text('dentro deste celular')", { timeout: 20000 });
+  const cloudCalls = cloudBodies.length;
+  await page.fill("textarea[name=message]", "Quanto gastei na Feira?");
+  await page.click("form[data-form=ask] button");
+  await page.waitForSelector(".msg.assistant:not(.pending):has-text('do salário.')", { timeout: 20000 });
+  const sentLocal = JSON.stringify(await page.evaluate(() => window.localMessages));
+  ok(cloudBodies.length === cloudCalls && sentLocal.includes("Feira") && (await page.innerHTML(".msg.assistant >> nth=-1")).includes("<strong>10%</strong>"),
+    "IA dentro do celular: responde com os nomes verdadeiros e nada vai para a nuvem");
+  await page.reload();
+  await page.waitForSelector(".msg.assistant:has-text('do salário.')", { timeout: 20000 });
+  ok(true, "a conversa com a IA dentro do celular fica salva");
+  await page.goto(`${APP}/configuracoes`);
+  await page.uncheck("[data-action=local-ai]", { timeout: 20000 });
+  await page.waitForSelector(".flash:has-text('volta a usar')");
+  await page.unroute("**/static/vendor/wllama/index.js");
+
   // Link de pareamento (QR code) abre Ajustes preenchido, sem conectar sozinho.
   const code = await newPairingCode();
   ok(/^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code || ""), `computador mostra o código de pareamento (${code})`);

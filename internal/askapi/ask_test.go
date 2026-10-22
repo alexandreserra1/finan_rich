@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexandreserra1/finan_rich/internal/advisor"
 	"github.com/alexandreserra1/finan_rich/internal/llm"
 )
 
@@ -76,6 +77,37 @@ func TestAskAnonymizedCloud(t *testing.T) {
 	if len(out.OK.Proposals) != 1 || !strings.Contains(string(out.OK.Proposals[0].Record), `"description":"Uber *Trip"`) ||
 		!strings.Contains(string(out.OK.Proposals[0].Record), `"amountCents":3000`) || strings.Contains(out.OK.Proposals[0].Label, "Loja") {
 		t.Errorf("proposta = %+v", out.OK.Proposals)
+	}
+}
+
+// IA dentro do celular: as mensagens saem prontas daqui (formato OpenAI),
+// com as instruções do consultor, os nomes verdadeiros e sem ferramentas.
+func TestLocalPrompt(t *testing.T) {
+	raw, _ := json.Marshal(map[string]any{
+		"ledger":   json.RawMessage(`{"debts":[{"id":"d","updatedAt":1,"name":"Cartão Nubank","balanceCents":320000,"monthlyRateBp":1400,"minPaymentCents":32000}]}`),
+		"history":  []ChatTurn{{"user", "p1"}, {"assistant", "r1"}, {"user", "p2"}, {"assistant", "r2"}},
+		"question": "qual dívida pago primeiro?",
+		"today":    "2026-10-20",
+	})
+	var out struct {
+		OK    []ChatTurn
+		Error string
+	}
+	if err := json.Unmarshal([]byte(LocalPrompt(string(raw))), &out); err != nil || out.Error != "" {
+		t.Fatal(err, out.Error)
+	}
+	roles := ""
+	for _, m := range out.OK {
+		roles += m.Role + " "
+	}
+	if roles != "system user assistant user " || out.OK[1].Content != "p2" {
+		t.Fatalf("mensagens = %+v", out.OK)
+	}
+	if !strings.HasPrefix(out.OK[0].Content, advisor.PromptMarker) || strings.Contains(out.OK[0].Content, "ferramenta") {
+		t.Errorf("system = %q", out.OK[0].Content[:80])
+	}
+	if last := out.OK[3].Content; !strings.Contains(last, "Cartão Nubank") || !strings.HasSuffix(last, "qual dívida pago primeiro?") {
+		t.Errorf("última = %q", last)
 	}
 }
 

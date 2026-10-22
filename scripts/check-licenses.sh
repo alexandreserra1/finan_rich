@@ -30,7 +30,7 @@ done
 
 echo "== Pacotes do app (npm) =="
 (cd mobile && npx --yes license-checker-rseidelsohn@4 --production --excludePrivatePackages \
-  --onlyAllow 'MIT;ISC;0BSD;BSD-2-Clause;BSD-3-Clause;Apache-2.0' --summary) || fail=1
+  --onlyAllow 'MIT;ISC;0BSD;BSD-2-Clause;BSD-3-Clause;Apache-2.0;MPL-2.0' --summary) || fail=1
 
 echo "== Bibliotecas em static/vendor =="
 for d in internal/web/static/vendor/*/; do

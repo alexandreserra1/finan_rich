@@ -37,7 +37,8 @@ cerca de um dia. Os textos e as capturas de tela vêm de `fastlane/metadata/andr
    > expenses, debts, goals, statement import (OFX/CSV/PDF) and a local AI advisor. Data
    > stays on the phone and syncs only with the user's own computer (LAN or Tailscale).
    > **Libraries:** Capacitor (MIT), AndroidX (Apache-2.0), pdf.js and jsQR
-   > (Apache-2.0), capacitor-native-biometric (MPL-2.0, AndroidX Biometric); no Google Play Services, no trackers, no ads. License check runs in CI
+   > (Apache-2.0), capacitor-native-biometric (MPL-2.0, AndroidX Biometric), wllama/llama.cpp (MIT; the
+   > optional on-device AI model is downloaded on demand by the user); no Google Play Services, no trackers, no ads. License check runs in CI
    > (`scripts/check-licenses.sh`).
    > **Metadata:** Fastlane structure in `fastlane/metadata/android` (pt-BR, en-US).
    > **Permissions:** INTERNET (sync with the user's computer), CAMERA (scan the pairing

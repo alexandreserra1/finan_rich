@@ -23,7 +23,7 @@ window.addEventListener("unhandledrejection", (e) => {
   if (e.reason instanceof TypeError && e.reason.message === "network error") e.preventDefault();
 });
 
-function loadAdvisor() {
+export function loadAdvisor() {
   advisorLoaded ??= new Promise((resolve, reject) => {
     window.addEventListener("finan-advisor-ready", () => resolve(), { once: true });
     const go = new Go();

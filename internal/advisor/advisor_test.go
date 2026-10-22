@@ -140,3 +140,33 @@ func TestKnowledgeFor(t *testing.T) {
 		t.Errorf("a pergunta precisa ficar no fim, depois do conhecimento e dos dados: %q", c[len(c)-80:])
 	}
 }
+
+// IA dentro do celular: sem ferramentas, sem apelidos, histórico curto.
+func TestLocalRequest(t *testing.T) {
+	l := domain.Ledger{
+		Categories: []domain.Category{{Meta: domain.Meta{ID: "c", UpdatedAt: 1}, Name: "Lazer", Bucket: domain.BucketDesejos}},
+		Debts:      []domain.Debt{{Meta: domain.Meta{ID: "d", UpdatedAt: 1}, Name: "Cartão Nubank", BalanceCents: 100000, MonthlyRateBP: 1000, MinPaymentCents: 20000}},
+	}
+	for i := range 15 {
+		l.Transactions = append(l.Transactions, domain.Transaction{Meta: domain.Meta{ID: fmt.Sprint(i), UpdatedAt: 1}, Kind: domain.KindSaida,
+			Description: "Loja " + string(rune('A'+i)) + "x", AmountCents: int64(1000 + i), CategoryID: "c", Date: "2026-10-05"})
+	}
+	history := []llm.Message{
+		{Role: llm.RoleUser, Content: "p1"}, {Role: llm.RoleAssistant, Content: "r1"},
+		{Role: llm.RoleUser, Content: "p2"}, {Role: llm.RoleAssistant, Content: "r2"},
+	}
+	req := LocalRequest(Question{History: history, Text: "e o cartão?", Ledger: l, Today: time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC)})
+	if req.System != SystemPrompt || req.Tools != nil {
+		t.Errorf("deve ir sem ferramentas: tools=%v", req.Tools)
+	}
+	if len(req.Messages) != 3 || req.Messages[0].Content != "p2" || req.Messages[1].Content != "r2" {
+		t.Fatalf("histórico = %+v", req.Messages)
+	}
+	last := req.Messages[2].Content
+	if !strings.Contains(last, "Cartão Nubank") || !strings.HasSuffix(last, "e o cartão?") {
+		t.Errorf("os nomes vão sem apelido (nada sai do aparelho): %q", last)
+	}
+	if n := strings.Count(last, "compra(s) nos últimos 12 meses"); n != maxLocalMerchants {
+		t.Errorf("estabelecimentos = %d, want %d", n, maxLocalMerchants)
+	}
+}

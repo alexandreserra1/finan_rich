@@ -415,13 +415,24 @@ func TestStaticGzipAndETag(t *testing.T) {
 		t.Fatalf("status=%d headers=%v", resp.StatusCode, resp.Header)
 	}
 	req.Header.Set("If-None-Match", etag)
+	// Os corpos são fechados: um corpo grande não lido (o wasm) prende o
+	// servidor de teste no Close.
 	if resp, _ := http.DefaultTransport.RoundTrip(req); resp.StatusCode != http.StatusNotModified {
 		t.Errorf("revalidação = %d", resp.StatusCode)
+	} else {
+		resp.Body.Close()
 	}
 	if resp, _ := http.Get(a.srv.URL + "/static/nao-existe.js"); resp.StatusCode != http.StatusNotFound {
 		t.Errorf("inexistente = %d", resp.StatusCode)
+	} else {
+		resp.Body.Close()
 	}
-	if resp, _ := http.Get(a.srv.URL + "/static/finance.wasm"); resp.StatusCode == 200 && resp.Header.Get("Content-Type") != "application/wasm" {
+	resp, err = http.Get(a.srv.URL + "/static/finance.wasm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode == 200 && resp.Header.Get("Content-Type") != "application/wasm" {
 		t.Errorf("wasm com tipo %q", resp.Header.Get("Content-Type"))
 	}
 }

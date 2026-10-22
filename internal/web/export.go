@@ -14,9 +14,10 @@ var browserOnly = map[string]bool{"sw.js": true, "manifest.webmanifest": true, "
 // appCSP é a política de segurança das telas do app do celular (vai numa tag
 // <meta>, porque lá não há servidor para mandar o cabeçalho). Igual à
 // browserCSP, mas a rede fica liberada: o app fala com o computador pareado
-// (http:// no Wi-Fi) e com as IAs na nuvem (https://).
+// (http:// no Wi-Fi) e com as IAs na nuvem (https://). O wllama (IA dentro do
+// celular) cria o worker dele a partir de um blob:.
 const appCSP = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; style-src-attr 'unsafe-inline'; " +
-	"img-src 'self' data:; connect-src 'self' https: http:; object-src 'none'; base-uri 'none'; form-action 'self'"
+	"img-src 'self' data:; connect-src 'self' https: http:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'"
 
 // ExportApp grava numa pasta as telas do app que funcionam sem servidor
 // (index.html + static/), para empacotar no app do celular (Capacitor).

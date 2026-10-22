@@ -30,6 +30,8 @@ Excel, CSV, PDF, OFX e a leitura de faturas são código nosso (sem bibliotecas)
 |---|---|---|
 | Capacitor 8 (`core`, `android`, `ios`, `cli`) | casca nativa com WebView | MIT |
 | `@capacitor/app`, `filesystem`, `share`, `local-notifications` | links `finanrich://`, salvar/compartilhar arquivos, lembretes | MIT |
+| `@wllama/wllama` (llama.cpp) | IA dentro do celular | MIT |
+| Modelo Qwen2.5 0.5B Instruct (baixado sob demanda, não vai no app) | IA dentro do celular | Apache-2.0 |
 | `@capgo/capacitor-native-biometric` | chave da IA no Keystore/Keychain e digital/rosto no bloqueio do app | MPL-2.0 |
 | AndroidX (vem com o Capacitor) | base do app Android | Apache-2.0 |
 

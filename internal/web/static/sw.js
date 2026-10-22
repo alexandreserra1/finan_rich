@@ -24,6 +24,7 @@ const PRECACHE = [
   "/static/js/pages/welcome.js",
   "/static/js/pages/accounts.js",
   "/static/js/lock.js",
+  "/static/js/local-ai.js",
 ];
 
 // Guarda cada arquivo, ignorando respostas redirecionadas (ex.: sessão expirada

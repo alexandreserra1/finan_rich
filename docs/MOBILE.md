@@ -166,6 +166,25 @@ A versão do app fica em `mobile/android/app/version.properties`: o workflow de 
     um WebAssembly à parte (`cmd/finanadvisor` → `advisor.wasm`, ~3 MB no APK), que só o app
     leva e só carrega ao abrir o Consultor. O Claude (Anthropic) fica só no computador.
 
+- **IA dentro do celular** (Ajustes do app → *IA dentro do celular*, em `js/local-ai.js`): o
+  consultor roda no aparelho com o [wllama](https://github.com/ngxson/wllama) (llama.cpp em
+  WebAssembly, MIT). Nada sai do celular: os nomes vão sem apelido e não precisa de
+  internet depois de baixar o modelo.
+  - **Modelo**: Qwen2.5 0.5B Instruct, Q4_K_M (Apache-2.0, ~470 MB), baixado do Hugging Face
+    sob demanda, com a URL fixada num commit. Fica no armazenamento do app (OPFS), fora do
+    APK; Ajustes tem o botão para apagar.
+  - **Instruções e dados**: as mesmas regras em Go do consultor (`advisor.LocalRequest`, pelo
+    `advisor.wasm`), com histórico curto e só os 10 maiores estabelecimentos, porque cada
+    palavra do pedido custa tempo. Sem ferramentas: um modelo desse tamanho não as usa bem.
+  - **Velocidade**: com WebGPU, o wllama usa a GPU (no teste num Mac, primeira palavra em ~3 s).
+    Sem WebGPU, roda numa thread da CPU (o app não tem os cabeçalhos COOP/COEP das
+    threads) e leva minutos por resposta; a tela avisa quando o celular não tem WebGPU.
+  - **Empacotamento**: `@wllama/wllama` é dependência do `mobile/package.json`; o script
+    `capacitor:copy:before` copia o JS e o `wllama.wasm` (~8,7 MB, ~2,4 MB comprimido no APK)
+    para `www/static/vendor/wllama` em todo `cap sync`. O programa do computador não leva.
+  - A política de segurança do app libera `worker-src blob:`, porque o wllama cria o worker
+    dele a partir de um blob.
+
 - **Ler QR code** (Ajustes do app → *Ler QR code*): câmera do WebView (`getUserMedia`) +
   [jsQR](https://github.com/cozmo/jsQR) (Apache-2.0), em `js/qrscan.js`. Lê o QR dos Ajustes
   do computador (`http://…/parear?codigo=…`) e conecta. Sem bibliotecas fechadas (veja
