@@ -103,5 +103,11 @@ window.Finan = (function () {
     installButton.hidden = true;
   });
 
+  // Formulários com data-confirm pedem confirmação antes de enviar (no lugar
+  // de onsubmit="", que a CSP não deixa rodar).
+  document.querySelectorAll("form[data-confirm]").forEach((form) => form.addEventListener("submit", (e) => {
+    if (!confirm(form.dataset.confirm)) e.preventDefault();
+  }));
+
   return { postSSE, markdown };
 })();

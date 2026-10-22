@@ -1,6 +1,7 @@
 // Tela de configurações da IA: preenche os campos conforme o provedor escolhido.
 (function () {
-  const { presets, installed, saved } = window.FINAN;
+  // Os dados vêm num <script type="application/json"> (a CSP não deixa rodar script embutido).
+  const { presets, installed, saved } = JSON.parse(document.getElementById("ai-data").textContent);
   const form = document.getElementById("ai-form");
   const byId = Object.fromEntries(presets.map((p) => [p.ID, p]));
   const field = (name) => form.querySelector(`[data-field="${name}"]`);

@@ -535,3 +535,11 @@ label.check.repeat { align-self: center; }
 .proposal { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .55rem .75rem; border: 1px dashed var(--border); border-radius: 10px; background: var(--surface-2); font-size: .9rem; }
 .proposal button { flex: none; }
 .proposal button.danger { background: var(--neg); border-color: var(--neg); color: #fff; }
+
+/* Bloqueio do app do celular (js/lock.js): nada aparece por baixo da tela de bloqueio. */
+html.app-locked body > :not(.app-lock) { visibility: hidden; }
+.app-lock { position: fixed; inset: 0; z-index: 200; background: var(--bg); overflow-y: auto; display: flex; align-items: center; padding: max(1.5rem, env(safe-area-inset-top)) 1rem max(1.5rem, env(safe-area-inset-bottom)); }
+.app-lock .login { width: 100%; display: grid; gap: .75rem; }
+.app-lock .login form { margin-top: 0; }
+.app-lock h2 { margin: 0; }
+.app-lock .lock-msg { margin: 0; color: var(--neg); min-height: 1.5em; }

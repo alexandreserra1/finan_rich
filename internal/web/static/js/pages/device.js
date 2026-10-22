@@ -3,6 +3,7 @@ import * as db from "../db.js";
 import * as device from "../device.js";
 import * as finance from "../finance.js";
 import * as cloud from "../cloud-ai.js";
+import * as lock from "../lock.js";
 import { resetChat } from "./advisor.js";
 import * as sync from "../sync.js";
 import { canScan, hasReminders, remindersEnabled, scanPairingQR, setRemindersEnabled } from "../native.js";
@@ -42,7 +43,7 @@ function cloudSection(server) {
     <h2>Consultor sem computador</h2>
     <p class="small muted">O consultor pode usar uma IA na nuvem, chamada direto deste celular. Antes de sair, os nomes de lojas e pessoas,
       dívidas, credores, metas e categorias criadas por você viram apelidos ("Loja AB", "Dívida 1") e as notas ficam de fora:
-      a IA vê só valores, datas e categorias genéricas. A conexão é cifrada (HTTPS) e a chave fica guardada cifrada neste aparelho.</p>
+      a IA vê só valores, datas e categorias genéricas. A conexão é cifrada (HTTPS) e a chave fica ${cloud.inVault() ? "no cofre do sistema do celular (Android Keystore ou iOS Keychain)" : "guardada cifrada neste aparelho"}.</p>
     <form data-form="cloud-ai" class="grid-form">
       <label>IA na nuvem
         <select name="preset">${ai.presets.map((p) => html`<option value="${p.id}" ${p.id === preset.id ? "selected" : ""}>${p.name}</option>`)}</select>
@@ -61,7 +62,7 @@ function cloudSection(server) {
         <datalist id="cloud-models">${(preset.models || []).map((m) => html`<option value="${m}">`)}</datalist>
       </label>
       <label>Chave da IA
-        <input name="apiKey" type="password" autocomplete="off" placeholder="${hasKey ? "guardada cifrada ✓ (cole outra para trocar)" : "cole a chave aqui"}">
+        <input name="apiKey" type="password" autocomplete="off" placeholder="${hasKey ? "guardada ✓ (cole outra para trocar)" : "cole a chave aqui"}">
       </label>`}
       ${server ? html`<label class="check"><input type="checkbox" name="enabled" ${cfg.enabled ? "checked" : ""}> Usar a nuvem mesmo com o computador conectado</label>` : ""}
       <div class="row-actions tight">
@@ -119,6 +120,8 @@ export function render({ server, params, ledger }) {
       <p class="small muted">O aviso é do próprio celular: funciona sem internet. Cadastre o dia do vencimento em Dívidas.</p>
     </section>` : ""}
 
+    ${lockSection()}
+
     <section class="panel">
       <h2>Dados deste celular</h2>
       <p class="muted small">Apaga os lançamentos, dívidas e categorias guardados neste celular e desconecta do computador. Os dados que já estão no computador continuam lá.</p>
@@ -141,6 +144,7 @@ export function bind(root, ctx) {
     }
   });
   bindCloud(root, ctx);
+  bindLock(root, ctx);
   root.querySelector('[data-action="solo"]')?.addEventListener("click", async () => {
     try {
       await finance.load();
@@ -188,7 +192,9 @@ export function bind(root, ctx) {
   });
   on("wipe", async () => {
     if (!confirm("Apagar todos os dados deste celular? Os que já estão no computador continuam lá.")) return;
+    await cloud.forget(); // a chave da IA no cofre do sistema também
     await db.wipe();
+    lockState = null; // o bloqueio também sai
     await ctx.refresh("Dados deste celular apagados.");
   });
 }
@@ -224,7 +230,7 @@ function bindCloud(root, ctx) {
       ctx.flash("Testando a chave…");
       try {
         await cloud.check();
-        ctx.flash(free ? "Consultor grátis ligado ✓ Já pode usar." : "Chave funcionando ✓ Ela ficou guardada cifrada neste celular. Já pode usar o Consultor.");
+        ctx.flash(free ? "Consultor grátis ligado ✓ Já pode usar." : `Chave funcionando ✓ Ela ficou guardada ${cloud.inVault() ? "no cofre do sistema do celular" : "cifrada neste celular"}. Já pode usar o Consultor.`);
       } catch (err) {
         ctx.error(new Error((free ? "ficou salvo" : "a chave foi guardada") + ", mas o teste falhou: " + err.message));
       }
@@ -238,5 +244,76 @@ function bindCloud(root, ctx) {
     ai.cfg = null;
     resetChat();
     redraw();
+  });
+}
+
+// ---------- bloqueio do app ----------
+
+let lockState = null; // { on, bio, editing } (carregado depois)
+
+function lockSection() {
+  const s = lockState || {};
+  return html`<section class="panel" id="bloqueio">
+    <h2>Bloqueio do app</h2>
+    <label class="check"><input type="checkbox" data-action="lock" ${s.on || s.editing ? "checked" : ""} ${lockState ? "" : "disabled"}> Pedir digital/rosto ou senha para abrir</label>
+    <p class="small muted">Pede ao abrir o app e ao voltar depois de 1 minuto fora dele.
+      ${s.bio ? "Se a digital ou o rosto falhar, vale a senha do app." : "Sem digital ou rosto cadastrados no celular, vale a senha do app."}
+      Protege de quem pegar o celular desbloqueado; os dados continuam no celular do mesmo jeito.</p>
+    ${s.editing ? html`<form data-form="lock-pin" class="grid-form">
+      <label>Senha do app (4 a 6 números)
+        <input name="pin" type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" required>
+      </label>
+      <label>Repita a senha
+        <input name="confirm" type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" required>
+      </label>
+      <p class="small muted">Se esquecer a senha e a digital/rosto não funcionar, o único jeito de abrir é apagar os dados deste celular (os do computador continuam lá).</p>
+      <div class="row-actions tight">
+        <button type="submit">Ligar o bloqueio</button>
+        <button type="button" class="secondary" data-action="lock-cancel">Cancelar</button>
+      </div>
+    </form>` : ""}
+  </section>`;
+}
+
+// Como a IA na nuvem, a seção se redesenha sozinha.
+function bindLock(root, ctx) {
+  const redraw = () => {
+    const section = root.querySelector("#bloqueio");
+    if (!section) return;
+    section.outerHTML = toString(lockSection());
+    bindLock(root, ctx);
+  };
+  if (!lockState) lock.status().then((s) => { lockState = s; redraw(); });
+  root.querySelector('[data-action="lock"]')?.addEventListener("change", async (e) => {
+    if (e.target.checked) {
+      lockState.editing = true;
+      redraw();
+      root.querySelector('[data-form="lock-pin"] input[name="pin"]')?.focus();
+      return;
+    }
+    if (lockState.editing) {
+      lockState.editing = false;
+    } else {
+      if (!confirm("Desligar o bloqueio? O app vai abrir sem pedir digital, rosto ou senha.")) return redraw();
+      await lock.disable();
+      lockState.on = false;
+      ctx.flash("Bloqueio desligado.");
+    }
+    redraw();
+  });
+  root.querySelector('[data-action="lock-cancel"]')?.addEventListener("click", () => { lockState.editing = false; redraw(); });
+  root.querySelector('[data-form="lock-pin"]')?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = e.target.elements;
+    try {
+      if (!lock.validPIN(f.pin.value)) throw new Error("a senha do app precisa ter de 4 a 6 números");
+      if (f.pin.value !== f.confirm.value) throw new Error("as duas senhas não são iguais");
+      await lock.enable(f.pin.value);
+      lockState = { on: true, bio: lockState.bio };
+      redraw();
+      ctx.flash(lockState.bio ? "Bloqueio ligado: o app vai pedir a digital ou o rosto (ou a senha do app)." : "Bloqueio ligado: o app vai pedir a senha do app.");
+    } catch (err) {
+      ctx.error(err);
+    }
   });
 }
