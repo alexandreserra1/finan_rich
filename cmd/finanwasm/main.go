@@ -40,6 +40,9 @@ func main() {
 		"importPreviewText": js.FuncOf(func(_ js.Value, a []js.Value) any {
 			return wasmapi.ImportPreviewText(str(a, 0), str(a, 1), str(a, 2), str(a, 3))
 		}),
+		"accounts":     js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Accounts(str(a, 0), str(a, 1)) }),
+		"netWorth":     js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.NetWorth(str(a, 0), str(a, 1)) }),
+		"installments": js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Installments(str(a, 0), a[1].Int()) }),
 		"importPreview": js.FuncOf(func(_ js.Value, a []js.Value) any {
 			return wasmapi.ImportPreview(str(a, 0), str(a, 1), str(a, 2))
 		}),

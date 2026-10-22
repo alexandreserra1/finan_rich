@@ -4,6 +4,7 @@
 import * as finance from "../finance.js";
 import { barPct, html, raw, today } from "../ui.js";
 import { budgetBars } from "./dashboard.js";
+import { netWorthPanel } from "./accounts.js";
 
 const W = 600, H = 220, PAD = { l: 8, r: 8, t: 12, b: 24 };
 
@@ -136,7 +137,8 @@ export function render({ ledger }) {
       <h2>Maiores gastos do mês</h2>
       <ul class="plain">${v.biggest.map((t) => html`<li class="row"><span>${t.description} <small class="muted">${t.date.slice(8)}/${t.date.slice(5, 7)}</small></span><strong>${m(t.amountCents)}</strong></li>`)}</ul>
     </section>` : ""}
-    </div>`;
+    </div>
+    ${netWorthPanel(ledger)}`;
 }
 
 // bind liga a dica do gráfico: passar o dedo ou o mouse mostra o dia.

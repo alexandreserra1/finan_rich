@@ -34,6 +34,7 @@
   <a href="/analise" {{if eq .Page "insights"}}aria-current="page"{{end}}>{{template "icon" "chart"}}<span>Análise</span></a>
   <span class="nav-group" aria-hidden="true">Planejamento</span>
   <a href="/dividas" {{if eq .Page "debts"}}aria-current="page"{{end}}>{{template "icon" "card"}}<span>Dívidas</span></a>
+  <a href="/contas" class="tab-extra" {{if eq .Page "accounts"}}aria-current="page"{{end}}><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 21h18"/></svg><span>Contas</span></a>
   <a href="/metas" class="tab-extra" {{if eq .Page "goals"}}aria-current="page"{{end}}>{{template "icon" "flag"}}<span>Metas</span></a>
   <span class="nav-group" aria-hidden="true">Ferramentas</span>
   <a href="/notas" class="tab-extra" {{if eq .Page "notes"}}aria-current="page"{{end}}>{{template "icon" "note"}}<span>Notas</span></a>

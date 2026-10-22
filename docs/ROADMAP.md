@@ -107,6 +107,7 @@ aparelho; o que falta para chegar perto, do mais simples ao mais caro:
 ## Outras ideias
 
 - ~~**Metas** com valor e prazo~~ — feito (tela Metas e painel).
+- ~~**Contas e cartões** (fatura, compra parcelada, patrimônio)~~ — feito (tela Contas).
 - ~~**Busca e filtros nos lançamentos**, **orçamento por categoria** e **primeiro uso
   guiado**~~ — feito.
 - ~~**Lançamentos recorrentes** automáticos~~ — feito ("Repetir todo mês").

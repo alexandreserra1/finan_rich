@@ -49,3 +49,7 @@ export const insights = (ledger, day) => unwrap(window.finan.insights(JSON.strin
 export const canDeleteCategory = (ledger, id) => unwrap(window.finan.canDeleteCategory(JSON.stringify(ledger), id));
 // searchTransactions filtra os lançamentos (busca da tela Lançamentos) e soma o achado.
 export const searchTransactions = (ledger, filter) => unwrap(window.finan.searchTransactions(JSON.stringify(ledger), JSON.stringify(filter)));
+// Contas e cartões (saldo, fatura atual e próxima), patrimônio mês a mês e compra parcelada.
+export const accounts = (ledger, day) => unwrap(window.finan.accounts(JSON.stringify(ledger), day));
+export const netWorth = (ledger, day) => unwrap(window.finan.netWorth(JSON.stringify(ledger), day));
+export const installments = (tx, n) => unwrap(window.finan.installments(JSON.stringify(tx), n));

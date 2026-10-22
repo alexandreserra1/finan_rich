@@ -20,6 +20,7 @@ const (
 	TypeNote        = domain.TypeNote
 	TypeGoal        = domain.TypeGoal
 	TypeRecurring   = domain.TypeRecurring
+	TypeAccount     = domain.TypeAccount
 )
 
 // Change é um registro enviado ou recebido na sincronização.
@@ -297,6 +298,9 @@ func (s *Store) Ledger(ctx context.Context) (domain.Ledger, error) {
 		case TypeRecurring:
 			l.Recurring = append(l.Recurring, domain.Recurring{})
 			target = &l.Recurring[len(l.Recurring)-1]
+		case TypeAccount:
+			l.Accounts = append(l.Accounts, domain.Account{})
+			target = &l.Accounts[len(l.Accounts)-1]
 		default:
 			continue
 		}

@@ -220,3 +220,30 @@ func SearchTransactions(ledgerJSON, filterJSON string) string {
 	}
 	return reply(finance.SearchTransactions(l, f), nil)
 }
+
+// Accounts devolve as contas com o saldo e, nos cartões, a fatura atual e a próxima.
+func Accounts(ledgerJSON, today string) string {
+	l, day, err := planInput(ledgerJSON, today)
+	if err != nil {
+		return reply(nil, err)
+	}
+	return reply(finance.Accounts(l, day), nil)
+}
+
+// NetWorth devolve o patrimônio mês a mês (últimos 12 meses).
+func NetWorth(ledgerJSON, today string) string {
+	l, day, err := planInput(ledgerJSON, today)
+	if err != nil {
+		return reply(nil, err)
+	}
+	return reply(finance.NetWorth(l, day), nil)
+}
+
+// Installments divide uma compra (lançamento em JSON, com id) em n parcelas mensais.
+func Installments(txJSON string, n int) string {
+	var t domain.Transaction
+	if err := json.Unmarshal([]byte(txJSON), &t); err != nil {
+		return reply(nil, err)
+	}
+	return reply(finance.Installments(t, n))
+}

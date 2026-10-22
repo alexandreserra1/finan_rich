@@ -12,6 +12,9 @@ números reais. Seus dados ficam num arquivo no seu PC, sem conta e sem nuvem.
 - **Lançamentos** por categoria, com *Repetir todo mês* (salário, aluguel, assinaturas entram
   sozinhos), *Copiar do mês anterior* e busca com filtros (texto sem ligar para acento,
   categoria, tipo, faixa de valor, um mês ou todos) que soma o que achou.
+- **Contas e cartões**: saldo de cada conta, fatura atual e próxima do cartão (pelo dia de
+  fechamento e vencimento), compra parcelada (cada parcela cai na fatura do mês dela) e o
+  patrimônio mês a mês (contas menos cartões em aberto e dívidas).
 - **Orçamento por categoria**: um teto por mês em cada categoria, com barra no painel e
   aviso aos 80% e ao estourar.
 - **Primeiro uso guiado**: na primeira vez, o painel mostra um passo a passo (quanto ganha,

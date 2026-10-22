@@ -555,3 +555,18 @@ label.check.repeat { align-self: center; }
 .welcome label small { font-weight: 400; }
 .welcome-skip { margin-top: 1rem; justify-content: flex-start; }
 @media (max-width: 480px) { .steps li { font-size: 0; } .steps li[aria-current="step"] { font-size: .78rem; } }
+
+/* Contas, cartões (faturas) e patrimônio */
+.accounts { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; }
+.account + .account { border-top: 1px solid var(--border); padding-top: 1rem; }
+.account > .row strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.invoices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: .75rem; margin-top: .75rem; }
+.invoice { min-width: 0; padding: .75rem .9rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); }
+.invoice.closed { border-color: var(--warn); }
+.invoice p { margin: .25rem 0 0; }
+.invoice details { margin-top: .5rem; }
+.invoice .row strong { font-variant-numeric: tabular-nums; }
+.networth .chart-head strong { font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+.networth .yearchart { margin-top: 1rem; }
+.networth .yearchart .col { cursor: default; }
+.networth .yearchart .bars span { width: 60%; max-width: 22px; }

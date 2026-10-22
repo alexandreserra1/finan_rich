@@ -4,7 +4,7 @@
 
 const DB_NAME = "finan_rich";
 const DB_VERSION = 1;
-export const TYPES = ["category", "transaction", "debt", "pref", "note", "goal", "recurring"];
+export const TYPES = ["category", "transaction", "debt", "pref", "note", "goal", "recurring", "account"];
 
 let dbPromise = null;
 
@@ -44,10 +44,11 @@ function all(store) {
 export async function loadLedger() {
   const db = await open();
   const rows = await all(db.transaction("records").objectStore("records"));
-  const ledger = { categories: [], transactions: [], debts: [], prefs: [], notes: [], goals: [], recurring: [] };
+  const ledger = { categories: [], transactions: [], debts: [], prefs: [], notes: [], goals: [], recurring: [], accounts: [] };
   const lists = {
     category: ledger.categories, transaction: ledger.transactions, debt: ledger.debts, pref: ledger.prefs,
     note: ledger.notes, goal: ledger.goals, recurring: ledger.recurring,
+    account: ledger.accounts,
   };
   for (const row of rows) lists[row.type]?.push(row.record);
   return ledger;

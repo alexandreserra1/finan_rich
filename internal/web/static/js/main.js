@@ -21,8 +21,10 @@ import * as goals from "./pages/goals.js";
 import * as insights from "./pages/insights.js";
 import * as devicePage from "./pages/device.js";
 import * as advisor from "./pages/advisor.js";
+import * as accounts from "./pages/accounts.js";
 
 const ROUTES = { "/": dashboard, "/lancamentos": transactions, "/dividas": debts, "/categorias": categories, "/notas": notes, "/exportar": exportPage, "/importar": importPage, "/metas": goals, "/analise": insights };
+ROUTES["/contas"] = accounts;
 if (device.isApp) Object.assign(ROUTES, { "/configuracoes": devicePage, "/chat": advisor });
 
 const root = document.getElementById("app");
@@ -122,6 +124,7 @@ function context(path, params) {
 const listOf = (type) => ({
   category: ledger.categories, transaction: ledger.transactions, debt: ledger.debts, pref: ledger.prefs,
   note: ledger.notes, goal: ledger.goals, recurring: ledger.recurring,
+  account: ledger.accounts,
 })[type];
 function upsert(list, record) {
   const i = list.findIndex((r) => r.id === record.id);

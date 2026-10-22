@@ -10,6 +10,7 @@
 // quando o app é atualizado, o cache antigo é descartado.
 const VERSION = "finan-__VERSION__";
 const APP_ROUTES = ["/", "/lancamentos", "/dividas", "/categorias", "/notas", "/exportar", "/importar", "/metas", "/analise"];
+APP_ROUTES.push("/contas");
 const PRECACHE = [
   ...APP_ROUTES, "/offline",
   "/static/app.css", "/static/app.js", "/static/chat.js", "/static/settings.js", "/static/favicon.svg",
@@ -21,6 +22,7 @@ const PRECACHE = [
   "/static/js/wasm_exec.js", "/static/js/cloud-ai.js", "/static/js/pages/dashboard.js", "/static/js/pages/transactions.js",
   "/static/js/pages/debts.js", "/static/js/pages/categories.js",
   "/static/js/pages/welcome.js",
+  "/static/js/pages/accounts.js",
 ];
 
 // Guarda cada arquivo, ignorando respostas redirecionadas (ex.: sessão expirada

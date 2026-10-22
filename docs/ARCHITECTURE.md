@@ -230,6 +230,8 @@ aparelho                                      servidor
 | `goals.go` | `Goals`: progresso das metas (já guardado + aportes na categoria), quanto guardar por mês, atrasada ou atingida. |
 | `recurring.go` | `RecurringDue`: lançamentos que as recorrências já deveriam ter gerado (ID fixo `rec-<id>-<AAAA-MM>`, sem duplicar entre aparelhos). |
 | `alerts.go` | `Alerts`: avisos do painel (vencimento em até 3 dias, dívida que cresce, grupo acima da meta, gasto fora do padrão, metas, orçamento da categoria aos 80% e estourado). |
+| `accounts.go` | `Accounts`: saldo de cada conta e, nos cartões, a fatura atual e a próxima (pelo dia de fechamento); `NetWorth`: patrimônio mês a mês nos últimos 12 meses. |
+| `installments.go` | `Installments`: divide uma compra em parcelas mensais sem perder centavo; o ID de cada parcela vem do da compra, então não duplica entre aparelhos. |
 | `budgets.go` | `Budgets`: quanto já foi usado do teto mensal de cada categoria (`budgetCents`). |
 | `search.go` | `SearchTransactions`: busca da tela Lançamentos (texto sem acento nem maiúscula, categoria, tipo, faixa de valor, mês) e os totais do que achou. |
 | `merchants.go` | `TopMerchants`: gastos por estabelecimento nos últimos 12 meses (para o consultor). |
@@ -306,7 +308,7 @@ Tabelas atuais:
 
 | Tabela | Conteúdo |
 |---|---|
-| `records(type, id, data, updated_at, deleted, rev)` | Categorias, lançamentos, dívidas, preferências e notas como documentos JSON. |
+| `records(type, id, data, updated_at, deleted, rev)` | Categorias, lançamentos, dívidas, preferências, notas, metas, recorrentes e contas como documentos JSON. |
 | `sync_state(rev)` | Contador global de revisões. |
 | `settings(key, value)` | `ai_*` (provedor de IA) e `access_*` (senha, acesso pela rede). |
 | `chat_messages` | Conversa com o consultor. |
@@ -391,6 +393,7 @@ Arquivos do navegador (`static/`):
 | `js/ui.js` | `html` com escape automático (evita injeção), UUID, datas, mensagens. |
 | `js/pages/dashboard.js` | Painel do mês: totais, divisão do salário, gastos por categoria, visão anual. Também exporta o seletor de mês e os cartões de totais usados pelos lançamentos. |
 | `js/pages/transactions.js` | Lançamentos: formulário (categorias filtradas por entrada/saída), lista do mês, busca e filtros (no endereço, então voltar e avançar funcionam), apagar, "copiar do mês anterior". |
+| `js/pages/accounts.js` | Contas e cartões: cadastro, saldos, faturas e o painel de patrimônio (também usado na Análise). |
 | `js/pages/welcome.js` | Primeiro uso guiado, mostrado no Painel até a pessoa terminar ou pular. |
 | `js/pages/debts.js` | Dívidas: cadastro e edição, simulação pagando o mínimo, ordem avalanche e bola de neve. |
 | `js/pages/categories.js` | Divisão do salário (percentuais) e categorias (criar, apagar se nada a usa: regra em Go). |
