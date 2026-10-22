@@ -64,12 +64,11 @@ code { font-size: .88em; background: var(--surface-2); border: 1px solid var(--b
 .brand { display: inline-flex; align-items: center; font-weight: 700; font-size: 1.12rem; color: var(--text); text-decoration: none; letter-spacing: -.01em; }
 .brand:hover { color: var(--text); }
 .brand span { color: var(--accent); }
-.brand::before {
-  content: "f"; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px;
-  background: var(--accent); color: var(--accent-text); font-weight: 800; font-size: 1.05rem; flex: none; margin-right: .6rem;
-}
+/* Mesmo desenho do ícone do app e da aba (favicon.svg). */
+.brand::before { content: ""; width: 32px; height: 32px; flex: none; margin-right: .6rem; background: url("favicon.svg") center / contain no-repeat; }
 .brand.big { font-size: 1.6rem; margin: 0 0 .75rem; }
-.brand.big::before { width: 44px; height: 44px; border-radius: 12px; font-size: 1.4rem; }
+.brand.big::before { width: 44px; height: 44px; }
+.tab-short { display: none; }
 .top-actions { display: flex; gap: .5rem; align-items: center; }
 .top-actions form { margin: 0; }
 .small-btn { padding: .4rem .85rem; font-size: .85rem; }
@@ -302,7 +301,7 @@ body:not(.has-nav) > main { width: 100%; padding: 1.5rem 1.25rem; }
   :root { --top-h: 56px; }
   body.has-nav { padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
   .top { padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right)); }
-  .brand::before { width: 28px; height: 28px; border-radius: 8px; font-size: .95rem; }
+  .brand::before { width: 28px; height: 28px; }
   .tabs {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 30; gap: 0; justify-content: space-around; overflow: visible;
     padding: .35rem .25rem calc(.35rem + env(safe-area-inset-bottom));
@@ -316,6 +315,9 @@ body:not(.has-nav) > main { width: 100%; padding: 1.5rem 1.25rem; }
   .tabs a[aria-current="page"] { color: var(--accent-strong); background: transparent; font-weight: 600; }
   .tabs a[aria-current="page"] .icon { background: var(--accent-soft); }
   .tabs .tab-extra { display: none; }
+  /* Nome curto na barra de baixo; o completo continua para leitores de tela. */
+  .tabs a .tab-short { display: inline; }
+  .tabs a .tab-long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   main { padding: 1rem max(1rem, env(safe-area-inset-left)) 1.5rem; padding-right: max(1rem, env(safe-area-inset-right)); }
   .page-head { margin-bottom: 1rem; }
