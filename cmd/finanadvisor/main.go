@@ -53,6 +53,11 @@ func main() {
 			ai := str(a, 0)
 			return promise(func() string { return askapi.Check(context.Background(), ai) })
 		}),
+		// categorize: "IA sugere" da importação de extrato, sem computador.
+		"categorize": js.FuncOf(func(_ js.Value, a []js.Value) any {
+			req := str(a, 0)
+			return promise(func() string { return askapi.Categorize(context.Background(), req) })
+		}),
 		"cloudPresets":    js.FuncOf(func(js.Value, []js.Value) any { return askapi.CloudPresets() }),
 		"proposalApplied": js.FuncOf(func(_ js.Value, a []js.Value) any { return askapi.ProposalApplied(str(a, 0), str(a, 1)) }),
 	}

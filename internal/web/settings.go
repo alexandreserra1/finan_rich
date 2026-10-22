@@ -96,7 +96,7 @@ func (s *Server) testAI(w http.ResponseWriter, r *http.Request) {
 		var reply llm.Reply
 		start := time.Now()
 		reply, err = provider.Chat(ctx, llm.Request{Messages: []llm.Message{
-			{Role: llm.RoleUser, Content: "Responda apenas com a frase: Tudo certo! Estou pronto para ajudar com suas finanças."},
+			{Role: llm.RoleUser, Content: llm.PingMessage},
 		}}, func(string) {})
 		if err == nil {
 			w.Write([]byte("✅ Funcionou em " + time.Since(start).Round(100*time.Millisecond).String() + ". Resposta: " + reply.Text))

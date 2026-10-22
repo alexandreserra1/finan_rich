@@ -13,6 +13,7 @@ import (
 
 	"github.com/alexandreserra1/finan_rich/internal/advisor"
 	"github.com/alexandreserra1/finan_rich/internal/domain"
+	"github.com/alexandreserra1/finan_rich/internal/importer"
 	"github.com/alexandreserra1/finan_rich/internal/llm"
 )
 
@@ -95,7 +96,7 @@ func Check(ctx context.Context, aiJSON string) string {
 	}
 	p, err := provider(ai)
 	if err == nil {
-		_, err = p.Chat(ctx, llm.Request{Messages: []llm.Message{{Role: llm.RoleUser, Content: "Responda só: ok"}}}, func(string) {})
+		_, err = p.Chat(ctx, llm.Request{Messages: []llm.Message{{Role: llm.RoleUser, Content: llm.PingMessage}}}, func(string) {})
 	}
 	return reply(err == nil, err)
 }
@@ -117,6 +118,31 @@ func provider(ai AIConfig) (llm.Provider, error) {
 		base = ai.BaseURL
 	}
 	return llm.New(llm.Config{Kind: preset.Kind, BaseURL: base, Model: model, APIKey: ai.APIKey})
+}
+
+// CategorizeRequest é o pedido da importação de extrato ("IA sugere").
+type CategorizeRequest struct {
+	Categories []domain.Category        `json:"categories"`
+	Items      []advisor.CategorizeItem `json:"items"`
+	AI         AIConfig                 `json:"ai"`
+}
+
+// Categorize sugere a categoria de cada lançamento do extrato com a IA na
+// nuvem. Vai só a assinatura da descrição (sem CPF, conta, "PIX ENVIADO"),
+// como faz o computador com IA na nuvem. Devolve o ID de cada um ("" = sem sugestão).
+func Categorize(ctx context.Context, reqJSON string) string {
+	var req CategorizeRequest
+	if err := json.Unmarshal([]byte(reqJSON), &req); err != nil {
+		return reply(nil, err)
+	}
+	p, err := provider(req.AI)
+	if err != nil {
+		return reply(nil, err)
+	}
+	for i := range req.Items {
+		req.Items[i].Description = importer.DescKey(req.Items[i].Description)
+	}
+	return reply(advisor.Categorize(ctx, p, req.Categories, req.Items))
 }
 
 // CloudPresets são os provedores que o app do celular oferece (nuvem, com chave).

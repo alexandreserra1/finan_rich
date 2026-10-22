@@ -141,7 +141,8 @@ aparelho                                      servidor
    grandes, dinheiro extra, golpes; regras do Brasil, sem taxas do dia). A avaliação
    `advisor/eval_test.go` faz 10 perguntas típicas e confere critérios automáticos; roda só
    com chave: `FINAN_EVAL_PRESET=gemini FINAN_EVAL_KEY=... go test ./internal/advisor -run TestEval -v`.
-   Em outubro de 2026, com `gemini-flash-lite-latest`: 58% dos critérios antes, 86–90% depois.
+   Em outubro de 2026, com `gemini-flash-lite-latest`: 58% dos critérios antes, 86–94% depois
+   (varia um pouco entre rodadas).
 4. A resposta volta em streaming (Server-Sent Events) e é gravada em `chat_messages`, com as
    propostas (coluna `proposals`, JSON). Ao mostrar a conversa, `advisor.Applied` compara cada
    proposta com os dados atuais para marcar o cartão como feito.

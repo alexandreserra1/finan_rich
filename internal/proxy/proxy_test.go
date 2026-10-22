@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/advisor"
+	"github.com/alexandreserra1/finan_rich/internal/llm"
 )
 
 // groq falso: o primeiro modelo está sem cota (429); o segundo responde.
@@ -68,9 +69,14 @@ func TestProxyForwardsAppRequests(t *testing.T) {
 	if strings.Contains(rec.Body.String(), "chave-do-servidor") {
 		t.Error("a chave do servidor vazou")
 	}
-	// O teste de conexão do app (sem dados) também passa.
-	if rec := ask(h, "aparelho-1", `{"messages":[{"role":"user","content":"Responda só: ok"}]}`); rec.Code != http.StatusOK {
+	// O teste de conexão (celular e botão "Testar" do computador) e a
+	// categorização de extrato também passam.
+	if rec := ask(h, "aparelho-1", `{"messages":[{"role":"user","content":"`+llm.PingMessage+`"}]}`); rec.Code != http.StatusOK {
 		t.Errorf("teste de conexão = %d", rec.Code)
+	}
+	cat, _ := json.Marshal(map[string]any{"messages": []map[string]string{{"role": "system", "content": advisor.CategorizeMarker + " ..."}, {"role": "user", "content": "1. ifood"}}})
+	if rec := ask(h, "aparelho-1", string(cat)); rec.Code != http.StatusOK {
+		t.Errorf("categorização = %d", rec.Code)
 	}
 }
 

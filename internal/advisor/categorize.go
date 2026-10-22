@@ -21,7 +21,11 @@ type CategorizeItem struct {
 // modelos pequenos (como os que rodam no PC) acertarem mais.
 const categorizeBatch = 40
 
-const categorizeSystem = `Você classifica lançamentos de extrato bancário brasileiro nas categorias de orçamento do usuário. Responda somente com JSON, sem comentários.`
+// CategorizeMarker abre as instruções da categorização; o intermediário
+// grátis reconhece o app por ela (como PromptMarker no consultor).
+const CategorizeMarker = "Você classifica lançamentos de extrato bancário brasileiro"
+
+const categorizeSystem = CategorizeMarker + ` nas categorias de orçamento do usuário. Responda somente com JSON, sem comentários.`
 
 // Categorize pede à IA a categoria de cada lançamento. Devolve o ID da
 // categoria para cada item, na mesma ordem ("" quando a IA não sabe ou

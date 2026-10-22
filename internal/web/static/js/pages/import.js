@@ -160,15 +160,22 @@ export function bind(root, ctx) {
     e.target.disabled = true;
     e.target.textContent = "Perguntando à IA… (no Ollama pode levar um minuto)";
     try {
+      const asked = todo.map((it) => ({ description: it.description, kind: it.kind }));
       const api = await endpoint("/api/categorizar");
-      if (!api) throw new Error("conecte este aparelho ao computador para usar a IA");
-      const res = await fetch(api.url, {
-        ...api.init, method: "POST",
-        headers: { ...api.init.headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ items: todo.map((it) => ({ description: it.description, kind: it.kind })) }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error || `o computador respondeu ${res.status}`);
+      let body;
+      if (api) {
+        const res = await fetch(api.url, {
+          ...api.init, method: "POST",
+          headers: { ...api.init.headers, "Content-Type": "application/json" },
+          body: JSON.stringify({ items: asked }),
+        });
+        body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || `o computador respondeu ${res.status}`);
+      } else {
+        // Sem computador: a IA na nuvem configurada neste celular (Ajustes).
+        const cloud = await import("../cloud-ai.js");
+        body = { categories: await cloud.categorize(ctx.ledger.categories, asked) };
+      }
       let filled = 0;
       todo.forEach((it, i) => {
         if (body.categories?.[i]) { it.categoryId = body.categories[i]; it.reason = "ia"; filled++; }

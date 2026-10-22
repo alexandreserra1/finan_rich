@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/advisor"
+	"github.com/alexandreserra1/finan_rich/internal/llm"
 )
 
 // Config do intermediário.
@@ -40,9 +41,8 @@ type Limits struct{ DeviceHour, DeviceDay, IPHour, IPDay int }
 var DefaultLimits = Limits{DeviceHour: 30, DeviceDay: 80, IPHour: 60, IPDay: 200}
 
 const (
-	maxBody      = 512 << 10
-	maxTokens    = 2048
-	checkMessage = "Responda só: ok" // askapi.Check: testa a conexão sem dados
+	maxBody   = 512 << 10
+	maxTokens = 2048
 )
 
 // New devolve o handler HTTP do intermediário.
@@ -110,8 +110,8 @@ func (h *handler) chat(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// fromApp aceita só o que o app manda: o consultor (com o prompt do
-// finan_rich) ou o teste de conexão. Quem copiar o prompt passa, mas cai nos
+// fromApp aceita só o que o app manda: o consultor e a categorização de
+// extrato (pelas frases fixas das instruções) ou o teste de conexão. Quem copiar o prompt passa, mas cai nos
 // limites; a ideia é não virar uma IA grátis genérica.
 func fromApp(body map[string]json.RawMessage) bool {
 	var msgs []struct {
@@ -121,10 +121,10 @@ func fromApp(body map[string]json.RawMessage) bool {
 	if json.Unmarshal(body["messages"], &msgs) != nil || len(msgs) == 0 {
 		return false
 	}
-	if msgs[0].Role == "system" && strings.HasPrefix(msgs[0].Content, advisor.PromptMarker) {
+	if msgs[0].Role == "system" && (strings.HasPrefix(msgs[0].Content, advisor.PromptMarker) || strings.HasPrefix(msgs[0].Content, advisor.CategorizeMarker)) {
 		return true
 	}
-	return len(msgs) == 1 && msgs[0].Role == "user" && msgs[0].Content == checkMessage && body["tools"] == nil
+	return len(msgs) == 1 && msgs[0].Role == "user" && msgs[0].Content == llm.PingMessage && body["tools"] == nil
 }
 
 func capTokens(raw json.RawMessage) string {

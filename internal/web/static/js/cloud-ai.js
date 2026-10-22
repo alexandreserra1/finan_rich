@@ -115,6 +115,14 @@ export async function ask(ledger, history, question) {
   return unwrap(await window.finanAdvisor.ask(JSON.stringify(req)));
 }
 
+// categorize: "IA sugere" da importação, com a IA na nuvem deste celular.
+export async function categorize(categories, items) {
+  const cfg = await config();
+  if (!ready(cfg)) throw new Error("conecte ao computador ou configure a IA na nuvem em Ajustes para usar a IA");
+  await loadAdvisor();
+  return unwrap(await window.finanAdvisor.categorize(JSON.stringify({ categories, items, ai: await aiConfig(cfg) })));
+}
+
 export async function applied(ledger, proposal) {
   await loadAdvisor();
   return unwrap(window.finanAdvisor.proposalApplied(JSON.stringify(ledger), JSON.stringify(proposal)));

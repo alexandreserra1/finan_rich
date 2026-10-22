@@ -135,3 +135,23 @@ func TestFreePreset(t *testing.T) {
 		t.Errorf("check = %s auth = %q", got, auth)
 	}
 }
+
+// "IA sugere" sem computador: vai só a assinatura da descrição (sem CPF).
+func TestCategorizeCloud(t *testing.T) {
+	var sent string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		sent = string(b)
+		fmt.Fprint(w, "data: {\"choices\":[{\"delta\":{\"content\":\"{\\\"1\\\": \\\"Restaurantes e delivery\\\"}\"}}]}\n\ndata: [DONE]\n\n")
+	}))
+	defer srv.Close()
+	raw, _ := json.Marshal(map[string]any{
+		"categories": []map[string]any{{"id": "res", "updatedAt": 1, "name": "Restaurantes e delivery", "bucket": "desejos"}},
+		"items":      []map[string]string{{"description": "PIX ENVIADO 123.456.789-00 IFOOD", "kind": "saida"}},
+		"ai":         AIConfig{Preset: "groq", APIKey: "k", BaseURL: srv.URL},
+	})
+	got := Categorize(context.Background(), string(raw))
+	if got != `{"ok":["res"]}` || strings.Contains(sent, "123.456") || strings.Contains(sent, "PIX ENVIADO") {
+		t.Errorf("resposta %s; enviado %s", got, sent)
+	}
+}

@@ -149,6 +149,10 @@ var httpClient = &http.Client{
 	},
 }
 
+// PingMessage é a pergunta de teste de conexão (sem dados da pessoa). É a
+// mesma em todo lugar: o intermediário grátis só deixa passar esta.
+const PingMessage = "Responda só: ok"
+
 // APIError é um erro devolvido pelo servidor do modelo.
 type APIError struct {
 	Status  int
