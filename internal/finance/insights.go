@@ -42,6 +42,7 @@ type InsightsView struct {
 	Savings       []Saving             `json:"savings"`
 	Subscriptions []Subscription       `json:"subscriptions"`
 	Biggest       []domain.Transaction `json:"biggest"`
+	Budgets       []BudgetView         `json:"budgets"` // orçamentos por categoria no mês
 }
 
 // PlaceRow é quanto foi gasto num lugar (iFood, Uber...) no mês.
@@ -102,6 +103,7 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 		Month: m.Key(), Label: m.Label(), Day: day, DaysInMonth: days,
 		Pace: make([]int64, day), LastPace: make([]int64, lastDays),
 		Places: []PlaceRow{}, Categories: []CategoryTrend{}, Savings: []Saving{}, Subscriptions: []Subscription{}, Biggest: []domain.Transaction{},
+		Budgets: Budgets(l, m),
 	}
 
 	txs := l.ActiveTransactions()

@@ -3,6 +3,7 @@
 // de finance.Insights (Go, pelo WebAssembly); aqui só desenha.
 import * as finance from "../finance.js";
 import { barPct, html, raw, today } from "../ui.js";
+import { budgetBars } from "./dashboard.js";
 
 const W = 600, H = 220, PAD = { l: 8, r: 8, t: 12, b: 24 };
 
@@ -90,6 +91,11 @@ export function render({ ledger }) {
         </li>`)}
       </ul>` : html`<p class="muted">Nada fora do normal neste mês. Bom sinal!</p>`}
     </section>
+
+    ${v.budgets.length ? html`<section class="panel">
+      <div class="row"><h2>Orçamentos por categoria</h2><a class="small" href="/categorias">Ajustar tetos</a></div>
+      ${budgetBars(v.budgets)}
+    </section>` : ""}
 
     <div class="grid-2">
     <section class="panel">

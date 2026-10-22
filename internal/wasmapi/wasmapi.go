@@ -195,3 +195,18 @@ func ImportPreviewText(ledgerJSON, text, optionsJSON, today string) string {
 func DefaultCategories(now int64) string {
 	return reply(domain.DefaultCategories(now), nil)
 }
+
+// SearchTransactions filtra os lançamentos (texto, categoria, tipo, valor e
+// mês) e devolve a lista e os totais do que foi achado. filter é o
+// finance.TxFilter em JSON.
+func SearchTransactions(ledgerJSON, filterJSON string) string {
+	var l domain.Ledger
+	if err := json.Unmarshal([]byte(ledgerJSON), &l); err != nil {
+		return reply(nil, err)
+	}
+	var f finance.TxFilter
+	if err := json.Unmarshal([]byte(filterJSON), &f); err != nil {
+		return reply(nil, err)
+	}
+	return reply(finance.SearchTransactions(l, f), nil)
+}

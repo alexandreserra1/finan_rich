@@ -33,6 +33,7 @@ type DashboardView struct {
 	Buckets      []BucketView   `json:"buckets"`
 	Categories   []CategoryView `json:"categories"`
 	Year         []Totals       `json:"year"`
+	Budgets      []BudgetView   `json:"budgets"` // orçamentos por categoria
 }
 
 // Dashboard monta o painel do mês.
@@ -44,6 +45,7 @@ func Dashboard(l domain.Ledger, m domain.Month) DashboardView {
 		Year:       YearTotals(l, m.Year()),
 		Buckets:    []BucketView{},
 		Categories: []CategoryView{},
+		Budgets:    Budgets(l, m),
 	}
 	for _, b := range s.Buckets {
 		v.Buckets = append(v.Buckets, BucketView{b.Bucket, b.Pct, b.PlannedCents, b.SpentCents, b.RemainingCents(), b.UsedPct()})

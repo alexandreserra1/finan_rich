@@ -45,3 +45,5 @@ export const goals = (ledger, day) => unwrap(window.finan.goals(JSON.stringify(l
 export const recurringDue = (ledger, day) => unwrap(window.finan.recurringDue(JSON.stringify(ledger), day));
 export const alerts = (ledger, day) => unwrap(window.finan.alerts(JSON.stringify(ledger), day));
 export const insights = (ledger, day) => unwrap(window.finan.insights(JSON.stringify(ledger), day));
+// searchTransactions filtra os lançamentos (busca da tela Lançamentos) e soma o achado.
+export const searchTransactions = (ledger, filter) => unwrap(window.finan.searchTransactions(JSON.stringify(ledger), JSON.stringify(filter)));

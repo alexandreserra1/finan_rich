@@ -47,6 +47,17 @@ func TestAnonymizeHidesNames(t *testing.T) {
 	}
 }
 
+// O teto do orçamento é número e vai para a IA; o nome da categoria criada pela pessoa, não.
+func TestAnonymizeKeepsBudgets(t *testing.T) {
+	l := anonLedger()
+	l.Categories = append(l.Categories, domain.Category{Meta: domain.Meta{ID: "psi", UpdatedAt: 1}, Name: "Psicóloga Dra. Ana", Bucket: domain.BucketNecessidades, BudgetCents: 30000})
+	anon, _ := Anonymize(l)
+	snap := Snapshot(BuildFacts(anon, time.Date(2026, 9, 20, 0, 0, 0, 0, time.UTC)))
+	if strings.Contains(snap, "Psicóloga") || !strings.Contains(snap, "- Categoria 1: teto R$ 300,00; usado R$ 0,00 (0%)") {
+		t.Errorf("orçamento anonimizado:\n%s", snap)
+	}
+}
+
 // Uma alteração proposta pela IA não pode gravar o apelido no lugar do nome.
 func TestRevealProposalKeepsRealNames(t *testing.T) {
 	anon, a := Anonymize(anonLedger())

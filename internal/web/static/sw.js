@@ -20,6 +20,7 @@ const PRECACHE = [
   "/static/vendor/pdfjs/pdf.min.js", "/static/vendor/pdfjs/pdf.worker.min.js",
   "/static/js/wasm_exec.js", "/static/js/cloud-ai.js", "/static/js/pages/dashboard.js", "/static/js/pages/transactions.js",
   "/static/js/pages/debts.js", "/static/js/pages/categories.js",
+  "/static/js/pages/welcome.js",
 ];
 
 // Guarda cada arquivo, ignorando respostas redirecionadas (ex.: sessão expirada

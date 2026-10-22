@@ -88,8 +88,11 @@ func TestSnapshot(t *testing.T) {
 		Recurring: []domain.Recurring{{Meta: domain.Meta{ID: "r", UpdatedAt: 1}, Kind: domain.KindSaida, Description: "Academia",
 			AmountCents: 9990, CategoryID: "laz", Day: 5, Start: "2026-01"}},
 	}
+	l.Categories[1].BudgetCents = 240000 // teto de R$ 2.400 em Lazer: 83% usado
 	got := Snapshot(BuildFacts(l, time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC)))
 	for _, want := range []string{
+		"## Orçamentos por categoria", "- Lazer: teto R$ 2.400,00; usado R$ 2.000,00 (83%); restam R$ 400,00",
+		"Orçamento de Lazer em 83%: Restam R$ 400,00 de R$ 2.400,00 no mês.",
 		"10/10/2026", "outubro de 2026", "Entradas: R$ 5.000,00",
 		"desejos: meta 30% = R$ 1.500,00; gasto R$ 2.000,00 (133% da meta); passou R$ 500,00 da meta",
 		"Lazer (desejos): R$ 2.000,00",

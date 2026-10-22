@@ -33,6 +33,13 @@ func TestValidate(t *testing.T) {
 	if (Category{Meta: meta("c"), Name: "X", Bucket: "outro"}).Validate() == nil {
 		t.Error("bucket inválido aceito")
 	}
+	if (Category{Meta: meta("c"), Name: "X", Bucket: BucketDesejos, BudgetCents: -1}).Validate() == nil {
+		t.Error("orçamento negativo aceito")
+	}
+	// Categoria antiga (sem orçamento) continua válida e não ganha o campo.
+	if _, data, err := DecodeRecord(TypeCategory, []byte(`{"id":"c","updatedAt":1,"name":"Lazer","bucket":"desejos"}`)); err != nil || strings.Contains(string(data), "budget") {
+		t.Errorf("categoria sem orçamento: %s %v", data, err)
+	}
 	if (Debt{Meta: meta("d"), Name: "X", DueDay: 40}).Validate() == nil {
 		t.Error("dia 40 aceito")
 	}

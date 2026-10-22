@@ -216,6 +216,18 @@ func Snapshot(f Facts) string {
 		}
 	}
 
+	if len(f.Insights.Budgets) > 0 {
+		b.WriteString("\n## Orçamentos por categoria (teto do mês definido pelo usuário)\n")
+		for _, o := range f.Insights.Budgets {
+			fmt.Fprintf(&b, "- %s: teto %s; usado %s (%d%%); ", o.Name, brl(o.BudgetCents), brl(o.SpentCents), o.UsedPct)
+			if o.RemainingCents < 0 {
+				fmt.Fprintf(&b, "estourou %s\n", brl(-o.RemainingCents))
+			} else {
+				fmt.Fprintf(&b, "restam %s\n", brl(o.RemainingCents))
+			}
+		}
+	}
+
 	if len(f.Notes) > 0 {
 		b.WriteString("\n## Anotações do usuário (escritas por ele no app)\n")
 		for _, n := range f.Notes {
@@ -229,7 +241,7 @@ func Snapshot(f Facts) string {
 
 	alerts := attentionPoints(f)
 	for _, a := range f.Alerts {
-		if a.Kind == "debt-due" || a.Kind == "unusual" || a.Kind == "goal-late" {
+		if a.Kind == "debt-due" || a.Kind == "unusual" || a.Kind == "goal-late" || a.Kind == "budget-near" || a.Kind == "budget-over" {
 			alerts = append(alerts, a.Title+": "+a.Text)
 		}
 	}

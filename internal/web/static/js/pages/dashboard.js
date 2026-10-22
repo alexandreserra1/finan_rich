@@ -2,6 +2,7 @@
 import * as finance from "../finance.js";
 import { BUCKETS, barPct, html, raw, shiftMonth, today } from "../ui.js";
 import { goalCards } from "./goals.js";
+import * as welcome from "./welcome.js";
 
 export function monthNav(month) {
   return html`<div class="monthnav">
@@ -42,7 +43,27 @@ export function totalsCards(v, withSavings) {
   </section>`;
 }
 
-export function render({ ledger, month }) {
+// budgetBars mostra quanto já foi usado de cada orçamento (Painel e Análise).
+export function budgetBars(budgets) {
+  const m = finance.money;
+  const level = (b) => (b.usedPct >= 100 ? "over" : b.usedPct >= 80 ? "near" : "");
+  return html`<div class="buckets budgets">
+    ${budgets.map((b) => html`<div class="bucket b-${b.bucket}">
+      <div class="row"><strong>${b.name}</strong><span class="small ${level(b) ? "neg" : "muted"}">${b.usedPct}%</span></div>
+      <div class="bar"><span style="width: ${Math.min(b.usedPct, 100)}%" class="${level(b)}"></span></div>
+      <div class="row small">
+        <span>${m(b.spentCents)} de ${m(b.budgetCents)}</span>
+        ${b.remainingCents < 0
+          ? html`<span class="neg">estourou ${m(-b.remainingCents)}</span>`
+          : html`<span class="muted">resta ${m(b.remainingCents)}</span>`}
+      </div>
+    </div>`)}
+  </div>`;
+}
+
+export function render(ctx) {
+  if (welcome.show(ctx)) return welcome.render(ctx);
+  const { ledger, month } = ctx;
   const v = finance.dashboard(ledger, month);
   const m = finance.money;
   const maxCat = v.categories.length ? v.categories[0].spentCents : 0;
@@ -78,6 +99,11 @@ export function render({ ledger, month }) {
           </div>`)}
       </div>
     </section>
+
+    ${v.budgets.length ? html`<section class="panel" id="orcamentos">
+      <div class="row"><h2>Orçamentos do mês</h2><a class="small" href="/categorias">Ajustar tetos</a></div>
+      ${budgetBars(v.budgets)}
+    </section>` : ""}
 
     ${goalViews.length ? html`<section class="panel">
       <div class="row"><h2>Metas</h2><a class="small" href="/metas">Ver todas</a></div>
@@ -130,4 +156,8 @@ export function render({ ledger, month }) {
           <th class="num ${yearIn - yearOut < 0 ? "neg" : "pos"}">${m(yearIn - yearOut)}</th></tr></tfoot>
       </table></div>
     </section>`;
+}
+
+export function bind(root, ctx) {
+  if (welcome.show(ctx)) welcome.bind(root, ctx);
 }

@@ -1,5 +1,6 @@
 // Categorias e divisão do salário.
-import { BUCKETS, SPENDING, html } from "../ui.js";
+import * as finance from "../finance.js";
+import { BUCKETS, SPENDING, centsInput, html } from "../ui.js";
 import { pageHead } from "./dashboard.js";
 
 const ORDER = { renda: 0, necessidades: 1, desejos: 2, investimentos: 3 };
@@ -32,18 +33,24 @@ export function render({ ledger }) {
         <label>Grupo
           <select name="bucket">${Object.entries(BUCKETS).map(([k, label]) => html`<option value="${k}">${label}</option>`)}</select>
         </label>
+        <label>Orçamento por mês (R$) <input name="budget" inputmode="decimal" placeholder="opcional"></label>
         <button type="submit">Criar</button>
       </form>
     </section>
 
     <section class="panel">
       <h2>Categorias</h2>
+      <p class="small muted">Orçamento é o teto de gasto da categoria por mês (ex.: Restaurantes R$ 400). O Painel avisa ao chegar a 80% e ao estourar. Deixe vazio para não ter teto.</p>
       <div class="table-wrap"><table class="cards-mobile">
-        <thead><tr><th>Nome</th><th>Grupo</th><th></th></tr></thead>
+        <thead><tr><th>Nome</th><th>Grupo</th><th>Orçamento por mês</th><th></th></tr></thead>
         <tbody>
           ${cats.map((c) => html`<tr>
             <td class="primary">${c.name}</td>
             <td data-label="Grupo"><span class="tag b-${c.bucket}">${BUCKETS[c.bucket]}</span></td>
+            <td data-label="Orçamento">${c.bucket === "renda" ? html`<span class="muted">—</span>` : html`<form data-form="budget" data-id="${c.id}" class="budget-form">
+              <input name="budget" inputmode="decimal" value="${c.budgetCents ? centsInput(c.budgetCents) : ""}" placeholder="sem teto" aria-label="Orçamento de ${c.name} por mês (R$)">
+              <button type="submit" class="link plain">salvar</button>
+            </form>`}</td>
             <td class="num actions"><button class="link" type="button" data-delete="${c.id}">apagar</button></td>
           </tr>`)}
         </tbody>
@@ -71,11 +78,25 @@ export function bind(root, ctx) {
       return;
     }
     try {
-      await ctx.save("category", { name, bucket: f.bucket.value }, "Categoria criada.");
+      const budgetCents = f.budget.value.trim() && f.bucket.value !== "renda" ? finance.parseMoney(f.budget.value) : 0;
+      await ctx.save("category", { name, bucket: f.bucket.value, budgetCents }, "Categoria criada.");
     } catch (err) {
       ctx.error(err);
     }
   });
+
+  root.querySelectorAll('[data-form="budget"]').forEach((form) => form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const c = ctx.ledger.categories.find((x) => x.id === form.dataset.id);
+    try {
+      const text = form.elements.budget.value.trim();
+      const budgetCents = text ? finance.parseMoney(text) : 0;
+      await ctx.save("category", { id: c.id, budgetCents },
+        budgetCents ? `Orçamento de ${c.name}: ${finance.money(budgetCents)} por mês.` : `${c.name} ficou sem orçamento.`);
+    } catch (err) {
+      ctx.error(err);
+    }
+  }));
 
   root.querySelectorAll("[data-delete]").forEach((btn) => btn.addEventListener("click", async () => {
     const c = ctx.ledger.categories.find((x) => x.id === btn.dataset.delete);
