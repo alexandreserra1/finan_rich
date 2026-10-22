@@ -125,10 +125,6 @@ aparelho; o que falta para chegar perto, do mais simples ao mais caro:
 
 Achados das revisões de código, segurança e testes que ficaram para depois:
 
-- **Chave da IA no Android Keystore**: hoje a chave de cifra fica no mesmo armazenamento do
-  app; quem copiar a pasta inteira do app (root) consegue usá-la.
-- **Content-Security-Policy** nas telas: não há XSS conhecido, mas a CSP limitaria o estrago
-  de um futuro (precisa testar no Capacitor).
 - **Cota grátis da IA na nuvem**: cada pergunta com ferramentas faz de 2 a 5 chamadas; o
   plano grátis do Gemini acaba rápido (erro 429, a tela avisa). Vale mostrar o uso do dia.
 - **Pelo Wi-Fi o tráfego é HTTP**: para usar fora de casa, Tailscale (HTTPS).

@@ -5,6 +5,7 @@
 // No app do celular (Capacitor), Ajustes e Consultor também são telas daqui.
 import * as db from "./db.js";
 import * as device from "./device.js";
+import "./lock.js"; // app do celular: pede digital/rosto ou senha para abrir
 import { applyProposal, proposalButton, saveNote } from "./notes-save.js";
 import { scheduleDebtReminders } from "./native.js";
 import * as finance from "./finance.js";

@@ -30,6 +30,7 @@ Excel, CSV, PDF, OFX e a leitura de faturas são código nosso (sem bibliotecas)
 |---|---|---|
 | Capacitor 8 (`core`, `android`, `ios`, `cli`) | casca nativa com WebView | MIT |
 | `@capacitor/app`, `filesystem`, `share`, `local-notifications` | links `finanrich://`, salvar/compartilhar arquivos, lembretes | MIT |
+| `@capgo/capacitor-native-biometric` | chave da IA no Keystore/Keychain e digital/rosto no bloqueio do app | MPL-2.0 |
 | AndroidX (vem com o Capacitor) | base do app Android | Apache-2.0 |
 
 O leitor de QR usa a câmera do próprio WebView (`getUserMedia`) com o jsQR. Antes era o

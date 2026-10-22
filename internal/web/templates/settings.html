@@ -173,6 +173,6 @@
 {{end}}
 
 {{define "scripts"}}
-<script>window.FINAN = { presets: {{json .Presets}}, installed: {{json .Status.Installed}}, saved: {{json .AI.Preset.ID}} };</script>
+<script type="application/json" id="ai-data">{"presets": {{json .Presets}}, "installed": {{json .Status.Installed}}, "saved": {{json .AI.Preset.ID}}}</script>
 <script src="/static/settings.js"></script>
 {{end}}

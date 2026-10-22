@@ -2,10 +2,14 @@
 // direto, com os nomes de lojas, dívidas e metas trocados por apelidos antes de
 // sair (regras em Go, no advisor.wasm, que só o app do celular leva).
 //
-// A chave da IA fica cifrada (AES-GCM) com uma chave deste aparelho que o
-// navegador não deixa exportar: não aparece em texto puro no banco do app, no
-// backup do finan_rich nem na sincronização. Quem tiver acesso total ao
-// aparelho (root, cópia da pasta do app) ainda consegue usá-la.
+// A chave da IA nunca fica em texto puro no banco do app, no backup do
+// finan_rich nem na sincronização:
+// - no app do celular, fica no cofre do sistema (Android Keystore / iOS
+//   Keychain, pelo plugin NativeBiometric). Quem copiar a pasta do app só leva
+//   a chave cifrada; a chave que decifra fica no Keystore/Keychain.
+// - no navegador (sem o app), fica cifrada (AES-GCM) com uma chave deste
+//   aparelho que o navegador não deixa exportar, guardada no mesmo banco: quem
+//   tiver acesso total ao aparelho ainda consegue usá-la.
 import * as db from "./db.js";
 import "./wasm_exec.js";
 import { today } from "./ui.js";
@@ -50,30 +54,71 @@ async function deviceKey() {
   return key;
 }
 
-// config: { preset, model, enabled, key: {iv, data} } (a chave nunca em texto puro).
-export const config = () => db.getMeta("cloud-ai", null);
+const SECURE_KEY = "cloud-ai-key";
+const vault = () => window.Capacitor?.Plugins?.NativeBiometric;
+// inVault: a chave da IA vai para o cofre do sistema (só no app do celular).
+export const inVault = () => !!vault();
+
+// config: { preset, model, enabled, key } (a chave nunca em texto puro). key é
+// { vault: true } (no cofre do sistema) ou { iv, data } (cifrada no navegador).
+export async function config() {
+  const cfg = await db.getMeta("cloud-ai", null);
+  return cfg?.key?.data && vault() ? toVault(cfg) : cfg;
+}
+
+// toVault move a chave do formato antigo (cifrada no banco do app) para o
+// cofre do sistema e apaga a antiga. Se algo falhar, fica como estava.
+async function toVault(cfg) {
+  try {
+    await vault().setData({ key: SECURE_KEY, value: await decrypt(cfg.key) });
+    const moved = { ...cfg, key: { vault: true } };
+    await db.setMeta("cloud-ai", moved);
+    await db.setMeta("cloud-ai-key", null);
+    return moved;
+  } catch {
+    return cfg;
+  }
+}
+
+async function encrypt(apiKey) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const data = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await deviceKey(), new TextEncoder().encode(apiKey));
+  return { iv, data };
+}
+
+async function decrypt(key) {
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: key.iv }, await deviceKey(), key.data);
+  return new TextDecoder().decode(plain);
+}
 
 export async function saveConfig({ preset, model, enabled, apiKey }) {
   const old = await config();
   const same = old?.preset === preset;
   const cfg = { preset, model, enabled, key: same ? old.key : null, baseUrl: same ? old.baseUrl : undefined };
-  if (apiKey) {
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const data = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await deviceKey(), new TextEncoder().encode(apiKey.trim()));
-    cfg.key = { iv, data };
+  if (apiKey && vault()) {
+    await vault().setData({ key: SECURE_KEY, value: apiKey.trim() });
+    cfg.key = { vault: true };
+  } else if (apiKey) {
+    cfg.key = await encrypt(apiKey.trim());
   }
+  if (!cfg.key && old?.key?.vault) await vault()?.deleteData({ key: SECURE_KEY }).catch(() => {});
   await db.setMeta("cloud-ai", cfg);
   return cfg;
 }
 
 export async function forget() {
+  if (vault()) await vault().deleteData({ key: SECURE_KEY }).catch(() => {});
   await db.setMeta("cloud-ai", null);
   await db.setMeta("cloud-chat", []);
 }
 
 async function apiKey(cfg) {
-  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: cfg.key.iv }, await deviceKey(), cfg.key.data);
-  return new TextDecoder().decode(plain);
+  if (!cfg.key.vault) return decrypt(cfg.key);
+  try {
+    return (await vault().getData({ key: SECURE_KEY })).value;
+  } catch {
+    throw new Error("não consegui ler a chave da IA guardada neste celular; cole a chave de novo em Ajustes");
+  }
 }
 
 // No grátis do finan_rich não há chave: vai uma identificação aleatória deste

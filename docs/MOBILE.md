@@ -53,6 +53,16 @@ no navegador do celular (pede a senha de acesso na primeira vez).
 - O link do QR code abre `/parear` no navegador, que leva a `finanrich://parear?url=…&codigo=…`.
   O app **não conecta sozinho** ao abrir esse link: mostra o endereço e pede confirmação,
   para que um link malicioso não troque o computador com que o app sincroniza.
+- **Bloqueio do app** (Ajustes do app → *Bloqueio do app*, em `js/lock.js`): pede a digital
+  ou o rosto (mesmo plugin do cofre) ou a senha do app (4 a 6 números) ao abrir e ao voltar
+  depois de 1 minuto fora. Da senha só fica o hash (PBKDF2-SHA256, 600 mil rodadas, com
+  sal). A cada 5 senhas erradas, o app espera 30 segundos, mesmo se for fechado. Quem
+  esquece a senha só desbloqueia apagando os dados do celular (os do computador continuam
+  lá). O bloqueio protege de quem pega o celular desbloqueado; ele não cifra os dados.
+- **CSP**: as telas não rodam script embutido na página. No computador, a política vai no
+  cabeçalho `Content-Security-Policy` (`browserCSP` em `server.go`). No app, vai numa tag
+  `<meta>` do `index.html` (`appCSP` em `export.go`), com a rede liberada para falar com o
+  computador pareado e com as IAs na nuvem.
 
 ## Como o código se organiza
 
@@ -143,11 +153,12 @@ A versão do app fica em `mobile/android/app/version.properties`: o workflow de 
     estabelecimento e a busca não juntarem lojas diferentes. A IA vê valores, datas e
     categorias. Na volta, o app troca os apelidos pelos nomes, e os cartões
     gravam sempre o nome verdadeiro (pelo ID do registro). Regras em `advisor/anon.go`.
-  - **chave cifrada**: AES-GCM com uma chave do aparelho que o navegador não deixa exportar
-    (`js/cloud-ai.js`): não aparece em texto puro, nem no backup do finan_rich nem na
-    sincronização. A chave de cifra fica no mesmo armazenamento do app, então quem copiar a
-    pasta inteira do app (root) consegue usá-la; o próximo passo é o Android Keystore. A
-    conversa fica só no celular.
+  - **chave no cofre do sistema**: no app, a chave da IA fica no Android Keystore / iOS
+    Keychain, pelo plugin [capacitor-native-biometric](https://github.com/Cap-go/capacitor-native-biometric)
+    (MPL-2.0), em `js/cloud-ai.js`. Quem copiar a pasta do app não leva a chave. Uma chave
+    salva por uma versão antiga (cifrada com AES-GCM no banco do app) passa para o cofre na
+    primeira leitura. Fora do app, continua cifrada com AES-GCM. Ela nunca vai para o backup
+    do finan_rich nem para a sincronização. A conversa fica só no celular.
   - **conexão cifrada** (HTTPS). A IA precisa ler os números para responder: não existe IA na
     nuvem que trabalhe com dados cifrados. No plano grátis do Gemini, o Google pode usar o que
     recebe para melhorar os produtos dele.

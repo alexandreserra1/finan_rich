@@ -353,6 +353,35 @@ try {
   const cards = await page.locator(".proposal button").allTextContents();
   ok(cards.join("|") === "Adicionado ✓|Apagado ✓|Adicionado ✓", `os cartões continuam na conversa depois de recarregar, marcados como feitos (${cards.join(" | ")})`);
 
+  // Bloqueio do app com a senha (sem biometria no navegador de teste).
+  await page.goto(`${APP}/configuracoes`);
+  await page.waitForSelector("#bloqueio input[data-action=lock]:not([disabled])", { timeout: 15000 });
+  await page.check("#bloqueio input[data-action=lock]");
+  await page.fill("form[data-form=lock-pin] input[name=pin]", "1234");
+  await page.fill("form[data-form=lock-pin] input[name=confirm]", "1235");
+  await page.click("form[data-form=lock-pin] button[type=submit]");
+  await page.waitForSelector(".flash.err:has-text('não são iguais')");
+  await page.fill("form[data-form=lock-pin] input[name=confirm]", "1234");
+  await page.click("form[data-form=lock-pin] button[type=submit]");
+  await page.waitForSelector(".flash:has-text('Bloqueio ligado')");
+  await page.reload();
+  await page.waitForSelector(".app-lock form[data-lock=pin]", { timeout: 15000 });
+  ok(await page.locator("main").evaluate((m) => getComputedStyle(m).visibility) === "hidden", "com o bloqueio ligado, o app abre bloqueado e esconde os dados");
+  await page.fill(".app-lock input[name=pin]", "0000");
+  await page.click(".app-lock button[type=submit]");
+  await page.waitForSelector(".app-lock .lock-msg:has-text('Senha errada')");
+  await page.fill(".app-lock input[name=pin]", "1234");
+  await page.click(".app-lock button[type=submit]");
+  await page.waitForSelector(".app-lock", { state: "detached", timeout: 15000 });
+  ok(await page.locator("main").evaluate((m) => getComputedStyle(m).visibility) === "visible", "senha errada é recusada; a certa desbloqueia");
+  page.once("dialog", (d) => d.accept());
+  await page.uncheck("#bloqueio input[data-action=lock]");
+  await page.waitForSelector(".flash:has-text('Bloqueio desligado')");
+  await page.reload();
+  await page.waitForSelector("#bloqueio", { timeout: 15000 });
+  ok(await page.locator(".app-lock").count() === 0, "bloqueio desligado: o app abre direto");
+  ok(!logs.some((l) => /Content.Security.Policy|Refused to/i.test(l)), `a política de segurança (CSP) não bloqueou nada no app ${JSON.stringify(logs.filter((l) => /Refused to/i.test(l)))}`);
+
   // Desconectado no computador: o app avisa para parear de novo.
   await form("/configuracoes/aparelhos/remover", { id: "1" });
   await page.evaluate(() => window.finanSync());

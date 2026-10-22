@@ -236,11 +236,20 @@ func (s *Server) appShell(page string) http.HandlerFunc {
 	}
 }
 
-// securityHeaders impede que o app seja aberto dentro de outro site (clickjacking)
-// e que o navegador "adivinhe" tipos de arquivo.
+// browserCSP diz ao navegador o que as telas podem carregar: só arquivos do
+// próprio finan_rich, nenhum script embutido na página (um texto malicioso que
+// escapasse para o HTML não roda) e o WebAssembly das regras. Atributos style=""
+// ficam liberados (as barras dos gráficos usam width: N%); blocos <style> não.
+// O app do celular usa a mesma política, com a rede liberada (veja appCSP).
+const browserCSP = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; style-src-attr 'unsafe-inline'; " +
+	"img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+
+// securityHeaders impede que o app seja aberto dentro de outro site (clickjacking),
+// que o navegador "adivinhe" tipos de arquivo e que a página rode código de fora (CSP).
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
+		h.Set("Content-Security-Policy", browserCSP)
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "same-origin")

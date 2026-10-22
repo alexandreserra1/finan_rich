@@ -23,6 +23,7 @@ const PRECACHE = [
   "/static/js/pages/debts.js", "/static/js/pages/categories.js",
   "/static/js/pages/welcome.js",
   "/static/js/pages/accounts.js",
+  "/static/js/lock.js",
 ];
 
 // Guarda cada arquivo, ignorando respostas redirecionadas (ex.: sessão expirada

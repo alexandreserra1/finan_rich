@@ -2,7 +2,7 @@
 <div class="page-head">
   <h1>Consultor IA</h1>
   {{if .History}}
-  <form method="post" action="/chat/limpar" onsubmit="return confirm('Apagar toda a conversa?')">
+  <form method="post" action="/chat/limpar" data-confirm="Apagar toda a conversa?">
     <button class="secondary small-btn" type="submit">Nova conversa</button>
   </form>
   {{end}}
