@@ -114,3 +114,26 @@ func TestSnapshot(t *testing.T) {
 		t.Error("nota apagada não pode ir para a IA")
 	}
 }
+
+// O conhecimento certo vai junto de cada pergunta (no máximo 2 temas).
+func TestKnowledgeFor(t *testing.T) {
+	for q, want := range map[string]string{
+		"como saio do rotativo do cartão?":         "Lei 14.690",
+		"onde guardo minha reserva de emergência?": "FGC",
+		"vale investir em LCI?":                    "isentas de IR",
+		"oi":                                       "Ordem para usar o dinheiro",
+		"recebi o 13º, o que faço?":                "13º, férias",
+		"caí num golpe do pix":                     "MED",
+	} {
+		if got := knowledgeFor(q); !strings.Contains(got, want) {
+			t.Errorf("%q: faltou %q", q, want)
+		}
+	}
+	if n := strings.Count(knowledgeFor("dívida do cartão e reserva e investir e golpe"), "\n\n") + 1; n > maxTopics {
+		t.Errorf("temas demais: %d", n)
+	}
+	req := BuildRequest(nil, "como saio do rotativo?", "resumo")
+	if c := req.Messages[0].Content; !strings.HasPrefix(c, "<conhecimento>") || !strings.HasSuffix(c, "</dados_financeiros>\n\ncomo saio do rotativo?") {
+		t.Errorf("a pergunta precisa ficar no fim, depois do conhecimento e dos dados: %q", c[len(c)-80:])
+	}
+}

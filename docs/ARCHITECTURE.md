@@ -133,6 +133,15 @@ aparelho                                      servidor
    (`advisor/anon.go`): lojas, dívidas, credores e metas viram apelidos, as notas ficam de fora,
    e a resposta e as propostas voltam com os nomes verdadeiros. O app do celular sem computador
    usa o mesmo caminho em WebAssembly (`internal/askapi`, `cmd/finanadvisor`).
+4. **"Treinamento" em finanças** (sem mexer nos pesos do modelo, o que os planos grátis não
+   permitem): as instruções (`advisor.SystemPrompt`) pedem respostas personalizadas (números
+   do usuário, conclusão primeiro, plano com R$ e prazo, próximo passo no app) e seguem a
+   ordem de prioridades; a pergunta leva um bloco `<conhecimento>` com até 2 temas da base
+   `advisor/knowledge.go` (dívidas, reserva, investimentos, orçamento, cartão, compras
+   grandes, dinheiro extra, golpes; regras do Brasil, sem taxas do dia). A avaliação
+   `advisor/eval_test.go` faz 10 perguntas típicas e confere critérios automáticos; roda só
+   com chave: `FINAN_EVAL_PRESET=gemini FINAN_EVAL_KEY=... go test ./internal/advisor -run TestEval -v`.
+   Em outubro de 2026, com `gemini-flash-lite-latest`: 58% dos critérios antes, 86–90% depois.
 4. A resposta volta em streaming (Server-Sent Events) e é gravada em `chat_messages`, com as
    propostas (coluna `proposals`, JSON). Ao mostrar a conversa, `advisor.Applied` compara cada
    proposta com os dados atuais para marcar o cartão como feito.
@@ -153,6 +162,15 @@ aparelho                                      servidor
   outra origem (`Sec-Fetch-Site`/`Origin`) é recusado, menos a navegação (abrir um link).
   E, sem senha, só valem endereços por IP, `localhost`, `*.local`, `*.ts.net` ou os nomes de
   `FINAN_HOSTS`: um domínio de fora que aponte para `127.0.0.1` (DNS rebinding) recebe 403.
+- **Proxy reverso (nginx, Caddy) não é necessário** e pode ser perigoso: o gargalo medido é o
+  SQLite (uma conexão, de propósito), não o HTTP; e um proxy que não mande `X-Forwarded-For`
+  faz todo pedido parecer vir de `127.0.0.1`, liberando o acesso sem senha. Para acessar de
+  fora, use Tailscale (HTTPS pronto). Se mesmo assim usar um proxy, rode com `FINAN_PASSWORD`
+  (todo acesso pede login).
+- **Limites medidos** (outubro de 2026, 4 CPUs): 500 aparelhos sincronizando juntos sem erro
+  nem perda (p99 5 s; com 10 aparelhos, 61 ms); banco com 126 mil lançamentos baixa inteiro em
+  1,7 s; até 10 MB por envio (o app manda a fila em lotes de 2.000; acima disso, 413). Os
+  arquivos de `/static` saem com gzip e ETag (`finance.wasm`: 5,3 MB → 1,5 MB).
 - Em Ajustes, trocar o endereço da IA sem colar a chave de novo apaga a chave salva (ela não
   vai para outro servidor), e passar de uma IA local para a nuvem começa conversa nova.
 

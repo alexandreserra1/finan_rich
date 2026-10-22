@@ -94,3 +94,27 @@ func TestInsightsEmpty(t *testing.T) {
 		t.Errorf("vazio = %+v", v)
 	}
 }
+
+// Com só 2 meses de histórico, a média é desses 2 (e não dividida por 3):
+// aluguel igual todo mês não pode virar "acima do normal".
+func TestUnusualSpendingShortHistory(t *testing.T) {
+	l := insightsLedger()
+	var keep []domain.Transaction
+	for _, tx := range l.Transactions {
+		if tx.Date[:7] != "2026-07" {
+			keep = append(keep, tx)
+		}
+	}
+	l.Transactions = keep
+	// Aluguel de outubro lançado, igual aos outros meses.
+	l.Transactions = append(l.Transactions, domain.Transaction{Meta: domain.Meta{ID: domain.RecurringTxID("r1", domain.ParseMonth("2026-10")), UpdatedAt: 1},
+		Kind: domain.KindSaida, Description: "Aluguel", AmountCents: 150000, CategoryID: "mor", Date: "2026-10-05"})
+	for _, a := range Alerts(l, time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC)) {
+		if a.Kind == "unusual" && a.Title == "Moradia acima do normal" {
+			t.Errorf("alarme falso: %+v", a)
+		}
+	}
+	if c := Insights(l, time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC)).Categories; c[0].Name != "Moradia" || c[0].DiffPct != 0 {
+		t.Errorf("categorias = %+v", c)
+	}
+}

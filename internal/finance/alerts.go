@@ -85,14 +85,20 @@ func Alerts(l domain.Ledger, today time.Time) []Alert {
 func unusualSpending(l domain.Ledger, m domain.Month) []Alert {
 	now := Summarize(m, l)
 	avg := map[string]int64{}
+	months := int64(0) // só meses com lançamentos: quem começou há 2 meses não tem média de 3
 	for _, prev := range []domain.Month{m.Prev(), m.Prev().Prev(), m.Prev().Prev().Prev()} {
-		for _, c := range Summarize(prev, l).Categories {
+		s := Summarize(prev, l)
+		if s.InCents == 0 && s.OutCents == 0 {
+			continue
+		}
+		months++
+		for _, c := range s.Categories {
 			avg[c.Name] += c.SpentCents
 		}
 	}
 	var out []Alert
 	for _, c := range now.Categories {
-		a := avg[c.Name] / 3
+		a := avg[c.Name] / max(months, 1)
 		if a > 0 && c.SpentCents*2 >= a*3 && c.SpentCents-a >= 10000 {
 			out = append(out, Alert{"unusual", "warn", c.Name + " acima do normal",
 				fmt.Sprintf("%s este mês, %d%% acima da média dos últimos 3 meses (%s).", money.Format(c.SpentCents), (c.SpentCents-a)*100/a, money.Format(a)), "/lancamentos"})
