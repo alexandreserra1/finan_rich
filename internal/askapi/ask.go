@@ -62,22 +62,7 @@ func Ask(ctx context.Context, reqJSON string) string {
 	if err := json.Unmarshal([]byte(reqJSON), &req); err != nil {
 		return reply(nil, err)
 	}
-	preset := llm.PresetByID(req.AI.Preset)
-	if preset.ID != req.AI.Preset || preset.Kind != llm.KindOpenAI || !preset.NeedsKey {
-		return reply(nil, errors.New("escolha um provedor de IA na nuvem nos Ajustes do app"))
-	}
-	model := req.AI.Model
-	if model == "" {
-		model = preset.Model
-	}
-	if req.AI.APIKey == "" {
-		return reply(nil, errors.New("falta a chave da IA: cole a chave nos Ajustes do app"))
-	}
-	base := preset.BaseURL
-	if req.AI.BaseURL != "" {
-		base = req.AI.BaseURL
-	}
-	p, err := llm.New(llm.Config{Kind: preset.Kind, BaseURL: base, Model: model, APIKey: req.AI.APIKey})
+	p, err := provider(req.AI)
 	if err != nil {
 		return reply(nil, err)
 	}
@@ -101,12 +86,44 @@ func Ask(ctx context.Context, reqJSON string) string {
 	return reply(AskReply{answer, proposals}, err)
 }
 
+// Check confere a chave com uma pergunta mínima (sem dados da pessoa), para a
+// tela dizer na hora se a chave funciona. Bloqueia como Ask.
+func Check(ctx context.Context, aiJSON string) string {
+	var ai AIConfig
+	if err := json.Unmarshal([]byte(aiJSON), &ai); err != nil {
+		return reply(nil, err)
+	}
+	p, err := provider(ai)
+	if err == nil {
+		_, err = p.Chat(ctx, llm.Request{Messages: []llm.Message{{Role: llm.RoleUser, Content: "Responda só: ok"}}}, func(string) {})
+	}
+	return reply(err == nil, err)
+}
+
+func provider(ai AIConfig) (llm.Provider, error) {
+	preset := llm.PresetByID(ai.Preset)
+	if preset.ID != ai.Preset || preset.Kind != llm.KindOpenAI || !preset.NeedsKey {
+		return nil, errors.New("escolha um provedor de IA na nuvem nos Ajustes do app")
+	}
+	if ai.APIKey == "" {
+		return nil, errors.New("falta a chave da IA: cole a chave nos Ajustes do app")
+	}
+	model, base := ai.Model, preset.BaseURL
+	if model == "" {
+		model = preset.Model
+	}
+	if ai.BaseURL != "" {
+		base = ai.BaseURL
+	}
+	return llm.New(llm.Config{Kind: preset.Kind, BaseURL: base, Model: model, APIKey: ai.APIKey})
+}
+
 // CloudPresets são os provedores que o app do celular oferece (nuvem, com chave).
 func CloudPresets() string {
 	var out []map[string]any
 	for _, p := range llm.Presets {
 		if p.Kind == llm.KindOpenAI && p.NeedsKey {
-			out = append(out, map[string]any{"id": p.ID, "name": p.Name, "description": p.Description, "model": p.Model, "models": p.Models, "keyUrl": p.KeyURL})
+			out = append(out, map[string]any{"id": p.ID, "name": p.Name, "description": p.Description, "model": p.Model, "models": p.Models, "keyUrl": p.KeyURL, "keySteps": p.KeySteps})
 		}
 	}
 	return reply(out, nil)

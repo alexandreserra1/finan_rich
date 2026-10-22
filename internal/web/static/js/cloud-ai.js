@@ -46,7 +46,8 @@ export const config = () => db.getMeta("cloud-ai", null);
 
 export async function saveConfig({ preset, model, enabled, apiKey }) {
   const old = await config();
-  const cfg = { preset, model, enabled, key: old?.preset === preset ? old.key : null };
+  const same = old?.preset === preset;
+  const cfg = { preset, model, enabled, key: same ? old.key : null, baseUrl: same ? old.baseUrl : undefined };
   if (apiKey) {
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const data = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await deviceKey(), new TextEncoder().encode(apiKey.trim()));
@@ -66,6 +67,15 @@ async function apiKey(cfg) {
   return new TextDecoder().decode(plain);
 }
 
+const aiConfig = async (cfg) => ({ preset: cfg.preset, model: cfg.model, apiKey: await apiKey(cfg), baseUrl: cfg.baseUrl || "" });
+
+// check testa a chave guardada com uma pergunta mínima, sem dados da pessoa.
+export async function check() {
+  const cfg = await config();
+  await loadAdvisor();
+  return unwrap(await window.finanAdvisor.checkKey(JSON.stringify(await aiConfig(cfg))));
+}
+
 export async function presets() {
   await loadAdvisor();
   return unwrap(window.finanAdvisor.cloudPresets());
@@ -79,7 +89,7 @@ export async function ask(ledger, history, question) {
   const req = {
     ledger, question, today: today(),
     history: history.map(({ role, content }) => ({ role, content })),
-    ai: { preset: cfg.preset, model: cfg.model, apiKey: await apiKey(cfg), baseUrl: cfg.baseUrl || "" },
+    ai: await aiConfig(cfg),
     anonymize: true,
   };
   return unwrap(await window.finanAdvisor.ask(JSON.stringify(req)));

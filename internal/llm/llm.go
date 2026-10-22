@@ -156,10 +156,28 @@ type APIError struct {
 }
 
 func (e *APIError) Error() string {
+	msg := fmt.Sprintf("provedor de IA respondeu %d: %s", e.Status, e.Message)
 	if e.Message == "" {
-		return fmt.Sprintf("erro HTTP %d do provedor de IA", e.Status)
+		msg = fmt.Sprintf("erro HTTP %d do provedor de IA", e.Status)
 	}
-	return fmt.Sprintf("provedor de IA respondeu %d: %s", e.Status, e.Message)
+	if hint := e.hint(); hint != "" {
+		return hint + " (" + msg + ")"
+	}
+	return msg
+}
+
+// hint explica em palavras do dia a dia os erros mais comuns da IA na nuvem.
+func (e *APIError) hint() string {
+	switch {
+	case e.Status == http.StatusUnauthorized || e.Status == http.StatusForbidden ||
+		e.Status == http.StatusBadRequest && strings.Contains(strings.ToLower(e.Message), " key"): // Gemini: 400 "API key not valid", "Invalid Auth key"
+		return "a chave da IA foi recusada: confira se copiou a chave inteira ou gere outra"
+	case e.Status == http.StatusTooManyRequests:
+		return "o limite grátis da IA acabou por agora: espere um pouco ou tente amanhã"
+	case e.Status == http.StatusServiceUnavailable:
+		return "a IA está muito ocupada agora: tente de novo em alguns minutos"
+	}
+	return ""
 }
 
 // trimSlash remove a barra final para concatenar caminhos com segurança.

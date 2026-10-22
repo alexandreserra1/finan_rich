@@ -125,6 +125,7 @@ const cloudAI = createServer((req, res) => {
   req.on("data", (c) => (body += c));
   req.on("end", () => {
     const { messages } = JSON.parse(body);
+    if (req.headers.authorization === "Bearer errada") return res.writeHead(401).end('{"error":{"message":"Invalid API Key"}}');
     cloudBodies.push({ auth: req.headers.authorization, messages });
     const last = messages.at(-1);
     const question = messages.findLast((m) => m.role === "user").content.split("</dados_financeiros>").at(-1);
@@ -186,17 +187,23 @@ try {
   ok(true, "sem computador, o app funciona só no celular (categorias criadas no aparelho)");
 
   // Consultor sem computador: IA na nuvem, chave cifrada, nomes anonimizados.
+  await page.evaluate(async () => (await import("/static/js/db.js")).setMeta("cloud-ai", { preset: "groq", baseUrl: "http://127.0.0.1:18082" })); // a nuvem falsa
   await page.goto(`${APP}/configuracoes`);
   await page.waitForSelector("form[data-form=cloud-ai]", { timeout: 20000 });
   await page.selectOption("form[data-form=cloud-ai] select[name=preset]", "groq");
+  ok(await page.isVisible(".key-guide li:has-text('Create API Key')") && await page.isVisible(".key-guide a.button"),
+    "sem chave, mostra o passo a passo e o botão para pegar a chave");
+  await page.fill("form[data-form=cloud-ai] input[name=apiKey]", "errada");
+  await page.click("form[data-form=cloud-ai] button[type=submit]");
+  await page.waitForSelector(".flash.err:has-text('chave da IA foi recusada')", { timeout: 20000 });
+  ok(true, "chave errada: o teste na hora avisa com mensagem clara");
   await page.fill("form[data-form=cloud-ai] input[name=apiKey]", "chave-secreta-123");
   await page.click("form[data-form=cloud-ai] button[type=submit]");
-  await page.waitForSelector(".flash:has-text('guardada cifrada')");
+  await page.waitForSelector(".flash:has-text('Chave funcionando')", { timeout: 20000 });
   const stored = await page.evaluate(async () => {
     const db = await import("/static/js/db.js");
     const cfg = await db.getMeta("cloud-ai");
     const plain = JSON.stringify(cfg) + new TextDecoder().decode(cfg.key.data);
-    await db.setMeta("cloud-ai", { ...cfg, baseUrl: "http://127.0.0.1:18082" }); // a nuvem falsa
     return { preset: cfg.preset, cipher: cfg.key.data instanceof ArrayBuffer, leaked: plain.includes("chave-secreta-123") };
   });
   ok(stored.preset === "groq" && stored.cipher && !stored.leaked, "a chave da IA fica cifrada no aparelho (não aparece em texto puro)");

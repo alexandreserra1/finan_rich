@@ -128,7 +128,10 @@ A versão do app fica em `mobile/android/app/version.properties`: o workflow de 
 
 - **Consultor sem computador** (Ajustes do app → *Consultor sem computador*): o celular chama
   uma IA na nuvem com plano grátis (Groq, Google Gemini, OpenRouter) direto, sem passar pelo
-  computador. Privacidade:
+  computador. Cada pessoa usa a própria chave grátis: a tela mostra o passo a passo de cada
+  provedor (`KeySteps` em `llm/presets.go`) e, ao salvar, testa a chave com uma pergunta
+  mínima, sem dados (`askapi.Check`). O app não traz chave embutida: ela sairia do APK em
+  minutos e todo mundo dividiria (e esgotaria) a mesma cota. Privacidade:
   - **anonimizado**: antes de sair, nomes de lojas, dívidas, credores e metas viram apelidos
     ("Loja 3", "Dívida 1") e as notas ficam de fora; a pergunta e o histórico também. A IA vê
     valores, datas e categorias. Na volta, o app troca os apelidos pelos nomes, e os cartões

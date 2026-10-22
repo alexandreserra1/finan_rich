@@ -252,6 +252,8 @@ form.inline { display: inline; margin-left: .5rem; }
 .lan > div { flex: 1 1 220px; min-width: 0; }
 .lan-url { margin: .2rem 0; font-size: 1.05rem; }
 details { margin-top: 1rem; }
+.key-guide ol { padding-left: 1.3rem; margin: .5rem 0; }
+.key-guide li { margin-bottom: .3rem; }
 summary { cursor: pointer; color: var(--accent); margin-bottom: .75rem; font-weight: 500; }
 
 /* ---------- Login e sem conexão ---------- */

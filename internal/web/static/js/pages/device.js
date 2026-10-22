@@ -46,7 +46,15 @@ function cloudSection(server) {
       <label>IA na nuvem
         <select name="preset">${ai.presets.map((p) => html`<option value="${p.id}" ${p.id === preset.id ? "selected" : ""}>${p.name}</option>`)}</select>
       </label>
-      <p class="small muted">${preset.description} <a href="${preset.keyUrl}" target="_blank" rel="noopener">Pegar uma chave</a></p>
+      <p class="small muted">${preset.description}</p>
+      <details class="key-guide" ${hasKey ? "" : "open"}>
+        <summary>${hasKey ? "Como pegar outra chave" : "Como pegar a chave (leva 1 minuto)"}</summary>
+        <ol class="small">
+          ${(preset.keySteps || []).map((s) => html`<li>${s}</li>`)}
+          <li>Volte aqui, cole no campo "Chave da IA" e toque em Salvar. O app testa a chave na hora.</li>
+        </ol>
+        <a class="button" href="${preset.keyUrl}" target="_blank" rel="noopener">Abrir o site para pegar a chave</a>
+      </details>
       <label>Modelo
         <input name="model" value="${model}" list="cloud-models" autocomplete="off">
         <datalist id="cloud-models">${preset.models.map((m) => html`<option value="${m}">`)}</datalist>
@@ -98,7 +106,7 @@ export function render({ server, params, ledger }) {
       <h2>Sem computador?</h2>
       ${ledger.categories.length
         ? html`<p class="small muted">Você está usando o finan_rich só neste celular. Faça um backup de vez em quando em <a href="/exportar">Exportar</a>. Se um dia conectar a um computador, tudo vai para lá, sem duplicar categorias.</p>`
-        : html`<p class="small muted">Dá para usar só neste celular: lançamentos, dívidas, metas, importação de extratos, notas e exportação funcionam sem computador. O consultor com IA precisa do computador. Se depois conectar a um, seus dados vão junto.</p>
+        : html`<p class="small muted">Dá para usar só neste celular: lançamentos, dívidas, metas, importação de extratos, notas e exportação funcionam sem computador. O consultor com IA funciona com uma IA na nuvem (veja acima). Se depois conectar a um, seus dados vão junto.</p>
           <button type="button" class="secondary" data-action="solo">Usar só neste celular</button>`}
     </section>` : ""}
 
@@ -209,7 +217,13 @@ function bindCloud(root, ctx) {
       ai.chosen = null;
       resetChat();
       redraw();
-      ctx.flash("IA na nuvem salva. A chave ficou guardada cifrada neste celular.");
+      ctx.flash("Testando a chave…");
+      try {
+        await cloud.check();
+        ctx.flash("Chave funcionando ✓ Ela ficou guardada cifrada neste celular. Já pode usar o Consultor.");
+      } catch (err) {
+        ctx.error(new Error("a chave foi guardada, mas o teste falhou: " + err.message));
+      }
     } catch (err) {
       ctx.error(err);
     }

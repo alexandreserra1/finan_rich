@@ -148,6 +148,10 @@ func apiError(resp *http.Response) error {
 		Error json.RawMessage `json:"error"`
 	}
 	msg := strings.TrimSpace(string(body))
+	var list []json.RawMessage // o Gemini manda o erro dentro de uma lista
+	if json.Unmarshal(body, &list) == nil && len(list) > 0 {
+		body = list[0]
+	}
 	if json.Unmarshal(body, &parsed) == nil && len(parsed.Error) > 0 {
 		var text string
 		var obj struct {

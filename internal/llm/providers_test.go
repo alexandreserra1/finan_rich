@@ -357,3 +357,11 @@ func TestIsLocal(t *testing.T) {
 		}
 	}
 }
+
+func TestAPIErrorHints(t *testing.T) {
+	for status, want := range map[int]string{401: "chave da IA foi recusada", 400: "chave da IA foi recusada", 429: "limite grátis", 503: "muito ocupada", 500: "provedor de IA respondeu 500"} {
+		if got := (&APIError{Status: status, Message: "Invalid Auth key."}).Error(); !strings.Contains(got, want) {
+			t.Errorf("%d: %q", status, got)
+		}
+	}
+}

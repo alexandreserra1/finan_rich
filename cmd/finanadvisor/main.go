@@ -30,6 +30,15 @@ func main() {
 				return nil
 			}))
 		}),
+		// checkKey testa a chave (uma pergunta mínima, sem dados): Promise também.
+		"checkKey": js.FuncOf(func(_ js.Value, a []js.Value) any {
+			ai := str(a, 0)
+			return js.Global().Get("Promise").New(js.FuncOf(func(_ js.Value, args []js.Value) any {
+				resolve := args[0]
+				go func() { resolve.Invoke(askapi.Check(context.Background(), ai)) }()
+				return nil
+			}))
+		}),
 		"cloudPresets":    js.FuncOf(func(js.Value, []js.Value) any { return askapi.CloudPresets() }),
 		"proposalApplied": js.FuncOf(func(_ js.Value, a []js.Value) any { return askapi.ProposalApplied(str(a, 0), str(a, 1)) }),
 	}

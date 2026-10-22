@@ -89,3 +89,25 @@ func TestAskNeedsCloudPresetAndKey(t *testing.T) {
 		}
 	}
 }
+
+func TestCheckKey(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer boa" {
+			w.WriteHeader(http.StatusBadRequest) // como o Gemini responde a uma chave errada
+			fmt.Fprint(w, `[{"error":{"code":400,"message":"API key not valid. Please pass a valid API key."}}]`)
+			return
+		}
+		fmt.Fprint(w, "data: {\"choices\":[{\"delta\":{\"content\":\"ok\"}}]}\n\ndata: [DONE]\n\n")
+	}))
+	defer srv.Close()
+	check := func(key string) string {
+		raw, _ := json.Marshal(AIConfig{Preset: "gemini", APIKey: key, BaseURL: srv.URL})
+		return Check(context.Background(), string(raw))
+	}
+	if got := check("boa"); got != `{"ok":true}` {
+		t.Errorf("chave boa: %s", got)
+	}
+	if got := check("ruim"); !strings.Contains(got, "a chave da IA foi recusada") || !strings.Contains(got, "API key not valid") {
+		t.Errorf("chave ruim: %s", got)
+	}
+}
