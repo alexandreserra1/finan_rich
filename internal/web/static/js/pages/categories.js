@@ -1,6 +1,7 @@
 // Categorias e divisão do salário.
 import { BUCKETS, SPENDING, html } from "../ui.js";
 import { pageHead } from "./dashboard.js";
+import { canDeleteCategory } from "../finance.js";
 
 const ORDER = { renda: 0, necessidades: 1, desejos: 2, investimentos: 3 };
 
@@ -79,8 +80,10 @@ export function bind(root, ctx) {
 
   root.querySelectorAll("[data-delete]").forEach((btn) => btn.addEventListener("click", async () => {
     const c = ctx.ledger.categories.find((x) => x.id === btn.dataset.delete);
-    if (ctx.ledger.transactions.some((t) => !t.deleted && t.categoryId === c.id)) {
-      ctx.error(new Error("categoria possui lançamentos; apague ou mova os lançamentos antes"));
+    try {
+      canDeleteCategory(ctx.ledger, c.id); // regra em Go: lançamentos, recorrentes ou metas usando
+    } catch (err) {
+      ctx.error(err);
       return;
     }
     if (!confirm(`Apagar a categoria ${c.name}?`)) return;

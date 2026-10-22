@@ -108,7 +108,8 @@ async function ask(ctx, question) {
     chat.history.push({ role: "assistant", content: answer, proposals });
   } catch (err) {
     chat.history.pop();
-    chat.error = err instanceof TypeError ? (chat.cloud ? "sem internet" : "sem conexão com o computador") : err.message;
+    // TypeError: fetch daqui; "network error": fetch do Go (IA na nuvem) que caiu no meio.
+    chat.error = err instanceof TypeError || /network error/.test(err.message) ? (chat.cloud ? "sem internet" : "sem conexão com o computador") : err.message;
   }
   chat.busy = false;
   ctx.rerender();

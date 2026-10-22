@@ -89,6 +89,16 @@ try {
   const content = JSON.parse(backup.bytes.toString());
   ok(content.app === "finan_rich" && content.counts.note === 2 && content.counts.transaction === 1, `backup com tudo (${JSON.stringify(content.counts)})`);
 
+  // Outro aparelho (com o relógio adiantado) muda uma nota e lança algo depois do backup.
+  const reserva = recs.changes.find((c) => c.type === "note" && c.record.title === "Reserva de emergência").record;
+  const other = [
+    { type: "note", record: { ...reserva, body: "Mudado no outro aparelho", updatedAt: Date.now() + 60000 } },
+    { type: "transaction", record: { id: "outro-1", updatedAt: Date.now(), kind: "saida", description: "Feira (outro aparelho)", amountCents: 3000, categoryId: recs.changes.find((c) => c.type === "transaction").record.categoryId, date: new Date().toISOString().slice(0, 10) } },
+  ];
+  const sent = await fetch(`${B}/api/sync`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cursor: 0, changes: other }) });
+  ok(sent.ok, `outro aparelho sincronizou (${sent.status})`);
+  await waitSynced(page);
+
   await page.goto(`${B}/notas`);
   await page.waitForSelector(".note:has-text('Ideias')");
   await page.click(".note:has-text('Ideias') [data-delete]");
@@ -103,6 +113,9 @@ try {
   await waitSynced(page);
   const after = await (await fetch(`${B}/api/sync`, { method: "POST", headers: { "Content-Type": "application/json" }, body: '{"cursor":0}' })).json();
   ok(after.changes.some((c) => c.type === "note" && c.record.title === "Ideias" && !c.record.deleted), "a restauração chegou ao computador");
+  const latest = (type, id) => after.changes.filter((c) => c.type === type && c.record.id === id).at(-1)?.record;
+  ok(latest("note", reserva.id)?.body === reserva.body, "conflito: a nota volta como estava no backup, mesmo mudada depois em outro aparelho");
+  ok(latest("transaction", "outro-1")?.deleted !== true && latest("transaction", "outro-1")?.description === "Feira (outro aparelho)", "o que o outro aparelho criou depois do backup continua");
 
   // Banco completo do computador.
   const db = await fetch(`${B}/configuracoes/backup.db`);

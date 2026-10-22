@@ -44,6 +44,21 @@ func decodeChange(c Change) (domain.Meta, []byte, error) {
 // maior conteúdo em ordem alfabética, para todos os aparelhos chegarem ao mesmo
 // resultado. Devolve quantas foram aceitas.
 func (s *Store) ApplyChanges(ctx context.Context, changes []Change) (int, error) {
+	n, _, err := s.ApplyChangesNotices(ctx, changes)
+	return n, err
+}
+
+// ApplyChangesNotices faz o mesmo que ApplyChanges e devolve também avisos para
+// o aparelho que enviou: hoje, categorias que ele apagou mas continuam em uso.
+//
+// Regra da categoria em uso (domain.Ledger.CanDeleteCategory): uma categoria
+// com lançamentos, recorrentes ou metas não apagados não fica apagada, em
+// qualquer ordem de chegada. Ex.: um aparelho apaga a categoria sem conexão
+// enquanto outro lança nela. Se o lançamento chega antes, o apagamento é
+// recusado; se chega depois, a categoria volta. Nos dois casos ela é regravada
+// ativa com updatedAt + 1 (vence o apagamento nos aparelhos) e nada se perde.
+// O resto da sincronização segue normalmente.
+func (s *Store) ApplyChangesNotices(ctx context.Context, changes []Change) (int, []string, error) {
 	type decoded struct {
 		typ  string
 		meta domain.Meta
@@ -53,13 +68,16 @@ func (s *Store) ApplyChanges(ctx context.Context, changes []Change) (int, error)
 	for _, c := range changes {
 		meta, data, err := decodeChange(c)
 		if err != nil {
-			return 0, err
+			return 0, nil, err
 		}
 		list = append(list, decoded{c.Type, meta, data})
 	}
 
 	applied := 0
+	var notices []string
 	err := s.inTx(ctx, func(tx *sql.Tx) error {
+		var touched []string          // categorias a conferir no fim, na ordem
+		deleting := map[string]bool{} // categoria → apagada por este envio
 		aliases, err := defaultAliases(ctx, tx, changes)
 		if err != nil {
 			return err
@@ -92,10 +110,115 @@ func (s *Store) ApplyChanges(ctx context.Context, changes []Change) (int, error)
 				return err
 			}
 			applied++
+			if id := categoryTouched(d.typ, d.meta, d.data); id != "" {
+				if _, seen := deleting[id]; !seen {
+					touched = append(touched, id)
+				}
+				deleting[id] = deleting[id] || d.typ == TypeCategory
+			}
+		}
+		// Conferido só no fim: quem move os lançamentos e apaga a categoria no
+		// mesmo envio consegue apagar.
+		for _, id := range touched {
+			inUse, err := keepUsedCategory(ctx, tx, id)
+			if err != nil {
+				return err
+			}
+			if inUse != "" && deleting[id] {
+				notices = append(notices, "não foi possível apagar: "+inUse)
+			}
 		}
 		return nil
 	})
-	return applied, err
+	if err != nil {
+		return 0, nil, err
+	}
+	return applied, notices, nil
+}
+
+// categoryTouched devolve a categoria que um registro gravado pode deixar
+// apagada e em uso: a própria categoria apagada, ou a categoria de um
+// lançamento, recorrente ou meta ativo.
+func categoryTouched(typ string, meta domain.Meta, data []byte) string {
+	switch {
+	case typ == TypeCategory && meta.Deleted:
+		return meta.ID
+	case meta.Deleted, typ != TypeTransaction && typ != TypeRecurring && typ != TypeGoal:
+		return ""
+	}
+	var r struct {
+		CategoryID string `json:"categoryId"`
+	}
+	json.Unmarshal(data, &r)
+	return r.CategoryID
+}
+
+// keepUsedCategory regrava ativa a categoria que está apagada mas ainda em uso
+// (updatedAt + 1, para chegar aos aparelhos) e devolve o motivo; vazio se ela
+// não está apagada ou ninguém a usa.
+func keepUsedCategory(ctx context.Context, tx *sql.Tx, id string) (string, error) {
+	var data string
+	var updated int64
+	var deleted bool
+	err := tx.QueryRowContext(ctx, `SELECT data, updated_at, deleted FROM records WHERE type = ? AND id = ?`, TypeCategory, id).Scan(&data, &updated, &deleted)
+	if errors.Is(err, sql.ErrNoRows) || err == nil && !deleted {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	var l domain.Ledger
+	var cat domain.Category
+	if err := json.Unmarshal([]byte(data), &cat); err != nil {
+		return "", err
+	}
+	l.Categories = []domain.Category{cat}
+	rows, err := tx.QueryContext(ctx, `SELECT type, data FROM records WHERE deleted = 0 AND type IN (?, ?, ?)
+		AND json_extract(data, '$.categoryId') = ?`, TypeTransaction, TypeRecurring, TypeGoal, id)
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var typ, raw string
+		if err := rows.Scan(&typ, &raw); err != nil {
+			return "", err
+		}
+		var target any
+		switch typ {
+		case TypeTransaction:
+			l.Transactions = append(l.Transactions, domain.Transaction{})
+			target = &l.Transactions[len(l.Transactions)-1]
+		case TypeRecurring:
+			l.Recurring = append(l.Recurring, domain.Recurring{})
+			target = &l.Recurring[len(l.Recurring)-1]
+		case TypeGoal:
+			l.Goals = append(l.Goals, domain.Goal{})
+			target = &l.Goals[len(l.Goals)-1]
+		}
+		if err := json.Unmarshal([]byte(raw), target); err != nil {
+			return "", err
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return "", err
+	}
+	inUse := l.CanDeleteCategory(id)
+	if inUse == nil {
+		return "", nil
+	}
+	cat.Deleted, cat.UpdatedAt = false, updated+1
+	revived, err := json.Marshal(cat)
+	if err != nil {
+		return "", err
+	}
+	rev, err := nextRev(ctx, tx)
+	if err != nil {
+		return "", err
+	}
+	_, err = tx.ExecContext(ctx, `UPDATE records SET data = ?, updated_at = ?, deleted = 0, rev = ? WHERE type = ? AND id = ?`,
+		string(revived), cat.UpdatedAt, rev, TypeCategory, id)
+	return inUse.Error(), err
 }
 
 func nextRev(ctx context.Context, tx *sql.Tx) (int64, error) {

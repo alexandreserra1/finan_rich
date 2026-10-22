@@ -107,6 +107,11 @@ aparelho                                      servidor
   para todos os aparelhos chegarem ao mesmo resultado. A regra existe no servidor
   (`store.ApplyChanges`) e no aparelho (`db.applyRemote`).
 - **Apagar** é marcar `deleted: true` (para o apagamento chegar aos outros aparelhos).
+- **Categoria em uso** (`domain.Ledger.CanDeleteCategory`): não pode ser apagada enquanto
+  lançamentos, recorrentes ou metas ativos a usam. O aparelho confere antes de apagar; o
+  servidor confere ao sincronizar, em qualquer ordem de chegada: se a categoria apagada ainda
+  está em uso, ela volta ativa (`updatedAt + 1`) e o aparelho que apagou recebe um aviso
+  (`notices` na resposta do sync).
 - Respostas: `401` → indicador "Entre de novo para sincronizar"; falha de rede → "Offline";
   `422` → registro inválido (mensagem do domínio).
 
@@ -385,7 +390,7 @@ Arquivos do navegador (`static/`):
 | `js/pages/dashboard.js` | Painel do mês: totais, divisão do salário, gastos por categoria, visão anual. Também exporta o seletor de mês e os cartões de totais usados pelos lançamentos. |
 | `js/pages/transactions.js` | Lançamentos: formulário (categorias filtradas por entrada/saída), lista do mês, apagar, "copiar do mês anterior". |
 | `js/pages/debts.js` | Dívidas: cadastro e edição, simulação pagando o mínimo, ordem avalanche e bola de neve. |
-| `js/pages/categories.js` | Divisão do salário (percentuais) e categorias (criar, apagar se não tiver lançamentos). |
+| `js/pages/categories.js` | Divisão do salário (percentuais) e categorias (criar, apagar se nada a usa: regra em Go). |
 | `js/pages/notes.js` | Notas: criar, editar, fixar, buscar, apagar e exportar cada uma em PDF ou texto. |
 | `js/pages/export.js` | Exportar (Excel, PDF, CSV por período), backup e restauração. |
 | `js/pages/import.js` | Importar extrato: enviar o arquivo, revisar (marcar, editar descrição, escolher categoria), pedir à IA e importar. |

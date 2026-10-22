@@ -14,7 +14,8 @@ let again = false;
 let timer = null;
 
 // status: "ok" | "syncing" | "offline" | "login" | "unpaired" | "error"
-export const state = { status: "syncing", pending: 0, lastSync: null, message: "" };
+// notice: aviso do computador nesta sincronização (ex.: categoria em uso não apagada).
+export const state = { status: "syncing", pending: 0, lastSync: null, message: "", notice: "" };
 
 function emit(dataChanged = false) {
   window.dispatchEvent(new CustomEvent("finan-sync", { detail: { ...state, dataChanged } }));
@@ -34,6 +35,7 @@ async function round() {
   state.pending = out.length;
   let cursor = await getMeta("cursor", 0);
   let changed = false;
+  const notices = [];
   let toSend = out.filter((c) => !unsupported.has(c.type));
   const api = await endpoint("/api/sync");
   if (!api) throw Object.assign(new Error("unpaired"), { kind: "unpaired" });
@@ -53,6 +55,7 @@ async function round() {
       continue;
     }
     if (!res.ok) throw Object.assign(new Error(body.error || res.statusText), { kind: "error" });
+    notices.push(...(body.notices || []));
     if (toSend.length) {
       await clearSent(toSend.slice(0, BATCH));
       toSend = toSend.slice(BATCH);
@@ -63,6 +66,7 @@ async function round() {
     if (!body.more && !toSend.length) break;
   }
   state.pending = (await pending()).length;
+  state.notice = notices.join(" ");
   state.message = unsupported.size ? "Atualize o finan_rich do computador para sincronizar as notas." : "";
   return changed;
 }
@@ -83,6 +87,7 @@ export async function sync() {
         state.status = "ok";
         state.lastSync = new Date();
         emit(changed);
+        state.notice = "";
       } while (again);
     } catch (err) {
       state.pending = (await pending()).length;

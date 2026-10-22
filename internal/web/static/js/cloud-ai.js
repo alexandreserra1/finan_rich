@@ -12,6 +12,13 @@ import { today } from "./ui.js";
 
 let advisorLoaded = null;
 
+// Se a internet cai no meio da resposta, o Go (net/http no WebAssembly) fecha a
+// resposta quebrada com stream.cancel() e não trata a promessa. O erro já chega
+// ao ask(); aqui só evitamos o "Uncaught (in promise)".
+window.addEventListener("unhandledrejection", (e) => {
+  if (e.reason instanceof TypeError && e.reason.message === "network error") e.preventDefault();
+});
+
 function loadAdvisor() {
   advisorLoaded ??= new Promise((resolve, reject) => {
     window.addEventListener("finan-advisor-ready", () => resolve(), { once: true });

@@ -129,7 +129,4 @@ Achados das revisões de código, segurança e testes que ficaram para depois:
 - **Cota grátis da IA na nuvem**: cada pergunta com ferramentas faz de 2 a 5 chamadas; o
   plano grátis do Gemini acaba rápido (erro 429, a tela avisa). Vale mostrar o uso do dia.
 - **Pelo Wi-Fi o tráfego é HTTP**: para usar fora de casa, Tailscale (HTTPS).
-- **Testes que faltam**: restauração de backup com conflito entre aparelhos, erro de rede no
-  meio do chat (e2e), excluir dívida (e2e), regra "categoria em uso não pode ser apagada" em
-  Go (hoje só em JS).
 - **IA "custom" num proxy local** (LiteLLM etc.) conta como local e vai sem apelidos.

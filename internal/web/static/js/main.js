@@ -56,11 +56,13 @@ function showStatus(s) {
   if (device.isApp && (s.status === "login" || s.status === "unpaired")) pill.onclick = () => navigate("/configuracoes");
   else if (s.status === "login") pill.onclick = () => { location.href = "/entrar?volta=" + encodeURIComponent(location.pathname); };
 }
-window.addEventListener("finan-sync", (e) => {
+window.addEventListener("finan-sync", async (e) => {
   showStatus(e.detail);
-  if (!e.detail.dataChanged || !root) return;
-  if (booted) reloadAndRender();
-  else changedDuringBoot = true; // relê assim que terminar de iniciar
+  if (e.detail.dataChanged && root) {
+    if (booted) await reloadAndRender();
+    else changedDuringBoot = true; // relê assim que terminar de iniciar
+  }
+  if (e.detail.notice) flash(e.detail.notice, "err"); // ex.: categoria apagada aqui, mas usada em outro aparelho
 });
 
 // O chat chama isto antes de perguntar, para a IA ver os dados mais recentes.

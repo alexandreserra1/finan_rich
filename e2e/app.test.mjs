@@ -129,6 +129,11 @@ const cloudAI = createServer((req, res) => {
     cloudBodies.push({ auth: req.headers.authorization, messages });
     const last = messages.at(-1);
     const question = messages.findLast((m) => m.role === "user").content.split("</dados_financeiros>").at(-1);
+    // A internet cai no meio da resposta: manda um pedaço e corta a conexão.
+    if (/internet caiu/i.test(question)) {
+      res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: "Metade da resp" } }] })}\n\n`);
+      return setTimeout(() => res.socket.destroy(), 100);
+    }
     const send = (delta) => res.end(`data: ${JSON.stringify({ choices: [{ delta }] })}\n\ndata: [DONE]\n\n`);
     const call = (name, args) => send({ tool_calls: [{ index: 0, id: "c" + messages.length, type: "function", function: { name, arguments: JSON.stringify(args) } }] });
     if (last.role === "tool") return send({ content: last.content.startsWith("Pronto") ? "Deixei pronto para você confirmar." : "Na " + question.match(/Loja [A-Z]{2,}/)?.[0] + " você gastou " + last.content.match(/Saídas: (R\$ [\d.,]+)/)?.[1] + "." });
@@ -222,6 +227,19 @@ try {
   await page.click(".proposal:has-text('Pão') button");
   await page.waitForSelector(".proposal:has-text('Pão') button:has-text('Adicionado')", { timeout: 10000 });
   ok(true, "pela nuvem, a proposta também vira cartão e grava neste celular");
+
+  // A internet cai no meio da resposta: mostra o erro, não fica em "Pensando…"
+  // e não guarda a resposta pela metade.
+  await page.fill("textarea[name=message]", "E se a internet caiu?");
+  await page.click("form[data-form=ask] button");
+  await page.waitForSelector(".msg.error:has-text('sem internet')", { timeout: 30000 });
+  const savedChat = JSON.stringify(await page.evaluate(async () => (await import("/static/js/cloud-ai.js")).loadChat()));
+  ok(await page.locator(".msg.pending").count() === 0 && !(await page.textContent(".messages")).includes("Metade da resp") && !savedChat.includes("Metade da resp"),
+    `internet caindo no meio do chat: erro, sem "Pensando…" e sem resposta pela metade (${await page.textContent(".msg.error")})`);
+  await page.fill("textarea[name=message]", "Oi");
+  await page.click("form[data-form=ask] button");
+  await page.waitForSelector(".msg.assistant:has-text('Oi!')", { timeout: 30000 });
+  ok(await page.locator(".msg.error").count() === 0, "depois da queda, a próxima pergunta funciona");
 
   // Link de pareamento (QR code) abre Ajustes preenchido, sem conectar sozinho.
   const code = await newPairingCode();

@@ -82,6 +82,25 @@ try {
     ok(true, "aviso de vencimento no painel");
   }
 
+  // Apagar dívida: some da tela, não volta ao recarregar e o apagamento chega ao computador.
+  await page.goto(`${B}/dividas`);
+  await page.waitForSelector("form[data-form=debt]");
+  await page.fill("input[name=name]", "Empréstimo");
+  await page.fill("input[name=balance]", "1.000");
+  await page.fill("input[name=rate]", "5");
+  await page.fill("input[name=min_payment]", "100");
+  await page.click("form[data-form=debt] button[type=submit]");
+  await page.waitForSelector("td:has-text('Empréstimo')");
+  await page.evaluate(() => window.finanSync());
+  ok((await records("debt")).some((d) => d.name === "Empréstimo"), "dívida nova sincronizou");
+  await page.click("tr:has-text('Empréstimo') [data-delete]");
+  await page.waitForSelector("td:has-text('Empréstimo')", { state: "detached" });
+  await page.evaluate(() => window.finanSync());
+  await page.reload();
+  await page.waitForSelector("form[data-form=debt]");
+  ok(await page.locator("td:has-text('Empréstimo')").count() === 0 && !(await records("debt")).some((d) => d.name === "Empréstimo"),
+    "dívida apagada some aqui e no computador");
+
   // Meta com categoria de aportes.
   await page.goto(`${B}/metas`);
   await page.waitForSelector("form[data-form=goal]");
