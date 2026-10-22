@@ -337,3 +337,19 @@ func TestToolsUnsupported(t *testing.T) {
 		t.Error("só erro 4xx do provedor conta")
 	}
 }
+
+func TestIsLocal(t *testing.T) {
+	for cfg, want := range map[Config]bool{
+		{Kind: KindOllama, Model: "qwen3.5:9b"}:                                              true,
+		{Kind: KindOllama, BaseURL: "http://192.168.0.10:11434", Model: "qwen3.5:9b"}:        true,
+		{Kind: KindOllama, Model: "qwen3.5:cloud"}:                                           false,
+		{Kind: KindOpenAI, BaseURL: "http://localhost:1234/v1", Model: "m"}:                  true,
+		{Kind: KindOpenAI, BaseURL: "https://api.groq.com/openai/v1", Model: "m"}:            false,
+		{Kind: KindOpenAI, BaseURL: "https://generativelanguage.googleapis.com", Model: "m"}: false,
+		{Kind: KindAnthropic, Model: "claude-opus-5-5"}:                                      false,
+	} {
+		if got := IsLocal(cfg); got != want {
+			t.Errorf("IsLocal(%+v) = %v", cfg, got)
+		}
+	}
+}

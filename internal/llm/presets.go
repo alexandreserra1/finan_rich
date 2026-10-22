@@ -36,6 +36,13 @@ var Presets = []Preset{
 		Models: []string{"qwen/qwen3-32b", "llama-3.3-70b-versatile", "openai/gpt-oss-120b"},
 	},
 	{
+		ID: "gemini", Name: "Google Gemini (nuvem, grátis)", Kind: KindOpenAI,
+		Description: "Plano gratuito com limite diário. Atenção: no plano grátis o Google pode usar o que é enviado para melhorar os produtos dele (o finan_rich manda tudo anonimizado). Precisa de uma chave grátis do Google AI Studio.",
+		BaseURL:     "https://generativelanguage.googleapis.com/v1beta/openai", Model: "gemini-2.5-flash", NeedsKey: true,
+		KeyURL: "https://aistudio.google.com/apikey",
+		Models: []string{"gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"},
+	},
+	{
 		ID: "openrouter", Name: "OpenRouter (nuvem, modelos grátis)", Kind: KindOpenAI,
 		Description: "Dá acesso a vários modelos abertos; os terminados em \":free\" não custam nada. Precisa de chave.",
 		BaseURL:     "https://openrouter.ai/api/v1", Model: "deepseek/deepseek-chat-v3.1:free", NeedsKey: true,

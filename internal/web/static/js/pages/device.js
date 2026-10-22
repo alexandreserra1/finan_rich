@@ -2,9 +2,11 @@
 import * as db from "../db.js";
 import * as device from "../device.js";
 import * as finance from "../finance.js";
+import * as cloud from "../cloud-ai.js";
+import { resetChat } from "./advisor.js";
 import * as sync from "../sync.js";
 import { canScan, hasReminders, remindersEnabled, scanPairingQR, setRemindersEnabled } from "../native.js";
-import { html } from "../ui.js";
+import { html, toString } from "../ui.js";
 
 export const needsData = false; // funciona antes de baixar qualquer dado
 
@@ -26,6 +28,40 @@ function pairForm(params, paired) {
 }
 
 let remindersOn = true;
+let ai = null; // { presets, cfg } da IA na nuvem (carregado depois, do advisor.wasm)
+
+function cloudSection(server) {
+  if (!ai || ai.loading) return html`<section class="panel" id="ia-nuvem"><h2>Consultor sem computador</h2><p class="muted small loading">Carregando…</p></section>`;
+  if (ai.error) return html`<section class="panel" id="ia-nuvem"><h2>Consultor sem computador</h2><p class="notice warn">${ai.error}</p></section>`;
+  const cfg = ai.cfg || {};
+  const preset = ai.presets.find((p) => p.id === (ai.chosen || cfg.preset)) || ai.presets[0];
+  const model = cfg.preset === preset.id && cfg.model ? cfg.model : preset.model;
+  const hasKey = cfg.key && cfg.preset === preset.id;
+  return html`<section class="panel" id="ia-nuvem">
+    <h2>Consultor sem computador</h2>
+    <p class="small muted">O consultor pode usar uma IA na nuvem, chamada direto deste celular. Antes de sair, os nomes de lojas,
+      dívidas, credores e metas viram apelidos ("Loja 3", "Dívida 1") e as notas ficam de fora: a IA vê só valores, datas e
+      categorias. A conexão é cifrada (HTTPS) e a chave fica guardada cifrada neste aparelho.</p>
+    <form data-form="cloud-ai" class="grid-form">
+      <label>IA na nuvem
+        <select name="preset">${ai.presets.map((p) => html`<option value="${p.id}" ${p.id === preset.id ? "selected" : ""}>${p.name}</option>`)}</select>
+      </label>
+      <p class="small muted">${preset.description} <a href="${preset.keyUrl}" target="_blank" rel="noopener">Pegar uma chave</a></p>
+      <label>Modelo
+        <input name="model" value="${model}" list="cloud-models" autocomplete="off">
+        <datalist id="cloud-models">${preset.models.map((m) => html`<option value="${m}">`)}</datalist>
+      </label>
+      <label>Chave da IA
+        <input name="apiKey" type="password" autocomplete="off" placeholder="${hasKey ? "guardada cifrada ✓ (cole outra para trocar)" : "cole a chave aqui"}">
+      </label>
+      ${server ? html`<label class="check"><input type="checkbox" name="enabled" ${cfg.enabled ? "checked" : ""}> Usar a nuvem mesmo com o computador conectado</label>` : ""}
+      <div class="row-actions tight">
+        <button type="submit">Salvar</button>
+        ${cfg.key ? html`<button type="button" class="secondary" data-action="cloud-forget">Apagar a chave e a conversa</button>` : ""}
+      </div>
+    </form>
+  </section>`;
+}
 
 export function render({ server, params, ledger }) {
   const fromLink = params.has("codigo");
@@ -55,6 +91,8 @@ export function render({ server, params, ledger }) {
           ${fromLink ? html`<p class="notice warn">Confira se o endereço abaixo é mesmo o do seu computador antes de conectar.</p>` : ""}
           ${pairForm(params, false)}`}
     </section>
+
+    ${cloudSection(server)}
 
     ${!server ? html`<section class="panel" id="sozinho">
       <h2>Sem computador?</h2>
@@ -91,6 +129,7 @@ export function bind(root, ctx) {
       ctx.error(err);
     }
   });
+  bindCloud(root, ctx);
   root.querySelector('[data-action="solo"]')?.addEventListener("click", async () => {
     try {
       await finance.load();
@@ -115,6 +154,7 @@ export function bind(root, ctx) {
     try {
       const url = await device.pair(f.url.value, f.code.value);
       history.replaceState(null, "", "/configuracoes");
+      resetChat(); // o consultor passa a usar o computador
       await ctx.refresh(`Conectado a ${url}. Baixando seus dados…`);
       sync.sync();
     } catch (err) {
@@ -132,11 +172,53 @@ export function bind(root, ctx) {
   on("unpair", async () => {
     if (!confirm("Desconectar este celular do computador? Os dados continuam neste celular, mas param de sincronizar.")) return;
     await device.unpair();
+    resetChat();
     await ctx.refresh("Desconectado do computador.");
   });
   on("wipe", async () => {
     if (!confirm("Apagar todos os dados deste celular? Os que já estão no computador continuam lá.")) return;
     await db.wipe();
     await ctx.refresh("Dados deste celular apagados.");
+  });
+}
+
+// A seção da IA na nuvem se redesenha sozinha (carrega depois, do advisor.wasm):
+// redesenhar a tela toda fecharia o que a pessoa abriu (ex.: o pareamento).
+function bindCloud(root, ctx) {
+  const redraw = () => {
+    const section = root.querySelector("#ia-nuvem");
+    if (!section) return;
+    section.outerHTML = toString(cloudSection(ctx.server));
+    bindCloud(root, ctx);
+  };
+  if (!ai) {
+    ai = { loading: true };
+    Promise.all([cloud.presets(), cloud.config()])
+      .then(([presets, cfg]) => { ai = { presets, cfg }; })
+      .catch((err) => { ai = { error: "O consultor sem computador só funciona no app do celular (" + err.message + ")." }; })
+      .then(redraw);
+  }
+  const form = root.querySelector('[data-form="cloud-ai"]');
+  form?.elements.preset.addEventListener("change", (e) => { ai.chosen = e.target.value; redraw(); });
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = form.elements;
+    try {
+      if (!f.apiKey.value && !(ai.cfg?.key && ai.cfg.preset === f.preset.value)) throw new Error("cole a chave da IA");
+      ai.cfg = await cloud.saveConfig({ preset: f.preset.value, model: f.model.value.trim(), enabled: !!f.enabled?.checked, apiKey: f.apiKey.value });
+      ai.chosen = null;
+      resetChat();
+      redraw();
+      ctx.flash("IA na nuvem salva. A chave ficou guardada cifrada neste celular.");
+    } catch (err) {
+      ctx.error(err);
+    }
+  });
+  root.querySelector('[data-action="cloud-forget"]')?.addEventListener("click", async () => {
+    if (!confirm("Apagar a chave da IA e a conversa com ela deste celular?")) return;
+    await cloud.forget();
+    ai.cfg = null;
+    resetChat();
+    redraw();
   });
 }

@@ -129,6 +129,10 @@ aparelho                                      servidor
    O laço pede ferramentas até 4 vezes por pergunta. Ferramentas usam o formato nativo de cada
    provedor (Ollama, OpenAI-compatível, Anthropic); se o modelo não aceitar ferramentas, o
    consultor pergunta de novo sem elas.
+   Quando a IA configurada é de nuvem (`llm.IsLocal` falso), `advisor.Answer` anonimiza antes
+   (`advisor/anon.go`): lojas, dívidas, credores e metas viram apelidos, as notas ficam de fora,
+   e a resposta e as propostas voltam com os nomes verdadeiros. O app do celular sem computador
+   usa o mesmo caminho em WebAssembly (`internal/askapi`, `cmd/finanadvisor`).
 4. A resposta volta em streaming (Server-Sent Events) e é gravada em `chat_messages`, com as
    propostas (coluna `proposals`, JSON). Ao mostrar a conversa, `advisor.Applied` compara cada
    proposta com os dados atuais para marcar o cartão como feito.

@@ -126,6 +126,22 @@ A versão do app fica em `mobile/android/app/version.properties`: o workflow de 
 
 ## Recursos do celular
 
+- **Consultor sem computador** (Ajustes do app → *Consultor sem computador*): o celular chama
+  uma IA na nuvem com plano grátis (Groq, Google Gemini, OpenRouter) direto, sem passar pelo
+  computador. Privacidade:
+  - **anonimizado**: antes de sair, nomes de lojas, dívidas, credores e metas viram apelidos
+    ("Loja 3", "Dívida 1") e as notas ficam de fora; a pergunta e o histórico também. A IA vê
+    valores, datas e categorias. Na volta, o app troca os apelidos pelos nomes, e os cartões
+    gravam sempre o nome verdadeiro (pelo ID do registro). Regras em `advisor/anon.go`.
+  - **chave cifrada**: AES-GCM com uma chave do aparelho que o navegador não deixa exportar
+    (`js/cloud-ai.js`); a conversa fica só no celular.
+  - **conexão cifrada** (HTTPS). A IA precisa ler os números para responder: não existe IA na
+    nuvem que trabalhe com dados cifrados. No plano grátis do Gemini, o Google pode usar o que
+    recebe para melhorar os produtos dele.
+  - O consultor, as ferramentas e a anonimização são os mesmos do computador, compilados para
+    um WebAssembly à parte (`cmd/finanadvisor` → `advisor.wasm`, ~3 MB no APK), que só o app
+    leva e só carrega ao abrir o Consultor. O Claude (Anthropic) fica só no computador.
+
 - **Ler QR code** (Ajustes do app → *Ler QR code*): câmera do WebView (`getUserMedia`) +
   [jsQR](https://github.com/cozmo/jsQR) (Apache-2.0), em `js/qrscan.js`. Lê o QR dos Ajustes
   do computador (`http://…/parear?codigo=…`) e conecta. Sem bibliotecas fechadas (veja

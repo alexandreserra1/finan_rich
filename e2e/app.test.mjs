@@ -17,6 +17,7 @@ const WWW = process.env.APP_WWW || "../mobile/www";
 const PORT = 18098;
 const APP_PORT = 18097;
 const OLLAMA_PORT = 18083;
+const CLOUD_PORT = 18082;
 const B = `http://127.0.0.1:${PORT}`;
 const APP = `http://127.0.0.1:${APP_PORT}`;
 const dataDir = mkdtempSync(join(tmpdir(), "finan-e2e-app-"));
@@ -113,6 +114,31 @@ const ollama = createServer((req, res) => {
 });
 await new Promise((r) => ollama.listen(OLLAMA_PORT, "127.0.0.1", r));
 
+// IA na nuvem falsa (formato OpenAI), chamada direto do celular sem computador.
+// Guarda tudo que recebe, para conferir que nenhum nome real saiu do aparelho.
+const cloudBodies = [];
+const cloudAI = createServer((req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+  if (req.method === "OPTIONS") return res.end();
+  let body = "";
+  req.on("data", (c) => (body += c));
+  req.on("end", () => {
+    const { messages } = JSON.parse(body);
+    cloudBodies.push({ auth: req.headers.authorization, messages });
+    const last = messages.at(-1);
+    const question = messages.findLast((m) => m.role === "user").content.split("</dados_financeiros>").at(-1);
+    const send = (delta) => res.end(`data: ${JSON.stringify({ choices: [{ delta }] })}\n\ndata: [DONE]\n\n`);
+    const call = (name, args) => send({ tool_calls: [{ index: 0, id: "c" + messages.length, type: "function", function: { name, arguments: JSON.stringify(args) } }] });
+    if (last.role === "tool") return send({ content: last.content.startsWith("Pronto") ? "Deixei pronto para você confirmar." : "Na " + question.match(/Loja \d+/)?.[0] + " você gastou " + last.content.match(/Saídas: (R\$ [\d.,]+)/)?.[1] + "." });
+    const shop = question.match(/Loja \d+/)?.[0];
+    if (shop) return call("buscar_lancamentos", { texto: shop });
+    if (/pão/i.test(question)) return call("propor_lancamento", { descricao: "Pão", valor: "8,50", categoria: "Mercado" });
+    send({ content: "Oi!" });
+  });
+});
+await new Promise((r) => cloudAI.listen(CLOUD_PORT, "127.0.0.1", r));
+
 const status = (page) => page.locator("#sync-status").getAttribute("data-status");
 const waitStatus = (page, s, timeout = 15000) =>
   page.waitForFunction((s) => document.getElementById("sync-status")?.dataset.status === s, s, { timeout });
@@ -158,6 +184,37 @@ try {
   await page.waitForSelector("form[data-form=transaction]", { timeout: 20000 });
   await addTransaction(page, "Feira (só celular)", "40");
   ok(true, "sem computador, o app funciona só no celular (categorias criadas no aparelho)");
+
+  // Consultor sem computador: IA na nuvem, chave cifrada, nomes anonimizados.
+  await page.goto(`${APP}/configuracoes`);
+  await page.waitForSelector("form[data-form=cloud-ai]", { timeout: 20000 });
+  await page.selectOption("form[data-form=cloud-ai] select[name=preset]", "groq");
+  await page.fill("form[data-form=cloud-ai] input[name=apiKey]", "chave-secreta-123");
+  await page.click("form[data-form=cloud-ai] button[type=submit]");
+  await page.waitForSelector(".flash:has-text('guardada cifrada')");
+  const stored = await page.evaluate(async () => {
+    const db = await import("/static/js/db.js");
+    const cfg = await db.getMeta("cloud-ai");
+    const plain = JSON.stringify(cfg) + new TextDecoder().decode(cfg.key.data);
+    await db.setMeta("cloud-ai", { ...cfg, baseUrl: "http://127.0.0.1:18082" }); // a nuvem falsa
+    return { preset: cfg.preset, cipher: cfg.key.data instanceof ArrayBuffer, leaked: plain.includes("chave-secreta-123") };
+  });
+  ok(stored.preset === "groq" && stored.cipher && !stored.leaked, "a chave da IA fica cifrada no aparelho (não aparece em texto puro)");
+  await page.goto(`${APP}/chat`);
+  await page.waitForSelector("form[data-form=ask]", { timeout: 20000 });
+  await page.fill("textarea[name=message]", "Quanto gastei na Feira?");
+  await page.click("form[data-form=ask] button");
+  await page.waitForSelector(".msg.assistant:has-text('você gastou')", { timeout: 30000 });
+  const said = await page.textContent(".msg.assistant >> nth=-1");
+  const sent = JSON.stringify(cloudBodies.map((b) => b.messages));
+  ok(said.includes("Feira (só celular)") && said.includes("R$ 40,00"), `a resposta volta com o nome verdadeiro (${said.trim()})`);
+  ok(!/feira/i.test(sent) && cloudBodies.every((b) => b.auth === "Bearer chave-secreta-123"), "nenhum nome real saiu do celular (a IA só viu apelidos)");
+  await page.fill("textarea[name=message]", "Lança 8,50 do pão");
+  await page.click("form[data-form=ask] button");
+  await page.waitForSelector(".proposal:has-text('Pão')", { timeout: 30000 });
+  await page.click(".proposal:has-text('Pão') button");
+  await page.waitForSelector(".proposal:has-text('Pão') button:has-text('Adicionado')", { timeout: 10000 });
+  ok(true, "pela nuvem, a proposta também vira cartão e grava neste celular");
 
   // Link de pareamento (QR code) abre Ajustes preenchido, sem conectar sozinho.
   const code = await newPairingCode();
@@ -313,6 +370,7 @@ try {
   await stopServer();
   appServer.close();
   ollama.close();
+  cloudAI.close();
   rmSync(dataDir, { recursive: true, force: true });
 }
 console.log(failures ? `\n${failures} falha(s)` : "\nTudo certo.");

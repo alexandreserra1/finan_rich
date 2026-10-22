@@ -11,6 +11,7 @@ import (
 
 	"github.com/alexandreserra1/finan_rich/internal/advisor"
 	"github.com/alexandreserra1/finan_rich/internal/domain"
+	"github.com/alexandreserra1/finan_rich/internal/llm"
 )
 
 // chatEntry é uma mensagem da conversa com as propostas (e se já valem).
@@ -92,7 +93,7 @@ func (s *Server) answer(w http.ResponseWriter, r *http.Request, question string)
 		sse.Error(err)
 	}
 
-	provider, _, err := s.provider(ctx)
+	provider, ai, err := s.provider(ctx)
 	if err != nil {
 		fail(err)
 		return
@@ -102,21 +103,20 @@ func (s *Server) answer(w http.ResponseWriter, r *http.Request, question string)
 		fail(err)
 		return
 	}
-	now := time.Now()
-	snap := advisor.Snapshot(advisor.BuildFacts(ledger, now))
-	var proposals []advisor.Proposal
-	tools := advisor.NewTools(ledger, now, func(p advisor.Proposal) {
-		proposals = append(proposals, p)
-		sse.Send(map[string]any{"proposal": p})
-	})
 	history, err := s.store.ListChat(ctx)
 	if err != nil {
 		fail(err)
 		return
 	}
-	answer, err := advisor.Ask(ctx, provider, history, question, snap, tools, func(text string) {
-		sse.Send(map[string]string{"text": text})
-	})
+	// IA de nuvem: nomes de lojas, dívidas e metas saem com apelidos.
+	past := make([]llm.Message, len(history))
+	for i, m := range history {
+		past[i] = llm.Message{Role: llm.Role(m.Role), Content: m.Content}
+	}
+	q := advisor.Question{History: past, Text: question, Ledger: ledger, Today: time.Now(), Anonymize: !llm.IsLocal(ai.Config)}
+	answer, proposals, err := advisor.Answer(ctx, provider, q,
+		func(text string) { sse.Send(map[string]string{"text": text}) },
+		func(p advisor.Proposal) { sse.Send(map[string]any{"proposal": p}) })
 	if errors.Is(err, context.Canceled) {
 		return
 	}

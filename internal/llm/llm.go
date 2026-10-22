@@ -14,7 +14,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -103,6 +105,9 @@ type Config struct {
 	APIKey  string
 }
 
+// ErrRefused indica que o modelo recusou responder.
+var ErrRefused = errors.New("o assistente não pôde responder essa pergunta; tente reformular")
+
 // ErrNotConfigured indica que falta alguma informação para usar o provedor.
 var ErrNotConfigured = errors.New("assistente de IA não configurado")
 
@@ -156,3 +161,28 @@ func (e *APIError) Error() string {
 
 // trimSlash remove a barra final para concatenar caminhos com segurança.
 func trimSlash(s string) string { return strings.TrimRight(s, "/") }
+
+// IsLocal diz se a IA roda neste computador ou na rede de casa (os dados não
+// saem). Nuvem (Groq, Gemini, Anthropic, modelos ":cloud" do Ollama) não é.
+func IsLocal(cfg Config) bool {
+	switch {
+	case cfg.Kind == KindAnthropic:
+		return false
+	case cfg.Kind == KindOllama && IsCloudModel(cfg.Model):
+		return false
+	}
+	base := cfg.BaseURL
+	if base == "" && cfg.Kind == KindOllama {
+		base = DefaultOllamaURL
+	}
+	u, err := url.Parse(base)
+	if err != nil {
+		return false
+	}
+	host := u.Hostname()
+	if host == "localhost" || strings.HasSuffix(host, ".local") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && (ip.IsLoopback() || ip.IsPrivate())
+}

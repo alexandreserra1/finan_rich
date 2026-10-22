@@ -6,9 +6,11 @@ package advisor
 import (
 	"context"
 	"strings"
+	"time"
+
+	"github.com/alexandreserra1/finan_rich/internal/domain"
 
 	"github.com/alexandreserra1/finan_rich/internal/llm"
-	"github.com/alexandreserra1/finan_rich/internal/store"
 )
 
 // SystemPrompt são as instruções fixas do consultor. Mantenha-o estável: alguns
@@ -34,12 +36,12 @@ const maxHistory = 12
 // BuildRequest monta a requisição: histórico recente + pergunta nova com o
 // retrato financeiro atual. Só a última pergunta leva o retrato, para não
 // repetir dados velhos e economizar contexto.
-func BuildRequest(history []store.ChatMessage, question, snapshot string) llm.Request {
+func BuildRequest(history []llm.Message, question, snapshot string) llm.Request {
 	if len(history) > maxHistory {
 		history = history[len(history)-maxHistory:]
 	}
 	// O histórico precisa começar com uma pergunta do usuário.
-	for len(history) > 0 && history[0].Role != store.RoleUser {
+	for len(history) > 0 && history[0].Role != llm.RoleUser {
 		history = history[1:]
 	}
 	msgs := make([]llm.Message, 0, len(history)+1)
@@ -59,7 +61,7 @@ const maxToolRounds = 4
 // Ask envia a pergunta ao provedor e devolve a resposta completa; onText recebe
 // os pedaços conforme chegam. Com tools, a IA pode buscar lançamentos e propor
 // lançamentos; se o modelo não aceitar ferramentas, pergunta sem elas.
-func Ask(ctx context.Context, p llm.Provider, history []store.ChatMessage, question, snapshot string, tools *Tools, onText func(string)) (string, error) {
+func Ask(ctx context.Context, p llm.Provider, history []llm.Message, question, snapshot string, tools *Tools, onText func(string)) (string, error) {
 	req := BuildRequest(history, question, snapshot)
 	if tools != nil {
 		req.System += toolsPrompt
@@ -91,4 +93,47 @@ func Ask(ctx context.Context, p llm.Provider, history []store.ChatMessage, quest
 			req.Messages = append(req.Messages, llm.Message{Role: llm.RoleTool, ToolCallID: c.ID, ToolName: c.Name, Content: tools.Run(c)})
 		}
 	}
+}
+
+// Question é uma pergunta ao consultor com tudo que ele precisa.
+type Question struct {
+	History   []llm.Message
+	Text      string
+	Ledger    domain.Ledger
+	Today     time.Time
+	Anonymize bool // IA de fora do aparelho: nomes viram apelidos (ver anon.go)
+}
+
+// Answer responde à pergunta com as ferramentas ligadas. Com Anonymize, a IA
+// só vê apelidos e a resposta chega inteira no fim (já com os nomes de volta),
+// porque um apelido pode vir partido entre dois pedaços do streaming.
+func Answer(ctx context.Context, p llm.Provider, q Question, onText func(string), onProposal func(Proposal)) (string, []Proposal, error) {
+	ledger, history, text, emit := q.Ledger, q.History, q.Text, onText
+	var anon *Anonymizer
+	if q.Anonymize {
+		ledger, anon = Anonymize(q.Ledger)
+		history = make([]llm.Message, len(q.History))
+		for i, m := range q.History {
+			m.Content = anon.Text(m.Content)
+			history[i] = m
+		}
+		text, emit = anon.Text(q.Text), func(string) {}
+	}
+	var proposals []Proposal
+	tools := NewTools(ledger, q.Today, func(pr Proposal) {
+		if anon != nil {
+			pr = anon.RevealProposal(pr)
+		}
+		proposals = append(proposals, pr)
+		onProposal(pr)
+	})
+	answer, err := Ask(ctx, p, history, text, Snapshot(BuildFacts(ledger, q.Today)), tools, emit)
+	if err != nil {
+		return "", nil, err
+	}
+	if anon != nil {
+		answer = anon.Reveal(answer)
+		onText(answer)
+	}
+	return answer, proposals, nil
 }

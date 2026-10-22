@@ -1,28 +1,33 @@
-// Consultor IA no app do celular: conversa com a IA que roda no computador
-// pareado (precisa estar ao alcance), usando o token deste aparelho.
+// Consultor IA no app do celular. Duas formas:
+// - pelo computador pareado (a IA roda lá; precisa estar ao alcance);
+// - pela nuvem, direto do celular, com os nomes anonimizados (cloud-ai.js).
+import * as cloud from "../cloud-ai.js";
 import { endpoint } from "../device.js";
 import { applyProposal, proposalButton, saveNote } from "../notes-save.js";
 import { html, raw } from "../ui.js";
 
 export const needsData = false;
 
-let chat = null; // { history: [{role, content}], model, ready, problem, busy, error }
+let chat = null; // { history: [{role, content, proposals}], model, ready, problem, busy, error, cloud }
 
 const SUGGESTIONS = ["Onde estou gastando demais este mês?", "Qual dívida devo pagar primeiro?", "Quanto gastei com iFood este ano?", "Como chego na minha meta mais rápido?"];
 
 const md = (text) => raw(window.Finan?.markdown ? window.Finan.markdown(text) : text.replace(/</g, "&lt;"));
 
-export function render({ server }) {
-  if (!server) {
+export function render() {
+  if (!chat) return html`<section class="panel"><h2>Consultor IA</h2><p class="muted loading">Abrindo o consultor…</p></section>`;
+  if (chat.setup) {
     return html`<section class="panel"><h2>Consultor IA</h2>
-      <p class="notice warn">Conecte este celular ao computador primeiro, em <a href="/configuracoes">Ajustes</a>. A IA roda lá.</p></section>`;
+      <p class="notice warn">Para usar o consultor sem computador, escolha uma IA na nuvem (há opções grátis) em
+      <a href="/configuracoes#ia-nuvem">Ajustes → Consultor sem computador</a>. Ou conecte este celular a um computador com o finan_rich.</p></section>`;
   }
-  if (!chat) return html`<section class="panel"><h2>Consultor IA</h2><p class="muted loading">Falando com o computador…</p></section>`;
   return html`
     <div class="page-head"><h1>Consultor IA</h1>
       ${chat.history.length ? html`<button type="button" class="secondary small-btn" data-action="clear">Nova conversa</button>` : ""}</div>
     <section class="panel chat">
-      ${chat.problem ? html`<p class="notice warn">${chat.problem}</p>` : html`<p class="small muted">Usando ${chat.model} no computador. O consultor vê seus números, metas e notas a cada pergunta.</p>`}
+      ${chat.problem ? html`<p class="notice warn">${chat.problem}</p>` : chat.cloud
+        ? html`<p class="small muted">Usando ${chat.model} na nuvem, direto deste celular. Nomes de lojas, dívidas e metas vão com apelidos, e as notas não vão; a IA vê só valores, datas e categorias.</p>`
+        : html`<p class="small muted">Usando ${chat.model} no computador. O consultor vê seus números, metas e notas a cada pergunta.</p>`}
       <div class="messages">
         ${chat.history.map((m, i) => html`<div class="msg ${m.role}">${md(m.content)}
           ${m.role === "assistant" ? html`<button type="button" class="link plain save-note" data-save="${i}">Salvar como nota</button>` : ""}</div>
@@ -46,6 +51,21 @@ async function call(path, init = {}) {
 }
 
 async function loadChat(ctx) {
+  const cfg = await cloud.config().catch(() => null);
+  if (cfg?.key && (cfg.enabled || !ctx.server)) {
+    const history = await cloud.loadChat();
+    for (const m of history) {
+      for (const p of m.proposals || []) p.applied = await cloud.applied(ctx.ledger, p).catch(() => false);
+    }
+    chat = { history, model: `${cfg.preset} · ${cfg.model}`, ready: true, problem: "", busy: false, error: "", cloud: true };
+    ctx.rerender();
+    return;
+  }
+  if (!ctx.server) {
+    chat = { setup: true };
+    ctx.rerender();
+    return;
+  }
   try {
     const res = await call("/api/chat");
     const body = await res.json();
@@ -63,6 +83,14 @@ async function ask(ctx, question) {
   chat.error = "";
   ctx.rerender();
   try {
+    if (chat.cloud) {
+      const { answer, proposals } = await cloud.ask(ctx.ledger, chat.history.slice(0, -1), question);
+      chat.history.push({ role: "assistant", content: answer, proposals });
+      await cloud.saveChat(chat.history);
+      chat.busy = false;
+      ctx.rerender();
+      return;
+    }
     await window.finanSync?.(); // a IA vê os lançamentos mais recentes deste celular
     const res = await call("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: question }) });
     // A resposta vem em eventos "data: {...}" (no app, chega tudo de uma vez).
@@ -80,14 +108,13 @@ async function ask(ctx, question) {
     chat.history.push({ role: "assistant", content: answer, proposals });
   } catch (err) {
     chat.history.pop();
-    chat.error = err instanceof TypeError ? "sem conexão com o computador" : err.message;
+    chat.error = err instanceof TypeError ? (chat.cloud ? "sem internet" : "sem conexão com o computador") : err.message;
   }
   chat.busy = false;
   ctx.rerender();
 }
 
 export function bind(root, ctx) {
-  if (!ctx.server) return;
   if (!chat) {
     loadChat(ctx);
     return;
@@ -104,7 +131,8 @@ export function bind(root, ctx) {
   root.querySelectorAll("[data-suggest]").forEach((b) => b.addEventListener("click", () => ask(ctx, b.textContent)));
   root.querySelector('[data-action="clear"]')?.addEventListener("click", async () => {
     if (!confirm("Apagar toda a conversa?")) return;
-    await call("/api/chat/limpar", { method: "POST" }).catch(() => {});
+    if (chat.cloud) await cloud.saveChat([]);
+    else await call("/api/chat/limpar", { method: "POST" }).catch(() => {});
     chat.history = [];
     ctx.rerender();
   });
@@ -129,3 +157,6 @@ export function bind(root, ctx) {
     }
   }));
 }
+
+// Os Ajustes mudaram a IA: a próxima abertura do consultor relê a configuração.
+export function resetChat() { chat = null; }

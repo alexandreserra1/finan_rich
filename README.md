@@ -32,7 +32,9 @@ números reais. Seus dados ficam num arquivo no seu PC, sem conta e sem nuvem.
   apagar, criar metas, cadastrar dívidas, guardar dinheiro numa meta ("guardei 500 na
   viagem") e pagar dívidas ("paguei 500 do cartão", que baixa o saldo e lança o gasto). Cada mudança vira um cartão com um botão
   (**Adicionar**, **Alterar**, **Apagar**): nada muda sem você tocar nele, e os cartões
-  ficam na conversa. Também dentro do app do celular.
+  ficam na conversa. Também dentro do app do celular, inclusive **sem computador**: o
+  celular chama uma IA na nuvem com plano grátis (Groq, Gemini) com os nomes de lojas,
+  dívidas e metas trocados por apelidos antes de sair, e a chave guardada cifrada.
   Por padrão usa modelos abertos (Qwen, DeepSeek, Llama...) rodando no seu PC pelo Ollama.
 
 ## Como usar

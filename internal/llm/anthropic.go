@@ -1,3 +1,5 @@
+//go:build !js
+
 package llm
 
 import (
@@ -24,9 +26,6 @@ func NewAnthropic(apiKey, model, baseURL string) *Anthropic {
 	}
 	return &Anthropic{client: anthropic.NewClient(opts...), model: model}
 }
-
-// ErrRefused indica que o modelo recusou responder.
-var ErrRefused = errors.New("o assistente não pôde responder essa pergunta; tente reformular")
 
 func (a *Anthropic) Chat(ctx context.Context, req Request, onText func(string)) (Reply, error) {
 	var msgs []anthropic.BetaMessageParam

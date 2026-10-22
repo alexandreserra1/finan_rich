@@ -9,15 +9,14 @@ import (
 
 	"github.com/alexandreserra1/finan_rich/internal/domain"
 	"github.com/alexandreserra1/finan_rich/internal/llm"
-	"github.com/alexandreserra1/finan_rich/internal/store"
 )
 
 func TestBuildRequestKeepsRecentHistory(t *testing.T) {
-	var history []store.ChatMessage
+	var history []llm.Message
 	for i := range 10 { // 20 mensagens
 		history = append(history,
-			store.ChatMessage{Role: store.RoleUser, Content: fmt.Sprintf("pergunta %d", i)},
-			store.ChatMessage{Role: store.RoleAssistant, Content: fmt.Sprintf("resposta %d", i)})
+			llm.Message{Role: llm.RoleUser, Content: fmt.Sprintf("pergunta %d", i)},
+			llm.Message{Role: llm.RoleAssistant, Content: fmt.Sprintf("resposta %d", i)})
 	}
 	req := BuildRequest(history, "e agora?", "RETRATO")
 
@@ -42,10 +41,10 @@ func TestBuildRequestKeepsRecentHistory(t *testing.T) {
 }
 
 func TestBuildRequestStartsWithUser(t *testing.T) {
-	history := []store.ChatMessage{
-		{Role: store.RoleAssistant, Content: "órfã"},
-		{Role: store.RoleUser, Content: "p"},
-		{Role: store.RoleAssistant, Content: "r"},
+	history := []llm.Message{
+		{Role: llm.RoleAssistant, Content: "órfã"},
+		{Role: llm.RoleUser, Content: "p"},
+		{Role: llm.RoleAssistant, Content: "r"},
 	}
 	req := BuildRequest(history, "q", "")
 	if req.Messages[0].Content != "p" || len(req.Messages) != 3 {
