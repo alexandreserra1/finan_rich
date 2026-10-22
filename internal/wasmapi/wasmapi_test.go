@@ -129,3 +129,12 @@ func TestPlans(t *testing.T) {
 		t.Error("data inválida deveria dar erro")
 	}
 }
+
+func TestCanDeleteCategory(t *testing.T) {
+	if r := CanDeleteCategory(ledger, "laz"); !strings.Contains(r, `"error":"a categoria Lazer ainda tem 1 lançamento;`) {
+		t.Errorf("em uso: %s", r)
+	}
+	if r := CanDeleteCategory(ledger, "outra"); r != `{"ok":true}` {
+		t.Errorf("sem uso: %s", r)
+	}
+}

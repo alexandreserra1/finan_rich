@@ -2,7 +2,9 @@ package domain
 
 import (
 	"encoding/json"
+	"fmt"
 	"sort"
+	"strings"
 )
 
 // Ledger reúne todos os dados do usuário. É o que o app guarda em cada aparelho
@@ -119,4 +121,51 @@ func (l Ledger) Split() Split {
 		}
 	}
 	return DefaultSplit()
+}
+
+// CanDeleteCategory diz se a categoria pode ser apagada: não pode enquanto
+// lançamentos, recorrentes ou metas não apagados ainda a usam (o erro diz
+// quantos). É a mesma regra no aparelho (antes de apagar) e no servidor (ao
+// sincronizar).
+func (l Ledger) CanDeleteCategory(id string) error {
+	var txs, recs, goals int
+	for _, t := range l.Transactions {
+		if !t.Deleted && t.CategoryID == id {
+			txs++
+		}
+	}
+	for _, r := range l.Recurring {
+		if !r.Deleted && r.CategoryID == id {
+			recs++
+		}
+	}
+	for _, g := range l.Goals {
+		if !g.Deleted && g.CategoryID == id {
+			goals++
+		}
+	}
+	var uses []string
+	for _, u := range []struct {
+		n            int
+		one, several string
+	}{{txs, "lançamento", "lançamentos"}, {recs, "recorrente", "recorrentes"}, {goals, "meta", "metas"}} {
+		switch {
+		case u.n == 1:
+			uses = append(uses, "1 "+u.one)
+		case u.n > 1:
+			uses = append(uses, fmt.Sprintf("%d %s", u.n, u.several))
+		}
+	}
+	if len(uses) == 0 {
+		return nil
+	}
+	name := "categoria"
+	if c, ok := l.CategoryIndex()[id]; ok && c.Name != "" {
+		name = "categoria " + c.Name
+	}
+	list := strings.Join(uses, ", ")
+	if i := strings.LastIndex(list, ", "); i >= 0 {
+		list = list[:i] + " e " + list[i+2:]
+	}
+	return fmt.Errorf("a %s ainda tem %s; mova ou apague esses itens antes de apagar a categoria", name, list)
 }

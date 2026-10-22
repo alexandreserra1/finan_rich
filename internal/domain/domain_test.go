@@ -69,6 +69,33 @@ func TestLedger(t *testing.T) {
 	}
 }
 
+func TestCanDeleteCategory(t *testing.T) {
+	l := Ledger{
+		Categories: []Category{{Meta: meta("mercado"), Name: "Mercado"}, {Meta: meta("livre"), Name: "Livre"}, {Meta: meta("lazer"), Name: "Lazer"}},
+		Transactions: []Transaction{
+			{Meta: meta("t1"), CategoryID: "mercado"},
+			{Meta: meta("t2"), CategoryID: "mercado"},
+			{Meta: Meta{ID: "t3", UpdatedAt: 1, Deleted: true}, CategoryID: "livre"}, // apagado não conta
+		},
+		Recurring: []Recurring{{Meta: meta("r1"), CategoryID: "mercado"}, {Meta: meta("r2"), CategoryID: "lazer", Paused: true}},
+		Goals:     []Goal{{Meta: meta("g1"), CategoryID: "mercado"}, {Meta: Meta{ID: "g2", UpdatedAt: 1, Deleted: true}, CategoryID: "livre"}},
+	}
+	err := l.CanDeleteCategory("mercado")
+	if err == nil || err.Error() != "a categoria Mercado ainda tem 2 lançamentos, 1 recorrente e 1 meta; mova ou apague esses itens antes de apagar a categoria" {
+		t.Errorf("em uso: %v", err)
+	}
+	// Recorrente pausado ainda usa a categoria (pode voltar a gerar lançamentos).
+	if err := l.CanDeleteCategory("lazer"); err == nil || !strings.Contains(err.Error(), "Lazer ainda tem 1 recorrente;") {
+		t.Errorf("recorrente pausado: %v", err)
+	}
+	if err := l.CanDeleteCategory("livre"); err != nil {
+		t.Errorf("só itens apagados usam: %v", err)
+	}
+	if err := l.CanDeleteCategory("nenhuma"); err != nil {
+		t.Errorf("categoria sem uso: %v", err)
+	}
+}
+
 func TestMonth(t *testing.T) {
 	m := NewMonth(2026, time.February)
 	if !m.Contains("2026-02-28") || m.Contains("2026-03-01") || m.Day(31).Day() != 28 || m.Label() != "fevereiro de 2026" {

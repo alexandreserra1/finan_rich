@@ -22,6 +22,7 @@ type syncResponse struct {
 	Cursor  int64          `json:"cursor"`
 	Changes []store.Change `json:"changes"`
 	More    bool           `json:"more"`
+	Notices []string       `json:"notices,omitempty"` // avisos (ex.: categoria em uso que não foi apagada)
 }
 
 // apiSync recebe as alterações do aparelho e devolve as que ele ainda não tem.
@@ -37,8 +38,10 @@ func (s *Server) apiSync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
+	var notices []string
 	if len(req.Changes) > 0 {
-		if _, err := s.store.ApplyChanges(ctx, req.Changes); err != nil {
+		var err error
+		if _, notices, err = s.store.ApplyChangesNotices(ctx, req.Changes); err != nil {
 			status := http.StatusInternalServerError
 			if errors.Is(err, store.ErrInvalidChange) {
 				status = http.StatusUnprocessableEntity
@@ -56,7 +59,7 @@ func (s *Server) apiSync(w http.ResponseWriter, r *http.Request) {
 	if changes == nil {
 		changes = []store.Change{}
 	}
-	writeJSON(w, http.StatusOK, syncResponse{Cursor: cursor, Changes: changes, More: len(changes) == syncPageSize})
+	writeJSON(w, http.StatusOK, syncResponse{Cursor: cursor, Changes: changes, More: len(changes) == syncPageSize, Notices: notices})
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

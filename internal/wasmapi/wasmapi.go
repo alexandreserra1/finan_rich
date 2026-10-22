@@ -195,3 +195,13 @@ func ImportPreviewText(ledgerJSON, text, optionsJSON, today string) string {
 func DefaultCategories(now int64) string {
 	return reply(domain.DefaultCategories(now), nil)
 }
+
+// CanDeleteCategory devolve {"ok": true} ou o erro que explica por que a
+// categoria não pode ser apagada (ainda tem lançamentos, recorrentes ou metas).
+func CanDeleteCategory(ledgerJSON, id string) string {
+	var l domain.Ledger
+	if err := json.Unmarshal([]byte(ledgerJSON), &l); err != nil {
+		return reply(nil, err)
+	}
+	return reply(true, l.CanDeleteCategory(id))
+}
