@@ -40,8 +40,14 @@ async function stopServer() {
   server = null;
 }
 async function serverRecords() {
-  const res = await fetch(`${B}/api/sync`, { method: "POST", headers: { "Content-Type": "application/json" }, body: '{"cursor":0}' });
-  return (await res.json()).changes.map((c) => c.record);
+  const out = [];
+  for (let cursor = 0; ;) { // o servidor responde em páginas ("more")
+    const res = await fetch(`${B}/api/sync`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cursor }) });
+    const body = await res.json();
+    out.push(...body.changes.map((c) => c.record));
+    cursor = body.cursor;
+    if (!body.more) return out;
+  }
 }
 const syncStatus = (page) => page.locator("#sync-status").getAttribute("data-status");
 const waitStatus = (page, status, timeout = 15000) =>
@@ -132,6 +138,18 @@ try {
   await other.evaluate(() => window.finanSync());
   await other.waitForSelector("td:has-text('Uber (do celular)')", { state: "detached", timeout: 15000 });
   ok(true, "apagar num aparelho apaga no outro");
+
+  // Fila grande (ex.: importação de anos de extrato): vai em lotes e chega inteira.
+  const before = (await serverRecords()).length;
+  await page.evaluate(async () => {
+    const db = await import("/static/js/db.js"), fin = await import("/static/js/finance.js");
+    const cat = (await db.loadLedger()).categories[0].id;
+    await db.saveManyLocal(Array.from({ length: 4500 }, (_, i) => ({ type: "transaction",
+      record: fin.validate("transaction", { id: "lote-" + i, updatedAt: Date.now(), kind: "saida", description: "Lote " + i, amountCents: 100 + i, categoryId: cat, date: "2026-09-15" }) })));
+    await window.finanSync();
+  });
+  ok((await serverRecords()).length - before === 4500 && (await page.evaluate(async () => (await (await import("/static/js/db.js")).pending()).length)) === 0,
+    "4.500 lançamentos pendentes chegam inteiros ao computador (em lotes)");
 
   ok(await syncStatus(page) === "ok", "tudo sincronizado no fim");
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);

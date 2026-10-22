@@ -384,3 +384,44 @@ func TestCategorizeCloudSendsOnlyKeys(t *testing.T) {
 		t.Errorf("para a nuvem deveria ir só a assinatura da descrição: %s", sent)
 	}
 }
+
+// Envio acima do limite recebe 413 com mensagem clara (o app manda em lotes).
+func TestSyncTooBig(t *testing.T) {
+	a := newApp(t, "")
+	big := `{"cursor":0,"changes":[` + strings.Repeat(`{"type":"transaction","record":{"id":"x","description":"`+strings.Repeat("a", 1000)+`"}},`, 11000) + `{}]}`
+	resp, err := http.Post(a.srv.URL+"/api/sync", "application/json", strings.NewReader(big))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusRequestEntityTooLarge || !strings.Contains(string(body), "grande demais") {
+		t.Errorf("status = %d %s", resp.StatusCode, body)
+	}
+}
+
+// Arquivos estáticos: gzip quando o navegador aceita, ETag para revalidar.
+func TestStaticGzipAndETag(t *testing.T) {
+	a := newApp(t, "")
+	req, _ := http.NewRequest("GET", a.srv.URL+"/static/app.css", nil)
+	req.Header.Set("Accept-Encoding", "gzip")
+	resp, err := http.DefaultTransport.RoundTrip(req) // sem descompactar sozinho
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	etag := resp.Header.Get("ETag")
+	if resp.StatusCode != 200 || resp.Header.Get("Content-Encoding") != "gzip" || etag == "" || !strings.HasPrefix(resp.Header.Get("Content-Type"), "text/css") {
+		t.Fatalf("status=%d headers=%v", resp.StatusCode, resp.Header)
+	}
+	req.Header.Set("If-None-Match", etag)
+	if resp, _ := http.DefaultTransport.RoundTrip(req); resp.StatusCode != http.StatusNotModified {
+		t.Errorf("revalidação = %d", resp.StatusCode)
+	}
+	if resp, _ := http.Get(a.srv.URL + "/static/nao-existe.js"); resp.StatusCode != http.StatusNotFound {
+		t.Errorf("inexistente = %d", resp.StatusCode)
+	}
+	if resp, _ := http.Get(a.srv.URL + "/static/finance.wasm"); resp.StatusCode == 200 && resp.Header.Get("Content-Type") != "application/wasm" {
+		t.Errorf("wasm com tipo %q", resp.Header.Get("Content-Type"))
+	}
+}

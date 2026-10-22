@@ -141,3 +141,45 @@ func TestHealthAndCORS(t *testing.T) {
 		t.Errorf("CORS = %d %v", rec.Code, rec.Header())
 	}
 }
+
+// O começo do X-Forwarded-For é do cliente (pode ser inventado); o Google
+// acrescenta o IP verdadeiro no fim. Inventar IPs não burla o limite, nem sem
+// identificação de aparelho.
+func TestProxySpoofedForwardedFor(t *testing.T) {
+	var seen []map[string]any
+	h := New(Config{Upstream: fakeGroq(t, &seen).URL, APIKey: "chave-do-servidor", Models: []string{"llama"},
+		Limits: Limits{DeviceHour: 100, DeviceDay: 100, IPHour: 3, IPDay: 100}})
+	ok := 0
+	for i := 0; i < 10; i++ {
+		req := httptest.NewRequest("POST", "/v1/chat/completions", strings.NewReader(appBody("m", 10)))
+		req.Header.Set("X-Forwarded-For", fmt.Sprintf("9.9.9.%d, 177.10.20.30, 35.191.1.2", i)) // inventado, real, Google
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code == http.StatusOK {
+			ok++
+		}
+	}
+	if ok != 3 {
+		t.Errorf("passaram %d de 10 com IPs inventados; o limite da rede real é 3", ok)
+	}
+}
+
+func TestLimiterFullDoesNotReset(t *testing.T) {
+	now := time.Date(2026, 10, 22, 10, 0, 0, 0, time.UTC)
+	l := newLimiter(func() time.Time { return now })
+	lim := Limits{DeviceHour: 1, DeviceDay: 1, IPHour: 1000, IPDay: 1000}
+	l.allow("barrado", "1.1.1.1", lim)
+	for i := 0; len(l.counts) < maxKeys; i++ {
+		l.allow(fmt.Sprintf("a%d", i), "1.1.1.1", Limits{DeviceHour: 9, DeviceDay: 9, IPHour: 1 << 30, IPDay: 1 << 30})
+	}
+	if msg := l.allow("barrado", "1.1.1.1", lim); msg == "" {
+		t.Error("encher o limitador soltou quem estava barrado")
+	}
+	if msg := l.allow("novo", "2.2.2.2", lim); !strings.Contains(msg, "movimento demais") {
+		t.Errorf("com a memória cheia, gente nova espera: %q", msg)
+	}
+	now = now.Add(24 * time.Hour)
+	if msg := l.allow("novo", "2.2.2.2", lim); msg != "" {
+		t.Errorf("no dia seguinte a memória é liberada: %q", msg)
+	}
+}

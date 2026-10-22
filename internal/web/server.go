@@ -121,7 +121,7 @@ func New(st *store.Store, opts Options) (*Server, error) {
 
 func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
-	mux.Handle("GET /static/", http.FileServerFS(staticFS))
+	mux.Handle("GET /static/", &staticFiles{})
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 	mux.HandleFunc("GET /manifest.webmanifest", serveStatic("manifest.webmanifest", "application/manifest+json"))
 	mux.HandleFunc("GET /sw.js", s.serviceWorker)

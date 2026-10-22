@@ -29,6 +29,10 @@ func (s *Server) apiSync(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
 	var req syncRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if tooBig := new(http.MaxBytesError); errors.As(err, &tooBig) {
+			writeJSONError(w, http.StatusRequestEntityTooLarge, "envio grande demais para uma vez só; atualize o app (ele manda em partes)")
+			return
+		}
 		writeJSONError(w, http.StatusBadRequest, "pedido de sincronização inválido")
 		return
 	}

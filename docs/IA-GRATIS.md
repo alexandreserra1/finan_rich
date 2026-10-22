@@ -24,6 +24,12 @@ celular (anonimiza) ──HTTPS──> finanproxy (Cloud Run, chave no Secret Ma
 - O modelo e o tamanho máximo da resposta são escolhidos no servidor.
 - Quando um modelo esgota a cota grátis (erro 429), tenta o próximo da lista: no Groq cada
   modelo tem a sua cota.
+- O IP de quem chama é o que o Google acrescenta no fim do `X-Forwarded-For` (o começo pode
+  ser inventado); pedido sem identificação de aparelho conta como um aparelho daquela rede.
+  Corpo enviado devagar é cortado em 15 s. O limitador guarda até 100 mil aparelhos/IPs por
+  dia; cheio, recusa gente nova até o dia seguinte (nunca zera quem já está barrado).
+- Não precisa de proxy reverso: o Cloud Run já tem o front-end do Google na frente (TLS, fila,
+  concorrência). Teste de carga com Groq falso: 2.000 pedidos simultâneos, todos atendidos.
 - No Cloud Run: no máximo 1 instância. No pior caso, a cota grátis do Groq acaba e o consultor
   grátis para até o dia seguinte (meia-noite UTC), **sem cobrança** — desde que a conta do Groq
   não tenha cartão.

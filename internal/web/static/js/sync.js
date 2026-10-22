@@ -24,6 +24,11 @@ function emit(dataChanged = false) {
 // notas antes da v1.3). Ficam na fila, sem travar o resto da sincronização.
 const unsupported = new Set();
 
+// Envia a fila em lotes: um celular muito tempo sem sincronizar (ou uma
+// importação de anos de extrato) passaria do limite de um pedido e ficaria
+// preso para sempre no mesmo erro.
+const BATCH = 2000;
+
 async function round() {
   const out = await pending();
   state.pending = out.length;
@@ -37,7 +42,7 @@ async function round() {
       ...api.init,
       method: "POST",
       headers: { ...api.init.headers, "Content-Type": "application/json" },
-      body: JSON.stringify({ cursor, changes: toSend.map(({ type, record }) => ({ type, record })) }),
+      body: JSON.stringify({ cursor, changes: toSend.slice(0, BATCH).map(({ type, record }) => ({ type, record })) }),
     });
     if (res.status === 401) throw Object.assign(new Error("login"), { kind: "login" });
     const body = await res.json().catch(() => ({}));
@@ -49,13 +54,13 @@ async function round() {
     }
     if (!res.ok) throw Object.assign(new Error(body.error || res.statusText), { kind: "error" });
     if (toSend.length) {
-      await clearSent(toSend);
-      toSend = [];
+      await clearSent(toSend.slice(0, BATCH));
+      toSend = toSend.slice(BATCH);
     }
     if (await applyRemote(body.changes || [])) changed = true;
     cursor = body.cursor;
     await setMeta("cursor", cursor);
-    if (!body.more) break;
+    if (!body.more && !toSend.length) break;
   }
   state.pending = (await pending()).length;
   state.message = unsupported.size ? "Atualize o finan_rich do computador para sincronizar as notas." : "";

@@ -121,7 +121,7 @@ func fromApp(body map[string]json.RawMessage) bool {
 	if json.Unmarshal(body["messages"], &msgs) != nil || len(msgs) == 0 {
 		return false
 	}
-	if msgs[0].Role == "system" && strings.HasPrefix(msgs[0].Content, advisor.SystemPrompt[:min(200, len(advisor.SystemPrompt))]) {
+	if msgs[0].Role == "system" && strings.HasPrefix(msgs[0].Content, advisor.PromptMarker) {
 		return true
 	}
 	return len(msgs) == 1 && msgs[0].Role == "user" && msgs[0].Content == checkMessage && body["tools"] == nil
@@ -158,16 +158,45 @@ func relay(w http.ResponseWriter, resp *http.Response) {
 }
 
 // clientIP: no Cloud Run, o IP de quem chamou é o primeiro do X-Forwarded-For.
+// clientIP: o Google acrescenta o IP de quem chamou no FIM do X-Forwarded-For
+// (o começo é o que o cliente mandou, e pode ser inventado para burlar o
+// limite). Lê da direita para a esquerda pulando os IPs do próprio Google e
+// os internos; sem nenhum IP público, vale o endereço da conexão.
 func clientIP(r *http.Request) string {
 	if f := r.Header.Get("X-Forwarded-For"); f != "" {
-		ip, _, _ := strings.Cut(f, ",")
-		return strings.TrimSpace(ip)
+		parts := strings.Split(f, ",")
+		for i := len(parts) - 1; i >= 0; i-- {
+			ip := net.ParseIP(strings.TrimSpace(parts[i]))
+			if ip != nil && !googleFrontEnd(ip) && !ip.IsPrivate() && !ip.IsLoopback() {
+				return ip.String()
+			}
+		}
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return r.RemoteAddr
 	}
 	return host
+}
+
+// Faixas do front-end e dos balanceadores do Google (documentadas pelo Google Cloud).
+var googleRanges = []*net.IPNet{mustCIDR("35.191.0.0/16"), mustCIDR("130.211.0.0/22")}
+
+func googleFrontEnd(ip net.IP) bool {
+	for _, n := range googleRanges {
+		if n.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+func mustCIDR(s string) *net.IPNet {
+	_, n, err := net.ParseCIDR(s)
+	if err != nil {
+		panic(err)
+	}
+	return n
 }
 
 func fail(w http.ResponseWriter, status int, msg string) {
@@ -194,6 +223,9 @@ func cors(next http.Handler) http.Handler {
 // limiter conta chamadas em janelas fixas de uma hora e de um dia. Fica na
 // memória: com o Cloud Run em no máximo 1 instância, vale para todos; se a
 // instância dormir, a contagem recomeça (aceitável: a cota do Groq é o teto).
+// maxKeys limita a memória do limitador (cada aparelho e cada IP é uma chave).
+const maxKeys = 100000
+
 type limiter struct {
 	mu     sync.Mutex
 	now    func() time.Time
@@ -215,12 +247,19 @@ func (l *limiter) allow(device, ip string, lim Limits) string {
 	defer l.mu.Unlock()
 	now := l.now()
 	hour, day := now.Truncate(time.Hour).Unix(), now.UTC().Truncate(24*time.Hour).Unix()
-	if len(l.counts) > 50000 { // não deixa a memória crescer sem fim
-		l.counts = map[string]*count{}
+	if len(l.counts) >= maxKeys { // tira só quem é de outro dia (zerar tudo soltaria quem está barrado)
+		for k, c := range l.counts {
+			if c.day != day {
+				delete(l.counts, k)
+			}
+		}
 	}
 	get := func(key string) *count {
 		c := l.counts[key]
 		if c == nil {
+			if len(l.counts) >= maxKeys {
+				return nil // memória cheia hoje: não aceita gente nova até amanhã
+			}
 			c = &count{}
 			l.counts[key] = c
 		}
@@ -232,19 +271,21 @@ func (l *limiter) allow(device, ip string, lim Limits) string {
 		}
 		return c
 	}
-	ipc := get("ip:" + ip)
+	if device == "" { // sem identificação (ex.: computador): conta como um aparelho daquela rede
+		device = "anonimo:" + ip
+	}
+	ipc, dev := get("ip:"+ip), get("dev:"+device)
+	if ipc == nil || dev == nil {
+		return "o consultor grátis está com movimento demais agora; tente mais tarde ou use sua própria chave grátis em Ajustes"
+	}
 	if ipc.inHour >= lim.IPHour || ipc.inDay >= lim.IPDay {
 		return "muitas perguntas desta rede ao consultor grátis; tente mais tarde ou use sua própria chave grátis em Ajustes"
 	}
-	var dev *count
-	if device != "" {
-		dev = get("dev:" + device)
-		if dev.inHour >= lim.DeviceHour || dev.inDay >= lim.DeviceDay {
-			return "o consultor grátis chegou ao limite deste aparelho por hoje; tente amanhã ou use sua própria chave grátis em Ajustes"
-		}
-		dev.inHour++
-		dev.inDay++
+	if dev.inHour >= lim.DeviceHour || dev.inDay >= lim.DeviceDay {
+		return "o consultor grátis chegou ao limite deste aparelho por hoje; tente amanhã ou use sua própria chave grátis em Ajustes"
 	}
+	dev.inHour++
+	dev.inDay++
 	ipc.inHour++
 	ipc.inDay++
 	return ""

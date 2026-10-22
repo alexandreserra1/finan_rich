@@ -39,6 +39,7 @@ func main() {
 		Addr:              ":" + env("PORT", "8080"),
 		Handler:           proxy.New(cfg),
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       15 * time.Second, // corpo mandado devagar não segura uma vaga (a resposta em streaming não é afetada)
 	}
 	log.Printf("finanproxy ouvindo em %s (modelos: %s)", srv.Addr, strings.Join(cfg.Models, ", "))
 	log.Fatal(srv.ListenAndServe())
