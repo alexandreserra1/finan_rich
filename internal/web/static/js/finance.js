@@ -44,3 +44,4 @@ export const readBackup = (text) => unwrap(window.finan.readBackup(text));
 export const goals = (ledger, day) => unwrap(window.finan.goals(JSON.stringify(ledger), day));
 export const recurringDue = (ledger, day) => unwrap(window.finan.recurringDue(JSON.stringify(ledger), day));
 export const alerts = (ledger, day) => unwrap(window.finan.alerts(JSON.stringify(ledger), day));
+export const insights = (ledger, day) => unwrap(window.finan.insights(JSON.stringify(ledger), day));

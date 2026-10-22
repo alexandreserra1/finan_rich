@@ -70,18 +70,11 @@ func Anonymize(l domain.Ledger) (domain.Ledger, *Anonymizer) {
 	// todos o mesmo tamanho ("Loja AB" nunca é pedaço de "Loja ABC").
 	type group struct{ key, show, kind string }
 	groupOf := func(desc, kind string) group {
-		key := importer.DescKey(desc)
+		key, name := importer.PlaceKey(desc)
 		if key == "" { // "C&A", "Transferência PIX": vale a descrição inteira
 			return group{"#" + fold(desc), desc, kind}
 		}
-		// Nas compras de cartão o estabelecimento vem primeiro ("IFOOD *PIZZA",
-		// "iFood lanche"): agrupa por ele e mostra só ele na resposta.
-		if w, _, _ := strings.Cut(key, " "); len([]rune(w)) >= 3 {
-			if f := strings.Fields(desc); len(f) > 0 && importer.DescKey(f[0]) == w {
-				return group{w, f[0], kind}
-			}
-		}
-		return group{key, desc, kind}
+		return group{key, name, kind}
 	}
 	var order []group
 	seen := map[string]bool{}

@@ -18,10 +18,11 @@ import * as notes from "./pages/notes.js";
 import * as exportPage from "./pages/export.js";
 import * as importPage from "./pages/import.js";
 import * as goals from "./pages/goals.js";
+import * as insights from "./pages/insights.js";
 import * as devicePage from "./pages/device.js";
 import * as advisor from "./pages/advisor.js";
 
-const ROUTES = { "/": dashboard, "/lancamentos": transactions, "/dividas": debts, "/categorias": categories, "/notas": notes, "/exportar": exportPage, "/importar": importPage, "/metas": goals };
+const ROUTES = { "/": dashboard, "/lancamentos": transactions, "/dividas": debts, "/categorias": categories, "/notas": notes, "/exportar": exportPage, "/importar": importPage, "/metas": goals, "/analise": insights };
 if (device.isApp) Object.assign(ROUTES, { "/configuracoes": devicePage, "/chat": advisor });
 
 const root = document.getElementById("app");

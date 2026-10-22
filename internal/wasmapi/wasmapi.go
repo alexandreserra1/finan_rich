@@ -158,6 +158,15 @@ func Alerts(ledgerJSON, today string) string {
 	return reply(finance.Alerts(l, day), nil)
 }
 
+// Insights devolve a análise de gastos do mês de hoje (tela Análise).
+func Insights(ledgerJSON, today string) string {
+	l, day, err := planInput(ledgerJSON, today)
+	if err != nil {
+		return reply(nil, err)
+	}
+	return reply(finance.Insights(l, day), nil)
+}
+
 // ImportPreviewText é a ImportPreview de uma fatura em PDF: o aparelho extrai
 // o texto (pdf.js) e manda as linhas; today ("2026-10-15") ajuda a achar o ano.
 func ImportPreviewText(ledgerJSON, text, optionsJSON, today string) string {

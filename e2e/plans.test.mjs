@@ -106,6 +106,22 @@ try {
   await page.evaluate(() => window.finanSync());
   ok((await records("goal")).length === 1, "meta sincronizou");
 
+  // Análise: ritmo, quanto dá para gastar por dia e onde foi o dinheiro.
+  await page.goto(`${B}/lancamentos`);
+  await page.waitForSelector("form[data-form=transaction]");
+  await page.fill("input[name=description]", "iFood pizza");
+  await page.fill("input[name=amount]", "45");
+  await page.click("form[data-form=transaction] button[type=submit]");
+  await page.waitForSelector("td:has-text('iFood pizza')");
+  await page.goto(`${B}/`);
+  await page.click("a[href='/analise']");
+  await page.waitForSelector(".pace-chart svg");
+  const analysis = await page.textContent("main");
+  ok(/Pode gastar por dia/.test(analysis) && /Projeção do mês/.test(analysis), "análise mostra quanto dá para gastar por dia e a projeção");
+  ok(await page.locator(".hbars li:has-text('iFood')").count() === 1 && !/Poupança/.test(await page.textContent(".grid-2")), "gastei onde: iFood aparece; investimento não conta como gasto");
+  await page.hover(".pace-chart svg", { position: { x: 20, y: 60 } });
+  ok(/^Dia \d+: este mês R\$/.test(await page.textContent(".chart-tip")), "passar o dedo no gráfico mostra o dia");
+
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);
 } catch (err) {
   ok(false, err.message);

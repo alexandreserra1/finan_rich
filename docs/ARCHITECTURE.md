@@ -202,6 +202,7 @@ aparelho                                      servidor
 | `summary.go` | `Summarize` (resumo do mês e divisão planejado × realizado), `YearTotals`, `RecentTotals`. |
 | `debts.go` | `Payoff` (simulação mês a mês), `PlanDebts` (totais, juros mensais, ordem avalanche e bola de neve). |
 | `emergency.go` | `PlanEmergencyFund`: reserva de 3 e 6 meses e prazo com a sobra livre. |
+| `insights.go` | `Insights`: tela Análise — ritmo do mês, projeção, pode gastar por dia, gastos por lugar e por categoria contra a média, assinaturas e onde economizar ([ANALISE.md](ANALISE.md)). |
 | `goals.go` | `Goals`: progresso das metas (já guardado + aportes na categoria), quanto guardar por mês, atrasada ou atingida. |
 | `recurring.go` | `RecurringDue`: lançamentos que as recorrências já deveriam ter gerado (ID fixo `rec-<id>-<AAAA-MM>`, sem duplicar entre aparelhos). |
 | `alerts.go` | `Alerts`: avisos do painel (vencimento em até 3 dias, dívida que cresce, grupo acima da meta, gasto fora do padrão, metas). |

@@ -111,6 +111,24 @@ func DescKey(desc string) string {
 	return strings.Join(words, " ")
 }
 
+// PlaceKey agrupa descrições pelo lugar. Nas compras de cartão o
+// estabelecimento vem primeiro ("IFOOD *PIZZA", "iFood lanche"): a chave é ele
+// ("ifood") e o nome é como foi escrito ("iFood"). Nos outros casos ("PIX
+// ENVIADO Maria Silva") vale a assinatura inteira. Sem palavra útil ("C&A",
+// "Transferência PIX"), a chave é vazia.
+func PlaceKey(desc string) (key, name string) {
+	key = DescKey(desc)
+	if key == "" {
+		return "", desc
+	}
+	if w, _, _ := strings.Cut(key, " "); len([]rune(w)) >= 3 {
+		if f := strings.Fields(desc); len(f) > 0 && DescKey(f[0]) == w {
+			return w, f[0]
+		}
+	}
+	return key, desc
+}
+
 func firstWord(key string) string {
 	w, _, _ := strings.Cut(key, " ")
 	if len(w) < 4 {

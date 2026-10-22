@@ -154,7 +154,7 @@ main {
 .hbars li { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .35rem 1rem; align-items: center; }
 .hbars .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hbars .track { grid-column: 1 / -1; grid-row: 2; height: 8px; background: var(--track); border-radius: 99px; overflow: hidden; }
-.hbars .fill { display: block; height: 100%; background: var(--c); border-radius: 99px; }
+.hbars .fill { display: block; height: 100%; background: var(--c, var(--accent)); border-radius: 99px; }
 .hbars .value { font-variant-numeric: tabular-nums; white-space: nowrap; font-size: .92rem; }
 
 /* Visão anual */
@@ -171,6 +171,31 @@ main {
 .yearchart small { font-size: .72rem; padding: .3rem 0; text-transform: lowercase; }
 .yearchart .in, .dot.in { background: var(--in); } .yearchart .out, .dot.out { background: var(--out); }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+
+/* Análise: ritmo do mês (linhas finas; este mês cheio, mês passado tracejado, projeção pontilhada). */
+.pace-chart { position: relative; margin-top: .75rem; }
+.pace-chart svg { display: block; width: 100%; height: auto; touch-action: pan-y; }
+.pace-chart .axis { stroke: var(--border-strong); stroke-width: 1; }
+.pace-chart .ticks text { fill: var(--muted); font-size: 12px; }
+.pace-chart .line { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pace-chart .line.now { stroke: var(--accent); }
+.pace-chart .line.last { stroke: var(--muted); stroke-dasharray: 6 5; }
+.pace-chart .line.proj { stroke: var(--accent); stroke-dasharray: 2 5; opacity: .8; }
+.pace-chart .dot.now { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+.pace-chart .cross { stroke: var(--border-strong); stroke-width: 1; }
+.pace-chart .legend { margin-bottom: .35rem; flex-wrap: wrap; }
+.key { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--accent); }
+.key.last { border-top: 2px dashed var(--muted); }
+.key.proj { border-top: 2px dotted var(--accent); }
+.chart-tip { margin: .35rem 0 0; font-variant-numeric: tabular-nums; }
+.savings { list-style: none; padding: 0; margin: 0; display: grid; gap: .6rem; }
+.saving { padding: .75rem .9rem; border-radius: var(--radius-sm); background: var(--surface-2); border-left: 3px solid var(--warn); }
+.saving.assinaturas { border-left-color: var(--muted); }
+.saving p { margin: .25rem 0 0; }
+.hbars .fill.place { background: var(--accent); }
+.subs td.num { white-space: nowrap; }
+ul.plain { list-style: none; padding: 0; margin: 0; display: grid; gap: .5rem; }
+ul.plain .row strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* ---------- Tabelas ---------- */
 .table-wrap { overflow-x: auto; margin: 0 -.25rem; }

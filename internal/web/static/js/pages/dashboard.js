@@ -86,7 +86,7 @@ export function render({ ledger, month }) {
 
     <div class="grid-2">
     <section class="panel">
-      <h2>Para onde o dinheiro foi</h2>
+      <div class="row"><h2>Para onde o dinheiro foi</h2><a class="small" href="/analise">Ritmo e onde economizar</a></div>
       ${v.categories.length ? html`
         <ul class="hbars">
           ${v.categories.map((c) => html`

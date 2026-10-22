@@ -35,6 +35,7 @@ func BuildFacts(l domain.Ledger, today time.Time) Facts {
 		Recurring: l.ActiveRecurring(),
 		Merchants: finance.TopMerchants(l, today, maxMerchants),
 		Alerts:    finance.Alerts(l, today),
+		Insights:  finance.Insights(l, today),
 		Names:     categoryNames(l),
 	}
 }
@@ -52,7 +53,8 @@ type Facts struct {
 	Recurring []domain.Recurring
 	Merchants []finance.Merchant // onde mais gastou nos últimos 12 meses
 	Alerts    []finance.Alert
-	Names     map[string]string // categoria: ID → nome
+	Insights  finance.InsightsView // tela Análise: ritmo, pode gastar por dia, onde economizar
+	Names     map[string]string    // categoria: ID → nome
 }
 
 // maxMerchants: quantos estabelecimentos vão para o modelo.
@@ -196,6 +198,21 @@ func Snapshot(f Facts) string {
 		for _, m := range f.Merchants {
 			fmt.Fprintf(&b, "- %s: %s em %d compra(s) nos últimos 12 meses; %s em %d; %s neste mês; última em %s\n",
 				m.Name, brl(m.Last12Cents), m.Count, brl(m.YearCents), f.Today.Year(), brl(m.MonthCents), m.LastDate[8:10]+"/"+m.LastDate[5:7]+"/"+m.LastDate[:4])
+		}
+	}
+
+	if in := f.Insights; in.Day > 0 {
+		fmt.Fprintf(&b, "\n## Ritmo do mês (dia %d de %d; os mesmos números da tela Análise)\n", in.Day, in.DaysInMonth)
+		fmt.Fprintf(&b, "- Gastos variáveis até hoje: %s (no mês passado, até o mesmo dia: %s)\n", brl(in.VariableCents), brl(in.LastMonthSameDayCents))
+		fmt.Fprintf(&b, "- Projeção do mês no ritmo atual: %s, com %s de contas fixas (mês passado: %s; média de 3 meses: %s)\n",
+			brl(in.ProjectedCents), brl(in.FixedCents), brl(in.LastMonthCents), brl(in.Avg3Cents))
+		if in.FreeCents >= 0 {
+			fmt.Fprintf(&b, "- Pode gastar %s por dia até o fim do mês (sobram %s depois do investimento planejado e das contas fixas)\n", brl(in.PerDayCents), brl(in.FreeCents))
+		} else {
+			fmt.Fprintf(&b, "- O mês já passou %s do que cabe na renda (depois do investimento planejado e das contas fixas)\n", brl(-in.FreeCents))
+		}
+		for _, s := range in.Savings {
+			fmt.Fprintf(&b, "- Onde economizar: %s — %s\n", s.Title, s.Text)
 		}
 	}
 

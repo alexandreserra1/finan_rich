@@ -12,6 +12,10 @@ números reais. Seus dados ficam num arquivo no seu PC, sem conta e sem nuvem.
 - **Lançamentos** por categoria, com *Repetir todo mês* (salário, aluguel, assinaturas entram
   sozinhos) e *Copiar do mês anterior*.
 - **Metas** com valor e prazo: quanto já juntou e quanto guardar por mês para chegar lá.
+- **Análise de gastos**: gastei onde (iFood, Uber, mercado…), ritmo do mês contra o mês
+  passado com a projeção de como fecha, quanto ainda dá para gastar por dia, categorias
+  contra a sua média, assinaturas com o custo anual e onde dá para economizar
+  ([docs/ANALISE.md](docs/ANALISE.md)).
 - **Importar extrato** do banco (OFX, CSV ou a fatura do cartão em PDF: Nubank, Itaú, BB,
   Bradesco, Inter, Caixa...):
   sugere a categoria de cada lançamento pelo seu histórico e pela descrição (iFood, Uber,
