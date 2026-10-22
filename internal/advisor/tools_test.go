@@ -111,7 +111,7 @@ func TestEditAndDeleteTransaction(t *testing.T) {
 	}
 	tools.Run(call("apagar_lancamento", `{"id":"3"}`))
 	p = (*got)[1]
-	if tx := record[domain.Transaction](t, p); p.Action != ActionDelete || !tx.Deleted || tx.ID != "3" || p.Label != "Apagar: 05/09/2026 · Uber · Transporte · -R$ 25,00" {
+	if tx := record[domain.Transaction](t, p); p.Action != ActionDelete || !tx.Deleted || tx.ID != "3" || p.Label != "Apagar: 05/09/2026 · Uber · Restaurantes e delivery · -R$ 30,00" { // parte da alteração acima
 		t.Errorf("apagar = %+v %+v", p, tx)
 	}
 	for args, want := range map[string]string{
@@ -122,7 +122,11 @@ func TestEditAndDeleteTransaction(t *testing.T) {
 			t.Errorf("apagar %s = %q", args, out)
 		}
 	}
-	if out := tools.Run(call("alterar_lancamento", `{"id":"3","valor":"25,00"}`)); !strings.Contains(out, "nada muda") {
+	if !strings.Contains(string((*got)[0].Before), `"amountCents":2500`) {
+		t.Errorf("a alteração precisa guardar como o registro estava: %s", (*got)[0].Before)
+	}
+	fresh, _ := proposeAll(t)
+	if out := fresh.Run(call("alterar_lancamento", `{"id":"3","valor":"25,00"}`)); !strings.Contains(out, "nada muda") {
 		t.Errorf("alterar sem mudança = %q", out)
 	}
 }
@@ -220,6 +224,17 @@ func TestAskStopsCallingTools(t *testing.T) {
 	if err != nil || answer != "Fim." || len(fake.asked) != maxToolRounds+1 || fake.asked[maxToolRounds].Tools != nil {
 		t.Fatalf("answer=%q err=%v rodadas=%d", answer, err, len(fake.asked))
 	}
+	// Sem "tools", o pedido não pode levar blocos de ferramenta (a Anthropic recusa):
+	// os resultados vão como texto.
+	last := fake.asked[maxToolRounds].Messages
+	for _, m := range last {
+		if m.Role == llm.RoleTool || len(m.ToolCalls) > 0 {
+			t.Fatalf("última rodada ainda tem bloco de ferramenta: %+v", m)
+		}
+	}
+	if !strings.Contains(last[len(last)-1].Content, "buscar_lancamentos") {
+		t.Errorf("os resultados das buscas deveriam ir como texto: %+v", last[len(last)-1])
+	}
 }
 
 func TestContributeAndPay(t *testing.T) {
@@ -267,5 +282,34 @@ func TestContributeAndPay(t *testing.T) {
 	}
 	if out := tools.Run(call("registrar_pagamento", `{"divida":"Carro","valor":"10"}`)); !strings.Contains(out, "Dívidas: Cartão Nubank") {
 		t.Errorf("dívida inexistente = %q", out)
+	}
+}
+
+// Dois pagamentos na mesma resposta: o segundo parte do primeiro.
+func TestPaymentsChain(t *testing.T) {
+	l := toolsLedger()
+	l.Debts = []domain.Debt{{Meta: domain.Meta{ID: "d1", UpdatedAt: 1}, Name: "Cartão", BalanceCents: 320000, MonthlyRateBP: 1000, MinPaymentCents: 30000}}
+	var got []Proposal
+	tools := NewTools(l, time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC), func(p Proposal) { got = append(got, p) })
+	tools.Run(call("registrar_pagamento", `{"divida":"Cartão","valor":"500","data":"2026-01-10"}`))
+	tools.Run(call("registrar_pagamento", `{"divida":"Cartão","valor":"500","data":"2026-02-10"}`))
+	var debts []domain.Debt
+	for _, p := range got {
+		if p.Type == domain.TypeDebt {
+			debts = append(debts, record[domain.Debt](t, p))
+		}
+	}
+	if len(debts) != 2 || debts[0].BalanceCents != 270000 || debts[1].BalanceCents != 220000 {
+		t.Errorf("saldos = %+v", debts)
+	}
+	if l.Debts[0].BalanceCents != 320000 {
+		t.Error("as ferramentas não podem mexer nos dados de quem chamou")
+	}
+}
+
+func TestSearchWholeYear(t *testing.T) {
+	tools := NewTools(toolsLedger(), time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC), nil)
+	if out := tools.Run(call("buscar_lancamentos", `{"texto":"uber","de":"2026","ate":"2026"}`)); !strings.Contains(out, "Uber") {
+		t.Errorf("período só com o ano: %q", out)
 	}
 }

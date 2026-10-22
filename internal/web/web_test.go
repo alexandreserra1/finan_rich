@@ -358,3 +358,29 @@ func TestChatProposalsAreSaved(t *testing.T) {
 		t.Errorf("API do app: %s", api)
 	}
 }
+
+// Com IA na nuvem, a categorização não manda CPF, conta nem "PIX ENVIADO".
+func TestCategorizeCloudSendsOnlyKeys(t *testing.T) {
+	var sent string
+	ollama := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/chat" {
+			body, _ := io.ReadAll(r.Body)
+			sent = string(body)
+			fmt.Fprintln(w, `{"message":{"content":"{\"1\": \"?\"}"},"done":true}`)
+		}
+	}))
+	defer ollama.Close()
+	a := newApp(t, ollama.URL)
+	resp, err := noRedirect.PostForm(a.srv.URL+"/configuracoes", url.Values{"preset": {"ollama-cloud"}, "model": {"qwen3.5:cloud"}, "base_url": {ollama.URL}})
+	if err != nil || resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("salvar IA: %v %v", err, resp)
+	}
+	if code, res := a.postJSON("/api/categorizar", map[string]any{"items": []map[string]string{
+		{"description": "PIX ENVIADO 123.456.789-00 FARMACIA SAO JOAO", "kind": "saida"},
+	}}); code != http.StatusOK {
+		t.Fatalf("categorizar = %d %v", code, res)
+	}
+	if strings.Contains(sent, "123.456") || strings.Contains(sent, "PIX ENVIADO") || !strings.Contains(sent, "farmacia sao joao") {
+		t.Errorf("para a nuvem deveria ir só a assinatura da descrição: %s", sent)
+	}
+}

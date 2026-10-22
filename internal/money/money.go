@@ -12,12 +12,19 @@ import (
 // milhar casa "3.500" e "1.250.000": sem vírgula, o ponto é separador de milhar.
 var milhar = regexp.MustCompile(`^\d{1,3}(\.\d{3})+$`)
 
+// valor depois de normalizado: reais e, se houver, a parte decimal.
+var valor = regexp.MustCompile(`^(\d{1,15})(?:\.(\d+))?$`)
+
 // Parse aceita "1.234,56", "1234,56", "1234.56" ou "1234" e devolve centavos.
+// Só usa inteiros: nada de "NaN", "1e3" ou estouro virando número.
 func Parse(s string) (int64, error) {
 	s = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(s), "R$"))
 	s = strings.ReplaceAll(s, " ", "")
 	if s == "" {
 		return 0, errors.New("valor vazio")
+	}
+	if strings.HasPrefix(s, "-") {
+		return 0, errors.New("valor não pode ser negativo")
 	}
 	if milhar.MatchString(s) {
 		s = strings.ReplaceAll(s, ".", "")
@@ -26,14 +33,17 @@ func Parse(s string) (int64, error) {
 		s = strings.ReplaceAll(s, ".", "")
 		s = strings.Replace(s, ",", ".", 1)
 	}
-	f, err := strconv.ParseFloat(s, 64)
-	if err != nil {
+	m := valor.FindStringSubmatch(s)
+	if m == nil {
 		return 0, fmt.Errorf("valor inválido: %q", s)
 	}
-	if f < 0 {
-		return 0, errors.New("valor não pode ser negativo")
+	reais, _ := strconv.ParseInt(m[1], 10, 64) // até 15 dígitos: cabe em int64
+	dec := m[2] + "000"
+	cents, _ := strconv.ParseInt(dec[:2], 10, 64)
+	if dec[2] >= '5' { // arredonda o terceiro decimal
+		cents++
 	}
-	return int64(f*100 + 0.5), nil
+	return reais*100 + cents, nil
 }
 
 // Format devolve "R$ 1.234,56".
@@ -52,9 +62,4 @@ func Format(cents int64) string {
 		b.WriteRune(r)
 	}
 	return fmt.Sprintf("%sR$ %s,%02d", sign, b.String(), cents%100)
-}
-
-// Input devolve o valor no formato de formulário: "1234,56".
-func Input(cents int64) string {
-	return fmt.Sprintf("%d,%02d", cents/100, cents%100)
 }

@@ -28,7 +28,7 @@ func TestAnonymizeHidesNames(t *testing.T) {
 	}
 	// Mesmo estabelecimento, mesmo apelido; valores e categorias continuam.
 	if anon.Transactions[0].Description != anon.Transactions[1].Description || !strings.HasPrefix(anon.Transactions[0].Description, "Loja ") ||
-		anon.Transactions[3].Description != "Fonte 3" || anon.Transactions[0].AmountCents != 5230 || anon.Debts[0].Name != "Dívida 1" || anon.Debts[0].Creditor != "Credor 1" {
+		anon.Transactions[3].Description != "Fonte AC" || anon.Transactions[0].AmountCents != 5230 || anon.Debts[0].Name != "Dívida 1" || anon.Debts[0].Creditor != "Credor 1" {
 		t.Errorf("anônimo = %+v %+v", anon.Transactions, anon.Debts)
 	}
 
@@ -75,5 +75,69 @@ func TestRevealProposalKeepsRealNames(t *testing.T) {
 	json.Unmarshal(a.RevealProposal(create).Record, &tx)
 	if tx.Description != "Uber aeroporto" {
 		t.Errorf("novo = %q", tx.Description)
+	}
+}
+
+// Casos achados na revisão: nada disto pode sair para a nuvem nem misturar lojas.
+func TestAnonymizeHardCases(t *testing.T) {
+	m := func(id string) domain.Meta { return domain.Meta{ID: id, UpdatedAt: 1} }
+	tx := func(id, desc string, cents int64, cat, date string) domain.Transaction {
+		return domain.Transaction{Meta: m(id), Kind: domain.KindSaida, Description: desc, AmountCents: cents, CategoryID: cat, Date: date}
+	}
+	l := domain.Ledger{
+		Categories: []domain.Category{
+			{Meta: m("mer"), Name: "Mercado", Bucket: domain.BucketNecessidades},
+			{Meta: m("psi"), Name: "Psicóloga Dra. Ana Beatriz", Bucket: domain.BucketNecessidades},
+		},
+		Transactions: []domain.Transaction{
+			tx("p1", "PIX ENVIADO 123.456.789-00 JOAO SILVA", 20000, "psi", "2026-09-01"),
+			tx("p2", "PIX ENVIADO Maria Souza", 5000, "psi", "2026-09-02"),
+			tx("t1", "99 Taxi", 1800, "mer", "2026-09-03"),
+			tx("t2", "C&A", 9000, "mer", "2026-09-04"),
+			tx("t3", "Transferência PIX", 7000, "mer", "2026-09-05"),
+			tx("t4", "Mercado Extra", 30000, "mer", "2026-09-06"),
+			tx("t5", "iFood pizza", 5000, "mer", "2026-09-07"),
+		},
+		Recurring: []domain.Recurring{{Meta: m("r1"), Kind: domain.KindSaida, Description: "Netflix", AmountCents: 5590, CategoryID: "mer", Day: 5, Start: "2026-01"}},
+	}
+	anon, a := Anonymize(l)
+	raw, _ := json.Marshal(anon)
+	snap := Snapshot(BuildFacts(anon, time.Date(2026, 9, 20, 0, 0, 0, 0, time.UTC)))
+	for _, secret := range []string{"JOAO", "SILVA", "123.456", "Maria", "Souza", "Psicóloga", "Beatriz", "Taxi", "C&A", "Netflix", "iFood", "Extra"} {
+		if strings.Contains(string(raw), secret) || strings.Contains(snap, secret) {
+			t.Errorf("%q vazou para a IA", secret)
+		}
+	}
+	if !strings.Contains(string(raw), `"name":"Mercado"`) {
+		t.Error("categoria padrão (genérica) deveria ficar com o nome")
+	}
+	// Cada loja continua separada na lista de estabelecimentos (apelido sem número).
+	if n := strings.Count(snap, "Loja "); n < 6 {
+		t.Errorf("as lojas se juntaram na lista de estabelecimentos (%d):\n%s", n, snap)
+	}
+	// A pergunta e o histórico: o que foi revelado numa resposta não vaza na próxima.
+	q := a.Text("O PIX ENVIADO 123.456.789-00 JOAO SILVA, o 99 Taxi, a C&A e a Psicóloga Dra. Ana Beatriz; quanto foi na categoria Mercado?")
+	for _, secret := range []string{"JOAO", "SILVA", "123.456", "Taxi", "C&A", "Beatriz"} {
+		if strings.Contains(q, secret) {
+			t.Errorf("%q vazou na pergunta: %s", secret, q)
+		}
+	}
+	if got := a.Text("quanto gastei com a psicóloga?"); !strings.Contains(got, "Categoria 1") {
+		t.Errorf("o começo do nome da categoria também vira apelido: %s", got)
+	}
+	if !strings.Contains(q, "categoria Mercado") {
+		t.Errorf("nome de categoria padrão não deveria virar apelido: %s", q)
+	}
+	// Descrição sem palavra útil: o apelido é dela, e uma alteração da IA grava a original.
+	var alias string
+	for _, t3 := range anon.Transactions {
+		if t3.ID == "t3" {
+			alias = t3.Description
+		}
+	}
+	rec, _ := json.Marshal(map[string]any{"id": "t3", "description": alias, "amountCents": 8000})
+	got := a.RevealProposal(Proposal{Action: "alterar", Type: "transaction", Record: rec})
+	if !strings.Contains(string(got.Record), `"description":"Transferência PIX"`) {
+		t.Errorf("descrição original perdida: %s", got.Record)
 	}
 }

@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 )
 
@@ -46,6 +48,7 @@ type openAIChunk struct {
 			Content   string           `json:"content"`
 			ToolCalls []openAIToolCall `json:"tool_calls"`
 		} `json:"delta"`
+		FinishReason string `json:"finish_reason"`
 	} `json:"choices"`
 	Error *struct {
 		Message string `json:"message"`
@@ -92,6 +95,7 @@ func (o *OpenAI) Chat(ctx context.Context, req Request, onText func(string)) (Re
 	}
 
 	var calls []ToolCall // montados aos pedaços, pelo índice
+	finished := false    // [DONE] ou finish_reason: sem isso, a conexão caiu no meio
 	emit, finish := streamText(onText)
 	err = readLines(resp.Body, func(line []byte) error {
 		data, ok := bytes.CutPrefix(line, []byte("data:"))
@@ -100,6 +104,7 @@ func (o *OpenAI) Chat(ctx context.Context, req Request, onText func(string)) (Re
 		}
 		data = bytes.TrimSpace(data)
 		if string(data) == "[DONE]" {
+			finished = true
 			return io.EOF
 		}
 		var chunk openAIChunk
@@ -110,15 +115,28 @@ func (o *OpenAI) Chat(ctx context.Context, req Request, onText func(string)) (Re
 			return &APIError{Status: http.StatusInternalServerError, Message: chunk.Error.Message}
 		}
 		if len(chunk.Choices) > 0 {
+			finished = finished || chunk.Choices[0].FinishReason != ""
 			emit(chunk.Choices[0].Delta.Content)
 			for _, d := range chunk.Choices[0].Delta.ToolCalls {
-				for len(calls) <= d.Index {
-					calls = append(calls, ToolCall{})
+				// Um id novo é um pedido novo: o Gemini manda pedidos em paralelo
+				// todos com index 0, cada um inteiro num pedaço. Sem id, é
+				// continuação do pedido daquele index (formato da OpenAI).
+				i := slices.IndexFunc(calls, func(c ToolCall) bool { return d.ID != "" && c.ID == d.ID })
+				switch {
+				case i >= 0:
+				case d.ID != "" && (d.Index >= len(calls) || calls[d.Index].ID != ""):
+					calls = append(calls, ToolCall{ID: d.ID})
+					i = len(calls) - 1
+				default:
+					for len(calls) <= d.Index {
+						calls = append(calls, ToolCall{})
+					}
+					i = d.Index
+					if d.ID != "" {
+						calls[i].ID = d.ID
+					}
 				}
-				c := &calls[d.Index]
-				if d.ID != "" {
-					c.ID = d.ID
-				}
+				c := &calls[i]
 				if len(d.ExtraContent) > 0 {
 					c.Extra = d.ExtraContent
 				}
@@ -130,6 +148,9 @@ func (o *OpenAI) Chat(ctx context.Context, req Request, onText func(string)) (Re
 	})
 	if err != nil && err != io.EOF {
 		return Reply{}, err
+	}
+	if !finished {
+		return Reply{}, errors.New("a resposta da IA foi cortada no meio (a conexão caiu); tente de novo")
 	}
 	for i := range calls {
 		calls[i].Args = args(calls[i].Args)

@@ -21,6 +21,17 @@ export async function saveNote(question, answer) {
 // (WebAssembly) de uma mudança feita à mão.
 export async function applyProposal(p) {
   await finance.load();
+  if (p.before) {
+    // O registro mudou depois que o consultor preparou o cartão: aplicar agora
+    // desfaria a mudança mais nova.
+    const list = (await db.loadLedger())[{ transaction: "transactions", goal: "goals", debt: "debts" }[p.type]] || [];
+    const cur = list.find((r) => r.id === p.before.id) || {};
+    const keys = new Set([...Object.keys(cur), ...Object.keys(p.before)]);
+    keys.delete("updatedAt");
+    if ([...keys].some((k) => JSON.stringify(cur[k]) !== JSON.stringify(p.before[k]))) {
+      throw new Error("este cartão ficou velho: o registro mudou depois. Peça de novo ao consultor");
+    }
+  }
   const record = finance.validate(p.type, { ...p.record, updatedAt: Math.max(Date.now(), p.record.updatedAt + 1) });
   await db.saveLocal(p.type, record);
   sync.soon();

@@ -29,7 +29,7 @@
 </header>
 <nav class="tabs" aria-label="Menu principal">
   <a href="/" {{if eq .Page "dashboard"}}aria-current="page"{{end}}>{{template "icon" "home"}}<span>Painel</span></a>
-  <a href="/lancamentos" {{if eq .Page "transactions"}}aria-current="page"{{end}}>{{template "icon" "list"}}<span class="tab-long">Lançamentos</span><span class="tab-short" aria-hidden="true">Extrato</span></a>
+  <a href="/lancamentos" aria-label="Lançamentos (Extrato)" {{if eq .Page "transactions"}}aria-current="page"{{end}}>{{template "icon" "list"}}<span class="tab-long">Lançamentos</span><span class="tab-short" aria-hidden="true">Extrato</span></a>
   <a href="/dividas" {{if eq .Page "debts"}}aria-current="page"{{end}}>{{template "icon" "card"}}<span>Dívidas</span></a>
   <a href="/metas" class="tab-extra" {{if eq .Page "goals"}}aria-current="page"{{end}}>{{template "icon" "flag"}}<span>Metas</span></a>
   <a href="/notas" {{if eq .Page "notes"}}aria-current="page"{{end}}>{{template "icon" "note"}}<span>Notas</span></a>

@@ -13,6 +13,8 @@ func TestParse(t *testing.T) {
 		"1.250.000": 125000000,
 		"3.5":       350,
 		"19,99":     1999,
+		"0,125":     13,
+		"10,5":      1050,
 	}
 	for in, want := range cases {
 		got, err := Parse(in)
@@ -23,8 +25,10 @@ func TestParse(t *testing.T) {
 			t.Errorf("Parse(%q) = %d, want %d", in, got, want)
 		}
 	}
-	if _, err := Parse("-5"); err == nil {
-		t.Error("esperava erro para valor negativo")
+	for _, bad := range []string{"-5", "NaN", "Inf", "1e3", "1e20", "99999999999999999", "1,2,3", "abc", "0x10"} {
+		if got, err := Parse(bad); err == nil {
+			t.Errorf("Parse(%q) = %d, esperava erro", bad, got)
+		}
 	}
 }
 

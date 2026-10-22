@@ -43,6 +43,9 @@ type Proposal struct {
 	Record  json.RawMessage `json:"record"`
 	Label   string          `json:"label"` // texto do cartão
 	Applied bool            `json:"applied,omitempty"`
+	// Before é o registro como estava quando a IA preparou a alteração: se ele
+	// mudar depois, o aparelho recusa o cartão velho em vez de desfazer a mudança.
+	Before json.RawMessage `json:"before,omitempty"`
 }
 
 // Tools executa as ferramentas sobre os dados atuais.
@@ -53,6 +56,8 @@ type Tools struct {
 }
 
 func NewTools(l domain.Ledger, today time.Time, onPropose func(Proposal)) *Tools {
+	// Cópias: as propostas vão sendo aplicadas aqui (ver Run) sem mexer nos dados de quem chamou.
+	l.Transactions, l.Goals, l.Debts = slices.Clone(l.Transactions), slices.Clone(l.Goals), slices.Clone(l.Debts)
 	return &Tools{ledger: l, today: today, onPropose: onPropose}
 }
 
@@ -162,6 +167,12 @@ func (t *Tools) Run(c llm.ToolCall) string {
 	}
 	labels := []string{}
 	for _, q := range append([]Proposal{p}, extra...) {
+		// A próxima proposta parte desta: "paguei 500 em jan e 500 em fev" dá
+		// 3.200 → 2.700 → 2.200, e não dois cartões de 3.200 → 2.700.
+		if q.Action == ActionEdit {
+			q.Before = t.current(q)
+		}
+		t.apply(q)
 		if t.onPropose != nil {
 			t.onPropose(q)
 		}
@@ -207,16 +218,23 @@ func (t *Tools) search(text, category, kind, from, to string) string {
 	return b.String()
 }
 
-// periodStart/periodEnd aceitam AAAA-MM-DD ou AAAA-MM (o mês inteiro).
+// periodStart/periodEnd aceitam AAAA-MM-DD, AAAA-MM (o mês inteiro) ou AAAA
+// (o ano inteiro).
 func periodStart(s string) string {
-	if len(s) == 7 {
+	switch len(s) {
+	case 4:
+		return s + "-01-01"
+	case 7:
 		return s + "-01"
 	}
 	return s
 }
 
 func periodEnd(s string) string {
-	if len(s) == 7 {
+	switch len(s) {
+	case 4:
+		return s + "-12-31"
+	case 7:
 		return s + "-31" // compara como texto: qualquer dia do mês é <= "-31"
 	}
 	return s
@@ -526,6 +544,50 @@ func Applied(l domain.Ledger, p Proposal) bool {
 	wantJSON, _ := json.Marshal(want)
 	haveJSON, _ := json.Marshal(have)
 	return string(wantJSON) == string(haveJSON)
+}
+
+// current devolve o registro atual que a proposta altera (JSON).
+func (t *Tools) current(p Proposal) json.RawMessage {
+	var m struct{ ID string }
+	json.Unmarshal(p.Record, &m)
+	var cur any
+	switch p.Type {
+	case domain.TypeTransaction:
+		cur = find(t.ledger.Transactions, m.ID)
+	case domain.TypeGoal:
+		cur = find(t.ledger.Goals, m.ID)
+	case domain.TypeDebt:
+		cur = find(t.ledger.Debts, m.ID)
+	}
+	raw, _ := json.Marshal(cur)
+	return raw
+}
+
+// apply põe a proposta nos dados das ferramentas (só nesta conversa).
+func (t *Tools) apply(p Proposal) {
+	switch p.Type {
+	case domain.TypeTransaction:
+		t.ledger.Transactions = upsert(t.ledger.Transactions, p.Record)
+	case domain.TypeGoal:
+		t.ledger.Goals = upsert(t.ledger.Goals, p.Record)
+	case domain.TypeDebt:
+		t.ledger.Debts = upsert(t.ledger.Debts, p.Record)
+	}
+}
+
+func upsert[T any](list []T, raw json.RawMessage) []T {
+	var rec T
+	var m struct{ ID string }
+	if json.Unmarshal(raw, &rec) != nil || json.Unmarshal(raw, &m) != nil {
+		return list
+	}
+	for i, r := range list {
+		if find([]T{r}, m.ID) != nil {
+			list[i] = rec
+			return list
+		}
+	}
+	return append(list, rec)
 }
 
 // find acha o registro pelo ID (todo registro tem Meta, mas Go não deixa

@@ -351,6 +351,13 @@ func TestIsLocal(t *testing.T) {
 		{Kind: KindOpenAI, BaseURL: "https://api.groq.com/openai/v1", Model: "m"}:            false,
 		{Kind: KindOpenAI, BaseURL: "https://generativelanguage.googleapis.com", Model: "m"}: false,
 		{Kind: KindAnthropic, Model: "claude-opus-5-5"}:                                      false,
+		// Nome que só parece local: os dados iriam sem apelidos para fora.
+		{Kind: KindOpenAI, BaseURL: "http://localhost.site-de-fora.com/v1", Model: "m"}: false,
+		{Kind: KindOpenAI, BaseURL: "http://meupc.local:1234/v1", Model: "m"}:           true,
+		{Kind: KindOpenAI, BaseURL: "http://10.0.0.2:8080/v1", Model: "m"}:              true,
+		{Kind: KindOpenAI, BaseURL: "http://[::1]:8080/v1", Model: "m"}:                 true,
+		{Kind: KindOpenAI, BaseURL: "", Model: "m"}:                                     false,
+		{Kind: KindOpenAI, BaseURL: "::não é url", Model: "m"}:                          false,
 	} {
 		if got := IsLocal(cfg); got != want {
 			t.Errorf("IsLocal(%+v) = %v", cfg, got)
@@ -363,5 +370,40 @@ func TestAPIErrorHints(t *testing.T) {
 		if got := (&APIError{Status: status, Message: "Invalid Auth key."}).Error(); !strings.Contains(got, want) {
 			t.Errorf("%d: %q", status, got)
 		}
+	}
+}
+
+// Conexão que cai no meio não pode virar "resposta completa" pela metade.
+func TestOpenAICutStreamIsError(t *testing.T) {
+	srv := server(t, nil, func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "data: {\"choices\":[{\"delta\":{\"content\":\"Pague o car\"}}]}\n\n")
+	})
+	if _, _, err := collectChat(t, NewOpenAI(srv.URL, "", "m")); err == nil || !strings.Contains(err.Error(), "cortada") {
+		t.Errorf("err = %v", err)
+	}
+	// Sem [DONE], mas com finish_reason (alguns servidores locais): vale.
+	srv = server(t, nil, func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "data: {\"choices\":[{\"delta\":{\"content\":\"ok\"},\"finish_reason\":\"stop\"}]}\n\n")
+	})
+	if _, full, err := collectChat(t, NewOpenAI(srv.URL, "", "m")); err != nil || full != "ok" {
+		t.Errorf("full=%q err=%v", full, err)
+	}
+}
+
+// Gemini: pedidos em paralelo, todos com index 0, cada um com seu id.
+func TestOpenAIParallelToolCallsSameIndex(t *testing.T) {
+	srv := server(t, nil, func(w http.ResponseWriter, r *http.Request) {
+		for _, d := range []string{
+			`{"tool_calls":[{"index":0,"id":"a","type":"function","function":{"name":"buscar","arguments":"{\"texto\":\"ifood\"}"}}]}`,
+			`{"tool_calls":[{"index":0,"id":"b","type":"function","function":{"name":"pagar","arguments":"{\"valor\":\"500\"}"}},{"index":0,"id":"c","type":"function","function":{"name":"pagar","arguments":"{\"valor\":\"300\"}"}}]}`,
+		} {
+			fmt.Fprintf(w, "data: {\"choices\":[{\"delta\":%s}]}\n\n", d)
+		}
+		fmt.Fprint(w, "data: [DONE]\n\n")
+	})
+	reply, err := NewOpenAI(srv.URL, "", "m").Chat(context.Background(), toolReq, func(string) {})
+	if err != nil || len(reply.ToolCalls) != 3 || reply.ToolCalls[0].Name != "buscar" || reply.ToolCalls[2].Name != "pagar" ||
+		string(reply.ToolCalls[2].Args) != `{"valor":"300"}` {
+		t.Fatalf("reply=%+v err=%v", reply.ToolCalls, err)
 	}
 }

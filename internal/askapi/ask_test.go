@@ -28,11 +28,11 @@ func TestAskAnonymizedCloud(t *testing.T) {
 		var delta string
 		switch strings.Count(string(raw), `"role":"tool"`) {
 		case 0:
-			delta = `{"tool_calls":[{"index":0,"id":"c1","type":"function","function":{"name":"buscar_lancamentos","arguments":"{\"texto\":\"Loja 2\"}"}}]}`
+			delta = `{"tool_calls":[{"index":0,"id":"c1","type":"function","function":{"name":"buscar_lancamentos","arguments":"{\"texto\":\"Loja AB\"}"}}]}`
 		case 1:
 			delta = `{"tool_calls":[{"index":0,"id":"c2","type":"function","function":{"name":"alterar_lancamento","arguments":"{\"id\":\"b\",\"valor\":\"30\"}"}}]}`
 		default:
-			delta = `{"content":"Você gastou R$ 25,00 na Loja 2. Deixei a correção pronta."}`
+			delta = `{"content":"Você gastou R$ 25,00 na Loja AB. Deixei a correção pronta."}`
 		}
 		fmt.Fprintf(w, "data: {\"choices\":[{\"delta\":%s}]}\n\ndata: [DONE]\n\n", delta)
 	}))

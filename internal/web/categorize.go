@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/advisor"
+	"github.com/alexandreserra1/finan_rich/internal/importer"
+	"github.com/alexandreserra1/finan_rich/internal/llm"
 )
 
 const maxCategorize = 300
@@ -34,7 +36,7 @@ func (s *Server) apiCategorize(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Minute)
 	defer cancel()
-	provider, _, err := s.provider(ctx)
+	provider, ai, err := s.provider(ctx)
 	if err != nil {
 		writeJSONError(w, http.StatusServiceUnavailable, err.Error())
 		return
@@ -43,6 +45,13 @@ func (s *Server) apiCategorize(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, err.Error())
 		return
+	}
+	if !llm.IsLocal(ai.Config) {
+		// IA na nuvem: vai só a "assinatura" da descrição, sem números (CPF,
+		// conta, código de autorização) nem "PIX ENVIADO" e afins.
+		for i := range req.Items {
+			req.Items[i].Description = importer.DescKey(req.Items[i].Description)
+		}
 	}
 	cats, err := advisor.Categorize(ctx, provider, l.Categories, req.Items)
 	if err != nil {

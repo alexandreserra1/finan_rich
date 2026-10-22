@@ -3,7 +3,9 @@
 // sair (regras em Go, no advisor.wasm, que só o app do celular leva).
 //
 // A chave da IA fica cifrada (AES-GCM) com uma chave deste aparelho que o
-// navegador não deixa exportar: quem copiar o banco do app não lê a chave.
+// navegador não deixa exportar: não aparece em texto puro no banco do app, no
+// backup do finan_rich nem na sincronização. Quem tiver acesso total ao
+// aparelho (root, cópia da pasta do app) ainda consegue usá-la.
 import * as db from "./db.js";
 import "./wasm_exec.js";
 import { today } from "./ui.js";

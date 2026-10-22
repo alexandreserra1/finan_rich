@@ -69,12 +69,12 @@ func Ask(ctx context.Context, p llm.Provider, history []llm.Message, question, s
 	}
 	var answer strings.Builder
 	for round := 1; ; round++ {
-		if round > maxToolRounds { // chega de ferramentas: agora responde
-			req.Tools = nil
+		if round > maxToolRounds && req.Tools != nil { // chega de ferramentas: agora responde
+			req.Tools, req.Messages = nil, withoutTools(req.Messages)
 		}
 		reply, err := p.Chat(ctx, req, onText)
 		if err != nil && req.Tools != nil && llm.ToolsUnsupported(err) {
-			req.System, req.Tools = SystemPrompt, nil
+			req.System, req.Tools, req.Messages = SystemPrompt, nil, withoutTools(req.Messages)
 			continue
 		}
 		if err != nil {
@@ -93,6 +93,35 @@ func Ask(ctx context.Context, p llm.Provider, history []llm.Message, question, s
 			req.Messages = append(req.Messages, llm.Message{Role: llm.RoleTool, ToolCallID: c.ID, ToolName: c.Name, Content: tools.Run(c)})
 		}
 	}
+}
+
+// withoutTools troca os pedidos e resultados de ferramentas por texto: pedido
+// sem "tools" mas com blocos de ferramenta é recusado (Anthropic, por exemplo).
+func withoutTools(msgs []llm.Message) []llm.Message {
+	var out []llm.Message
+	var results []string
+	flush := func() {
+		if len(results) > 0 {
+			out = append(out, llm.Message{Role: llm.RoleUser, Content: "Resultados das consultas aos dados:\n" + strings.Join(results, "\n")})
+			results = nil
+		}
+	}
+	for _, m := range msgs {
+		switch {
+		case m.Role == llm.RoleTool:
+			results = append(results, "- "+m.ToolName+": "+m.Content)
+		case len(m.ToolCalls) > 0:
+			flush()
+			if m.Content != "" {
+				out = append(out, llm.Message{Role: llm.RoleAssistant, Content: m.Content})
+			}
+		default:
+			flush()
+			out = append(out, m)
+		}
+	}
+	flush()
+	return out
 }
 
 // Question é uma pergunta ao consultor com tudo que ele precisa.

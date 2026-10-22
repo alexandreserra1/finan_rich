@@ -131,8 +131,8 @@ const cloudAI = createServer((req, res) => {
     const question = messages.findLast((m) => m.role === "user").content.split("</dados_financeiros>").at(-1);
     const send = (delta) => res.end(`data: ${JSON.stringify({ choices: [{ delta }] })}\n\ndata: [DONE]\n\n`);
     const call = (name, args) => send({ tool_calls: [{ index: 0, id: "c" + messages.length, type: "function", function: { name, arguments: JSON.stringify(args) } }] });
-    if (last.role === "tool") return send({ content: last.content.startsWith("Pronto") ? "Deixei pronto para você confirmar." : "Na " + question.match(/Loja \d+/)?.[0] + " você gastou " + last.content.match(/Saídas: (R\$ [\d.,]+)/)?.[1] + "." });
-    const shop = question.match(/Loja \d+/)?.[0];
+    if (last.role === "tool") return send({ content: last.content.startsWith("Pronto") ? "Deixei pronto para você confirmar." : "Na " + question.match(/Loja [A-Z]{2,}/)?.[0] + " você gastou " + last.content.match(/Saídas: (R\$ [\d.,]+)/)?.[1] + "." });
+    const shop = question.match(/Loja [A-Z]{2,}/)?.[0];
     if (shop) return call("buscar_lancamentos", { texto: shop });
     if (/pão/i.test(question)) return call("propor_lancamento", { descricao: "Pão", valor: "8,50", categoria: "Mercado" });
     send({ content: "Oi!" });

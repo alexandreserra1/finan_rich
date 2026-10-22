@@ -115,3 +115,28 @@ func TestNotes(t *testing.T) {
 		t.Errorf("ordem das notas = %v", got)
 	}
 }
+
+// Recorrências chegam também pela sincronização: as regras valem lá.
+func TestRecurringValidate(t *testing.T) {
+	ok := Recurring{Meta: Meta{ID: "r1", UpdatedAt: 1}, Kind: KindSaida, Description: "Netflix", AmountCents: 5590, CategoryID: "c", Day: 5, Start: "2026-01"}
+	if err := ok.Validate(); err != nil {
+		t.Fatalf("válida: %v", err)
+	}
+	for name, change := range map[string]func(*Recurring){
+		"dia 0":          func(r *Recurring) { r.Day = 0 },
+		"dia 32":         func(r *Recurring) { r.Day = 32 },
+		"fim antes":      func(r *Recurring) { r.End = "2025-12" },
+		"mês 13":         func(r *Recurring) { r.Start = "2026-13" },
+		"valor zero":     func(r *Recurring) { r.AmountCents = 0 },
+		"sem categoria":  func(r *Recurring) { r.CategoryID = "" },
+		"sem descrição":  func(r *Recurring) { r.Description = " " },
+		"tipo inválido":  func(r *Recurring) { r.Kind = "outro" },
+		"id muito longo": func(r *Recurring) { r.ID = strings.Repeat("x", 41) },
+	} {
+		r := ok
+		change(&r)
+		if r.Validate() == nil {
+			t.Errorf("%s: deveria recusar", name)
+		}
+	}
+}

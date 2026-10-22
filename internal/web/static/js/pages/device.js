@@ -39,9 +39,9 @@ function cloudSection(server) {
   const hasKey = cfg.key && cfg.preset === preset.id;
   return html`<section class="panel" id="ia-nuvem">
     <h2>Consultor sem computador</h2>
-    <p class="small muted">O consultor pode usar uma IA na nuvem, chamada direto deste celular. Antes de sair, os nomes de lojas,
-      dívidas, credores e metas viram apelidos ("Loja 3", "Dívida 1") e as notas ficam de fora: a IA vê só valores, datas e
-      categorias. A conexão é cifrada (HTTPS) e a chave fica guardada cifrada neste aparelho.</p>
+    <p class="small muted">O consultor pode usar uma IA na nuvem, chamada direto deste celular. Antes de sair, os nomes de lojas e pessoas,
+      dívidas, credores, metas e categorias criadas por você viram apelidos ("Loja AB", "Dívida 1") e as notas ficam de fora:
+      a IA vê só valores, datas e categorias genéricas. A conexão é cifrada (HTTPS) e a chave fica guardada cifrada neste aparelho.</p>
     <form data-form="cloud-ai" class="grid-form">
       <label>IA na nuvem
         <select name="preset">${ai.presets.map((p) => html`<option value="${p.id}" ${p.id === preset.id ? "selected" : ""}>${p.name}</option>`)}</select>

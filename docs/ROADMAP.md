@@ -117,3 +117,19 @@ aparelho; o que falta para chegar perto, do mais simples ao mais caro:
 - ~~**Homebrew e Scoop**~~ — feito (este repositório é o tap e o bucket). **winget**:
   configurado, liga com o secret `WINGET_GITHUB_TOKEN` (ver DISTRIBUICAO.md).
 - **Flathub, .deb/.rpm**: gratuitos; vale quando houver mais usuários de Linux pedindo.
+
+## Pendências conhecidas (revisão de outubro de 2026)
+
+Achados das revisões de código, segurança e testes que ficaram para depois:
+
+- **Chave da IA no Android Keystore**: hoje a chave de cifra fica no mesmo armazenamento do
+  app; quem copiar a pasta inteira do app (root) consegue usá-la.
+- **Content-Security-Policy** nas telas: não há XSS conhecido, mas a CSP limitaria o estrago
+  de um futuro (precisa testar no Capacitor).
+- **Cota grátis da IA na nuvem**: cada pergunta com ferramentas faz de 2 a 5 chamadas; o
+  plano grátis do Gemini acaba rápido (erro 429, a tela avisa). Vale mostrar o uso do dia.
+- **Pelo Wi-Fi o tráfego é HTTP**: para usar fora de casa, Tailscale (HTTPS).
+- **Testes que faltam**: restauração de backup com conflito entre aparelhos, erro de rede no
+  meio do chat (e2e), excluir dívida (e2e), regra "categoria em uso não pode ser apagada" em
+  Go (hoje só em JS).
+- **IA "custom" num proxy local** (LiteLLM etc.) conta como local e vai sem apelidos.

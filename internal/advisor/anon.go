@@ -3,6 +3,7 @@ package advisor
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 	"unicode"
@@ -33,35 +34,91 @@ type phrase struct {
 // Anonymize devolve uma cópia dos dados com apelidos no lugar dos nomes.
 func Anonymize(l domain.Ledger) (domain.Ledger, *Anonymizer) {
 	a := &Anonymizer{display: map[string]string{}, records: map[string]map[string]string{}, alias: map[string]map[string]string{}}
-	out := domain.Ledger{Categories: l.Categories, Prefs: l.Prefs} // notas ficam de fora
+	out := domain.Ledger{Prefs: l.Prefs} // notas ficam de fora
 
-	byKey := map[string]string{} // chave da descrição → apelido
-	shop := func(id, desc, kind string) string {
+	// Categorias padrão são genéricas e ficam; as criadas pela pessoa ("Pensão
+	// Maria", "Psicóloga Dra. Ana") viram "Categoria N".
+	generic := map[string]bool{}
+	for _, c := range domain.DefaultCategories(0) {
+		generic[fold(c.Name)] = true
+	}
+	catNames := map[string]bool{}
+	custom := 0
+	for _, c := range l.Categories {
+		catNames[fold(c.Name)] = true
+		if !generic[fold(c.Name)] {
+			custom++
+			al := fmt.Sprintf("Categoria %d", custom)
+			a.named(c.ID, "name", c.Name, al)
+			// "quanto gastei com a psicóloga?" também acha "Psicóloga Dra. Ana".
+			if w := strings.Fields(c.Name); len(w) > 1 && len([]rune(w[0])) >= 5 && !generic[fold(w[0])] {
+				a.addPhrase(w[0], al)
+			}
+			c.Name = al
+		}
+		out.Categories = append(out.Categories, c)
+	}
+	// Uma palavra que é nome de categoria ("mercado", "aluguel") não vira
+	// apelido na pergunta: senão "categoria Mercado" viraria "categoria Loja AB".
+	known := func(text, alias string) {
+		if !catNames[fold(text)] {
+			a.addPhrase(text, alias)
+		}
+	}
+
+	// Estabelecimentos: primeiro descobre os grupos, para os apelidos terem
+	// todos o mesmo tamanho ("Loja AB" nunca é pedaço de "Loja ABC").
+	type group struct{ key, show, kind string }
+	groupOf := func(desc, kind string) group {
 		key := importer.DescKey(desc)
-		if key == "" {
-			return "Lançamento"
+		if key == "" { // "C&A", "Transferência PIX": vale a descrição inteira
+			return group{"#" + fold(desc), desc, kind}
 		}
-		// O estabelecimento é a primeira palavra ("ifood pizza" e "ifood lanche"
-		// são o mesmo iFood); palavras muito curtas não bastam sozinhas.
-		show := desc
+		// Nas compras de cartão o estabelecimento vem primeiro ("IFOOD *PIZZA",
+		// "iFood lanche"): agrupa por ele e mostra só ele na resposta.
 		if w, _, _ := strings.Cut(key, " "); len([]rune(w)) >= 3 {
-			key = w
-			// Na resposta, o nome do grupo é a palavra como a pessoa escreveu
-			// ("iFood", não "iFood pizza"), quando dá para achá-la.
 			if f := strings.Fields(desc); len(f) > 0 && importer.DescKey(f[0]) == w {
-				show = f[0]
+				return group{w, f[0], kind}
 			}
 		}
-		al, ok := byKey[key]
-		if !ok {
-			prefix := "Loja"
-			if kind == domain.KindEntrada {
-				prefix = "Fonte"
-			}
-			al = fmt.Sprintf("%s %d", prefix, len(byKey)+1)
-			byKey[key] = al
-			a.display[al] = show
-			a.addPhrase(key, al)
+		return group{key, desc, kind}
+	}
+	var order []group
+	seen := map[string]bool{}
+	visit := func(desc, kind string) {
+		if g := groupOf(desc, kind); !seen[g.key] {
+			seen[g.key] = true
+			order = append(order, g)
+		}
+	}
+	for _, t := range l.Transactions {
+		visit(t.Description, t.Kind)
+	}
+	for _, r := range l.Recurring {
+		visit(r.Description, r.Kind)
+	}
+	codes := aliasCodes(len(order))
+	byKey := map[string]string{} // grupo → apelido
+	for i, g := range order {
+		prefix := "Loja"
+		if g.kind == domain.KindEntrada {
+			prefix = "Fonte"
+		}
+		al := prefix + " " + codes[i]
+		byKey[g.key] = al
+		a.display[al] = g.show
+		if !strings.HasPrefix(g.key, "#") {
+			known(g.key, al)
+		}
+		known(g.show, al)
+	}
+	shop := func(id, desc, kind string) string {
+		al := byKey[groupOf(desc, kind).key]
+		// A descrição inteira também é trocada: se ela voltar numa resposta
+		// ("PIX ENVIADO 123.456.789-00 JOAO SILVA"), não vaza na próxima pergunta.
+		known(desc, al)
+		if key := importer.DescKey(desc); key != "" {
+			known(key, al)
 		}
 		a.keep(id, "description", desc, al)
 		return al
@@ -100,6 +157,26 @@ func Anonymize(l domain.Ledger) (domain.Ledger, *Anonymizer) {
 	// Nomes mais longos primeiro: "cartão nubank" antes de "cartão".
 	slices.SortStableFunc(a.phrases, func(x, y phrase) int { return len(y.text) - len(x.text) })
 	return out, a
+}
+
+// aliasCodes devolve n códigos de letras, todos do mesmo tamanho ("AB", "AC"...),
+// pulando os que a comparação de descrições ignora ("SA", "DE"...).
+func aliasCodes(n int) []string {
+	size := 2
+	for float64(n) > 0.9*math.Pow(26, float64(size)) {
+		size++
+	}
+	out := make([]string, 0, n)
+	for i := 0; len(out) < n; i++ {
+		code := make([]byte, size)
+		for j, v := size-1, i; j >= 0; j, v = j-1, v/26 {
+			code[j] = byte('A' + v%26)
+		}
+		if importer.DescKey("loja "+string(code)) == "loja "+strings.ToLower(string(code)) {
+			out = append(out, string(code))
+		}
+	}
+	return out
 }
 
 func (a *Anonymizer) named(id, field, name, alias string) {
@@ -177,9 +254,18 @@ func (a *Anonymizer) Reveal(s string) string {
 // não mudou voltam exatamente como estavam no registro (pelo ID); o resto
 // passa por Reveal. Assim um apelido nunca é gravado nos dados.
 func (a *Anonymizer) RevealProposal(p Proposal) Proposal {
+	p.Record = a.revealRecord(p.Record)
+	if len(p.Before) > 0 {
+		p.Before = a.revealRecord(p.Before)
+	}
+	p.Label = a.Reveal(p.Label)
+	return p
+}
+
+func (a *Anonymizer) revealRecord(raw json.RawMessage) json.RawMessage {
 	var rec map[string]any
-	if json.Unmarshal(p.Record, &rec) != nil {
-		return p
+	if json.Unmarshal(raw, &rec) != nil {
+		return raw
 	}
 	id, _ := rec["id"].(string)
 	for _, field := range []string{"description", "name", "creditor"} {
@@ -193,7 +279,6 @@ func (a *Anonymizer) RevealProposal(p Proposal) Proposal {
 			rec[field] = a.Reveal(v)
 		}
 	}
-	p.Record, _ = json.Marshal(rec)
-	p.Label = a.Reveal(p.Label)
-	return p
+	out, _ := json.Marshal(rec)
+	return out
 }
