@@ -107,6 +107,8 @@ aparelho; o que falta para chegar perto, do mais simples ao mais caro:
 ## Outras ideias
 
 - ~~**Metas** com valor e prazo~~ — feito (tela Metas e painel).
+- ~~**Busca e filtros nos lançamentos**, **orçamento por categoria** e **primeiro uso
+  guiado**~~ — feito.
 - ~~**Lançamentos recorrentes** automáticos~~ — feito ("Repetir todo mês").
 - ~~**Instalar como aplicativo no computador**~~ — feito: um comando no terminal
   (`install.sh`/`install.ps1`) instala, cria o ícone no menu e abre em janela própria; sem o

@@ -48,8 +48,9 @@ type Meta struct {
 
 type Category struct {
 	Meta
-	Name   string `json:"name"`
-	Bucket string `json:"bucket"`
+	Name        string `json:"name"`
+	Bucket      string `json:"bucket"`
+	BudgetCents int64  `json:"budgetCents,omitempty"` // teto de gasto por mês (0 = sem orçamento)
 }
 
 type Transaction struct {
@@ -174,6 +175,9 @@ func (c Category) Validate() error {
 	}
 	if !validBucket(c.Bucket) {
 		return fmt.Errorf("grupo inválido: %q", c.Bucket)
+	}
+	if c.BudgetCents < 0 {
+		return errors.New("o orçamento não pode ser negativo")
 	}
 	return nil
 }

@@ -62,3 +62,7 @@ func cleanDescription(s string) string {
 	}
 	return s
 }
+
+// Normalize é o normalize para outros pacotes (a busca de lançamentos usa para
+// achar "acucar" em "Pão de Açúcar").
+func Normalize(s string) string { return normalize(s) }

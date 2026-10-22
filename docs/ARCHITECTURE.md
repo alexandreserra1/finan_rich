@@ -229,7 +229,9 @@ aparelho                                      servidor
 | `insights.go` | `Insights`: tela Análise — ritmo do mês, projeção, pode gastar por dia, gastos por lugar e por categoria contra a média, assinaturas e onde economizar ([ANALISE.md](ANALISE.md)). |
 | `goals.go` | `Goals`: progresso das metas (já guardado + aportes na categoria), quanto guardar por mês, atrasada ou atingida. |
 | `recurring.go` | `RecurringDue`: lançamentos que as recorrências já deveriam ter gerado (ID fixo `rec-<id>-<AAAA-MM>`, sem duplicar entre aparelhos). |
-| `alerts.go` | `Alerts`: avisos do painel (vencimento em até 3 dias, dívida que cresce, grupo acima da meta, gasto fora do padrão, metas). |
+| `alerts.go` | `Alerts`: avisos do painel (vencimento em até 3 dias, dívida que cresce, grupo acima da meta, gasto fora do padrão, metas, orçamento da categoria aos 80% e estourado). |
+| `budgets.go` | `Budgets`: quanto já foi usado do teto mensal de cada categoria (`budgetCents`). |
+| `search.go` | `SearchTransactions`: busca da tela Lançamentos (texto sem acento nem maiúscula, categoria, tipo, faixa de valor, mês) e os totais do que achou. |
 | `merchants.go` | `TopMerchants`: gastos por estabelecimento nos últimos 12 meses (para o consultor). |
 | `monthplan.go` | `PlanMonth`: parcelas mínimas pendentes, sobra livre, quanto pagar na dívida de maior juros. |
 | `view.go` | `Dashboard` e `Debts`: o que cada tela mostra, já calculado, em structs com tags JSON (o que o navegador recebe). |
@@ -388,7 +390,8 @@ Arquivos do navegador (`static/`):
 | `js/finance.js` | Carrega o `finance.wasm` e expõe as funções em JavaScript. |
 | `js/ui.js` | `html` com escape automático (evita injeção), UUID, datas, mensagens. |
 | `js/pages/dashboard.js` | Painel do mês: totais, divisão do salário, gastos por categoria, visão anual. Também exporta o seletor de mês e os cartões de totais usados pelos lançamentos. |
-| `js/pages/transactions.js` | Lançamentos: formulário (categorias filtradas por entrada/saída), lista do mês, apagar, "copiar do mês anterior". |
+| `js/pages/transactions.js` | Lançamentos: formulário (categorias filtradas por entrada/saída), lista do mês, busca e filtros (no endereço, então voltar e avançar funcionam), apagar, "copiar do mês anterior". |
+| `js/pages/welcome.js` | Primeiro uso guiado, mostrado no Painel até a pessoa terminar ou pular. |
 | `js/pages/debts.js` | Dívidas: cadastro e edição, simulação pagando o mínimo, ordem avalanche e bola de neve. |
 | `js/pages/categories.js` | Divisão do salário (percentuais) e categorias (criar, apagar se nada a usa: regra em Go). |
 | `js/pages/notes.js` | Notas: criar, editar, fixar, buscar, apagar e exportar cada uma em PDF ou texto. |

@@ -535,3 +535,23 @@ label.check.repeat { align-self: center; }
 .proposal { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .55rem .75rem; border: 1px dashed var(--border); border-radius: 10px; background: var(--surface-2); font-size: .9rem; }
 .proposal button { flex: none; }
 .proposal button.danger { background: var(--neg); border-color: var(--neg); color: #fff; }
+
+/* Busca nos lançamentos, orçamentos por categoria e primeiro uso */
+.filters { margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+.filters label.check { align-self: center; }
+.filter-total { display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem 1.1rem; margin: 0 0 1rem; padding: .65rem .9rem;
+  border-radius: var(--radius-sm); background: var(--surface-2); font-size: .92rem; }
+.filter-total b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bar span.near { background: var(--warn); }
+.budget-form { display: flex; gap: .35rem; align-items: center; }
+.budget-form input { min-height: 38px; padding: .4rem .6rem; width: 8.5rem; max-width: 100%; }
+@media (max-width: 720px) { .budget-form { justify-content: flex-end; } .budget-form input { width: 7rem; } }
+.welcome h2 { margin-top: .5rem; }
+.steps { list-style: none; counter-reset: step; display: flex; gap: .4rem; padding: 0; margin: 0 0 .6rem; }
+.steps li { counter-increment: step; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .3rem; font-size: .78rem; color: var(--muted); }
+.steps li::before { content: counter(step); display: grid; place-items: center; height: 6px; border-radius: 99px; background: var(--track); color: transparent; overflow: hidden; }
+.steps li.done::before, .steps li[aria-current="step"]::before { background: var(--accent); }
+.steps li[aria-current="step"] { color: var(--text); font-weight: 600; }
+.welcome label small { font-weight: 400; }
+.welcome-skip { margin-top: 1rem; justify-content: flex-start; }
+@media (max-width: 480px) { .steps li { font-size: 0; } .steps li[aria-current="step"] { font-size: .78rem; } }

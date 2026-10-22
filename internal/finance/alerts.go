@@ -11,7 +11,7 @@ import (
 
 // Alert é um aviso do painel (e, no celular, base das notificações).
 type Alert struct {
-	Kind  string `json:"kind"`  // debt-due, debt-growing, bucket-over, unusual, goal-late, goal-done
+	Kind  string `json:"kind"`  // debt-due, debt-growing, bucket-over, budget-near, budget-over, unusual, goal-late, goal-done
 	Level string `json:"level"` // danger, warn, ok
 	Title string `json:"title"`
 	Text  string `json:"text"`
@@ -56,6 +56,21 @@ func Alerts(l domain.Ledger, today time.Time) []Alert {
 				out = append(out, Alert{"bucket-over", "warn", fmt.Sprintf("%s passou da meta do mês", bucketName(b.Bucket)),
 					fmt.Sprintf("Gasto %s de %s planejados (%d%%).", brl(b.SpentCents), brl(b.PlannedCents), b.UsedPct()), "/"})
 			}
+		}
+	}
+	for _, b := range Budgets(l, current) {
+		link := "/lancamentos?categoria=" + b.CategoryID
+		switch {
+		case b.SpentCents >= b.BudgetCents:
+			title := "Orçamento de " + b.Name + " estourou"
+			if b.RemainingCents == 0 {
+				title = "Orçamento de " + b.Name + " acabou"
+			}
+			out = append(out, Alert{"budget-over", "danger", title,
+				fmt.Sprintf("Gasto %s de %s no mês (%d%%).", brl(b.SpentCents), brl(b.BudgetCents), b.UsedPct), link})
+		case b.UsedPct >= budgetWarnPct:
+			out = append(out, Alert{"budget-near", "warn", fmt.Sprintf("Orçamento de %s em %d%%", b.Name, b.UsedPct),
+				fmt.Sprintf("Restam %s de %s no mês.", brl(b.RemainingCents), brl(b.BudgetCents)), link})
 		}
 	}
 	out = append(out, unusualSpending(l, current)...)

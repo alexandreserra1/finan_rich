@@ -188,6 +188,19 @@ try {
   await page.goto(`${APP}/configuracoes`);
   await page.click("[data-action=solo]");
   await page.waitForSelector("form[data-form=transaction]", { timeout: 20000 });
+  // Primeiro uso também só no celular: o Painel guia em vez de ficar vazio.
+  await page.goto(`${APP}/`);
+  await page.waitForSelector(".welcome:has-text('Passo 1 de 4')", { timeout: 20000 });
+  await page.fill(".welcome input[name=amount]", "3.000");
+  await page.click(".welcome button[type=submit]");
+  await page.waitForSelector(".welcome:has-text('Passo 2 de 4')");
+  await page.click(".welcome [data-action=finish]");
+  await page.waitForSelector(".cards.has-hero");
+  const solo = await page.evaluate(async () => (await import("/static/js/db.js")).loadLedger());
+  ok(solo.recurring.some((r) => r.amountCents === 300000 && r.categoryId === "padrao-salario") && solo.prefs.some((p) => p.id === "primeiro-uso"),
+    "primeiro uso guiado funciona só no celular (salário recorrente salvo no aparelho)");
+  await page.goto(`${APP}/lancamentos`);
+  await page.waitForSelector("form[data-form=transaction]", { timeout: 20000 });
   await addTransaction(page, "Feira (só celular)", "40");
   ok(true, "sem computador, o app funciona só no celular (categorias criadas no aparelho)");
 

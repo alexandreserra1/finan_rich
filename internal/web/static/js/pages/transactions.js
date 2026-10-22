@@ -15,10 +15,63 @@ function monthTransactions(ledger, month) {
     .sort((a, b) => b.date.localeCompare(a.date) || b.updatedAt - a.updatedAt);
 }
 
-export function render({ ledger, month }) {
+// Busca e filtros da lista: o estado fica no endereço (?busca=...&categoria=...),
+// então voltar e avançar funcionam. Quem filtra e soma é o Go (finance.SearchTransactions).
+const FILTER_KEYS = ["busca", "categoria", "tipo", "min", "max", "todos"];
+
+function readFilter(params, month) {
+  const cents = (s) => { try { return s ? finance.parseMoney(s) : 0; } catch { return 0; } };
+  return {
+    text: params.get("busca") || "", categoryId: params.get("categoria") || "", kind: params.get("tipo") || "",
+    minCents: cents(params.get("min")), maxCents: cents(params.get("max")),
+    month: params.get("todos") ? "" : month,
+  };
+}
+
+function filterPanel(params, month, cats, found) {
+  const m = finance.money;
+  const active = FILTER_KEYS.some((k) => params.get(k));
+  const value = (k) => params.get(k) || "";
+  return html`
+    <form data-form="filter" class="grid-form filters" role="search">
+      <label class="wide">Buscar <input type="search" name="busca" value="${value("busca")}" placeholder="Ex.: mercado, iFood, aluguel"></label>
+      <label>Categoria
+        <select name="categoria">
+          <option value="">Todas</option>
+          ${cats.map((c) => html`<option value="${c.id}" ${c.id === params.get("categoria") ? "selected" : ""}>${c.name}</option>`)}
+        </select>
+      </label>
+      <label>Tipo
+        <select name="tipo">
+          <option value="">Entradas e saídas</option>
+          <option value="entrada" ${value("tipo") === "entrada" ? "selected" : ""}>Só entradas</option>
+          <option value="saida" ${value("tipo") === "saida" ? "selected" : ""}>Só saídas</option>
+        </select>
+      </label>
+      <label class="half">Valor de (R$) <input name="min" inputmode="decimal" value="${value("min")}" placeholder="0,00"></label>
+      <label class="half">até (R$) <input name="max" inputmode="decimal" value="${value("max")}" placeholder="sem limite"></label>
+      <label class="check"><input type="checkbox" name="todos" value="1" ${params.get("todos") ? "checked" : ""}> Em todos os meses</label>
+      <div class="form-actions">
+        <button type="submit" class="secondary">Buscar</button>
+        ${active ? html`<a href="/lancamentos?mes=${month}">Limpar</a>` : ""}
+      </div>
+    </form>
+    ${active ? html`<p class="filter-total" role="status">
+      <strong>${found.count} lançamento(s)</strong>
+      <span>Entradas <b class="pos">${m(found.inCents)}</b></span>
+      <span>Saídas <b>${m(found.outCents)}</b></span>
+      <span>Saldo <b class="${found.balanceCents < 0 ? "neg" : "pos"}">${m(found.balanceCents)}</b></span>
+      ${found.count > found.transactions.length ? html`<small class="muted">mostrando os ${found.transactions.length} mais recentes</small>` : ""}
+    </p>` : ""}`;
+}
+
+export function render({ ledger, month, params }) {
   const cats = activeCategories(ledger);
   const byId = Object.fromEntries(ledger.categories.map((c) => [c.id, c]));
-  const txs = monthTransactions(ledger, month);
+  const filter = readFilter(params, month);
+  const found = finance.searchTransactions(ledger, filter);
+  const txs = found.transactions;
+  const filtering = FILTER_KEYS.some((k) => params.get(k));
   const v = finance.dashboard(ledger, month);
   const defaultDate = today().startsWith(month) ? today() : `${month}-01`;
   const m = finance.money;
@@ -51,12 +104,13 @@ export function render({ ledger, month }) {
 
     <section class="panel">
       <div class="row">
-        <h2>Lançamentos de ${finance.monthLabel(month)}</h2>
+        <h2>Lançamentos de ${filter.month ? finance.monthLabel(month) : "todos os meses"}</h2>
         <div class="row-actions tight">
           <a class="button secondary-link" href="/importar">Importar extrato</a>
           <button class="secondary" type="button" data-action="copy-previous" title="Copia salário e contas fixas do mês anterior">Copiar do mês anterior</button>
         </div>
       </div>
+      ${filterPanel(params, month, cats, found)}
       ${txs.length ? html`
         <div class="table-wrap"><table class="cards-mobile">
           <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th class="num">Valor</th><th></th></tr></thead>
@@ -64,7 +118,7 @@ export function render({ ledger, month }) {
             ${txs.map((t) => {
               const c = byId[t.categoryId] || { name: "Sem categoria", bucket: "" };
               return html`<tr>
-                <td data-label="Data">${t.date.slice(8, 10)}/${t.date.slice(5, 7)}</td>
+                <td data-label="Data">${t.date.slice(8, 10)}/${t.date.slice(5, 7)}${filter.month ? "" : `/${t.date.slice(0, 4)}`}</td>
                 <td data-label="Descrição" class="primary">${t.description}${t.id.startsWith("rec-") ? html` <small class="muted" title="Lançamento recorrente">↻</small>` : ""}</td>
                 <td data-label="Categoria"><span class="tag b-${c.bucket}">${c.name}</span></td>
                 <td data-label="Valor" class="num amount ${t.kind === "entrada" ? "pos" : ""}">${t.kind === "entrada" ? "+" : "−"}${m(t.amountCents)}</td>
@@ -73,6 +127,7 @@ export function render({ ledger, month }) {
             })}
           </tbody>
         </table></div>`
+        : filtering ? html`<p class="empty">Nada encontrado com esses filtros.</p>`
         : html`<p class="empty">Nenhum lançamento neste mês. Use o formulário acima ou copie do mês anterior.</p>`}
     </section>
     ${recurringPanel(ledger, byId, m)}`;
@@ -138,6 +193,8 @@ export function bind(root, ctx) {
     }
   });
 
+  bindFilter(root, ctx);
+
   root.querySelectorAll("[data-pause]").forEach((btn) => btn.addEventListener("click", async () => {
     const r = ctx.ledger.recurring.find((x) => x.id === btn.dataset.pause);
     await ctx.save("recurring", { id: r.id, paused: !r.paused }, r.paused ? "Recorrente retomado." : "Recorrente pausado.");
@@ -171,5 +228,32 @@ export function bind(root, ctx) {
       copied++;
     }
     await ctx.refresh(`${copied} lançamento(s) copiado(s) do mês anterior.`);
+  });
+}
+
+// bindFilter põe a busca no endereço (entra no histórico do navegador) e
+// redesenha sem levar a tela para o topo.
+function bindFilter(root, ctx) {
+  const form = root.querySelector('[data-form="filter"]');
+  const apply = () => {
+    // O "search" do Enter chega depois do submit, quando este formulário já foi redesenhado.
+    if (!form.isConnected) return;
+    const q = new URLSearchParams({ mes: ctx.month });
+    for (const [k, v] of new FormData(form)) if (String(v).trim()) q.set(k, String(v).trim());
+    const url = `/lancamentos?${q}`;
+    if (url === location.pathname + location.search) return;
+    const focused = document.activeElement?.name;
+    history.pushState(null, "", url);
+    ctx.rerender();
+    if (focused) root.querySelector(`[data-form="filter"] [name="${focused}"]`)?.focus();
+  };
+  form.addEventListener("submit", (e) => { e.preventDefault(); apply(); });
+  form.addEventListener("change", (e) => { if (e.target.tagName === "SELECT" || e.target.type === "checkbox") apply(); });
+  form.elements.busca.addEventListener("search", apply); // o "x" do campo limpa a busca
+  // Trocar de mês mantém a busca.
+  root.querySelectorAll(".monthnav a").forEach((a) => {
+    const u = new URL(a.href);
+    for (const k of FILTER_KEYS) if (ctx.params.get(k)) u.searchParams.set(k, ctx.params.get(k));
+    a.href = u.pathname + u.search;
   });
 }

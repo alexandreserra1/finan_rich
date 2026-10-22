@@ -138,3 +138,13 @@ func TestCanDeleteCategory(t *testing.T) {
 		t.Errorf("sem uso: %s", r)
 	}
 }
+
+func TestSearchTransactions(t *testing.T) {
+	v, errMsg := decode(t, SearchTransactions(ledger, `{"text":"bar","month":"2026-10"}`))
+	if errMsg != "" || v["count"] != float64(1) || v["outCents"] != float64(200000) || v["inCents"] != float64(0) {
+		t.Errorf("busca = %v %s", v, errMsg)
+	}
+	if _, errMsg := decode(t, SearchTransactions(ledger, "{")); errMsg == "" {
+		t.Error("filtro inválido deveria dar erro")
+	}
+}

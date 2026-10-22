@@ -44,6 +44,9 @@ func main() {
 			return wasmapi.ImportPreview(str(a, 0), str(a, 1), str(a, 2))
 		}),
 		"canDeleteCategory": js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.CanDeleteCategory(str(a, 0), str(a, 1)) }),
+		"searchTransactions": js.FuncOf(func(_ js.Value, a []js.Value) any {
+			return wasmapi.SearchTransactions(str(a, 0), str(a, 1))
+		}),
 	}
 	js.Global().Set("finan", js.ValueOf(api))
 	js.Global().Call("dispatchEvent", js.Global().Get("Event").New("finan-ready"))

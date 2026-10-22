@@ -47,3 +47,5 @@ export const alerts = (ledger, day) => unwrap(window.finan.alerts(JSON.stringify
 export const insights = (ledger, day) => unwrap(window.finan.insights(JSON.stringify(ledger), day));
 // canDeleteCategory lança o erro se a categoria ainda tem lançamentos, recorrentes ou metas.
 export const canDeleteCategory = (ledger, id) => unwrap(window.finan.canDeleteCategory(JSON.stringify(ledger), id));
+// searchTransactions filtra os lançamentos (busca da tela Lançamentos) e soma o achado.
+export const searchTransactions = (ledger, filter) => unwrap(window.finan.searchTransactions(JSON.stringify(ledger), JSON.stringify(filter)));

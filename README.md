@@ -10,7 +10,12 @@ números reais. Seus dados ficam num arquivo no seu PC, sem conta e sem nuvem.
   gasto fora do padrão e meta atrasada ou atingida. No app do celular, lembrete de
   vencimento das dívidas mesmo sem internet.
 - **Lançamentos** por categoria, com *Repetir todo mês* (salário, aluguel, assinaturas entram
-  sozinhos) e *Copiar do mês anterior*.
+  sozinhos), *Copiar do mês anterior* e busca com filtros (texto sem ligar para acento,
+  categoria, tipo, faixa de valor, um mês ou todos) que soma o que achou.
+- **Orçamento por categoria**: um teto por mês em cada categoria, com barra no painel e
+  aviso aos 80% e ao estourar.
+- **Primeiro uso guiado**: na primeira vez, o painel mostra um passo a passo (quanto ganha,
+  divisão do salário, dívidas e uma meta).
 - **Metas** com valor e prazo: quanto já juntou e quanto guardar por mês para chegar lá.
 - **Análise de gastos**: gastei onde (iFood, Uber, mercado…), ritmo do mês contra o mês
   passado com a projeção de como fecha, quanto ainda dá para gastar por dia, categorias
