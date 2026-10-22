@@ -76,6 +76,8 @@ export function render({ server, params, ledger }) {
   const fromLink = params.has("codigo");
   const status = sync.state;
   return html`
+    <a class="panel link-card" href="/metas"><span><strong>Metas</strong></span><span aria-hidden="true">›</span></a>
+    <a class="panel link-card" href="/notas"><span><strong>Notas</strong></span><span aria-hidden="true">›</span></a>
     <a class="panel link-card" href="/categorias"><span><strong>Categorias e divisão do salário</strong></span><span aria-hidden="true">›</span></a>
 
     <section class="panel" id="parear">

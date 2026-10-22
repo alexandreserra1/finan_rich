@@ -48,8 +48,8 @@ function paceChart(v) {
 
 function diffBadge(diffPct, avgCents) {
   if (!avgCents) return "";
-  if (diffPct === 0) return html`<small class="muted">na média</small>`;
-  return html`<small class="${diffPct > 0 ? "neg" : "pos"}">${diffPct > 0 ? "+" : ""}${diffPct}% que a média</small>`;
+  if (diffPct === 0) return html`<small class="muted" title="igual à média">=</small>`;
+  return html`<small class="${diffPct > 0 ? "neg" : "pos"}" title="contra a média dos 3 meses anteriores">${diffPct > 0 ? "+" : "−"}${Math.abs(diffPct)}%</small>`;
 }
 
 export function render({ ledger }) {
@@ -105,6 +105,7 @@ export function render({ ledger }) {
 
     <section class="panel">
       <h2>Categorias contra a média</h2>
+      <p class="small muted">A porcentagem compara com a média dos 3 meses anteriores.</p>
       ${v.categories.length ? html`<ul class="hbars">
         ${v.categories.map((c) => html`<li>
           <span class="label">${c.name}</span>
@@ -112,18 +113,17 @@ export function render({ ledger }) {
           <span class="value">${m(c.cents)} ${diffBadge(c.diffPct, c.avg3Cents)}</span>
         </li>`)}
       </ul>` : html`<p class="empty">Nenhum gasto neste mês ainda.</p>`}
-      <p class="small muted">Média dos 3 meses anteriores.</p>
     </section>
     </div>
 
     <div class="grid-2">
     ${v.subscriptions.length ? html`<section class="panel">
       <h2>Assinaturas e contas fixas</h2>
-      <div class="table-wrap"><table class="subs">
-        <thead><tr><th>O quê</th><th class="num">Por mês</th><th class="num">Por ano</th></tr></thead>
-        <tbody>${v.subscriptions.map((s) => html`<tr><td>${s.name}${s.registered ? "" : html` <small class="muted">(achada nos lançamentos)</small>`}</td>
-          <td class="num">${m(s.monthlyCents)}</td><td class="num">${m(s.yearlyCents)}</td></tr>`)}</tbody>
-      </table></div>
+      <ul class="plain subs">${v.subscriptions.map((s) => html`<li class="row">
+        <span>${s.name}${s.registered ? "" : "*"}</span>
+        <span class="num"><strong>${m(s.monthlyCents)}/mês</strong><small class="muted">${m(s.yearlyCents)}/ano</small></span>
+      </li>`)}</ul>
+      ${v.subscriptions.some((s) => !s.registered) ? html`<p class="small muted">* achada nos lançamentos (cobra todo mês, mas não está cadastrada como recorrente).</p>` : ""}
     </section>` : ""}
 
     ${v.biggest.length ? html`<section class="panel">
