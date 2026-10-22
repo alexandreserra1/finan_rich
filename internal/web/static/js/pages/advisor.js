@@ -52,7 +52,7 @@ async function call(path, init = {}) {
 
 async function loadChat(ctx) {
   const cfg = await cloud.config().catch(() => null);
-  if (cfg?.key && (cfg.enabled || !ctx.server)) {
+  if (cloud.ready(cfg) && (cfg.enabled || !ctx.server)) {
     const history = await cloud.loadChat();
     for (const m of history) {
       for (const p of m.proposals || []) p.applied = await cloud.applied(ctx.ledger, p).catch(() => false);

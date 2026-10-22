@@ -10,10 +10,10 @@ import * as db from "./db.js";
 import "./wasm_exec.js";
 import { today } from "./ui.js";
 
-let ready = null;
+let advisorLoaded = null;
 
 function loadAdvisor() {
-  ready ??= new Promise((resolve, reject) => {
+  advisorLoaded ??= new Promise((resolve, reject) => {
     window.addEventListener("finan-advisor-ready", () => resolve(), { once: true });
     const go = new Go();
     fetch("/static/advisor.wasm")
@@ -23,9 +23,9 @@ function loadAdvisor() {
       })
       .then((b) => WebAssembly.instantiate(b, go.importObject))
       .then(({ instance }) => go.run(instance))
-      .catch((err) => { ready = null; reject(err); });
+      .catch((err) => { advisorLoaded = null; reject(err); });
   });
-  return ready;
+  return advisorLoaded;
 }
 
 function unwrap(json) {
@@ -69,7 +69,25 @@ async function apiKey(cfg) {
   return new TextDecoder().decode(plain);
 }
 
-const aiConfig = async (cfg) => ({ preset: cfg.preset, model: cfg.model, apiKey: await apiKey(cfg), baseUrl: cfg.baseUrl || "" });
+// No grátis do finan_rich não há chave: vai uma identificação aleatória deste
+// aparelho, só para o limite de perguntas por aparelho.
+const FREE = "finan";
+async function deviceId() {
+  let id = await db.getMeta("device-id", null);
+  if (!id) {
+    id = crypto.randomUUID();
+    await db.setMeta("device-id", id);
+  }
+  return id;
+}
+
+// ready: a IA na nuvem está configurada (com chave, ou a grátis).
+export const ready = (cfg) => !!(cfg?.key || cfg?.preset === FREE);
+
+const aiConfig = async (cfg) => ({
+  preset: cfg.preset, model: cfg.model, baseUrl: cfg.baseUrl || "",
+  apiKey: cfg.preset === FREE ? await deviceId() : await apiKey(cfg),
+});
 
 // check testa a chave guardada com uma pergunta mínima, sem dados da pessoa.
 export async function check() {
@@ -86,7 +104,7 @@ export async function presets() {
 // ask pergunta à IA na nuvem: { answer, proposals }. Sempre anonimizado.
 export async function ask(ledger, history, question) {
   const cfg = await config();
-  if (!cfg?.key) throw new Error("configure a IA na nuvem em Ajustes do app");
+  if (!ready(cfg)) throw new Error("configure a IA na nuvem em Ajustes do app");
   await loadAdvisor();
   const req = {
     ledger, question, today: today(),

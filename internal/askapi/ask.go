@@ -102,9 +102,10 @@ func Check(ctx context.Context, aiJSON string) string {
 
 func provider(ai AIConfig) (llm.Provider, error) {
 	preset := llm.PresetByID(ai.Preset)
-	if preset.ID != ai.Preset || preset.Kind != llm.KindOpenAI || !preset.NeedsKey {
+	if preset.ID != ai.Preset || preset.Kind != llm.KindOpenAI || !preset.NeedsKey && preset.ID != llm.FreeID {
 		return nil, errors.New("escolha um provedor de IA na nuvem nos Ajustes do app")
 	}
+	// No grátis, a "chave" é só a identificação aleatória deste aparelho (limite por aparelho).
 	if ai.APIKey == "" {
 		return nil, errors.New("falta a chave da IA: cole a chave nos Ajustes do app")
 	}
@@ -121,9 +122,9 @@ func provider(ai AIConfig) (llm.Provider, error) {
 // CloudPresets são os provedores que o app do celular oferece (nuvem, com chave).
 func CloudPresets() string {
 	var out []map[string]any
-	for _, p := range llm.Presets {
-		if p.Kind == llm.KindOpenAI && p.NeedsKey {
-			out = append(out, map[string]any{"id": p.ID, "name": p.Name, "description": p.Description, "model": p.Model, "models": p.Models, "keyUrl": p.KeyURL, "keySteps": p.KeySteps})
+	for _, p := range llm.All() {
+		if free := p.ID == llm.FreeID; free || p.Kind == llm.KindOpenAI && p.NeedsKey {
+			out = append(out, map[string]any{"id": p.ID, "name": p.Name, "description": p.Description, "model": p.Model, "models": p.Models, "keyUrl": p.KeyURL, "keySteps": p.KeySteps, "free": free})
 		}
 	}
 	return reply(out, nil)

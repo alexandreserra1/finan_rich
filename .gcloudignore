@@ -1,0 +1,9 @@
+# O que não sobe para o Cloud Build (scripts/deploy-proxy.sh): só o código Go importa.
+.git
+#!include:.gitignore
+mobile/
+e2e/
+fastlane/
+fdroid/
+dist/
+node_modules/

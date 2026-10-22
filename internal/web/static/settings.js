@@ -16,7 +16,9 @@
       form.elements.base_url.value = values.BaseURL;
     }
     // Endereço só importa para Ollama (se mudou) e APIs compatíveis com OpenAI.
-    field("base_url").hidden = preset.Kind === "anthropic";
+    // No grátis do finan_rich, endereço e modelo são do servidor.
+    field("base_url").hidden = preset.Kind === "anthropic" || preset.ID === "finan";
+    if (field("model")) field("model").hidden = preset.ID === "finan";
     field("api_key").hidden = !preset.NeedsKey && preset.ID !== "custom";
     const link = field("api_key").querySelector("[data-key-link]");
     link.innerHTML = preset.KeyURL ? `Gere sua chave em <a href="${preset.KeyURL}" target="_blank" rel="noopener">${new URL(preset.KeyURL).host}</a>` : "";

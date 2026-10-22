@@ -19,7 +19,7 @@ func (s *Server) settings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data := map[string]any{
-		"AI": ai, "Status": s.aiStatus(ctx, ai), "Presets": llm.Presets, "HasKey": ai.APIKey != "",
+		"AI": ai, "Status": s.aiStatus(ctx, ai), "Presets": llm.All(), "HasKey": ai.APIKey != "",
 		"LAN": s.LANEnabled(ctx), "EnvPassword": s.envPasswordHash != "",
 		"CanQuit": s.onQuit != nil && isLoopback(r),
 	}

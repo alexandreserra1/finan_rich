@@ -1,0 +1,251 @@
+// Package proxy é o intermediário do "finan_rich grátis": recebe as perguntas
+// do consultor (já anonimizadas no aparelho) e repassa ao Groq com a chave que
+// fica só no servidor. Assim nenhuma chave vai dentro do app.
+//
+// Como o app é de código aberto, qualquer um acha o endereço. Por isso:
+//   - só passa pedido com o formato do consultor (o prompt do finan_rich);
+//   - limite de chamadas por aparelho e por IP, por hora e por dia;
+//   - o modelo e o tamanho da resposta são escolhidos aqui, não por quem chama;
+//   - quando um modelo esgota a cota grátis (429), tenta o próximo da lista
+//     (no Groq cada modelo tem a sua cota).
+package proxy
+
+import (
+	"bytes"
+	"encoding/json"
+	"io"
+	"log"
+	"net"
+	"net/http"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/alexandreserra1/finan_rich/internal/advisor"
+)
+
+// Config do intermediário.
+type Config struct {
+	Upstream string   // ex.: https://api.groq.com/openai/v1
+	APIKey   string   // chave do Groq (Secret Manager)
+	Models   []string // em ordem de preferência
+	Limits   Limits
+	Client   *http.Client
+}
+
+// Limits são as chamadas permitidas (uma pergunta usa de 2 a 5).
+type Limits struct{ DeviceHour, DeviceDay, IPHour, IPDay int }
+
+// DefaultLimits cabem na cota grátis do Groq com alguns usuários por dia.
+var DefaultLimits = Limits{DeviceHour: 30, DeviceDay: 80, IPHour: 60, IPDay: 200}
+
+const (
+	maxBody      = 512 << 10
+	maxTokens    = 2048
+	checkMessage = "Responda só: ok" // askapi.Check: testa a conexão sem dados
+)
+
+// New devolve o handler HTTP do intermediário.
+func New(cfg Config) http.Handler {
+	if cfg.Client == nil {
+		cfg.Client = &http.Client{Timeout: 3 * time.Minute}
+	}
+	h := &handler{cfg: cfg, limiter: newLimiter(time.Now)}
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "ok") })
+	mux.HandleFunc("POST /chat/completions", h.chat)
+	mux.HandleFunc("POST /v1/chat/completions", h.chat)
+	return cors(mux)
+}
+
+type handler struct {
+	cfg     Config
+	limiter *limiter
+}
+
+func (h *handler) chat(w http.ResponseWriter, r *http.Request) {
+	raw, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBody))
+	if err != nil {
+		fail(w, http.StatusRequestEntityTooLarge, "pedido grande demais")
+		return
+	}
+	var body map[string]json.RawMessage
+	if json.Unmarshal(raw, &body) != nil || !fromApp(body) {
+		fail(w, http.StatusForbidden, "este endereço só atende o consultor do app finan_rich")
+		return
+	}
+	device, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if len(device) > 64 {
+		device = device[:64]
+	}
+	if msg := h.limiter.allow(device, clientIP(r), h.cfg.Limits); msg != "" {
+		fail(w, http.StatusTooManyRequests, msg)
+		return
+	}
+	body["max_tokens"] = json.RawMessage(capTokens(body["max_tokens"]))
+	delete(body, "max_completion_tokens")
+	for i, model := range h.cfg.Models {
+		body["model"], _ = json.Marshal(model)
+		payload, _ := json.Marshal(body)
+		req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, strings.TrimRight(h.cfg.Upstream, "/")+"/chat/completions", bytes.NewReader(payload))
+		if err != nil {
+			fail(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+h.cfg.APIKey)
+		resp, err := h.cfg.Client.Do(req)
+		if err != nil {
+			fail(w, http.StatusBadGateway, "o provedor de IA não respondeu")
+			return
+		}
+		// Cota grátis deste modelo acabou (ou ele está fora): tenta o próximo.
+		if (resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusServiceUnavailable) && i < len(h.cfg.Models)-1 {
+			resp.Body.Close()
+			log.Printf("modelo %s respondeu %d; tentando o próximo", model, resp.StatusCode)
+			continue
+		}
+		relay(w, resp)
+		return
+	}
+}
+
+// fromApp aceita só o que o app manda: o consultor (com o prompt do
+// finan_rich) ou o teste de conexão. Quem copiar o prompt passa, mas cai nos
+// limites; a ideia é não virar uma IA grátis genérica.
+func fromApp(body map[string]json.RawMessage) bool {
+	var msgs []struct {
+		Role    string `json:"role"`
+		Content string `json:"content"`
+	}
+	if json.Unmarshal(body["messages"], &msgs) != nil || len(msgs) == 0 {
+		return false
+	}
+	if msgs[0].Role == "system" && strings.HasPrefix(msgs[0].Content, advisor.SystemPrompt[:min(200, len(advisor.SystemPrompt))]) {
+		return true
+	}
+	return len(msgs) == 1 && msgs[0].Role == "user" && msgs[0].Content == checkMessage && body["tools"] == nil
+}
+
+func capTokens(raw json.RawMessage) string {
+	var n int
+	if json.Unmarshal(raw, &n) == nil && n > 0 && n < maxTokens {
+		return string(raw)
+	}
+	b, _ := json.Marshal(maxTokens)
+	return string(b)
+}
+
+// relay copia a resposta (streaming SSE) pedaço por pedaço.
+func relay(w http.ResponseWriter, resp *http.Response) {
+	defer resp.Body.Close()
+	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
+	w.WriteHeader(resp.StatusCode)
+	flusher, _ := w.(http.Flusher)
+	buf := make([]byte, 4096)
+	for {
+		n, err := resp.Body.Read(buf)
+		if n > 0 {
+			w.Write(buf[:n])
+			if flusher != nil {
+				flusher.Flush()
+			}
+		}
+		if err != nil {
+			return
+		}
+	}
+}
+
+// clientIP: no Cloud Run, o IP de quem chamou é o primeiro do X-Forwarded-For.
+func clientIP(r *http.Request) string {
+	if f := r.Header.Get("X-Forwarded-For"); f != "" {
+		ip, _, _ := strings.Cut(f, ",")
+		return strings.TrimSpace(ip)
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
+
+func fail(w http.ResponseWriter, status int, msg string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]any{"error": map[string]string{"message": msg}})
+}
+
+// cors libera o navegador (PWA); o app do celular usa HTTP nativo.
+func cors(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("Access-Control-Allow-Origin", "*")
+		h.Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+		h.Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// limiter conta chamadas em janelas fixas de uma hora e de um dia. Fica na
+// memória: com o Cloud Run em no máximo 1 instância, vale para todos; se a
+// instância dormir, a contagem recomeça (aceitável: a cota do Groq é o teto).
+type limiter struct {
+	mu     sync.Mutex
+	now    func() time.Time
+	counts map[string]*count
+}
+
+type count struct {
+	hour, day     int64 // início da janela (Unix)
+	inHour, inDay int
+}
+
+func newLimiter(now func() time.Time) *limiter {
+	return &limiter{now: now, counts: map[string]*count{}}
+}
+
+// allow devolve "" se pode, ou a mensagem para a pessoa.
+func (l *limiter) allow(device, ip string, lim Limits) string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	now := l.now()
+	hour, day := now.Truncate(time.Hour).Unix(), now.UTC().Truncate(24*time.Hour).Unix()
+	if len(l.counts) > 50000 { // não deixa a memória crescer sem fim
+		l.counts = map[string]*count{}
+	}
+	get := func(key string) *count {
+		c := l.counts[key]
+		if c == nil {
+			c = &count{}
+			l.counts[key] = c
+		}
+		if c.hour != hour {
+			c.hour, c.inHour = hour, 0
+		}
+		if c.day != day {
+			c.day, c.inDay = day, 0
+		}
+		return c
+	}
+	ipc := get("ip:" + ip)
+	if ipc.inHour >= lim.IPHour || ipc.inDay >= lim.IPDay {
+		return "muitas perguntas desta rede ao consultor grátis; tente mais tarde ou use sua própria chave grátis em Ajustes"
+	}
+	var dev *count
+	if device != "" {
+		dev = get("dev:" + device)
+		if dev.inHour >= lim.DeviceHour || dev.inDay >= lim.DeviceDay {
+			return "o consultor grátis chegou ao limite deste aparelho por hoje; tente amanhã ou use sua própria chave grátis em Ajustes"
+		}
+		dev.inHour++
+		dev.inDay++
+	}
+	ipc.inHour++
+	ipc.inDay++
+	return ""
+}

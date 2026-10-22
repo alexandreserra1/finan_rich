@@ -1,0 +1,5 @@
+# Constrói a imagem do intermediário (usado por scripts/deploy-proxy.sh).
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "cmd/finanproxy/Dockerfile", "-t", "$_IMAGE", "."]
+images: ["$_IMAGE"]

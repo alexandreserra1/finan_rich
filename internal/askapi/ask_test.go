@@ -9,6 +9,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/alexandreserra1/finan_rich/internal/llm"
 )
 
 // IA na nuvem falsa (formato OpenAI): pede a busca, depois responde usando o
@@ -109,5 +111,27 @@ func TestCheckKey(t *testing.T) {
 	}
 	if got := check("ruim"); !strings.Contains(got, "a chave da IA foi recusada") || !strings.Contains(got, "API key not valid") {
 		t.Errorf("chave ruim: %s", got)
+	}
+}
+
+// Grátis do finan_rich: sem chave; vai a identificação do aparelho (para o limite).
+func TestFreePreset(t *testing.T) {
+	var auth string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth = r.Header.Get("Authorization")
+		fmt.Fprint(w, "data: {\"choices\":[{\"delta\":{\"content\":\"ok\"}}]}\n\ndata: [DONE]\n\n")
+	}))
+	defer srv.Close()
+	if strings.Contains(CloudPresets(), `"finan"`) {
+		t.Error("sem endereço, a opção grátis não aparece")
+	}
+	llm.FreeProxyURL = srv.URL
+	t.Cleanup(func() { llm.FreeProxyURL = "" })
+	if !strings.Contains(CloudPresets(), `"id":"finan"`) || !strings.Contains(CloudPresets(), `"free":true`) {
+		t.Errorf("presets = %s", CloudPresets())
+	}
+	raw, _ := json.Marshal(AIConfig{Preset: "finan", APIKey: "aparelho-123"})
+	if got := Check(context.Background(), string(raw)); got != `{"ok":true}` || auth != "Bearer aparelho-123" {
+		t.Errorf("check = %s auth = %q", got, auth)
 	}
 }

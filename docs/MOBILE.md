@@ -131,7 +131,10 @@ A versão do app fica em `mobile/android/app/version.properties`: o workflow de 
   computador. Cada pessoa usa a própria chave grátis: a tela mostra o passo a passo de cada
   provedor (`KeySteps` em `llm/presets.go`) e, ao salvar, testa a chave com uma pergunta
   mínima, sem dados (`askapi.Check`). O app não traz chave embutida: ela sairia do APK em
-  minutos e todo mundo dividiria (e esgotaria) a mesma cota. Privacidade:
+  minutos e todo mundo dividiria (e esgotaria) a mesma cota. Para quem não quer criar conta,
+  há a opção "finan_rich grátis (sem chave)", que passa por um intermediário no Cloud Run com
+  limite por aparelho ([IA-GRATIS.md](IA-GRATIS.md)); ela só aparece depois de publicado.
+  Privacidade:
   - **anonimizado**: antes de sair, nomes de lojas e pessoas, categorias criadas pela pessoa,
     dívidas, credores e metas viram apelidos ("Loja AB", "Categoria 1", "Dívida 1") e as
     notas ficam de fora; a pergunta e o histórico também (inclusive a descrição inteira, com

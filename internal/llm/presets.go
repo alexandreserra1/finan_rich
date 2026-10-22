@@ -91,8 +91,28 @@ var Presets = []Preset{
 }
 
 // PresetByID devolve o preset com o id informado (ou o primeiro, o Ollama).
+// FreeProxyURL é o endereço do intermediário grátis do finan_rich (cmd/finanproxy,
+// no Cloud Run; ver docs/IA-GRATIS.md). Não é segredo: a chave fica no servidor.
+// Vazio: a opção não aparece.
+var FreeProxyURL = ""
+
+// FreeID é o preset do intermediário grátis.
+const FreeID = "finan"
+
+// All devolve os presets oferecidos; o grátis do finan_rich vem primeiro quando existe.
+func All() []Preset {
+	if FreeProxyURL == "" {
+		return Presets
+	}
+	free := Preset{
+		ID: FreeID, Name: "finan_rich grátis (sem chave)", Kind: KindOpenAI, BaseURL: FreeProxyURL, Model: "auto",
+		Description: "Não precisa de chave nem de conta: o finan_rich usa modelos abertos no Groq, que não usa os dados para treinar. Vai tudo com apelidos. Tem limite de perguntas por dia em cada aparelho; se acabar, use sua própria chave grátis.",
+	}
+	return append([]Preset{free}, Presets...)
+}
+
 func PresetByID(id string) Preset {
-	for _, p := range Presets {
+	for _, p := range All() {
 		if p.ID == id {
 			return p
 		}

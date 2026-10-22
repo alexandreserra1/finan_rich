@@ -37,6 +37,7 @@ function cloudSection(server) {
   const preset = ai.presets.find((p) => p.id === (ai.chosen || cfg.preset)) || ai.presets[0];
   const model = cfg.preset === preset.id && cfg.model ? cfg.model : preset.model;
   const hasKey = cfg.key && cfg.preset === preset.id;
+  const free = !!preset.free; // grátis do finan_rich: sem chave nem modelo
   return html`<section class="panel" id="ia-nuvem">
     <h2>Consultor sem computador</h2>
     <p class="small muted">O consultor pode usar uma IA na nuvem, chamada direto deste celular. Antes de sair, os nomes de lojas e pessoas,
@@ -47,7 +48,7 @@ function cloudSection(server) {
         <select name="preset">${ai.presets.map((p) => html`<option value="${p.id}" ${p.id === preset.id ? "selected" : ""}>${p.name}</option>`)}</select>
       </label>
       <p class="small muted">${preset.description}</p>
-      <details class="key-guide" ${hasKey ? "" : "open"}>
+      ${free ? "" : html`<details class="key-guide" ${hasKey ? "" : "open"}>
         <summary>${hasKey ? "Como pegar outra chave" : "Como pegar a chave (leva 1 minuto)"}</summary>
         <ol class="small">
           ${(preset.keySteps || []).map((s) => html`<li>${s}</li>`)}
@@ -57,15 +58,15 @@ function cloudSection(server) {
       </details>
       <label>Modelo
         <input name="model" value="${model}" list="cloud-models" autocomplete="off">
-        <datalist id="cloud-models">${preset.models.map((m) => html`<option value="${m}">`)}</datalist>
+        <datalist id="cloud-models">${(preset.models || []).map((m) => html`<option value="${m}">`)}</datalist>
       </label>
       <label>Chave da IA
         <input name="apiKey" type="password" autocomplete="off" placeholder="${hasKey ? "guardada cifrada ✓ (cole outra para trocar)" : "cole a chave aqui"}">
-      </label>
+      </label>`}
       ${server ? html`<label class="check"><input type="checkbox" name="enabled" ${cfg.enabled ? "checked" : ""}> Usar a nuvem mesmo com o computador conectado</label>` : ""}
       <div class="row-actions tight">
         <button type="submit">Salvar</button>
-        ${cfg.key ? html`<button type="button" class="secondary" data-action="cloud-forget">Apagar a chave e a conversa</button>` : ""}
+        ${cloud.ready(cfg) ? html`<button type="button" class="secondary" data-action="cloud-forget">${cfg.key ? "Apagar a chave e a conversa" : "Desligar e apagar a conversa"}</button>` : ""}
       </div>
     </form>
   </section>`;
@@ -212,17 +213,18 @@ function bindCloud(root, ctx) {
     e.preventDefault();
     const f = form.elements;
     try {
-      if (!f.apiKey.value && !(ai.cfg?.key && ai.cfg.preset === f.preset.value)) throw new Error("cole a chave da IA");
-      ai.cfg = await cloud.saveConfig({ preset: f.preset.value, model: f.model.value.trim(), enabled: !!f.enabled?.checked, apiKey: f.apiKey.value });
+      const free = ai.presets.find((p) => p.id === f.preset.value)?.free;
+      if (!free && !f.apiKey.value && !(ai.cfg?.key && ai.cfg.preset === f.preset.value)) throw new Error("cole a chave da IA");
+      ai.cfg = await cloud.saveConfig({ preset: f.preset.value, model: f.model?.value.trim() || "", enabled: !!f.enabled?.checked, apiKey: f.apiKey?.value || "" });
       ai.chosen = null;
       resetChat();
       redraw();
       ctx.flash("Testando a chave…");
       try {
         await cloud.check();
-        ctx.flash("Chave funcionando ✓ Ela ficou guardada cifrada neste celular. Já pode usar o Consultor.");
+        ctx.flash(free ? "Consultor grátis ligado ✓ Já pode usar." : "Chave funcionando ✓ Ela ficou guardada cifrada neste celular. Já pode usar o Consultor.");
       } catch (err) {
-        ctx.error(new Error("a chave foi guardada, mas o teste falhou: " + err.message));
+        ctx.error(new Error((free ? "ficou salvo" : "a chave foi guardada") + ", mas o teste falhou: " + err.message));
       }
     } catch (err) {
       ctx.error(err);
