@@ -87,6 +87,31 @@ func Ask(ctx context.Context, reqJSON string) string {
 	return reply(AskReply{answer, proposals}, err)
 }
 
+// LocalPrompt monta as mensagens (formato OpenAI: system, user, assistant)
+// para a IA que roda dentro do celular (wllama). As instruções e o retrato
+// financeiro vêm daqui, das mesmas regras do computador; só a geração do
+// texto roda no wllama. Sem ferramentas e sem apelidos: nada sai do aparelho.
+func LocalPrompt(reqJSON string) string {
+	var req AskRequest
+	if err := json.Unmarshal([]byte(reqJSON), &req); err != nil {
+		return reply(nil, err)
+	}
+	today, err := time.ParseInLocation(domain.DateLayout, req.Today, time.Local)
+	if err != nil {
+		today = time.Now()
+	}
+	history := make([]llm.Message, len(req.History))
+	for i, h := range req.History {
+		history[i] = llm.Message{Role: llm.Role(h.Role), Content: h.Content}
+	}
+	r := advisor.LocalRequest(advisor.Question{History: history, Text: req.Question, Ledger: req.Ledger, Today: today})
+	msgs := []ChatTurn{{Role: "system", Content: r.System}}
+	for _, m := range r.Messages {
+		msgs = append(msgs, ChatTurn{Role: string(m.Role), Content: m.Content})
+	}
+	return reply(msgs, nil)
+}
+
 // Check confere a chave com uma pergunta mínima (sem dados da pessoa), para a
 // tela dizer na hora se a chave funciona. Bloqueia como Ask.
 func Check(ctx context.Context, aiJSON string) string {

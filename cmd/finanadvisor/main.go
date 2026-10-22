@@ -58,6 +58,8 @@ func main() {
 			req := str(a, 0)
 			return promise(func() string { return askapi.Categorize(context.Background(), req) })
 		}),
+		// localPrompt: mensagens prontas para a IA dentro do celular (js/local-ai.js).
+		"localPrompt":     js.FuncOf(func(_ js.Value, a []js.Value) any { return askapi.LocalPrompt(str(a, 0)) }),
 		"cloudPresets":    js.FuncOf(func(js.Value, []js.Value) any { return askapi.CloudPresets() }),
 		"proposalApplied": js.FuncOf(func(_ js.Value, a []js.Value) any { return askapi.ProposalApplied(str(a, 0), str(a, 1)) }),
 	}
