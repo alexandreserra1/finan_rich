@@ -147,7 +147,14 @@ aparelho                                      servidor
   como "da rede". Com `FINAN_PASSWORD` (modo servidor), todos precisam de login.
 - O **app do celular** não usa cookie: no pareamento troca um código curto por um token
   (`Authorization: Bearer`). Com esse cabeçalho, vale só o token, mesmo vindo de
-  `127.0.0.1`. Detalhes em [MOBILE.md](MOBILE.md).
+  `127.0.0.1`, e só para `/api/*` (sincronizar e consultor): com o token não se abre
+  Ajustes nem se baixa o banco. Detalhes em [MOBILE.md](MOBILE.md).
+- **Outros sites** abertos no mesmo navegador não usam o acesso local: sem token, pedido de
+  outra origem (`Sec-Fetch-Site`/`Origin`) é recusado, menos a navegação (abrir um link).
+  E, sem senha, só valem endereços por IP, `localhost`, `*.local`, `*.ts.net` ou os nomes de
+  `FINAN_HOSTS`: um domínio de fora que aponte para `127.0.0.1` (DNS rebinding) recebe 403.
+- Em Ajustes, trocar o endereço da IA sem colar a chave de novo apaga a chave salva (ela não
+  vai para outro servidor), e passar de uma IA local para a nuvem começa conversa nova.
 
 ---
 

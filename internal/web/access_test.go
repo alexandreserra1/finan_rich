@@ -61,6 +61,7 @@ func (a *accessApp) do(method, path, from string, form url.Values, cookies ...*h
 		body = strings.NewReader("")
 	}
 	req := httptest.NewRequest(method, path, body)
+	req.Host = "127.0.0.1:8080" // como o navegador manda (o padrão "example.com" seria um site de fora)
 	req.RemoteAddr = from
 	if form != nil {
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -239,6 +240,7 @@ func TestProxiedRequestIsNotLocal(t *testing.T) {
 	// de outro aparelho: precisa de login.
 	for _, header := range []string{"X-Forwarded-For", "Tailscale-User-Login"} {
 		req := httptest.NewRequest("GET", "/", nil)
+		req.Host = "127.0.0.1:8080"
 		req.RemoteAddr = local
 		req.Header.Set(header, "100.64.0.2")
 		rec := httptest.NewRecorder()
@@ -279,5 +281,94 @@ func TestQuitOnlyFromThisComputer(t *testing.T) {
 	}
 	if a.quits.Load() != 1 {
 		t.Errorf("OnQuit chamado %d vezes", a.quits.Load())
+	}
+}
+
+// Outro site aberto no computador não lê os dados pelo acesso local: nem por
+// fetch (com ou sem cabeçalhos Sec-Fetch), nem com um nome que aponta para
+// 127.0.0.1 (DNS rebinding). Abrir um link para o app continua valendo.
+func TestOtherSitesCannotUseLocalAccess(t *testing.T) {
+	a := newAccessApp(t, "")
+	get := func(path string, set func(*http.Request)) int {
+		req := httptest.NewRequest("GET", path, nil)
+		req.Host, req.RemoteAddr = "127.0.0.1:8080", local
+		set(req)
+		rec := httptest.NewRecorder()
+		a.h.ServeHTTP(rec, req)
+		return rec.Code
+	}
+	if code := get("/api/chat", func(r *http.Request) {
+		r.Header.Set("Origin", "https://site-malicioso.example")
+		r.Header.Set("Sec-Fetch-Site", "cross-site")
+		r.Header.Set("Sec-Fetch-Mode", "cors")
+	}); code != http.StatusForbidden {
+		t.Errorf("fetch de outro site leu a conversa: %d", code)
+	}
+	if code := get("/api/chat", func(r *http.Request) { r.Header.Set("Origin", "https://site-malicioso.example") }); code != http.StatusForbidden {
+		t.Errorf("navegador sem Sec-Fetch leu a conversa: %d", code)
+	}
+	if code := get("/", func(r *http.Request) {
+		r.Header.Set("Sec-Fetch-Site", "cross-site")
+		r.Header.Set("Sec-Fetch-Mode", "navigate")
+	}); code != http.StatusOK {
+		t.Errorf("link de outro site para o app deveria abrir: %d", code)
+	}
+	if code := get("/configuracoes/backup.db", func(r *http.Request) { r.Host = "site-malicioso.example:8080" }); code != http.StatusForbidden {
+		t.Errorf("DNS rebinding baixou o banco: %d", code)
+	}
+	for _, host := range []string{"localhost:8080", "[::1]:8080", "meupc.local:8080", "pc.tail1234.ts.net"} {
+		if code := get("/", func(r *http.Request) { r.Host = host }); code != http.StatusOK {
+			t.Errorf("%s deveria abrir: %d", host, code)
+		}
+	}
+	t.Setenv("FINAN_HOSTS", "financas.casa, outro.nome")
+	if code := get("/", func(r *http.Request) { r.Host = "financas.casa:8080" }); code != http.StatusOK {
+		t.Errorf("nome em FINAN_HOSTS deveria abrir: %d", code)
+	}
+}
+
+// O token do celular vale só para a API: com ele não se baixa o banco nem se
+// troca a IA (o que mandaria a chave para outro servidor).
+func TestDeviceTokenOnlyForAPI(t *testing.T) {
+	a := newAccessApp(t, "")
+	a.enableLAN("senha-forte-1")
+	token, status := a.pair(a.newCode())
+	if status != http.StatusOK {
+		t.Fatalf("parear = %d", status)
+	}
+	if rec := a.api("POST", "/api/sync", phone, token, emptySync); rec.Code != http.StatusOK {
+		t.Fatalf("sync com token = %d", rec.Code)
+	}
+	for _, path := range []string{"/configuracoes/backup.db", "/configuracoes"} {
+		if rec := a.api("GET", path, phone, token, ""); rec.Code != http.StatusForbidden {
+			t.Errorf("token do celular abriu %s: %d", path, rec.Code)
+		}
+	}
+}
+
+func TestAISettingsKeyAndChatSafety(t *testing.T) {
+	a := newAccessApp(t, "")
+	ctx := context.Background()
+	save := func(v url.Values) {
+		if rec := a.do("POST", "/configuracoes", local, v); rec.Code != http.StatusSeeOther {
+			t.Fatalf("salvar IA = %d %s", rec.Code, rec.Body.String())
+		}
+	}
+	save(url.Values{"preset": {"ollama"}, "model": {"qwen3.5:9b"}})
+	if err := a.srv.store.AppendChatTurn(ctx, "minha nota diz consulta com Dr. X", "ok", nil); err != nil {
+		t.Fatal(err)
+	}
+	groq := llm.PresetByID("groq")
+	save(url.Values{"preset": {"groq"}, "model": {groq.Model}, "base_url": {groq.BaseURL}, "api_key": {"gsk_segredo"}})
+	if turns, _ := a.srv.store.ListChat(ctx); len(turns) != 0 {
+		t.Errorf("ao passar da IA local para a nuvem, a conversa antiga deveria sumir: %v", turns)
+	}
+	save(url.Values{"preset": {"groq"}, "model": {groq.Model}, "base_url": {groq.BaseURL}})
+	if ai, _ := a.srv.aiSettings(ctx); ai.APIKey != "gsk_segredo" {
+		t.Error("campo em branco deveria manter a chave")
+	}
+	save(url.Values{"preset": {"groq"}, "model": {groq.Model}, "base_url": {"https://atacante.example/v1"}})
+	if ai, _ := a.srv.aiSettings(ctx); ai.APIKey != "" {
+		t.Error("trocar o endereço sem colar a chave de novo não pode levar a chave junto")
 	}
 }

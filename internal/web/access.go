@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -29,6 +30,34 @@ func isPublicPath(path string) bool {
 		return true
 	}
 	return strings.HasPrefix(path, "/static/")
+}
+
+const untrustedHostMsg = "endereço desconhecido: abra pelo IP ou por localhost (ou acrescente o nome em FINAN_HOSTS)"
+
+// trustedHost barra o "DNS rebinding": um site de fora cujo nome aponta para
+// 127.0.0.1 chega aqui como se fosse local, mas com o nome dele no Host. Sem
+// senha, só valem IPs, localhost, nomes .local (rede de casa), .ts.net
+// (Tailscale) e os nomes listados em FINAN_HOSTS, separados por vírgula.
+func trustedHost(r *http.Request) bool {
+	host := r.Host
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	host = strings.TrimSuffix(strings.ToLower(strings.Trim(host, "[]")), ".")
+	if net.ParseIP(host) != nil || host == "localhost" {
+		return true
+	}
+	for _, suffix := range []string{".localhost", ".local", ".ts.net"} {
+		if strings.HasSuffix(host, suffix) {
+			return true
+		}
+	}
+	for _, h := range strings.Split(os.Getenv("FINAN_HOSTS"), ",") {
+		if h = strings.ToLower(strings.TrimSpace(h)); h != "" && h == host {
+			return true
+		}
+	}
+	return false
 }
 
 // isLoopback diz se a requisição veio do próprio computador. Requisições
@@ -73,6 +102,12 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 		// App pareado: vale só o token, mesmo vindo deste computador (assim uma
 		// página de outro site não usa o acesso local para ler os dados).
 		if token, ok := bearerToken(r); ok {
+			// O token do celular vale só para a API (sincronizar, consultor):
+			// quem roubar um token não troca a IA nem baixa o banco inteiro.
+			if !strings.HasPrefix(r.URL.Path, "/api/") {
+				http.Error(w, "o token do aparelho só vale para a sincronização", http.StatusForbidden)
+				return
+			}
 			if !s.validDevice(r.Context(), token) {
 				writeJSONError(w, http.StatusUnauthorized, "aparelho não pareado; pareie de novo em Ajustes → App do celular")
 				return
@@ -80,13 +115,28 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
+		// Sem token, um pedido feito por outro site (fetch, imagem...) não usa o
+		// acesso local nem o login: senão qualquer página aberta no computador
+		// leria a conversa e os dados. Abrir um link (navegação) continua valendo.
+		if !isSameOrigin(r) && r.Header.Get("Sec-Fetch-Mode") != "navigate" {
+			http.Error(w, "requisição de outra origem bloqueada", http.StatusForbidden)
+			return
+		}
 		if s.envPasswordHash == "" && isLoopback(r) {
+			if !trustedHost(r) {
+				http.Error(w, untrustedHostMsg, http.StatusForbidden)
+				return
+			}
 			next.ServeHTTP(w, r)
 			return
 		}
 		hash, err := s.passwordHash(r.Context())
 		if err != nil {
 			serverError(w, err)
+			return
+		}
+		if hash == "" && !trustedHost(r) {
+			http.Error(w, untrustedHostMsg, http.StatusForbidden)
 			return
 		}
 		if hash == "" || s.validSession(r) {

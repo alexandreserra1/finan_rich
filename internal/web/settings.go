@@ -64,13 +64,23 @@ func (s *Server) saveSettings(w http.ResponseWriter, r *http.Request) {
 		Model:   strings.TrimSpace(r.FormValue("model")),
 		APIKey:  strings.TrimSpace(r.FormValue("api_key")),
 	}}
-	// Campo de chave em branco mantém a chave já salva do mesmo provedor.
-	if ai.APIKey == "" && current.Preset.ID == preset.ID {
+	// Campo de chave em branco mantém a chave já salva do mesmo provedor, desde
+	// que o endereço não mude (senão bastaria trocar o endereço para a chave ir
+	// para outro servidor).
+	if ai.APIKey == "" && current.Preset.ID == preset.ID && ai.BaseURL == current.BaseURL {
 		ai.APIKey = current.APIKey
 	}
 	if _, err := llm.New(ai.Config); err != nil {
 		redirect(w, r, "/configuracoes", "", err)
 		return
+	}
+	// Da IA local para a nuvem: conversa nova. As respostas antigas não
+	// passaram pelos apelidos (podem citar notas e nomes) e iriam junto.
+	if llm.IsLocal(current.Config) && !llm.IsLocal(ai.Config) {
+		if err := s.store.ClearChat(ctx); err != nil {
+			redirect(w, r, "/configuracoes", "", err)
+			return
+		}
 	}
 	err = s.saveAISettings(ctx, ai)
 	redirect(w, r, "/configuracoes", "Configuração da IA salva.", err)

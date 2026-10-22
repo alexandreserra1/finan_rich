@@ -14,6 +14,7 @@ import (
 func (a *accessApp) api(method, path, from, token, body string) *httptest.ResponseRecorder {
 	a.t.Helper()
 	req := httptest.NewRequest(method, path, strings.NewReader(body))
+	req.Host = "192.168.0.10:8080"
 	req.RemoteAddr = from
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "capacitor://localhost")
@@ -60,12 +61,13 @@ func TestPairingFlow(t *testing.T) {
 		t.Error("Ajustes deveria mostrar o código e o QR")
 	}
 	page := a.do("GET", "/parear?codigo="+code, phone, nil)
-	if page.Code != http.StatusOK || !strings.Contains(page.Body.String(), "finanrich://parear?codigo="+code+"&amp;url=http%3A%2F%2Fexample.com") {
+	if page.Code != http.StatusOK || !strings.Contains(page.Body.String(), "finanrich://parear?codigo="+code+"&amp;url=http%3A%2F%2F127.0.0.1%3A8080") {
 		t.Errorf("página /parear: %d\n%s", page.Code, page.Body.String())
 	}
 
 	// No iPhone (sem app na App Store), a página ensina a usar pelo Safari.
 	iphone := httptest.NewRequest("GET", "/parear?codigo="+code, nil)
+	iphone.Host = "192.168.0.10:8080"
 	iphone.Header.Set("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1")
 	iphone.RemoteAddr = phone
 	rec := httptest.NewRecorder()
@@ -150,7 +152,7 @@ func TestPairingServerModeUsesRequestAddress(t *testing.T) {
 	rec := a.do("POST", "/entrar", phone, url.Values{"senha": {"senha-do-servidor"}})
 	cookie := sessionFrom(rec)
 	a.do("POST", "/configuracoes/parear", phone, url.Values{}, cookie)
-	if body := a.do("GET", "/configuracoes", phone, nil, cookie).Body.String(); !strings.Contains(body, "http://example.com</code>") {
+	if body := a.do("GET", "/configuracoes", phone, nil, cookie).Body.String(); !strings.Contains(body, "http://127.0.0.1:8080</code>") {
 		t.Error("no modo servidor, o endereço do app deveria ser o desta página")
 	}
 }
