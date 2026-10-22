@@ -1,0 +1,3 @@
+• Visual novo: números maiores, cartões mais leves e barra de baixo flutuante no celular.
+• No computador, o menu lateral fica agrupado em Dinheiro, Planejamento e Ferramentas.
+• Transições desligam sozinhas para quem pediu menos movimento no sistema.
