@@ -37,6 +37,7 @@ type openAIToolCall struct {
 		Name      string `json:"name,omitempty"`
 		Arguments string `json:"arguments"` // texto JSON (vem em pedaços no streaming)
 	} `json:"function"`
+	ExtraContent json.RawMessage `json:"extra_content,omitempty"` // Gemini: thought_signature
 }
 
 type openAIChunk struct {
@@ -59,7 +60,7 @@ func (o *OpenAI) Chat(ctx context.Context, req Request, onText func(string)) (Re
 	for _, m := range req.Messages {
 		om := openAIMessage{Role: string(m.Role), Content: m.Content, ToolCallID: m.ToolCallID}
 		for i, c := range m.ToolCalls {
-			tc := openAIToolCall{Index: i, ID: c.ID, Type: "function"}
+			tc := openAIToolCall{Index: i, ID: c.ID, Type: "function", ExtraContent: c.Extra}
 			tc.Function.Name, tc.Function.Arguments = c.Name, string(args(c.Args))
 			om.ToolCalls = append(om.ToolCalls, tc)
 		}
@@ -117,6 +118,9 @@ func (o *OpenAI) Chat(ctx context.Context, req Request, onText func(string)) (Re
 				c := &calls[d.Index]
 				if d.ID != "" {
 					c.ID = d.ID
+				}
+				if len(d.ExtraContent) > 0 {
+					c.Extra = d.ExtraContent
 				}
 				c.Name += d.Function.Name
 				c.Args = append(c.Args, d.Function.Arguments...)

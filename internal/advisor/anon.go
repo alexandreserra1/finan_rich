@@ -43,8 +43,14 @@ func Anonymize(l domain.Ledger) (domain.Ledger, *Anonymizer) {
 		}
 		// O estabelecimento é a primeira palavra ("ifood pizza" e "ifood lanche"
 		// são o mesmo iFood); palavras muito curtas não bastam sozinhas.
+		show := desc
 		if w, _, _ := strings.Cut(key, " "); len([]rune(w)) >= 3 {
 			key = w
+			// Na resposta, o nome do grupo é a palavra como a pessoa escreveu
+			// ("iFood", não "iFood pizza"), quando dá para achá-la.
+			if f := strings.Fields(desc); len(f) > 0 && importer.DescKey(f[0]) == w {
+				show = f[0]
+			}
 		}
 		al, ok := byKey[key]
 		if !ok {
@@ -54,7 +60,7 @@ func Anonymize(l domain.Ledger) (domain.Ledger, *Anonymizer) {
 			}
 			al = fmt.Sprintf("%s %d", prefix, len(byKey)+1)
 			byKey[key] = al
-			a.display[al] = desc
+			a.display[al] = show
 			a.addPhrase(key, al)
 		}
 		a.keep(id, "description", desc, al)

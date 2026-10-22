@@ -207,7 +207,7 @@ try {
   await page.waitForSelector(".msg.assistant:has-text('você gastou')", { timeout: 30000 });
   const said = await page.textContent(".msg.assistant >> nth=-1");
   const sent = JSON.stringify(cloudBodies.map((b) => b.messages));
-  ok(said.includes("Feira (só celular)") && said.includes("R$ 40,00"), `a resposta volta com o nome verdadeiro (${said.trim()})`);
+  ok(said.includes("Feira") && !said.includes("Loja") && said.includes("R$ 40,00"), `a resposta volta com o nome verdadeiro (${said.trim()})`);
   ok(!/feira/i.test(sent) && cloudBodies.every((b) => b.auth === "Bearer chave-secreta-123"), "nenhum nome real saiu do celular (a IA só viu apelidos)");
   await page.fill("textarea[name=message]", "Lança 8,50 do pão");
   await page.click("form[data-form=ask] button");

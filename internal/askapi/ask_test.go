@@ -68,7 +68,7 @@ func TestAskAnonymizedCloud(t *testing.T) {
 			}
 		}
 	}
-	if out.OK.Answer != "Você gastou R$ 25,00 na Uber *Trip. Deixei a correção pronta." {
+	if out.OK.Answer != "Você gastou R$ 25,00 na Uber. Deixei a correção pronta." {
 		t.Errorf("resposta = %q", out.OK.Answer)
 	}
 	if len(out.OK.Proposals) != 1 || !strings.Contains(string(out.OK.Proposals[0].Record), `"description":"Uber *Trip"`) ||

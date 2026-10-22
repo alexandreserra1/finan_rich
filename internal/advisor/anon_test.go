@@ -42,7 +42,7 @@ func TestAnonymizeHidesNames(t *testing.T) {
 		t.Errorf("só palavras inteiras: %q", got)
 	}
 	// Na volta, os nomes reaparecem.
-	if got := a.Reveal("Você gastou R$ 82,30 com " + anon.Transactions[0].Description + " e deve na Dívida 1."); got != "Você gastou R$ 82,30 com iFood *Pizza e deve na Cartão Nubank." {
+	if got := a.Reveal("Você gastou R$ 82,30 com " + anon.Transactions[0].Description + " e deve na Dívida 1."); got != "Você gastou R$ 82,30 com iFood e deve na Cartão Nubank." {
 		t.Errorf("resposta = %q", got)
 	}
 }

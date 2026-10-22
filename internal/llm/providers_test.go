@@ -245,7 +245,8 @@ var toolReq = Request{
 		`{"type":"object","properties":{"texto":{"type":"string"}},"required":["texto"]}`)}},
 	Messages: []Message{
 		{Role: RoleUser, Content: "quanto gastei com ifood?"},
-		{Role: RoleAssistant, ToolCalls: []ToolCall{{ID: "c1", Name: "buscar", Args: json.RawMessage(`{"texto":"ifood"}`)}}},
+		{Role: RoleAssistant, ToolCalls: []ToolCall{{ID: "c1", Name: "buscar", Args: json.RawMessage(`{"texto":"ifood"}`),
+			Extra: json.RawMessage(`{"google":{"thought_signature":"sig"}}`)}}},
 		{Role: RoleTool, ToolCallID: "c1", ToolName: "buscar", Content: "total R$ 50,00"},
 	},
 }
@@ -274,7 +275,7 @@ func TestOpenAITools(t *testing.T) {
 	var body map[string]any
 	srv := server(t, &body, func(w http.ResponseWriter, r *http.Request) {
 		for _, d := range []string{
-			`{"tool_calls":[{"index":0,"id":"x1","type":"function","function":{"name":"buscar","arguments":""}}]}`,
+			`{"tool_calls":[{"index":0,"id":"x1","type":"function","function":{"name":"buscar","arguments":""},"extra_content":{"google":{"thought_signature":"s2"}}}]}`,
 			`{"tool_calls":[{"index":0,"function":{"arguments":"{\"texto\":"}}]}`,
 			`{"tool_calls":[{"index":0,"function":{"arguments":"\"uber\"}"}}]}`,
 		} {
@@ -283,12 +284,15 @@ func TestOpenAITools(t *testing.T) {
 		fmt.Fprint(w, "data: [DONE]\n\n")
 	})
 	reply, err := NewOpenAI(srv.URL, "", "m").Chat(context.Background(), toolReq, func(string) {})
-	if err != nil || len(reply.ToolCalls) != 1 || reply.ToolCalls[0].ID != "x1" || string(reply.ToolCalls[0].Args) != `{"texto":"uber"}` {
+	if err != nil || len(reply.ToolCalls) != 1 || reply.ToolCalls[0].ID != "x1" || string(reply.ToolCalls[0].Args) != `{"texto":"uber"}` ||
+		string(reply.ToolCalls[0].Extra) != `{"google":{"thought_signature":"s2"}}` {
 		t.Fatalf("reply=%+v err=%v", reply, err)
 	}
 	msgs := body["messages"].([]any)
 	asked := msgs[2].(map[string]any)["tool_calls"].([]any)[0].(map[string]any)
-	if asked["id"] != "c1" || asked["function"].(map[string]any)["arguments"] != `{"texto":"ifood"}` ||
+	// Gemini: a assinatura do pedido de ferramenta volta junto, senão ele recusa (400).
+	sig, _ := json.Marshal(asked["extra_content"])
+	if asked["id"] != "c1" || asked["function"].(map[string]any)["arguments"] != `{"texto":"ifood"}` || string(sig) != `{"google":{"thought_signature":"sig"}}` ||
 		msgs[3].(map[string]any)["tool_call_id"] != "c1" || body["tools"] == nil {
 		t.Errorf("corpo = %v", body)
 	}

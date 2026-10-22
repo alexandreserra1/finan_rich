@@ -50,6 +50,9 @@ type ToolCall struct {
 	ID   string
 	Name string
 	Args json.RawMessage // objeto JSON
+	// Extra é devolvido ao provedor como veio (o Gemini exige a assinatura
+	// "thought_signature" de volta, senão recusa a conversa com ferramentas).
+	Extra json.RawMessage
 }
 
 // Request é uma conversa completa a ser continuada pelo modelo.
