@@ -12,6 +12,7 @@ import (
 
 	"github.com/alexandreserra1/finan_rich/internal/advisor"
 	"github.com/alexandreserra1/finan_rich/internal/llm"
+	"github.com/alexandreserra1/finan_rich/internal/proxy"
 )
 
 // IA na nuvem falsa (formato OpenAI): pede a busca, depois responde usando o
@@ -185,5 +186,67 @@ func TestCategorizeCloud(t *testing.T) {
 	got := Categorize(context.Background(), string(raw))
 	if got != `{"ok":["res"]}` || strings.Contains(sent, "123.456") || strings.Contains(sent, "PIX ENVIADO") {
 		t.Errorf("resposta %s; enviado %s", got, sent)
+	}
+}
+
+// Consultor grátis de ponta a ponta: o pedido verdadeiro do app (com a busca
+// por ferramenta), a categorização e o teste de conexão passam pelo
+// intermediário real (internal/proxy) até um Groq falso. Se o prompt do app
+// mudar e o filtro do intermediário deixar de reconhecê-lo, este teste falha.
+func TestFreePresetThroughProxy(t *testing.T) {
+	var models []string
+	groq := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer chave-do-servidor" {
+			t.Errorf("chave = %q", r.Header.Get("Authorization"))
+		}
+		raw, _ := io.ReadAll(r.Body)
+		var body struct{ Model string }
+		json.Unmarshal(raw, &body)
+		models = append(models, body.Model)
+		delta := `{"content":"Você gastou R$ 25,00."}`
+		switch {
+		case strings.Contains(string(raw), advisor.CategorizeMarker):
+			delta = `{"content":"{\"1\": \"Transporte\"}"}`
+		case !strings.Contains(string(raw), `"role":"tool"`) && strings.Contains(string(raw), advisor.PromptMarker):
+			delta = `{"tool_calls":[{"index":0,"id":"c1","type":"function","function":{"name":"buscar_lancamentos","arguments":"{\"texto\":\"Loja AB\"}"}}]}`
+		}
+		fmt.Fprintf(w, "data: {\"choices\":[{\"delta\":%s}]}\n\ndata: [DONE]\n\n", delta)
+	}))
+	defer groq.Close()
+	free := httptest.NewServer(proxy.New(proxy.Config{Upstream: groq.URL, APIKey: "chave-do-servidor", Models: []string{"modelo-do-servidor"}, Limits: proxy.DefaultLimits}))
+	defer free.Close()
+	llm.FreeProxyURL = free.URL
+	t.Cleanup(func() { llm.FreeProxyURL = "" })
+	ai := AIConfig{Preset: llm.FreeID, APIKey: "aparelho-123"}
+
+	aiRaw, _ := json.Marshal(ai)
+	if got := Check(context.Background(), string(aiRaw)); got != `{"ok":true}` {
+		t.Errorf("teste de conexão = %s", got)
+	}
+	cats := json.RawMessage(`[{"id":"tra","updatedAt":1,"name":"Transporte","bucket":"necessidades"}]`)
+	raw, _ := json.Marshal(map[string]any{
+		"ledger": json.RawMessage(`{"categories":` + string(cats) + `,
+		  "transactions":[{"id":"b","updatedAt":1,"kind":"saida","description":"Uber *Trip","amountCents":2500,"categoryId":"tra","date":"2026-10-06"}]}`),
+		"question": "Quanto gastei com Uber?", "today": "2026-10-20", "ai": ai, "anonymize": true,
+	})
+	var out struct {
+		OK    AskReply
+		Error string
+	}
+	json.Unmarshal([]byte(Ask(context.Background(), string(raw))), &out)
+	if out.Error != "" || out.OK.Answer != "Você gastou R$ 25,00." {
+		t.Errorf("consultor pelo intermediário: resposta %q, erro %q", out.OK.Answer, out.Error)
+	}
+	raw, _ = json.Marshal(map[string]any{"categories": cats, "items": []map[string]string{{"description": "UBER TRIP", "kind": "saida"}}, "ai": ai})
+	if got := Categorize(context.Background(), string(raw)); got != `{"ok":["tra"]}` {
+		t.Errorf("categorização pelo intermediário = %s", got)
+	}
+	for _, m := range models {
+		if m != "modelo-do-servidor" {
+			t.Errorf("o modelo é escolhido no intermediário, chegou %q", m)
+		}
+	}
+	if len(models) < 4 {
+		t.Errorf("chamadas ao Groq = %d (teste, busca, resposta, categorização)", len(models))
 	}
 }

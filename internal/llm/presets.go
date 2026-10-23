@@ -32,38 +32,38 @@ var Presets = []Preset{
 	{
 		ID: "groq", Name: "Groq (nuvem, grátis)", Kind: KindOpenAI,
 		Description: "Muito rápido e com plano gratuito. Precisa de uma chave grátis (login com Google).",
-		BaseURL:     "https://api.groq.com/openai/v1", Model: "qwen/qwen3-32b", NeedsKey: true,
+		BaseURL:     "https://api.groq.com/openai/v1", Model: "openai/gpt-oss-120b", NeedsKey: true,
 		KeyURL: "https://console.groq.com/keys",
 		KeySteps: []string{
 			"Entre com sua conta Google (é grátis, não pede cartão).",
 			"Toque em \"Create API Key\", dê um nome (por exemplo, finan_rich) e confirme.",
 			"Copie a chave (começa com gsk_). Ela só aparece uma vez.",
 		},
-		Models: []string{"qwen/qwen3-32b", "llama-3.3-70b-versatile", "openai/gpt-oss-120b"},
+		Models: []string{"openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"},
 	},
 	{
 		ID: "gemini", Name: "Google Gemini (nuvem, grátis)", Kind: KindOpenAI,
 		Description: "Plano gratuito com limite diário. Atenção: no plano grátis o Google pode usar o que é enviado para melhorar os produtos dele (o finan_rich manda tudo anonimizado). Precisa de uma chave grátis do Google AI Studio.",
-		BaseURL:     "https://generativelanguage.googleapis.com/v1beta/openai", Model: "gemini-3.5-flash", NeedsKey: true,
+		BaseURL:     "https://generativelanguage.googleapis.com/v1beta/openai", Model: "gemini-3.8-flash", NeedsKey: true,
 		KeyURL: "https://aistudio.google.com/apikey",
 		KeySteps: []string{
 			"Entre com sua conta Google (é grátis, não pede cartão).",
 			"Aceite os termos, se pedir, e toque em \"Create API key\" (Criar chave de API).",
 			"Copie a chave que aparecer.",
 		},
-		Models: []string{"gemini-3.5-flash", "gemini-flash-latest", "gemini-flash-lite-latest"},
+		Models: []string{"gemini-3.8-flash", "gemini-flash-latest", "gemini-3.5-flash-lite"},
 	},
 	{
 		ID: "openrouter", Name: "OpenRouter (nuvem, modelos grátis)", Kind: KindOpenAI,
-		Description: "Dá acesso a vários modelos abertos; os terminados em \":free\" não custam nada. Precisa de chave.",
-		BaseURL:     "https://openrouter.ai/api/v1", Model: "deepseek/deepseek-chat-v3.1:free", NeedsKey: true,
+		Description: "Dá acesso a vários modelos abertos; \"openrouter/free\" escolhe sozinho um modelo grátis. Precisa de chave.",
+		BaseURL:     "https://openrouter.ai/api/v1", Model: "openrouter/free", NeedsKey: true,
 		KeyURL: "https://openrouter.ai/keys",
 		KeySteps: []string{
 			"Crie uma conta (pode ser com o Google).",
 			"Toque em \"Create API Key\", dê um nome e confirme.",
-			"Copie a chave (começa com sk-or-). Use só modelos terminados em \":free\" para não pagar.",
+			"Copie a chave (começa com sk-or-). Use \"openrouter/free\" ou modelos terminados em \":free\" para não pagar.",
 		},
-		Models: []string{"deepseek/deepseek-chat-v3.1:free", "qwen/qwen3-235b-a22b:free"},
+		Models: []string{"openrouter/free", "qwen/qwen3.8-27b:free", "google/gemma-4-31b-it:free"},
 	},
 	{
 		ID: "deepseek", Name: "DeepSeek (nuvem, muito barato)", Kind: KindOpenAI,
@@ -91,8 +91,8 @@ var Presets = []Preset{
 }
 
 // PresetByID devolve o preset com o id informado (ou o primeiro, o Ollama).
-// FreeProxyURL é o endereço do intermediário grátis do finan_rich (api/index.go na
-// Vercel, ou cmd/finanproxy no Cloud Run; ver docs/IA-GRATIS.md). Não é segredo: a chave fica no servidor.
+// FreeProxyURL é o endereço do intermediário grátis do finan_rich (cmd/finanproxy, na
+// Vercel ou no Cloud Run; ver docs/IA-GRATIS.md). Não é segredo: a chave fica no servidor.
 // Vazio: a opção não aparece.
 var FreeProxyURL = ""
 

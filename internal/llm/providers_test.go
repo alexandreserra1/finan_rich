@@ -407,3 +407,29 @@ func TestOpenAIParallelToolCallsSameIndex(t *testing.T) {
 		t.Fatalf("reply=%+v err=%v", reply.ToolCalls, err)
 	}
 }
+
+// Quem salvou um modelo que o provedor desligou passa a usar o substituto
+// recomendado, sem precisar mexer nos Ajustes.
+func TestRetiredModelIsReplaced(t *testing.T) {
+	var got string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct{ Model string }
+		json.NewDecoder(r.Body).Decode(&body)
+		got = body.Model
+		fmt.Fprint(w, "data: {\"choices\":[{\"delta\":{\"content\":\"ok\"}}]}\n\ndata: [DONE]\n\n")
+	}))
+	defer srv.Close()
+	for saved, want := range map[string]string{"qwen/qwen3-32b": "openai/gpt-oss-120b", "llama-3.1-8b-instant": "openai/gpt-oss-20b", "modelo-qualquer": "modelo-qualquer"} {
+		collectChat(t, NewOpenAI(srv.URL, "chave", saved))
+		if got != want {
+			t.Errorf("modelo salvo %q: enviado %q, quer %q", saved, got, want)
+		}
+	}
+	for _, p := range Presets {
+		for _, m := range append([]string{p.Model}, p.Models...) {
+			if r, ok := retired[m]; ok {
+				t.Errorf("preset %s ainda oferece %s (desligado; use %s)", p.ID, m, r)
+			}
+		}
+	}
+}

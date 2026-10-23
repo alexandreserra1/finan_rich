@@ -21,7 +21,23 @@ type OpenAI struct {
 }
 
 func NewOpenAI(baseURL, apiKey, model string) *OpenAI {
+	if r, ok := retired[model]; ok {
+		model = r
+	}
 	return &OpenAI{baseURL: trimSlash(baseURL), apiKey: apiKey, model: model}
+}
+
+// retired troca modelos que o provedor desligou pelo substituto que ele
+// recomenda (Groq: console.groq.com/docs/deprecations; Gemini: ai.google.dev/gemini-api/docs/models). Assim quem salvou o
+// modelo antigo nos Ajustes continua com o consultor funcionando.
+var retired = map[string]string{
+	"qwen/qwen3-32b":                                "openai/gpt-oss-120b",
+	"llama-3.3-70b-versatile":                       "openai/gpt-oss-120b",
+	"meta-llama/llama-4-scout-17b-16e-instruct":     "openai/gpt-oss-120b",
+	"meta-llama/llama-4-maverick-17b-128e-instruct": "openai/gpt-oss-120b",
+	"moonshotai/kimi-k2-instruct-0905":              "openai/gpt-oss-120b",
+	"llama-3.1-8b-instant":                          "openai/gpt-oss-20b",
+	"qwen/qwen3.6-27b":                              "qwen/qwen3.8-27b",
 }
 
 type openAIMessage struct {

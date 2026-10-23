@@ -23,6 +23,16 @@ func fakeGroq(t *testing.T, seen *[]map[string]any) *httptest.Server {
 		var body map[string]any
 		json.NewDecoder(r.Body).Decode(&body)
 		*seen = append(*seen, body)
+		if body["model"] == "aposentado" { // como o Groq responde a um modelo desligado
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, `{"error":{"message":"The model has been decommissioned","code":"model_decommissioned"}}`)
+			return
+		}
+		if body["model"] == "sumiu" {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprint(w, `{"error":{"message":"model not found","code":"model_not_found"}}`)
+			return
+		}
 		if body["model"] == "sem-cota" {
 			w.WriteHeader(http.StatusTooManyRequests)
 			fmt.Fprint(w, `{"error":{"message":"rate limit"}}`)
@@ -77,6 +87,17 @@ func TestProxyForwardsAppRequests(t *testing.T) {
 	cat, _ := json.Marshal(map[string]any{"messages": []map[string]string{{"role": "system", "content": advisor.CategorizeMarker + " ..."}, {"role": "user", "content": "1. ifood"}}})
 	if rec := ask(h, "aparelho-1", string(cat)); rec.Code != http.StatusOK {
 		t.Errorf("categorização = %d", rec.Code)
+	}
+}
+
+// O Groq desliga modelos com frequência: um modelo que sumiu não pode
+// derrubar o consultor; o intermediário passa para o próximo da lista.
+func TestProxySkipsRetiredModels(t *testing.T) {
+	var seen []map[string]any
+	h := New(Config{Upstream: fakeGroq(t, &seen).URL, APIKey: "chave-do-servidor", Models: []string{"aposentado", "sumiu", "llama"}, Limits: DefaultLimits})
+	rec := ask(h, "aparelho-1", appBody("x", 100))
+	if rec.Code != http.StatusOK || len(seen) != 3 || seen[2]["model"] != "llama" {
+		t.Fatalf("resposta %d, modelos tentados %d: %s", rec.Code, len(seen), rec.Body.String())
 	}
 }
 

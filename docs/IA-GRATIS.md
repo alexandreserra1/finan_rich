@@ -10,9 +10,8 @@ APK.
 celular (anonimiza) ──HTTPS──> intermediário (Vercel, chave numa variável secreta) ──> Groq
 ```
 
-- **Código**: `internal/proxy` (regras e limites, com testes). Duas entradas para o mesmo
-  código: `api/index.go` (função da Vercel, com `vercel.json` e `.vercelignore`) e
-  `cmd/finanproxy` (programa comum, para o Cloud Run ou qualquer servidor).
+- **Código**: `cmd/finanproxy` (programa) e `internal/proxy` (regras e limites, com testes).
+  O mesmo programa roda na Vercel (`vercel.json` e `.vercelignore`) e no Cloud Run.
 - **Por que Groq**: plano grátis sem cartão, muito rápido, modelos abertos com ferramentas, e
   ele não usa os dados da API para treinar.
 - **Por que Vercel**: plano grátis (Hobby) sem cartão, login com o GitHub e publicação a cada
@@ -26,11 +25,13 @@ celular (anonimiza) ──HTTPS──> intermediário (Vercel, chave numa variá
 ## Proteções (o app é de código aberto: qualquer um acha o endereço)
 
 - Só passa pedido com o formato do consultor (o prompt do finan_rich) ou o teste de conexão.
-- Limite por aparelho (30 chamadas por hora, 80 por dia) e por rede (60 por hora, 200 por dia).
-  Uma pergunta usa de 2 a 5 chamadas.
+- Limite por aparelho (15 chamadas por hora, 40 por dia, perto de 10 perguntas) e por rede
+  (30 por hora, 100 por dia). Uma pergunta usa de 2 a 5 chamadas.
 - O modelo e o tamanho máximo da resposta são escolhidos no servidor.
-- Quando um modelo esgota a cota grátis (erro 429), tenta o próximo da lista: no Groq cada
-  modelo tem a sua cota.
+- Quando um modelo esgota a cota grátis (erro 429), cai ou foi desligado pelo Groq (400/404),
+  tenta o próximo da lista: no Groq cada modelo tem a sua cota. O Groq desliga modelos com poucas
+  semanas de aviso (console.groq.com/docs/deprecations): a lista fica em `internal/proxy` e pode
+  ser trocada sem publicar o app, pela variável `FINAN_PROXY_MODELS`.
 - O IP de quem chama é o que a Vercel põe no `X-Forwarded-For` (no Cloud Run, o que o Google
   acrescenta no fim; o começo pode ser inventado); pedido sem identificação de aparelho conta como um aparelho daquela rede.
   Corpo enviado devagar é cortado em 15 s, e o pedido aceita até 128 KB. O limitador guarda
@@ -47,10 +48,12 @@ celular (anonimiza) ──HTTPS──> intermediário (Vercel, chave numa variá
   grátis para até o dia seguinte (meia-noite UTC), **sem cobrança** — desde que a conta do Groq
   não tenha cartão.
 
-**Capacidade**: o plano grátis do Groq conta por conta (não por chave), com algo como 1.000
-chamadas por dia por modelo e limites de tokens por minuto e por dia (confira em
-console.groq.com/settings/limits). Com 4 modelos, dá algumas centenas de perguntas por dia
-somando todo mundo. Para mais, cada pessoa pode usar a própria chave grátis em Ajustes.
+**Capacidade**: o plano grátis do Groq conta por conta (não por chave): perto de 1.000 chamadas e
+200 mil tokens por dia por modelo, e 8 mil tokens por minuto (confira em
+console.groq.com/settings/limits). Cada chamada do consultor leva uns 4 mil tokens (os números
+do mês vão junto) e uma pergunta usa de 2 a 5 chamadas. Com 3 modelos, dá **algumas dezenas de
+perguntas por dia somando todo mundo**, e duas pessoas perguntando no mesmo minuto já passam para
+o modelo seguinte. Para mais, cada pessoa pode usar a própria chave grátis em Ajustes.
 
 ## Publicar na Vercel (uma vez; depois, cada push na main atualiza)
 

@@ -6,8 +6,8 @@
 //   - só passa pedido com o formato do consultor (o prompt do finan_rich);
 //   - limite de chamadas por aparelho e por IP, por hora e por dia;
 //   - o modelo e o tamanho da resposta são escolhidos aqui, não por quem chama;
-//   - quando um modelo esgota a cota grátis (429), tenta o próximo da lista
-//     (no Groq cada modelo tem a sua cota).
+//   - quando um modelo esgota a cota grátis (429), cai ou foi desligado pelo
+//     Groq, tenta o próximo da lista (no Groq cada modelo tem a sua cota).
 package proxy
 
 import (
@@ -37,7 +37,9 @@ type Config struct {
 }
 
 // Modelos abertos do Groq com ferramentas; cada um tem a sua cota grátis.
-const defaultModels = "llama-3.3-70b-versatile,openai/gpt-oss-120b,qwen/qwen3-32b,meta-llama/llama-4-scout-17b-16e-instruct"
+// O Groq desliga modelos com aviso de poucas semanas (console.groq.com/docs/deprecations):
+// troque aqui ou em FINAN_PROXY_MODELS, sem publicar o app.
+const defaultModels = "openai/gpt-oss-120b,qwen/qwen3.8-27b,openai/gpt-oss-20b"
 
 // ConfigFromEnv lê a configuração das variáveis de ambiente (Cloud Run e Vercel):
 //
@@ -66,8 +68,10 @@ func ConfigFromEnv() (Config, error) {
 // Limits são as chamadas permitidas (uma pergunta usa de 2 a 5).
 type Limits struct{ DeviceHour, DeviceDay, IPHour, IPDay int }
 
-// DefaultLimits cabem na cota grátis do Groq com alguns usuários por dia.
-var DefaultLimits = Limits{DeviceHour: 30, DeviceDay: 80, IPHour: 60, IPDay: 200}
+// DefaultLimits dividem a cota grátis do Groq (uns 200 mil tokens por dia por
+// modelo; cada chamada do consultor leva uns 4 mil): perto de 10 perguntas por
+// aparelho por dia, para um aparelho só não gastar a cota de todo mundo.
+var DefaultLimits = Limits{DeviceHour: 15, DeviceDay: 40, IPHour: 30, IPDay: 100}
 
 const (
 	maxBody   = 128 << 10 // cabe a conversa longa com ferramentas; a cota grátis por minuto do Groq é menor ainda
@@ -128,8 +132,9 @@ func (h *handler) chat(w http.ResponseWriter, r *http.Request) {
 			fail(w, http.StatusBadGateway, "o provedor de IA não respondeu")
 			return
 		}
-		// Cota grátis deste modelo acabou (ou ele está fora): tenta o próximo.
-		if (resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusServiceUnavailable) && i < len(h.cfg.Models)-1 {
+		// Cota grátis deste modelo acabou, ele está fora ou o Groq o desligou
+		// (400/404 de modelo aposentado): tenta o próximo.
+		if retryable(resp.StatusCode) && i < len(h.cfg.Models)-1 {
 			resp.Body.Close()
 			log.Printf("modelo %s respondeu %d; tentando o próximo", model, resp.StatusCode)
 			continue
@@ -137,6 +142,10 @@ func (h *handler) chat(w http.ResponseWriter, r *http.Request) {
 		relay(w, resp)
 		return
 	}
+}
+
+func retryable(status int) bool {
+	return status == http.StatusBadRequest || status == http.StatusNotFound || status == http.StatusTooManyRequests || status >= 500
 }
 
 // fromApp aceita só o que o app manda: o consultor e a categorização de
