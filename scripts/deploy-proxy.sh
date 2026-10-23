@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Publica o intermediário grátis (cmd/finanproxy) no Google Cloud Run.
+# Publica o intermediário grátis (cmd/api) no Google Cloud Run.
 # Prepara o projeto na primeira vez (APIs, repositório de imagens, segredo com
 # a chave do Groq) e depois só publica a versão nova. Passo a passo e custos:
 # docs/IA-GRATIS.md.
@@ -38,7 +38,7 @@ fi
 g secrets add-iam-policy-binding groq-api-key --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor >/dev/null
 
 echo "→ Construindo a imagem"
-g builds submit --config cmd/finanproxy/cloudbuild.yaml --substitutions "_IMAGE=$IMAGE" .
+g builds submit --config cmd/api/cloudbuild.yaml --substitutions "_IMAGE=$IMAGE" .
 
 echo "→ Publicando (escala a zero, no máximo 1 instância)"
 g run deploy finanproxy --image "$IMAGE" --region "$REGION" --allow-unauthenticated --service-account "$SA" \

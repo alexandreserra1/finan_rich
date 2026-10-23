@@ -91,7 +91,7 @@ var Presets = []Preset{
 }
 
 // PresetByID devolve o preset com o id informado (ou o primeiro, o Ollama).
-// FreeProxyURL é o endereço do intermediário grátis do finan_rich (cmd/finanproxy, na
+// FreeProxyURL é o endereço do intermediário grátis do finan_rich (cmd/api, na
 // Vercel ou no Cloud Run; ver docs/IA-GRATIS.md). Não é segredo: a chave fica no servidor.
 // Vazio: a opção não aparece.
 var FreeProxyURL = ""

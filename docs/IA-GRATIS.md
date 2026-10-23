@@ -10,7 +10,7 @@ APK.
 celular (anonimiza) ──HTTPS──> intermediário (Vercel, chave numa variável secreta) ──> Groq
 ```
 
-- **Código**: `cmd/finanproxy` (programa) e `internal/proxy` (regras e limites, com testes).
+- **Código**: `cmd/api` (programa) e `internal/proxy` (regras e limites, com testes).
   O mesmo programa roda na Vercel (`vercel.json` e `.vercelignore`) e no Cloud Run.
 - **Por que Groq**: plano grátis sem cartão, muito rápido, modelos abertos com ferramentas, e
   ele não usa os dados da API para treinar.

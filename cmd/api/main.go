@@ -1,5 +1,5 @@
-// Comando finanproxy: o intermediário do "finan_rich grátis" (internal/proxy),
-// feito para o Google Cloud Run (escala a zero; só liga quando alguém pergunta).
+// Comando api (finanproxy): o intermediário do "finan_rich grátis" (internal/proxy).
+// Roda na Vercel (que procura o programa em cmd/api, daí o nome) ou no Google Cloud Run.
 //
 // Variáveis: proxy.ConfigFromEnv; PORT é a porta (o Cloud Run define; padrão 8080).
 //

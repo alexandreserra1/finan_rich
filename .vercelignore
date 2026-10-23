@@ -1,8 +1,8 @@
-# Na Vercel só vai o intermediário da IA grátis (cmd/finanproxy) e os pacotes que ele usa.
+# Na Vercel só vai o intermediário da IA grátis (cmd/api) e os pacotes que ele usa.
 /*
 !/cmd
 /cmd/*
-!/cmd/finanproxy
+!/cmd/api
 !/go.mod
 !/go.sum
 !/vercel.json
