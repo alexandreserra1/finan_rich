@@ -30,8 +30,10 @@ números reais. Seus dados ficam num arquivo no seu PC, sem conta e sem nuvem.
   Netflix...), aprende com as suas correções, não duplica o que já foi importado, avisa o
   que parece já lançado à mão e deixa de fora o pagamento da fatura do cartão. Para o que
   sobrar sem categoria, a IA pode sugerir (recebe só as descrições).
-- **Dívidas**: quanto tempo e quanto de juros para quitar pagando o mínimo, alerta quando o
-  mínimo não cobre os juros e a ordem de pagamento pelos métodos avalanche e bola de neve.
+- **Dívidas**: um plano numa frase (o que pagar primeiro, em quantos meses você sai das
+  dívidas e quanto de juros economiza), com o valor que dá para pagar a mais por mês e um
+  gráfico do plano contra pagar só o mínimo. Avisa quando o mínimo não cobre os juros e mostra
+  as faturas abertas dos cartões.
 - **Notas**: metas, combinados e ideias, com busca e notas fixadas. O consultor lê as mais
   recentes para entender seus planos.
 - **Exportar**: planilha do Excel (.xlsx) com abas de resumo, lançamentos, categorias,

@@ -194,7 +194,7 @@ func TestViews(t *testing.T) {
 		t.Errorf("json do painel = %s", b)
 	}
 
-	dv := Debts(l)
+	dv := Debts(l, 0)
 	if len(dv.Debts) != 2 || dv.Avalanche[0] != "Cartão" || dv.Debts[0].Name != "Cartão" || dv.Debts[0].MonthlyInterestCents != 44800 {
 		t.Errorf("dívidas = %+v", dv)
 	}

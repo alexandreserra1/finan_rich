@@ -21,7 +21,7 @@ func main() {
 	}
 	api := map[string]any{
 		"dashboard":   js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Dashboard(str(a, 0), str(a, 1)) }),
-		"debts":       js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Debts(str(a, 0)) }),
+		"debts":       js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Debts(str(a, 0), int64(a[1].Float())) }),
 		"validate":    js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Validate(str(a, 0), str(a, 1)) }),
 		"parseMoney":  js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.ParseMoney(str(a, 0)) }),
 		"formatMoney": js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.FormatMoney(int64(a[0].Int())) }),

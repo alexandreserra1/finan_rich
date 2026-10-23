@@ -25,7 +25,7 @@ function unwrap(json) {
 }
 
 export const dashboard = (ledger, month) => unwrap(window.finan.dashboard(JSON.stringify(ledger), month));
-export const debts = (ledger) => unwrap(window.finan.debts(JSON.stringify(ledger)));
+export const debts = (ledger, extraCents = 0) => unwrap(window.finan.debts(JSON.stringify(ledger), extraCents));
 // validate devolve o registro normalizado ou lança o erro (mesma regra do servidor).
 export const validate = (type, record) => unwrap(window.finan.validate(type, JSON.stringify(record)));
 export const parseMoney = (text) => unwrap(window.finan.parseMoney(text));

@@ -93,6 +93,16 @@ try {
   await page.waitForSelector("td:has-text('Empréstimo')");
   await page.evaluate(() => window.finanSync());
   ok((await records("debt")).some((d) => d.name === "Empréstimo"), "dívida nova sincronizou");
+  // Plano: uma frase com o que pagar primeiro e em quantos meses; pagar a mais encurta.
+  const months = async () => Number((await page.textContent(".plan-lead")).match(/em\s+(\d+)\s+mes/)[1]);
+  const before = await months();
+  ok((await page.textContent(".plan-lead")).includes("Pague primeiro") && await page.locator(".debt-chart path.line.now").count() === 1,
+    `plano das dívidas com frase e gráfico (${before} meses)`);
+  await page.fill("form[data-form=extra] input[name=extra]", "200");
+  await page.click("form[data-form=extra] button[type=submit]");
+  await page.waitForURL(/extra=20000/);
+  await page.waitForFunction((b) => Number(document.querySelector(".plan-lead")?.textContent.match(/em\s+(\d+)\s+mes/)?.[1]) < b, before);
+  ok(true, `pagando R$ 200 a mais o plano encurta (${before} → ${await months()} meses)`);
   await page.click("tr:has-text('Empréstimo') [data-delete]");
   await page.waitForSelector("td:has-text('Empréstimo')", { state: "detached" });
   await page.evaluate(() => window.finanSync());

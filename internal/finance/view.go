@@ -72,14 +72,19 @@ type DebtsView struct {
 	MonthlyInterestCents int64     `json:"monthlyInterestCents"`
 	Avalanche            []string  `json:"avalanche"` // nomes, maior juros primeiro
 	Snowball             []string  `json:"snowball"`  // nomes, menor saldo primeiro
+	ExtraCents           int64     `json:"extraCents"`
+	Plan                 Schedule  `json:"plan"`    // mínimos + extra, avalanche
+	MinOnly              Schedule  `json:"minOnly"` // só o mínimo de cada uma
 }
 
-// Debts monta a tela de dívidas.
-func Debts(l domain.Ledger) DebtsView {
-	p := PlanDebts(l.ActiveDebts())
+// Debts monta a tela de dívidas, com o plano pagando extraCents a mais por mês.
+func Debts(l domain.Ledger, extraCents int64) DebtsView {
+	active := l.ActiveDebts()
+	p := PlanDebts(active)
 	v := DebtsView{
 		Debts: []DebtRow{}, TotalCents: p.TotalCents, TotalMinCents: p.TotalMinCents, MonthlyInterestCents: p.MonthlyInterest,
 		Avalanche: names(p.Avalanche), Snowball: names(p.Snowball),
+		ExtraCents: extraCents, Plan: PayoffSchedule(active, extraCents, true), MinOnly: MinimumOnly(active),
 	}
 	for _, d := range p.Debts {
 		v.Debts = append(v.Debts, DebtRow{d.Debt, d.MonthlyInterestCents, d.Months, d.InterestCents, d.Payable})

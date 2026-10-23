@@ -61,3 +61,97 @@ func PlanDebts(debts []domain.Debt) DebtPlan {
 	sort.SliceStable(p.Snowball, func(i, j int) bool { return p.Snowball[i].BalanceCents < p.Snowball[j].BalanceCents })
 	return p
 }
+
+// Schedule é a simulação de pagar várias dívidas ao mesmo tempo.
+type Schedule struct {
+	Months        int       `json:"months"`        // meses até zerar tudo (vale se OK)
+	InterestCents int64     `json:"interestCents"` // juros pagos no caminho
+	OK            bool      `json:"ok"`            // false: do jeito simulado, a dívida não acaba
+	BalanceCents  []int64   `json:"balanceCents"`  // saldo total no fim de cada mês; [0] é hoje
+	PaidOff       []PaidOff `json:"paidOff"`       // em que mês cada dívida zera, na ordem
+}
+
+type PaidOff struct {
+	Name  string `json:"name"`
+	Month int    `json:"month"`
+}
+
+// PayoffSchedule simula pagar todo mês a soma dos mínimos mais extraCents: o
+// mínimo de cada dívida e todo o resto na primeira da fila (avalanche: maior
+// juros; senão bola de neve: menor saldo). Quitada uma, o mínimo dela vai para a
+// próxima da fila.
+func PayoffSchedule(debts []domain.Debt, extraCents int64, avalanche bool) Schedule {
+	order := append([]domain.Debt(nil), debts...)
+	if avalanche {
+		sort.SliceStable(order, func(i, j int) bool { return order[i].MonthlyRateBP > order[j].MonthlyRateBP })
+	} else {
+		sort.SliceStable(order, func(i, j int) bool { return order[i].BalanceCents < order[j].BalanceCents })
+	}
+	return simulate(order, extraCents, true)
+}
+
+// MinimumOnly simula pagar só o mínimo de cada dívida, cada uma por si.
+func MinimumOnly(debts []domain.Debt) Schedule {
+	return simulate(debts, 0, false)
+}
+
+// growthMonths: quando alguma dívida cresce (o mínimo não cobre os juros), a
+// simulação para aqui; mais longe os números perdem sentido.
+const growthMonths = 120
+
+func simulate(order []domain.Debt, extraCents int64, rollover bool) Schedule {
+	bal := make([]int64, len(order))
+	done := make([]bool, len(order))
+	budget, total := extraCents, int64(0)
+	limit := maxMonths
+	for i, d := range order {
+		bal[i] = d.BalanceCents
+		budget += d.MinPaymentCents
+		total += d.BalanceCents
+		if !rollover && d.BalanceCents > 0 && d.MinPaymentCents <= d.BalanceCents*int64(d.MonthlyRateBP)/10000 {
+			limit = growthMonths
+		}
+	}
+	s := Schedule{OK: true, BalanceCents: []int64{total}, PaidOff: []PaidOff{}}
+	for month := 1; total > 0; month++ {
+		if month > limit {
+			s.OK = false
+			break
+		}
+		paid := int64(0)
+		for i, d := range order {
+			interest := bal[i] * int64(d.MonthlyRateBP) / 10000
+			s.InterestCents += interest
+			bal[i] += interest
+		}
+		for i, d := range order {
+			p := min(d.MinPaymentCents, bal[i])
+			bal[i] -= p
+			paid += p
+		}
+		if rollover {
+			rest := budget - paid
+			for i := range order {
+				p := min(rest, bal[i])
+				bal[i] -= p
+				rest -= p
+			}
+		}
+		prev := total
+		total = 0
+		for i, d := range order {
+			total += bal[i]
+			if bal[i] == 0 && !done[i] && d.BalanceCents > 0 {
+				done[i] = true
+				s.PaidOff = append(s.PaidOff, PaidOff{d.Name, month})
+			}
+		}
+		s.BalanceCents = append(s.BalanceCents, total)
+		if rollover && total >= prev { // o que se paga não cobre os juros: nunca acaba
+			s.OK = false
+			break
+		}
+		s.Months = month
+	}
+	return s
+}

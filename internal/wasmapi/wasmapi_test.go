@@ -42,9 +42,13 @@ func TestDashboard(t *testing.T) {
 }
 
 func TestDebts(t *testing.T) {
-	v, _ := decode(t, Debts(ledger))
+	v, _ := decode(t, Debts(ledger, 50000))
 	if v["monthlyInterestCents"] != float64(44800) || len(v["debts"].([]any)) != 1 {
 		t.Errorf("dívidas = %v", v)
+	}
+	plan, minOnly := v["plan"].(map[string]any), v["minOnly"].(map[string]any)
+	if plan["ok"] != true || minOnly["ok"] != false || v["extraCents"] != float64(50000) {
+		t.Errorf("com R$ 500 a mais quita; só no mínimo, não: plano=%v mínimo=%v", plan["ok"], minOnly["ok"])
 	}
 }
 

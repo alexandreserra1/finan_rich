@@ -233,7 +233,7 @@ aparelho                                      servidor
 | Arquivo | Função |
 |---|---|
 | `summary.go` | `Summarize` (resumo do mês e divisão planejado × realizado), `YearTotals`, `RecentTotals`. |
-| `debts.go` | `Payoff` (simulação mês a mês), `PlanDebts` (totais, juros mensais, ordem avalanche e bola de neve). |
+| `debts.go` | `Payoff` (simulação mês a mês), `PlanDebts` (totais, juros mensais, ordem avalanche e bola de neve), `PayoffSchedule` (todas juntas: mínimos + valor a mais, o que sobra de uma quitada vai para a próxima; saldo mês a mês) e `MinimumOnly` (cada uma só no mínimo, para comparar). |
 | `emergency.go` | `PlanEmergencyFund`: reserva de 3 e 6 meses e prazo com a sobra livre. |
 | `insights.go` | `Insights`: tela Análise — ritmo do mês, projeção, pode gastar por dia, gastos por lugar e por categoria contra a média, assinaturas e onde economizar ([ANALISE.md](ANALISE.md)). |
 | `goals.go` | `Goals`: progresso das metas (já guardado + aportes na categoria), quanto guardar por mês, atrasada ou atingida. |
@@ -404,7 +404,7 @@ Arquivos do navegador (`static/`):
 | `js/pages/transactions.js` | Lançamentos: formulário (categorias filtradas por entrada/saída), lista do mês, busca e filtros (no endereço, então voltar e avançar funcionam), apagar, "copiar do mês anterior". |
 | `js/pages/accounts.js` | Contas e cartões: cadastro, saldos, faturas e o painel de patrimônio (também usado na Análise). |
 | `js/pages/welcome.js` | Primeiro uso guiado, mostrado no Painel até a pessoa terminar ou pular. |
-| `js/pages/debts.js` | Dívidas: cadastro e edição, simulação pagando o mínimo, ordem avalanche e bola de neve. |
+| `js/pages/debts.js` | Dívidas: o plano numa frase (o que pagar primeiro, em quantos meses, juros economizados), valor a mais por mês (`?extra=`), gráfico plano × só o mínimo, faturas abertas dos cartões, cadastro e edição. |
 | `js/pages/categories.js` | Divisão do salário (percentuais) e categorias (criar, apagar se nada a usa: regra em Go). |
 | `js/pages/notes.js` | Notas: criar, editar, fixar, buscar, apagar e exportar cada uma em PDF ou texto. |
 | `js/pages/export.js` | Exportar (Excel, PDF, CSV por período), backup e restauração. |

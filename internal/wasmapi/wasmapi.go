@@ -42,12 +42,12 @@ func Dashboard(ledgerJSON, month string) string {
 }
 
 // Debts monta a tela de dívidas.
-func Debts(ledgerJSON string) string {
+func Debts(ledgerJSON string, extraCents int64) string {
 	var l domain.Ledger
 	if err := json.Unmarshal([]byte(ledgerJSON), &l); err != nil {
 		return reply(nil, err)
 	}
-	return reply(finance.Debts(l), nil)
+	return reply(finance.Debts(l, max(extraCents, 0)), nil)
 }
 
 // Validate confere um registro antes de salvar no aparelho; devolve o registro

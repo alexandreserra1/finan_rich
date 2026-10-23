@@ -601,3 +601,11 @@ td.num, .num { white-space: nowrap; }
   .tx-list td.amount { grid-area: val; text-align: right; font-size: 1rem; font-weight: 600; }
   .tx-list td.actions { grid-area: act; border: 0; margin: 0; padding: 0; width: auto; font-size: .8rem; }
 }
+
+/* Dívidas: o plano em uma frase, o valor a mais e o gráfico. */
+.plan-lead { font-size: 1.05rem; margin: .25rem 0 .75rem; }
+.extra-form { display: flex; flex-wrap: wrap; align-items: end; gap: .6rem; margin: .75rem 0 .25rem; }
+.extra-form label { flex: 1 1 14rem; }
+.paid-off { margin: .25rem 0 0; padding-left: 1.25rem; display: grid; gap: .25rem; }
+.pace-chart { max-width: 760px; } /* numa tela larga o gráfico não fica mais alto que a tela */
+@media (max-width: 720px) { .pace-chart .ticks text { font-size: 20px; } } /* ~11px de verdade num celular */
