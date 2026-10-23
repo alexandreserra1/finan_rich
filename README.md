@@ -24,6 +24,9 @@ números reais. Seus dados ficam num arquivo no seu PC, sem conta e sem nuvem.
   passado com a projeção de como fecha, quanto ainda dá para gastar por dia, categorias
   contra a sua média, assinaturas com o custo anual e onde dá para economizar
   ([docs/ANALISE.md](docs/ANALISE.md)).
+- **Gráficos** em todas as telas (Chart.js): rosca dos gastos por grupo, ano com entradas,
+  saídas e saldo, ritmo do mês, plano das dívidas e patrimônio. Passe o dedo para ver o valor
+  de cada mês ou dia; cada gráfico também abre em tabela.
 - **Importar extrato** do banco (OFX, CSV ou a fatura do cartão em PDF: Nubank, Itaú, BB,
   Bradesco, Inter, Caixa...):
   sugere a categoria de cada lançamento pelo seu histórico e pela descrição (iFood, Uber,
