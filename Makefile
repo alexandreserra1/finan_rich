@@ -28,7 +28,8 @@ e2e: wasm         ## testes no navegador: offline, sincronização e app do celu
 	go build -o dist/finanrich ./cmd/finanrich
 	go run ./tools/mobilebuild mobile/www
 	go run ./tools/mobilebuild -site site/www
-	cd e2e && npm install --no-audit --no-fund && npx playwright install chromium && FINANRICH_BIN=../dist/finanrich APP_WWW=../mobile/www SITE_WWW=../site/www npm test
+	go build -tags sitebundle -o dist/finansite ./cmd/api
+	cd e2e && npm install --no-audit --no-fund && npx playwright install chromium && FINANRICH_BIN=../dist/finanrich APP_WWW=../mobile/www SITE_BIN=../dist/finansite npm test
 
 mobile: wasm      ## prepara o app do celular (mobile/www + projeto Android)
 	go run ./tools/mobilebuild mobile/www

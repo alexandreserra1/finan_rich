@@ -1,5 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "go",
-  "buildCommand": "go build -buildvcs=false -trimpath -ldflags='-s -w' -o server ./cmd/api"
+  "buildCommand": "export GOFLAGS=-buildvcs=false && GOOS= GOARCH= go run ./tools/wasmbuild && GOOS= GOARCH= go run ./tools/mobilebuild -site site/www && go build -tags sitebundle -trimpath -ldflags='-s -w' -o server ./cmd/api"
 }

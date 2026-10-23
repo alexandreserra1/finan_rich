@@ -12,7 +12,8 @@ celular (anonimiza) ──HTTPS──> intermediário (Vercel, chave numa variá
 
 - **Código**: `cmd/api` (programa) e `internal/proxy` (regras e limites, com testes).
   O mesmo programa roda na Vercel (`vercel.json`; ela procura o programa em `cmd/api`) e no
-  Cloud Run.
+  Cloud Run. Na Vercel ele também serve o site do finan_rich (as telas do app, pacote `site`,
+  compilado com `-tags sitebundle`): tudo que não é rota da IA abre o site.
 - **Por que Groq**: plano grátis sem cartão, muito rápido, modelos abertos com ferramentas, e
   ele não usa os dados da API para treinar.
 - **Por que Vercel**: plano grátis (Hobby) sem cartão, login com o GitHub e publicação a cada

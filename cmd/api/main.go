@@ -1,5 +1,6 @@
-// Comando api (finanproxy): o intermediário do "finan_rich grátis" (internal/proxy).
-// Roda na Vercel (que procura o programa em cmd/api, daí o nome) ou no Google Cloud Run.
+// Comando api (finanproxy): o intermediário do "finan_rich grátis" (internal/proxy)
+// e, compilado com -tags sitebundle, também o site (package site). Roda na Vercel
+// (que procura o programa em cmd/api, daí o nome) ou no Google Cloud Run.
 //
 // Variáveis: proxy.ConfigFromEnv; PORT é a porta (o Cloud Run define; padrão 8080).
 //
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/proxy"
+	"github.com/alexandreserra1/finan_rich/site"
 )
 
 func main() {
@@ -21,9 +23,18 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	handler := proxy.New(cfg)
+	if pages := site.Handler(); pages != nil {
+		mux := http.NewServeMux()
+		for _, p := range proxy.Paths {
+			mux.Handle(p, handler)
+		}
+		mux.Handle("/", pages)
+		handler = mux
+	}
 	srv := &http.Server{
 		Addr:              ":" + port(),
-		Handler:           proxy.New(cfg),
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       15 * time.Second, // corpo mandado devagar não segura uma vaga (a resposta em streaming não é afetada)
 	}

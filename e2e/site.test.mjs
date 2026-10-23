@@ -1,14 +1,11 @@
-// Teste de ponta a ponta do site: as telas do app publicadas na internet
-// (site/www, geradas por "go run ./tools/mobilebuild -site site/www"), servidas
-// como a Vercel serve (arquivo existente ou index.html). Sem computador: os
-// dados ficam no navegador.
-// Uso (na pasta e2e): SITE_WWW=../site/www node site.test.mjs
+// Teste de ponta a ponta do site: o programa da Vercel (cmd/api compilado com
+// -tags sitebundle) servindo as telas do app em modo site e o intermediário da
+// IA no mesmo endereço. Sem computador: os dados ficam no navegador.
+// Uso (na pasta e2e): SITE_BIN=../dist/finansite node site.test.mjs
 import { chromium, devices } from "playwright";
-import { createServer } from "node:http";
-import { readFileSync, statSync } from "node:fs";
-import { extname, join, normalize } from "node:path";
+import { spawn } from "node:child_process";
 
-const WWW = process.env.SITE_WWW || "../site/www";
+const BIN = process.env.SITE_BIN || "../dist/finansite";
 const PORT = 18099;
 const SITE = `http://127.0.0.1:${PORT}`;
 let failures = 0;
@@ -17,19 +14,11 @@ const ok = (cond, msg) => {
   if (!cond) failures++;
 };
 
-const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".wasm": "application/wasm", ".png": "image/png", ".svg": "image/svg+xml" };
-const server = createServer((req, res) => {
-  const path = normalize(decodeURIComponent(new URL(req.url, SITE).pathname)).replace(/^(\.\.[/\\])+/, "");
-  let file = join(WWW, path);
-  try {
-    if (!statSync(file).isFile()) throw new Error();
-  } catch {
-    file = join(WWW, "index.html"); // como o "rewrites" do site/vercel.json
-  }
-  res.writeHead(200, { "Content-Type": TYPES[extname(file)] || "application/octet-stream" });
-  res.end(readFileSync(file));
-});
-await new Promise((r) => server.listen(PORT, "127.0.0.1", r));
+const server = spawn(BIN, [], { env: { ...process.env, PORT: String(PORT), GROQ_API_KEY: "teste", FINAN_PROXY_UPSTREAM: "http://127.0.0.1:9" }, stdio: "ignore" });
+for (let i = 0; i < 100; i++) {
+  try { if ((await fetch(`${SITE}/healthz`)).ok) break; } catch {}
+  await new Promise((r) => setTimeout(r, 100));
+}
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 try {
@@ -73,12 +62,18 @@ try {
   const csp = await page.getAttribute('meta[http-equiv="Content-Security-Policy"]', "content");
   ok(/connect-src 'self' https:;/.test(csp) && !/ http:/.test(csp), `CSP do site só https (${csp.match(/connect-src[^;]*/)?.[0]})`);
 
+  // No mesmo endereço, o intermediário da IA continua respondendo.
+  ok(await (await fetch(`${SITE}/healthz`)).text() === "ok", "intermediário da IA no mesmo endereço (/healthz)");
+  const chat = await fetch(`${SITE}/chat/completions`, { method: "POST", headers: { "Content-Type": "application/json" }, body: '{"messages":[{"role":"user","content":"oi"}]}' });
+  ok(chat.status === 403, `pedido fora do formato do app continua recusado pelo intermediário (${chat.status})`);
+  ok((await fetch(`${SITE}/static/nao-existe.js`)).status === 404, "arquivo que não existe dá 404, não a página do app");
+
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);
 } catch (err) {
   ok(false, err.message);
 } finally {
   await browser.close();
-  server.close();
+  server.kill();
 }
 console.log(failures ? `\n${failures} falha(s)` : "\nTudo certo.");
 process.exit(failures ? 1 : 0);

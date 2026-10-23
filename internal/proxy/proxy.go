@@ -80,6 +80,10 @@ const (
 	maxTokens = 2048
 )
 
+// Paths são os caminhos que o intermediário atende; no mesmo programa, o resto
+// é do site (cmd/api).
+var Paths = []string{"/healthz", "/chat/completions", "/v1/chat/completions"}
+
 // New devolve o handler HTTP do intermediário.
 func New(cfg Config) http.Handler {
 	if cfg.Client == nil {

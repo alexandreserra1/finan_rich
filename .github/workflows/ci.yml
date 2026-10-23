@@ -57,12 +57,13 @@ jobs:
         run: |
           go run ./tools/mobilebuild mobile/www
           go run ./tools/mobilebuild -site site/www
+          go build -tags sitebundle -o dist/finansite ./cmd/api
       - name: Testes no navegador (offline, sincronização, app do celular e site)
         working-directory: e2e
         run: |
           npm install --no-audit --no-fund
           npx playwright install --with-deps chromium
-          FINANRICH_BIN=../dist/finanrich APP_WWW=../mobile/www SITE_WWW=../site/www npm test
+          FINANRICH_BIN=../dist/finanrich APP_WWW=../mobile/www SITE_BIN=../dist/finansite npm test
 
   android:
     runs-on: ubuntu-latest
