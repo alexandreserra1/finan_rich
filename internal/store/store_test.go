@@ -262,6 +262,14 @@ func TestDevices(t *testing.T) {
 	if err != nil || len(list) != 1 || list[0].LastSeen.IsZero() || list[0].CreatedAt.IsZero() {
 		t.Fatalf("Devices = %+v %v", list, err)
 	}
+	// Aparelho parado há mais de 180 dias perde o acesso (um token antigo
+	// esquecido num celular vendido não vale para sempre).
+	if _, ok, _ := s.DeviceByToken(ctx, "hash1", time.Now().Add(179*24*time.Hour)); !ok {
+		t.Fatal("aparelho visto há 179 dias deveria entrar")
+	}
+	if _, ok, _ := s.DeviceByToken(ctx, "hash1", time.Now().Add(179*24*time.Hour+181*24*time.Hour)); ok {
+		t.Fatal("aparelho parado há 181 dias continua aceito")
+	}
 	if err := s.DeleteDevice(ctx, id); err != nil {
 		t.Fatal(err)
 	}

@@ -210,6 +210,7 @@ export function bind(root, ctx) {
   on("wipe", async () => {
     if (!confirm("Apagar todos os dados deste celular? Os que já estão no computador continuam lá.")) return;
     await cloud.forget(); // a chave da IA no cofre do sistema também
+    await device.unpair(); // o token do computador sai do cofre também
     await db.wipe();
     lockState = null; // o bloqueio também sai
     localState = null; // e a escolha da IA dentro do celular (o modelo baixado continua)

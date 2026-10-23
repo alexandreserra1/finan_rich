@@ -43,7 +43,12 @@ no navegador do celular (pede a senha de acesso na primeira vez).
   único e fica só na memória do servidor. Erros contam no mesmo limite do login
   (5 tentativas em 10 minutos por endereço).
 - Ao parear, o app recebe um **token** de 256 bits. O servidor guarda só o hash SHA-256
-  (tabela `devices`), como faz com as sessões.
+  (tabela `devices`), como faz com as sessões. No app, o token fica no **cofre do sistema**
+  (Keystore/Keychain, chave `server-token`), não no banco do app; um token antigo em texto
+  passa para o cofre na próxima abertura (`js/device.js`).
+- Aparelho que passa **180 dias sem sincronizar** perde o acesso e precisa parear de novo
+  (`store.DeviceByToken`): um token esquecido num celular vendido ou perdido não vale para
+  sempre. Remover o aparelho em Ajustes do computador corta na hora.
 - O app manda `Authorization: Bearer <token>`. Com esse cabeçalho, o servidor aceita
   **apenas** o token, mesmo vindo do próprio computador: assim uma página de outro site
   aberta no computador não consegue usar o acesso local para ler os dados.

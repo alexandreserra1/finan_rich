@@ -173,6 +173,10 @@ aparelho                                      servidor
   não passam do limite. O servidor corta corpo enviado devagar (30 s) e conexões paradas
   (2 min); sem limite de escrita, por causa da resposta do chat aos poucos. Erro interno vai
   só para o log: quem pediu recebe uma mensagem genérica.
+- **Tailscale Serve** repassa tudo de `127.0.0.1`: os acessos por ele dividem o mesmo limite
+  de tentativas de senha (um aparelho errando bloqueia os outros por 10 minutos). Um túnel que
+  não mande `X-Forwarded-For` nem `Tailscale-User-Login` (`ssh -R`, `socat`) faz o acesso
+  remoto parecer local e sem senha: nesse caso, rode com `FINAN_PASSWORD`.
 - **Wi-Fi sem cifra**: na rede de casa o tráfego é HTTP. A tela avisa para usar só em rede de
   confiança e, fora de casa, o Tailscale (HTTPS).
 - **Dependências**: o CI roda `govulncheck` e `npm audit`; o Dependabot abre PR com versões

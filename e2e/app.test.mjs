@@ -542,6 +542,24 @@ try {
   await of.click("[data-action=import]");
   await of.waitForSelector("td:has-text('PADARIA REAL')");
   ok(JSON.stringify(await of.evaluate(async () => (await import("/static/js/db.js")).getMeta("bank-notes", null))) === "[]", "depois de importar, o texto das notificações sai do aparelho");
+  // Com o cofre do sistema, o token do pareamento fica nele, não no banco do app;
+  // um token antigo em texto passa para o cofre na próxima abertura.
+  await of.goto(`${APP}/configuracoes?` + new URLSearchParams({ url: `127.0.0.1:${PORT}`, codigo: await newPairingCode() }));
+  await of.click("form[data-form=pair] button[type=submit]");
+  await of.waitForSelector("text=Conectado a", { timeout: 15000 });
+  const vaulted = async () => of.evaluate(async () => [await (await import("/static/js/db.js")).getMeta("server", null), window.__vault()["server-token"]]);
+  let [meta, inVault] = await vaulted();
+  ok(!meta.token && meta.vault && inVault?.length > 20, "token do pareamento no cofre do sistema, não no banco do app");
+  await of.evaluate(async (t) => {
+    const db = await import("/static/js/db.js");
+    const { vault, ...s } = await db.getMeta("server", null);
+    await db.setMeta("server", { ...s, token: t }); // como guardava a versão anterior
+    await window.Capacitor.Plugins.NativeBiometric.deleteData({ key: "server-token" });
+  }, inVault);
+  await of.reload();
+  await waitStatus(of, "ok");
+  [meta, inVault] = await vaulted();
+  ok(!meta.token && meta.vault && inVault?.length > 20, "token antigo em texto passa para o cofre e a sincronização continua");
   await ofCtx.close();
 
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);

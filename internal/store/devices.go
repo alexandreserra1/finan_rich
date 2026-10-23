@@ -24,12 +24,17 @@ func (s *Store) CreateDevice(ctx context.Context, name, tokenHash string) (int64
 	return res.LastInsertId()
 }
 
-// DeviceByToken devolve o aparelho dono do token (ok=false se não existe) e
-// registra que ele foi visto agora.
+// deviceIdle: aparelho que não sincroniza há mais que isso precisa parear de
+// novo (um token esquecido num celular vendido ou perdido não vale para sempre).
+const deviceIdle = 180 * 24 * time.Hour
+
+// DeviceByToken devolve o aparelho dono do token (ok=false se não existe ou
+// ficou parado demais) e registra que ele foi visto agora.
 func (s *Store) DeviceByToken(ctx context.Context, tokenHash string, now time.Time) (Device, bool, error) {
 	var d Device
-	err := s.db.QueryRowContext(ctx, `UPDATE devices SET last_seen_at = ? WHERE token_hash = ? RETURNING id, name`,
-		now.UTC().Format(timeLayout), tokenHash).Scan(&d.ID, &d.Name)
+	// As datas são RFC 3339 em UTC: comparar o texto compara o tempo.
+	err := s.db.QueryRowContext(ctx, `UPDATE devices SET last_seen_at = ? WHERE token_hash = ? AND COALESCE(last_seen_at, created_at) > ? RETURNING id, name`,
+		now.UTC().Format(timeLayout), tokenHash, now.Add(-deviceIdle).UTC().Format(timeLayout)).Scan(&d.ID, &d.Name)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Device{}, false, nil
 	}

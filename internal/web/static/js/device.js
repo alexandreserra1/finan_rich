@@ -9,8 +9,34 @@ import { getMeta, setMeta } from "./db.js";
 
 export const isApp = document.documentElement.dataset.app === "mobile";
 
+// O token do aparelho vale como senha para sincronizar: no app ele fica no
+// cofre do sistema (o mesmo da chave da IA), não no banco do app.
+const TOKEN = "server-token";
+const vault = () => window.Capacitor?.Plugins?.NativeBiometric;
+let cached; // { ...server, token }: o cofre é lido uma vez por abertura
+
 // server devolve { url, token, device, pairedAt } ou null se não pareado.
-export const server = () => getMeta("server", null);
+export async function server() {
+  if (cached !== undefined) return cached;
+  const s = await getMeta("server", null);
+  if (s?.token && vault()) {
+    // Formato antigo (token em texto no banco do app): passa para o cofre.
+    try {
+      await vault().setData({ key: TOKEN, value: s.token });
+      const { token, ...rest } = s;
+      await setMeta("server", { ...rest, vault: true });
+    } catch {}
+    return (cached = s);
+  }
+  if (s?.vault) {
+    try {
+      return (cached = { ...s, token: (await vault().getData({ key: TOKEN })).value });
+    } catch {
+      return { ...s, token: "" }; // sem o token o computador recusa e a tela pede para parear de novo
+    }
+  }
+  return (cached = s);
+}
 
 // endpoint monta a chamada para uma rota da API, ou null se o app não foi pareado.
 export async function endpoint(path) {
@@ -55,14 +81,25 @@ export async function pair(address, code) {
   }
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error || `o computador respondeu ${res.status}`);
-  await setMeta("server", { url, token: body.token, device: body.device, pairedAt: Date.now() });
+  const paired = { url, device: body.device, pairedAt: Date.now() };
+  if (vault()) {
+    await vault().setData({ key: TOKEN, value: body.token });
+    await setMeta("server", { ...paired, vault: true });
+  } else {
+    await setMeta("server", { ...paired, token: body.token });
+  }
+  cached = { ...paired, token: body.token };
   // Outro computador (ou o mesmo, depois de desparear) tem outra numeração de
   // revisões: baixa tudo de novo. O que está na fila deste aparelho é enviado.
   await setMeta("cursor", 0);
   return url;
 }
 
-export const unpair = () => setMeta("server", null);
+export async function unpair() {
+  await vault()?.deleteData({ key: TOKEN }).catch(() => {});
+  cached = null;
+  await setMeta("server", null);
+}
 
 // pairingLink lê finanrich://parear?url=...&codigo=... (QR code do computador).
 export function pairingLink(link) {
