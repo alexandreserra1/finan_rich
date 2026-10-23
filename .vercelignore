@@ -1,0 +1,15 @@
+# Na Vercel só vai o intermediário da IA grátis (api/index.go) e os pacotes que ele usa.
+/*
+!/api
+!/go.mod
+!/go.sum
+!/vercel.json
+!/internal
+/internal/*
+!/internal/advisor
+!/internal/domain
+!/internal/finance
+!/internal/importer
+!/internal/llm
+!/internal/money
+!/internal/proxy

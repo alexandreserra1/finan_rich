@@ -13,10 +13,12 @@ package proxy
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -32,6 +34,33 @@ type Config struct {
 	Models   []string // em ordem de preferência
 	Limits   Limits
 	Client   *http.Client
+}
+
+// Modelos abertos do Groq com ferramentas; cada um tem a sua cota grátis.
+const defaultModels = "llama-3.3-70b-versatile,openai/gpt-oss-120b,qwen/qwen3-32b,meta-llama/llama-4-scout-17b-16e-instruct"
+
+// ConfigFromEnv lê a configuração das variáveis de ambiente (Cloud Run e Vercel):
+//
+//	GROQ_API_KEY         chave do Groq (obrigatória)
+//	FINAN_PROXY_MODELS   modelos em ordem, separados por vírgula
+//	FINAN_PROXY_UPSTREAM API no formato OpenAI (padrão: Groq)
+func ConfigFromEnv() (Config, error) {
+	key := os.Getenv("GROQ_API_KEY")
+	if key == "" {
+		return Config{}, errors.New("falta GROQ_API_KEY")
+	}
+	env := func(name, fallback string) string {
+		if v := os.Getenv(name); v != "" {
+			return v
+		}
+		return fallback
+	}
+	return Config{
+		Upstream: env("FINAN_PROXY_UPSTREAM", "https://api.groq.com/openai/v1"),
+		APIKey:   key,
+		Models:   strings.Split(env("FINAN_PROXY_MODELS", defaultModels), ","),
+		Limits:   DefaultLimits,
+	}, nil
 }
 
 // Limits são as chamadas permitidas (uma pergunta usa de 2 a 5).
@@ -157,11 +186,11 @@ func relay(w http.ResponseWriter, resp *http.Response) {
 	}
 }
 
-// clientIP: no Cloud Run, o IP de quem chamou é o primeiro do X-Forwarded-For.
-// clientIP: o Google acrescenta o IP de quem chamou no FIM do X-Forwarded-For
+// clientIP: o Google (Cloud Run) acrescenta o IP de quem chamou no FIM do X-Forwarded-For
 // (o começo é o que o cliente mandou, e pode ser inventado para burlar o
 // limite). Lê da direita para a esquerda pulando os IPs do próprio Google e
-// os internos; sem nenhum IP público, vale o endereço da conexão.
+// os internos; sem nenhum IP público, vale o endereço da conexão. Na Vercel o
+// X-Forwarded-For traz só o IP de quem chamou (ela descarta o que o cliente manda).
 func clientIP(r *http.Request) string {
 	if f := r.Header.Get("X-Forwarded-For"); f != "" {
 		parts := strings.Split(f, ",")

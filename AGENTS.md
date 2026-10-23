@@ -15,7 +15,7 @@ ele. As regras de negócio são Go, compiladas também para WebAssembly e usadas
 | Regras (Go → WebAssembly) | `internal/domain`, `internal/finance`, `internal/money`, `internal/report`, `internal/importer`, `internal/wasmapi`, `cmd/finanwasm` |
 | Telas (JS sem framework) | `internal/web/static/js`, `internal/web/static/app.css`, `internal/web/templates` |
 | App do celular | `mobile/` (Capacitor 8; `mobile/www` é gerado por `tools/mobilebuild`) |
-| Intermediário da IA grátis (Cloud Run) | `cmd/finanproxy`, `internal/proxy`, `scripts/deploy-proxy.sh` ([docs/IA-GRATIS.md](docs/IA-GRATIS.md)) |
+| Intermediário da IA grátis (Vercel; ou Cloud Run) | `internal/proxy`, `api/index.go` + `vercel.json`, `cmd/finanproxy` + `scripts/deploy-proxy.sh` ([docs/IA-GRATIS.md](docs/IA-GRATIS.md)) |
 | Testes no navegador | `e2e/*.test.mjs` (Playwright) |
 | Lojas | `fastlane/metadata/android`, `fdroid/`, `docs/DISTRIBUICAO.md` |
 
