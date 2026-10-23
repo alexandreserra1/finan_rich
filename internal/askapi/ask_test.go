@@ -196,6 +196,10 @@ func TestCategorizeCloud(t *testing.T) {
 func TestFreePresetThroughProxy(t *testing.T) {
 	var models []string
 	groq := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/models") {
+			http.NotFound(w, r) // sem a lista, o intermediário usa a configuração
+			return
+		}
 		if r.Header.Get("Authorization") != "Bearer chave-do-servidor" {
 			t.Errorf("chave = %q", r.Header.Get("Authorization"))
 		}

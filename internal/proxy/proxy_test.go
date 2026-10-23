@@ -15,8 +15,23 @@ import (
 )
 
 // groq falso: o primeiro modelo está sem cota (429); o segundo responde.
+// fakeModels é o que o Groq falso diz ter em /models (vazio: a lista falha).
+var fakeModels []string
+
 func fakeGroq(t *testing.T, seen *[]map[string]any) *httptest.Server {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/models") {
+			if fakeModels == nil {
+				http.NotFound(w, r)
+				return
+			}
+			data := []map[string]string{}
+			for _, m := range fakeModels {
+				data = append(data, map[string]string{"id": m})
+			}
+			json.NewEncoder(w).Encode(map[string]any{"data": data})
+			return
+		}
 		if r.Header.Get("Authorization") != "Bearer chave-do-servidor" {
 			t.Errorf("chave = %q", r.Header.Get("Authorization"))
 		}
@@ -98,6 +113,27 @@ func TestProxySkipsRetiredModels(t *testing.T) {
 	rec := ask(h, "aparelho-1", appBody("x", 100))
 	if rec.Code != http.StatusOK || len(seen) != 3 || seen[2]["model"] != "llama" {
 		t.Fatalf("resposta %d, modelos tentados %d: %s", rec.Code, len(seen), rec.Body.String())
+	}
+}
+
+// O intermediário pergunta ao Groq quais modelos existem e pula direto os
+// que saíram do ar; os gpt-oss vão com pouco raciocínio (gasta menos cota).
+func TestProxyUsesAvailableModels(t *testing.T) {
+	fakeModels = []string{"whisper-large-v3", "openai/gpt-oss-120b", "llama"}
+	t.Cleanup(func() { fakeModels = nil })
+	var seen []map[string]any
+	h := New(Config{Upstream: fakeGroq(t, &seen).URL, APIKey: "chave-do-servidor", Models: []string{"aposentado", "openai/gpt-oss-120b", "llama"}, Limits: DefaultLimits})
+	if rec := ask(h, "aparelho-1", appBody("x", 100)); rec.Code != http.StatusOK {
+		t.Fatalf("resposta %d %s", rec.Code, rec.Body.String())
+	}
+	if len(seen) != 1 || seen[0]["model"] != "openai/gpt-oss-120b" || seen[0]["reasoning_effort"] != "low" {
+		t.Errorf("deveria ir direto no gpt-oss com raciocínio baixo: %v", seen)
+	}
+	seen = nil
+	h = New(Config{Upstream: fakeGroq(t, &seen).URL, APIKey: "chave-do-servidor", Models: []string{"llama"}, Limits: DefaultLimits})
+	ask(h, "aparelho-1", appBody("x", 100))
+	if len(seen) != 1 || seen[0]["reasoning_effort"] != nil {
+		t.Errorf("modelo sem raciocínio configurável não recebe reasoning_effort: %v", seen)
 	}
 }
 

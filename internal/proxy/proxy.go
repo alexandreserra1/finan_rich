@@ -12,6 +12,7 @@ package proxy
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -74,6 +75,7 @@ type Limits struct{ DeviceHour, DeviceDay, IPHour, IPDay int }
 var DefaultLimits = Limits{DeviceHour: 15, DeviceDay: 40, IPHour: 30, IPDay: 100}
 
 const (
+	maxModels = 6         // além disso, o pedido demora demais pulando modelos
 	maxBody   = 128 << 10 // cabe a conversa longa com ferramentas; a cota grátis por minuto do Groq é menor ainda
 	maxTokens = 2048
 )
@@ -94,6 +96,35 @@ func New(cfg Config) http.Handler {
 type handler struct {
 	cfg     Config
 	limiter *limiter
+
+	mu       sync.Mutex
+	models   []string // modelos preferidos que o Groq ainda tem
+	modelsAt time.Time
+}
+
+// modelsTTL é quanto tempo vale a lista de modelos que o Groq diz ter.
+const modelsTTL = time.Hour
+
+// available devolve os modelos a tentar, na ordem: os da configuração que o
+// Groq ainda tem e, depois, os outros de conversa dele (cada modelo tem a sua
+// cota grátis). Se a lista falhar, usa a configuração como está.
+func (h *handler) available() []string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.models != nil && time.Since(h.modelsAt) < modelsTTL {
+		return h.models
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) // a trava segura as outras perguntas
+	defer cancel()
+	ids, err := llm.ListModels(ctx, h.cfg.Upstream, h.cfg.APIKey)
+	picked := llm.PickModels(ids, h.cfg.Models)
+	if err != nil || len(picked) == 0 {
+		// Tenta a lista de novo em 5 minutos, sem uma chamada a mais em cada pergunta.
+		h.models, h.modelsAt = h.cfg.Models, time.Now().Add(5*time.Minute-modelsTTL)
+		return h.models
+	}
+	h.models, h.modelsAt = picked[:min(len(picked), maxModels)], time.Now()
+	return h.models
 }
 
 func (h *handler) chat(w http.ResponseWriter, r *http.Request) {
@@ -117,8 +148,13 @@ func (h *handler) chat(w http.ResponseWriter, r *http.Request) {
 	}
 	body["max_tokens"] = json.RawMessage(capTokens(body["max_tokens"]))
 	delete(body, "max_completion_tokens")
-	for i, model := range h.cfg.Models {
+	models := h.available()
+	for i, model := range models {
 		body["model"], _ = json.Marshal(model)
+		delete(body, "reasoning_effort")
+		if strings.HasPrefix(model, "openai/gpt-oss") {
+			body["reasoning_effort"] = json.RawMessage(`"low"`) // menos tokens de raciocínio: sobra cota grátis
+		}
 		payload, _ := json.Marshal(body)
 		req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, strings.TrimRight(h.cfg.Upstream, "/")+"/chat/completions", bytes.NewReader(payload))
 		if err != nil {
@@ -134,7 +170,7 @@ func (h *handler) chat(w http.ResponseWriter, r *http.Request) {
 		}
 		// Cota grátis deste modelo acabou, ele está fora ou o Groq o desligou
 		// (400/404 de modelo aposentado): tenta o próximo.
-		if retryable(resp.StatusCode) && i < len(h.cfg.Models)-1 {
+		if retryable(resp.StatusCode) && i < len(models)-1 {
 			resp.Body.Close()
 			log.Printf("modelo %s respondeu %d; tentando o próximo", model, resp.StatusCode)
 			continue

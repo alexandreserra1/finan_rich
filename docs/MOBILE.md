@@ -149,6 +149,10 @@ A versão do app fica em `mobile/android/app/version.properties`: o workflow de 
   minutos e todo mundo dividiria (e esgotaria) a mesma cota. Para quem não quer criar conta,
   há a opção "finan_rich grátis (sem chave)", que passa por um intermediário na Vercel com
   limite por aparelho ([IA-GRATIS.md](IA-GRATIS.md)); ela só aparece depois de publicado.
+  Os provedores tiram modelos do ar com poucas semanas de aviso. Por isso, se o modelo salvo
+  deixar de existir, o app pergunta ao provedor (com a chave da pessoa) quais modelos ele tem,
+  troca pelo melhor da lista `llm.Preferred` e tenta de novo; os desligados conhecidos já vão
+  direto para o substituto (`llm.retired`).
   Privacidade:
   - **anonimizado**: antes de sair, nomes de lojas e pessoas, categorias criadas pela pessoa,
     dívidas, credores e metas viram apelidos ("Loja AB", "Categoria 1", "Dívida 1") e as

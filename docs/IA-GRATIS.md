@@ -28,10 +28,16 @@ celular (anonimiza) ──HTTPS──> intermediário (Vercel, chave numa variá
 - Limite por aparelho (15 chamadas por hora, 40 por dia, perto de 10 perguntas) e por rede
   (30 por hora, 100 por dia). Uma pergunta usa de 2 a 5 chamadas.
 - O modelo e o tamanho máximo da resposta são escolhidos no servidor.
-- Quando um modelo esgota a cota grátis (erro 429), cai ou foi desligado pelo Groq (400/404),
-  tenta o próximo da lista: no Groq cada modelo tem a sua cota. O Groq desliga modelos com poucas
-  semanas de aviso (console.groq.com/docs/deprecations): a lista fica em `internal/proxy` e pode
-  ser trocada sem publicar o app, pela variável `FINAN_PROXY_MODELS`.
+- O intermediário pergunta ao Groq quais modelos existem (`/models`, guardado por 1 hora) e usa,
+  na ordem, os da lista de `internal/proxy` que ainda estão lá e depois os outros de conversa
+  (até 6). Quando um modelo esgota a cota grátis (429), cai ou foi desligado (400/404), tenta o
+  próximo: no Groq cada modelo tem a sua cota. Assim um modelo desligado pelo Groq não derruba o
+  consultor nem pede versão nova do app. A lista pode ser trocada pela variável
+  `FINAN_PROXY_MODELS`.
+- Os `gpt-oss` vêm primeiro e vão com `reasoning_effort: low` (menos tokens de raciocínio,
+  resposta mais rápida). Neles o Groq guarda sozinho o começo repetido dos pedidos, e o que vem do
+  cache não conta no limite: as instruções e as ferramentas são iguais para todo mundo e, numa
+  mesma pergunta, cada chamada repete a anterior.
 - O IP de quem chama é o que a Vercel põe no `X-Forwarded-For` (no Cloud Run, o que o Google
   acrescenta no fim; o começo pode ser inventado); pedido sem identificação de aparelho conta como um aparelho daquela rede.
   Corpo enviado devagar é cortado em 15 s, e o pedido aceita até 128 KB. O limitador guarda
@@ -51,9 +57,11 @@ celular (anonimiza) ──HTTPS──> intermediário (Vercel, chave numa variá
 **Capacidade**: o plano grátis do Groq conta por conta (não por chave): perto de 1.000 chamadas e
 200 mil tokens por dia por modelo, e 8 mil tokens por minuto (confira em
 console.groq.com/settings/limits). Cada chamada do consultor leva uns 4 mil tokens (os números
-do mês vão junto) e uma pergunta usa de 2 a 5 chamadas. Com 3 modelos, dá **algumas dezenas de
-perguntas por dia somando todo mundo**, e duas pessoas perguntando no mesmo minuto já passam para
-o modelo seguinte. Para mais, cada pessoa pode usar a própria chave grátis em Ajustes.
+do mês vão junto) e uma pergunta usa de 2 a 5 chamadas. Sem o cache, isso dá algumas dezenas de
+perguntas por dia somando todo mundo; com o cache, a maior parte se repete e não conta, e a conta
+sobe para perto de 200. O Groq não garante o cache, então vale olhar o uso real em
+console.groq.com depois de alguns dias. Para mais, cada pessoa pode usar a própria chave grátis
+em Ajustes.
 
 ## Publicar na Vercel (uma vez; depois, cada push na main atualiza)
 

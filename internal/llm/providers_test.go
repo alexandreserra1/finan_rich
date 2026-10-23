@@ -433,3 +433,45 @@ func TestRetiredModelIsReplaced(t *testing.T) {
 		}
 	}
 }
+
+// Modelo salvo que o provedor tirou do ar (e que nem está na tabela de
+// aposentados): o app pergunta ao provedor quais existem, escolhe o melhor e
+// tenta de novo, sem a pessoa mexer nos Ajustes.
+func TestMissingModelFallsBackToAvailable(t *testing.T) {
+	var sent []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/models" {
+			if r.Header.Get("Authorization") != "Bearer chave" {
+				t.Errorf("listar modelos sem a chave: %q", r.Header.Get("Authorization"))
+			}
+			fmt.Fprint(w, `{"data":[{"id":"whisper-large-v3"},{"id":"openai/gpt-oss-20b"},{"id":"qwen/qwen3.8-27b"}]}`)
+			return
+		}
+		var body struct{ Model string }
+		json.NewDecoder(r.Body).Decode(&body)
+		sent = append(sent, body.Model)
+		if body.Model == "modelo-que-sumiu" {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprint(w, `{"error":{"message":"The model modelo-que-sumiu does not exist","code":"model_not_found"}}`)
+			return
+		}
+		fmt.Fprint(w, "data: {\"choices\":[{\"delta\":{\"content\":\"ok\"}}]}\n\ndata: [DONE]\n\n")
+	}))
+	defer srv.Close()
+	p := NewOpenAI(srv.URL+"/v1", "chave", "modelo-que-sumiu")
+	if _, text, err := collectChat(t, p); err != nil || text != "ok" {
+		t.Fatalf("resposta = %q, erro %v", text, err)
+	}
+	collectChat(t, p) // a próxima pergunta já vai direto no modelo novo
+	if strings.Join(sent, ",") != "modelo-que-sumiu,qwen/qwen3.8-27b,qwen/qwen3.8-27b" {
+		t.Errorf("modelos enviados = %v", sent)
+	}
+}
+
+func TestPickModels(t *testing.T) {
+	avail := []string{"models/gemini-3.5-flash-lite", "models/text-embedding-004", "models/gemini-3.8-flash", "whisper-large-v3", "meta-llama/llama-prompt-guard-2-22m"}
+	got := PickModels(avail, []string{"gemini-flash-latest", "gemini-3.8-flash"})
+	if strings.Join(got, ",") != "gemini-3.8-flash,gemini-3.5-flash-lite" {
+		t.Errorf("escolha = %v (preferidos que existem primeiro, depois os outros de conversa)", got)
+	}
+}

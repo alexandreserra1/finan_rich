@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"sync"
 )
 
 // OpenAI conversa com qualquer API compatível com /v1/chat/completions da OpenAI.
@@ -17,6 +18,7 @@ import (
 type OpenAI struct {
 	baseURL string // inclui o /v1, ex: https://api.groq.com/openai/v1
 	apiKey  string
+	mu      sync.Mutex // model muda se o provedor tirar o modelo do ar
 	model   string
 }
 
@@ -85,30 +87,15 @@ func (o *OpenAI) Chat(ctx context.Context, req Request, onText func(string)) (Re
 		}
 		msgs = append(msgs, om)
 	}
-	body := map[string]any{"model": o.model, "messages": msgs, "stream": true}
+	body := map[string]any{"messages": msgs, "stream": true}
 	if len(req.Tools) > 0 {
 		body["tools"] = openAITools(req.Tools)
 	}
-	payload, err := json.Marshal(body)
+	resp, err := o.post(ctx, body)
 	if err != nil {
 		return Reply{}, err
-	}
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, o.baseURL+"/chat/completions", bytes.NewReader(payload))
-	if err != nil {
-		return Reply{}, err
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	if o.apiKey != "" {
-		httpReq.Header.Set("Authorization", "Bearer "+o.apiKey)
-	}
-	resp, err := httpClient.Do(httpReq)
-	if err != nil {
-		return Reply{}, fmt.Errorf("não foi possível conectar em %s: %w", o.baseURL, err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return Reply{}, apiError(resp)
-	}
 
 	var calls []ToolCall // montados aos pedaços, pelo índice
 	finished := false    // [DONE] ou finish_reason: sem isso, a conexão caiu no meio
@@ -175,6 +162,67 @@ func (o *OpenAI) Chat(ctx context.Context, req Request, onText func(string)) (Re
 		}
 	}
 	return Reply{Text: finish(), ToolCalls: calls}, nil
+}
+
+// post manda o pedido. Se o provedor disser que o modelo não existe mais, pergunta
+// quais existem, troca pelo melhor e tenta mais uma vez (a troca vale para as
+// próximas perguntas feitas por este mesmo cliente).
+func (o *OpenAI) post(ctx context.Context, body map[string]any) (*http.Response, error) {
+	for retried := false; ; retried = true {
+		o.mu.Lock()
+		model := o.model
+		o.mu.Unlock()
+		body["model"] = model
+		delete(body, "reasoning_effort")
+		if strings.Contains(o.baseURL, "api.groq.com") && strings.HasPrefix(model, "openai/gpt-oss") {
+			body["reasoning_effort"] = "low" // menos tokens de raciocínio: resposta mais rápida e sobra cota grátis
+		}
+		payload, err := json.Marshal(body)
+		if err != nil {
+			return nil, err
+		}
+		httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, o.baseURL+"/chat/completions", bytes.NewReader(payload))
+		if err != nil {
+			return nil, err
+		}
+		httpReq.Header.Set("Content-Type", "application/json")
+		if o.apiKey != "" {
+			httpReq.Header.Set("Authorization", "Bearer "+o.apiKey)
+		}
+		resp, err := httpClient.Do(httpReq)
+		if err != nil {
+			return nil, fmt.Errorf("não foi possível conectar em %s: %w", o.baseURL, err)
+		}
+		if resp.StatusCode == http.StatusOK {
+			return resp, nil
+		}
+		err = apiError(resp)
+		resp.Body.Close()
+		if retried || !modelMissing(err) {
+			return nil, err
+		}
+		next := o.replacement(ctx, model)
+		if next == "" {
+			return nil, err
+		}
+		o.mu.Lock()
+		o.model = next
+		o.mu.Unlock()
+	}
+}
+
+// replacement escolhe, entre os modelos que o provedor tem, o melhor que não seja o atual.
+func (o *OpenAI) replacement(ctx context.Context, current string) string {
+	avail, err := ListModels(ctx, o.baseURL, o.apiKey)
+	if err != nil {
+		return ""
+	}
+	for _, m := range PickModels(avail, Preferred) {
+		if m != current {
+			return m
+		}
+	}
+	return ""
 }
 
 // apiError lê a mensagem de erro do corpo, aceitando os formatos mais comuns:
