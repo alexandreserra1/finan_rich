@@ -117,6 +117,23 @@ func ImportPreview(ledgerJSON, fileBase64, optionsJSON string) string {
 	return reply(importer.Build(l, st, o), nil)
 }
 
+// NotificationStatement transforma as notificações de banco guardadas pelo
+// app ([{id, date, text}]) num extrato: só as que parecem lançamento entram.
+func NotificationStatement(itemsJSON string) string {
+	var items []struct{ ID, Date, Text string }
+	if err := json.Unmarshal([]byte(itemsJSON), &items); err != nil {
+		return reply(nil, err)
+	}
+	st := importer.Statement{Format: "notificacao", Rows: []importer.Row{}} // sem Account: vêm de vários bancos
+	for _, it := range items {
+		if r, ok := importer.ParseNotification(it.Text); ok && len(it.Date) == 10 {
+			r.Date, r.FITID = it.Date, it.ID
+			st.Rows = append(st.Rows, r)
+		}
+	}
+	return reply(st, nil)
+}
+
 // ImportPreviewStatement faz a revisão de um extrato que já veio pronto (Open
 // Finance pela Pluggy: internal/pluggy), em vez de um arquivo.
 func ImportPreviewStatement(ledgerJSON, statementJSON, optionsJSON string) string {

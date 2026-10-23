@@ -494,6 +494,13 @@ try {
       setData: async ({ key, value }) => put({ ...load(), [key]: value }),
       getData: async ({ key }) => { const s = load(); if (!(key in s)) throw new Error("vazio"); return { value: s[key] }; },
       deleteData: async ({ key }) => { const s = load(); delete s[key]; put(s); },
+    }, BankNotifications: {
+      status: async () => ({ enabled: true }),
+      openSettings: async () => {},
+      drain: async () => ({ items: localStorage.getItem("drenado") ? [] : (localStorage.setItem("drenado", "1"), [
+        { id: "com.nu.production|1", time: Date.now(), text: "Compra aprovada. Compra de R$ 32,40 APROVADA em PADARIA REAL para o cartão com final 1234." },
+        { id: "com.nu.production|2", time: Date.now(), text: "Aproveite! Cashback de R$ 10,00" },
+      ]) }),
     } } };
   });
   const pluggyAuth = [];
@@ -525,6 +532,16 @@ try {
   await of.click("[data-bank='0']", { timeout: 30000 });
   await of.waitForSelector(".import-table input[value='Padaria do Zé']");
   ok(pluggyAuth[0]?.clientSecret === "segredo-do-app" && (await of.textContent(".import-table")).includes("R$ 18,90"), "no app, a busca vai do celular direto para a Pluggy");
+
+  // Notificações do banco: a compra vira lançamento a revisar; a propaganda, não.
+  await of.goto(`${APP}/importar`);
+  await of.click("[data-action=bank-notes]");
+  await of.waitForSelector(".import-table input[value='PADARIA REAL']");
+  ok(await of.locator(".import-table tbody tr").count() === 1 && (await of.textContent(".import-table")).includes("R$ 32,40"), "notificação de compra do banco vira lançamento para revisar");
+  await of.locator(".import-table select[data-field=categoryId]").selectOption({ index: 1 });
+  await of.click("[data-action=import]");
+  await of.waitForSelector("td:has-text('PADARIA REAL')");
+  ok(JSON.stringify(await of.evaluate(async () => (await import("/static/js/db.js")).getMeta("bank-notes", null))) === "[]", "depois de importar, o texto das notificações sai do aparelho");
   await ofCtx.close();
 
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);

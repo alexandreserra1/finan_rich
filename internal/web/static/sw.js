@@ -26,6 +26,7 @@ const PRECACHE = [
   "/static/js/lock.js",
   "/static/js/theme.js",
   "/static/js/openfinance.js",
+  "/static/js/banknotes.js",
   "/static/js/local-ai.js",
 ];
 

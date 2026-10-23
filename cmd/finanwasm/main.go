@@ -46,6 +46,7 @@ func main() {
 		"importPreview": js.FuncOf(func(_ js.Value, a []js.Value) any {
 			return wasmapi.ImportPreview(str(a, 0), str(a, 1), str(a, 2))
 		}),
+		"notificationStatement": js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.NotificationStatement(str(a, 0)) }),
 		"importPreviewStatement": js.FuncOf(func(_ js.Value, a []js.Value) any {
 			return wasmapi.ImportPreviewStatement(str(a, 0), str(a, 1), str(a, 2))
 		}),

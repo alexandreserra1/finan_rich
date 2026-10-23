@@ -185,3 +185,11 @@ func TestImportPreviewStatement(t *testing.T) {
 		t.Errorf("prévia = %v %q", v, errMsg)
 	}
 }
+
+func TestNotificationStatement(t *testing.T) {
+	v, errMsg := decode(t, NotificationStatement(`[{"id":"n1","date":"2026-10-20","text":"Compra de R$ 45,90 APROVADA em IFOOD"},{"id":"n2","date":"2026-10-20","text":"Aproveite o cashback"}]`))
+	rows := v["Rows"].([]any)
+	if errMsg != "" || len(rows) != 1 || rows[0].(map[string]any)["FITID"] != "n1" {
+		t.Errorf("extrato = %v %q", v, errMsg)
+	}
+}

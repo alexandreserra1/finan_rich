@@ -154,6 +154,10 @@ servidor do finan_rich.
    Buscar do banco**. Os lançamentos passam pela mesma revisão da importação de arquivo e
    buscar de novo não duplica.
 
+No **Android**, o app também lê as notificações dos apps de banco (compra aprovada, Pix
+recebido): em **Importar → Notificações do banco**, autorize uma vez e cada aviso vira um
+lançamento para você conferir. Tudo fica no celular.
+
 Faça os passos 1 a 3 durante o período de teste da conta Pluggy (cerca de 15 dias): depois os
 bancos já conectados continuam funcionando, mas não dá para conectar outros. A importação de
 arquivo (OFX, CSV, PDF) continua sendo o caminho que funciona sempre.

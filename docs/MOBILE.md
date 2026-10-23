@@ -199,6 +199,17 @@ A versão do app fica em `mobile/android/app/version.properties`: o workflow de 
   sai do celular direto para `api.pluggy.ai` (CapacitorHttp, sem CORS). Sem credenciais no
   app, mas pareado, quem busca é o computador (`/api/openfinance`). Os lançamentos passam pela
   revisão da importação e caem na conta escolhida.
+- **Notificações do banco** (Importar → *Notificações do banco*, só Android): o serviço
+  `BankNotificationService` (um `NotificationListenerService`) guarda o texto das notificações
+  de uma lista fechada de apps de banco (Nubank, Itaú, Inter, C6, BB, Bradesco, Santander,
+  Caixa, Mercado Pago, PicPay, Neon, PagBank) nas preferências privadas do app, até 300 e 500
+  caracteres cada. O plugin `BankNotifications` (Java no próprio app, registrado no
+  `MainActivity`) expõe `status`, `openSettings` e `drain` (ler apaga). Em JS
+  (`js/banknotes.js`), `importer.ParseNotification` (Go) separa compra, Pix e transferência
+  de propaganda, saldo, fatura e compra negada; o que parece lançamento vai para a revisão da
+  importação e sai do aparelho depois de importado. A pessoa autoriza em Ajustes do Android →
+  *Acesso a notificações*. A Play Store exige justificar esse acesso na publicação; o F-Droid
+  aceita.
 - **Consultor dentro do app**: `js/pages/advisor.js` usa `GET/POST /api/chat` com o token do
   aparelho; a resposta vem em SSE (no app, chega inteira ao final). Respostas podem ser
   salvas como nota.

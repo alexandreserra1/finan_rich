@@ -42,8 +42,10 @@ cerca de um dia. Os textos e as capturas de tela vêm de `fastlane/metadata/andr
    > (`scripts/check-licenses.sh`).
    > **Metadata:** Fastlane structure in `fastlane/metadata/android` (pt-BR, en-US).
    > **Permissions:** INTERNET (sync with the user's computer), CAMERA (scan the pairing
-   > QR code), and the notification permissions added by @capacitor/local-notifications
-   > (offline debt due-date reminders).
+   > QR code), the notification permissions added by @capacitor/local-notifications
+   > (offline debt due-date reminders), and an optional NotificationListenerService that
+   > the user enables manually: it reads only notifications from a fixed list of Brazilian
+   > bank apps to suggest transactions, and the text never leaves the phone.
 
 3. Responda às perguntas que aparecerem no pedido (costuma levar de dias a poucas semanas).
 

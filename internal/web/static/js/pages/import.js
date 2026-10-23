@@ -8,6 +8,7 @@ import * as sync from "../sync.js";
 import { endpoint } from "../device.js";
 import { isPDF, pdfText } from "../pdftext.js";
 import * as openFinance from "../openfinance.js";
+import * as bankNotes from "../banknotes.js";
 import { BUCKETS, html, shiftMonth, today } from "../ui.js";
 import { pageHead } from "./dashboard.js";
 
@@ -126,6 +127,14 @@ function renderBank() {
 function renderUpload() {
   return html`
     ${pageHead("Importar extrato")}
+    ${bankNotes.available() ? html`<section class="panel">
+      <h2>Notificações do banco</h2>
+      <p class="muted">Cada compra ou Pix que o app do banco avisar vira um lançamento para você conferir aqui. As notificações são lidas neste celular e não saem dele.</p>
+      <div class="row-actions">
+        <button type="button" data-action="bank-notes">Revisar notificações</button>
+        <button type="button" class="secondary" data-action="bank-notes-allow">Permitir ler as notificações</button>
+      </div>
+    </section>` : ""}
     <section class="panel">
       <h2>Direto do banco</h2>
       <p class="muted">Com o Open Finance configurado em Ajustes (Meu Pluggy, grátis), os lançamentos vêm do banco sem arquivo.</p>
@@ -186,6 +195,27 @@ export function bind(root, ctx) {
     } catch (err) {
       button.disabled = false;
       button.textContent = "Buscar do banco";
+      ctx.error(err);
+    }
+  });
+  root.querySelector('[data-action="bank-notes-allow"]')?.addEventListener("click", () => bankNotes.openSettings());
+  root.querySelector('[data-action="bank-notes"]')?.addEventListener("click", async () => {
+    try {
+      if (!(await bankNotes.enabled())) {
+        ctx.flash("Primeiro permita: Ajustes do Android → Acesso a notificações → finan_rich.");
+        await bankNotes.openSettings();
+        return;
+      }
+      const statement = await bankNotes.pending();
+      if (!statement.Rows.length) {
+        ctx.flash("Nenhuma compra ou Pix novo nas notificações do banco.");
+        return;
+      }
+      const next = { fileName: "Notificações do banco", statement, aiMessage: "" };
+      next.preview = buildPreview(ctx.ledger, next, {});
+      state = next;
+      rerender();
+    } catch (err) {
       ctx.error(err);
     }
   });
@@ -280,6 +310,7 @@ export function bind(root, ctx) {
         }),
       }));
       await db.saveManyLocal(records);
+      if (state.statement?.Format === "notificacao") await bankNotes.reviewed();
       if (state.preview.account && state.accountId) { // da próxima vez este arquivo já vem com a conta certa
         await db.setMeta("import-accounts", { ...(await db.getMeta("import-accounts", {})), [state.preview.account]: state.accountId });
       }

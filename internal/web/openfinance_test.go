@@ -50,7 +50,13 @@ func TestOpenFinance(t *testing.T) {
 	code, body := ask()
 	var accs []struct {
 		Name      string
-		Statement struct{ Account string; Rows []struct{ Description string; AmountCents int64 } }
+		Statement struct {
+			Account string
+			Rows    []struct {
+				Description string
+				AmountCents int64
+			}
+		}
 	}
 	if code != http.StatusOK || json.Unmarshal([]byte(body), &accs) != nil || len(accs) != 1 || accs[0].Statement.Rows[0].AmountCents != -1000 {
 		t.Errorf("busca = %d %s", code, body)
