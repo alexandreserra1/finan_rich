@@ -22,7 +22,8 @@ func TestColorContrast(t *testing.T) {
 	text := [][2]string{
 		{"accent", "surface"}, {"accent", "bg"}, {"pos", "surface"}, {"neg", "surface"}, {"neg", "neg-soft"},
 		{"warn-text", "warn-soft"}, {"accent-text", "accent"}, {"accent-strong", "accent-soft"},
-		{"hero-text", "hero"}, {"hero-muted", "hero"}, {"hero-pos", "hero"},
+		{"hero-text", "hero"}, {"hero-muted", "hero"}, {"hero-pos", "hero"}, {"hero-neg", "hero"},
+		{"neg-text", "neg"},
 	}
 	for _, fg := range []string{"text", "text-2", "muted"} {
 		for _, bg := range []string{"bg", "surface", "surface-2"} {
@@ -60,12 +61,12 @@ func TestColorContrast(t *testing.T) {
 
 var cssToken = regexp.MustCompile(`--([\w-]+):\s*(#[0-9a-fA-F]{6})\b`)
 
-// cssThemes lê as cores do :root (claro) e do bloco prefers-color-scheme: dark,
-// que redefine parte delas.
+// cssThemes lê as cores do :root (claro) e do bloco :root[data-theme="dark"],
+// que redefine parte delas (o js/theme.js põe o data-theme no <html>).
 func cssThemes(t *testing.T, css string) (light, dark map[string]string) {
 	t.Helper()
 	i := strings.Index(css, ":root {")
-	j := strings.Index(css, "@media (prefers-color-scheme: dark)")
+	j := strings.Index(css, `:root[data-theme="dark"] {`)
 	if i < 0 || j < i {
 		t.Fatal("app.css sem :root ou sem o tema escuro")
 	}
@@ -79,7 +80,7 @@ func cssThemes(t *testing.T, css string) (light, dark map[string]string) {
 	for k, v := range light {
 		dark[k] = v
 	}
-	end := strings.Index(css[j:], "}\n}")
+	end := strings.Index(css[j:], "\n}")
 	if end < 0 {
 		t.Fatal("bloco do tema escuro sem fim")
 	}

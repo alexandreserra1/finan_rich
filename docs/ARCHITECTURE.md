@@ -421,7 +421,8 @@ Cada tela exporta `render(ctx)` (devolve o HTML) e, se tiver formulário, `bind(
 | `sw.js` | Service worker: guarda casco, scripts e `.wasm`; abre offline. |
 | `manifest.webmanifest`, `icons/`, `favicon.svg` | Instalação como app (PWA). |
 | `offline.html` | Mostrada quando uma tela que precisa do servidor é aberta sem conexão. |
-| `app.css` | Estilos, tema claro/escuro, layout do celular. |
+| `app.css` | Estilos, tema claro/escuro (tokens em `:root` e `:root[data-theme="dark"]`), layout do celular. |
+| `js/theme.js` | Tema automático, claro ou escuro (escolha em Ajustes, guardada só no aparelho); roda no `<head>` para a tela não piscar. |
 
 ### `tools/`, `e2e/`, `scripts/`, `.github/`
 

@@ -12,3 +12,6 @@
 /finan_rich-chave/
 *.p12
 *.jks
+
+# Mapa do código (graphify), gerado
+graphify-out/

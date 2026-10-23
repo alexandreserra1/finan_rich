@@ -124,6 +124,14 @@ export function render({ server, params, ledger }) {
       <p class="small muted">O aviso é do próprio celular: funciona sem internet. Cadastre o dia do vencimento em Dívidas.</p>
     </section>` : ""}
 
+    <section class="panel" id="tema">
+      <h2>Aparência</h2>
+      <label>Tema
+        <select data-theme-pick>${[["auto", "Automático (igual ao aparelho)"], ["claro", "Claro"], ["escuro", "Escuro"]].map(([v, label]) =>
+          html`<option value="${v}" ${window.finanTheme?.get() === v ? "selected" : ""}>${label}</option>`)}</select>
+      </label>
+    </section>
+
     ${lockSection()}
 
     <section class="panel">

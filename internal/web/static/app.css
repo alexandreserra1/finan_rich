@@ -1,14 +1,15 @@
 /* finan_rich — estilos.
    Telas: menu lateral no computador (≥1024px), abas no topo no tablet,
-   barra de abas no rodapé no celular (≤720px). Claro e escuro automáticos. */
+   barra de abas no rodapé no celular (≤720px). Tema claro ou escuro: o js/theme.js
+   põe data-theme no <html> (automático segue o aparelho). */
 
 :root {
   --bg: #f3f5f4; --surface: #ffffff; --surface-2: #f7f9f8; --text: #15201b; --text-2: #3d4843;
   --muted: #5f6b66; --border: #e2e7e4; --border-strong: #d5ddd9; --border-input: #838f89; --track: #e9eeeb;
   --accent: #0f7a5c; --accent-strong: #0b5e47; --accent-soft: #e7f3ee; --accent-text: #ffffff;
   --ring: color-mix(in srgb, var(--accent) 28%, transparent);
-  --hero: #0f2e25; --hero-text: #ffffff; --hero-muted: #b9d6cb; --hero-pos: #7fe0b8; --hero-line: #2a4a40;
-  --pos: #0f7a5c; --neg: #b8382a; --neg-soft: #fbecea; --warn: #bc7718; --warn-soft: #fdf3e2; --warn-text: #8a5a0b;
+  --hero: #0f2e25; --hero-text: #ffffff; --hero-muted: #b9d6cb; --hero-pos: #7fe0b8; --hero-neg: #ffb4aa; --hero-line: #2a4a40;
+  --pos: #0f7a5c; --neg: #b8382a; --neg-text: #ffffff; --neg-soft: #fbecea; --warn: #bc7718; --warn-soft: #fdf3e2; --warn-text: #8a5a0b;
   --necessidades: #2f6fd6; --desejos: #bc7718; --investimentos: #0f9b6e; --renda: #7a5ad1;
   --in: #0f9b6e; --out: #d4574a;
   --radius: 18px; --radius-sm: 12px; --radius-xs: 8px;
@@ -17,19 +18,17 @@
   --top-h: 60px; --side-w: 232px; --tabbar-h: 64px;
   color-scheme: light;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0e1412; --surface: #161e1b; --surface-2: #1b2421; --text: #e7ece9; --text-2: #c3ccc8;
-    --muted: #98a6a0; --border: #26322d; --border-strong: #33413b; --border-input: #62706a; --track: #24302b;
-    --accent: #34c08f; --accent-strong: #5fd6aa; --accent-soft: #173229; --accent-text: #06140f;
-    --hero: #123a2e; --hero-text: #ffffff; --hero-muted: #a9cbbf; --hero-pos: #7fe0b8; --hero-line: #24574a;
-    --pos: #3cc896; --neg: #f07163; --neg-soft: #3a1f1c; --warn: #f0a845; --warn-soft: #33270f; --warn-text: #f3c57c;
-    --necessidades: #5a93f0; --desejos: #f0a845; --investimentos: #31c38f; --renda: #a184f0;
-    --in: #31c38f; --out: #f07163;
-    --shadow: 0 1px 0 rgb(255 255 255 / .03) inset;
-    --shadow-pop: 0 12px 32px -12px rgb(0 0 0 / .6);
-    color-scheme: dark;
-  }
+:root[data-theme="dark"] {
+  --bg: #0e1412; --surface: #161e1b; --surface-2: #1b2421; --text: #e7ece9; --text-2: #c3ccc8;
+  --muted: #98a6a0; --border: #26322d; --border-strong: #33413b; --border-input: #62706a; --track: #24302b;
+  --accent: #34c08f; --accent-strong: #5fd6aa; --accent-soft: #173229; --accent-text: #06140f;
+  --hero: #123a2e; --hero-text: #ffffff; --hero-muted: #a9cbbf; --hero-pos: #7fe0b8; --hero-line: #24574a;
+  --pos: #3cc896; --neg: #f07163; --neg-text: #1d0a07; --neg-soft: #3a1f1c; --warn: #f0a845; --warn-soft: #33270f; --warn-text: #f3c57c;
+  --necessidades: #5a93f0; --desejos: #f0a845; --investimentos: #31c38f; --renda: #a184f0;
+  --in: #31c38f; --out: #f07163;
+  --shadow: 0 1px 0 rgb(255 255 255 / .03) inset;
+  --shadow-pop: 0 12px 32px -12px rgb(0 0 0 / .6);
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -143,7 +142,7 @@ main {
 }
 .card.hero > span { color: var(--hero-muted); }
 .card.hero strong { font-size: 2.35rem; line-height: 1.05; letter-spacing: -.03em; }
-.card.hero.neg-balance strong { color: #ffb4aa; }
+.card.hero.neg-balance strong { color: var(--hero-neg); }
 .card.hero .hero-note { display: block; font-size: .85rem; color: var(--hero-muted); }
 .card.hero .hero-note b { color: var(--hero-pos); }
 @media (min-width: 721px) { .cards.has-hero { grid-template-columns: 2fr 1fr 1fr; } }
@@ -534,7 +533,7 @@ label.check.repeat { align-self: center; }
 .proposals { display: grid; gap: .4rem; margin: -.2rem 0 .6rem; }
 .proposal { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .55rem .75rem; border: 1px dashed var(--border); border-radius: 10px; background: var(--surface-2); font-size: .9rem; }
 .proposal button { flex: none; }
-.proposal button.danger { background: var(--neg); border-color: var(--neg); color: #fff; }
+.proposal button.danger { background: var(--neg); border-color: var(--neg); color: var(--neg-text); }
 
 /* Busca nos lançamentos, orçamentos por categoria e primeiro uso */
 .filters { margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }

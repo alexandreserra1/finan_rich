@@ -184,6 +184,18 @@ try {
   await waitStatus(page, "unpaired");
   ok(true, "app novo pede para conectar ao computador");
 
+  // Tema: segue o aparelho (aqui claro); Escuro fica salvo ao reabrir; volta ao automático.
+  await page.goto(`${APP}/configuracoes`);
+  const theme = () => page.evaluate(() => [document.documentElement.dataset.theme, getComputedStyle(document.body).backgroundColor]);
+  ok((await theme())[0] === "light", "tema automático segue o aparelho (claro)");
+  await page.selectOption("[data-theme-pick]", "escuro");
+  await page.reload();
+  await page.waitForSelector("[data-theme-pick]");
+  const [darkTheme, darkBg] = await theme();
+  ok(darkTheme === "dark" && darkBg === "rgb(14, 20, 18)" && (await page.inputValue("[data-theme-pick]")) === "escuro", "tema escuro fica salvo ao reabrir o app");
+  await page.selectOption("[data-theme-pick]", "auto");
+  ok((await theme())[0] === "light", "voltar ao automático segue o aparelho de novo");
+
   // Usar só no celular: cria as categorias no aparelho e já dá para lançar.
   await page.goto(`${APP}/configuracoes`);
   await page.click("[data-action=solo]");
