@@ -97,6 +97,25 @@ try {
   ok((await page.textContent(".networth .chart-head")).includes("R$ 1.166,66"), "patrimônio = contas − cartão em aberto");
   ok(await page.locator(".networth .yearchart .col").count() === 12, "patrimônio dos últimos 12 meses");
 
+  // Importar extrato de uma conta: as linhas entram nela, e o próximo arquivo
+  // da mesma conta (mesmo número no OFX) já vem com ela escolhida.
+  const itauId = accounts.find((a) => a.kind === "corrente").id;
+  const ofx = (fitid, memo) => Buffer.from(`<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><BANKACCTFROM><ACCTID>777-1</ACCTID></BANKACCTFROM><BANKTRANLIST><STMTTRN><TRNTYPE>DEBIT</TRNTYPE><DTPOSTED>${now.getFullYear()}${pad(now.getMonth() + 1)}01</DTPOSTED><TRNAMT>-99.90</TRNAMT><FITID>${fitid}</FITID><MEMO>${memo}</MEMO></STMTTRN></BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>`);
+  const importOFX = async (fitid, memo) => {
+    await page.goto(`${B}/importar`);
+    await page.setInputFiles("input[name=statement]", { name: "extrato.ofx", mimeType: "application/x-ofx", buffer: ofx(fitid, memo) });
+    await page.waitForSelector("select[data-action=account]");
+  };
+  await importOFX("A1", "SUPERMERCADO BOA COMPRA");
+  await page.selectOption("select[data-action=account]", itauId);
+  await page.selectOption("select[data-field=categoryId]", { index: 1 });
+  await page.click("[data-action=import]");
+  await page.waitForSelector("td:has-text('SUPERMERCADO BOA COMPRA')");
+  await page.evaluate(() => window.finanSync());
+  ok((await records("transaction")).some((t) => t.description.includes("SUPERMERCADO") && t.accountId === itauId), "lançamento importado entra na conta escolhida");
+  await importOFX("A2", "PADARIA");
+  ok(await page.inputValue("select[data-action=account]") === itauId, "o próximo extrato da mesma conta já vem com ela escolhida");
+
   // Celular (320 px): sem rolagem para o lado.
   await page.setViewportSize({ width: 320, height: 700 });
   await page.goto(`${B}/contas`);

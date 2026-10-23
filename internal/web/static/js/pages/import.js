@@ -14,7 +14,19 @@ export const needsData = false;
 
 // O extrato em revisão fica aqui (e não na tela): a tela é redesenhada quando
 // chegam dados da sincronização, e a revisão não pode se perder.
-let state = null; // { fileName, base64 ou text (PDF), preview, aiMessage }
+let state = null; // { fileName, base64 ou text (PDF), preview, aiMessage, accountId }
+
+const liveAccounts = (ledger) => ledger.accounts.filter((a) => !a.deleted).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+
+// guessAccount: a conta já usada com este arquivo (pelo número no OFX) ou,
+// numa fatura, o único cartão cadastrado.
+async function guessAccount(ledger, preview) {
+  const accounts = liveAccounts(ledger);
+  const known = preview.account ? (await db.getMeta("import-accounts", {}))[preview.account] : "";
+  if (known && accounts.some((a) => a.id === known)) return known;
+  const cards = accounts.filter((a) => a.kind === "cartao");
+  return preview.cardBill && cards.length === 1 ? cards[0].id : "";
+}
 
 // buildPreview lê o arquivo guardado no estado (OFX/CSV em base64, ou o texto
 // já extraído do PDF) com as opções da tela.
@@ -61,6 +73,11 @@ export function render({ ledger }) {
         Os desmarcados não entram; revise e marque se quiser.</p>
       ${preview.cardBill ? html`<p class="notice">${preview.inverted ? "Parece uma fatura de cartão: os valores positivos foram tratados como gastos." : "Este arquivo parece uma fatura de cartão."} Os pagamentos da fatura vêm desmarcados, porque os gastos já aparecem um a um.</p>` : ""}
       <label class="check"><input type="checkbox" data-action="invert" ${preview.inverted ? "checked" : ""}> Inverter entradas e saídas (use se os gastos aparecerem como entradas)</label>
+      ${ledger.accounts.some((a) => !a.deleted) ? html`<label class="import-account">De qual conta ou cartão é este arquivo?
+        <select data-action="account">
+          <option value="">Nenhuma</option>
+          ${liveAccounts(ledger).map((a) => html`<option value="${a.id}" ${a.id === state.accountId ? "selected" : ""}>${a.name}</option>`)}
+        </select></label>` : ""}
 
       <div class="table-wrap"><table class="import-table cards-mobile">
         <thead><tr><th><input type="checkbox" data-action="all" aria-label="Marcar todos" ${selected.length && selected.length === items.filter((i) => i.status !== "importado").length ? "checked" : ""}></th>
@@ -123,6 +140,7 @@ export function bind(root, ctx) {
         next.base64 = toBase64(bytes);
       }
       next.preview = buildPreview(ctx.ledger, next, {});
+      next.accountId = await guessAccount(ctx.ledger, next.preview);
       state = next;
       rerender();
     } catch (err) {
@@ -142,6 +160,7 @@ export function bind(root, ctx) {
       ctx.error(err);
     }
   });
+  root.querySelector('[data-action="account"]')?.addEventListener("change", (e) => { state.accountId = e.target.value; });
   root.querySelector('[data-action="all"]').addEventListener("change", (e) => {
     for (const it of items) if (it.status !== "importado") it.selected = e.target.checked;
     rerender();
@@ -200,9 +219,13 @@ export function bind(root, ctx) {
         record: finance.validate("transaction", {
           id: it.id, updatedAt: now, kind: it.kind, description: it.description,
           amountCents: it.amountCents, categoryId: it.categoryId, date: it.date,
+          ...(state.accountId ? { accountId: state.accountId } : {}),
         }),
       }));
       await db.saveManyLocal(records);
+      if (state.preview.account && state.accountId) { // da próxima vez este arquivo já vem com a conta certa
+        await db.setMeta("import-accounts", { ...(await db.getMeta("import-accounts", {})), [state.preview.account]: state.accountId });
+      }
       sync.soon();
       const latest = chosen.map((it) => it.date).sort().at(-1).slice(0, 7);
       state = null;

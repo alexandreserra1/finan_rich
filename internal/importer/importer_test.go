@@ -74,6 +74,10 @@ func TestParseFiles(t *testing.T) {
 	if st := parseFile(t, "nubank_cartao.ofx"); !st.Card {
 		t.Error("OFX de cartão não reconhecido")
 	}
+	// A prévia leva o número da conta do arquivo: o app lembra a qual conta ele pertence.
+	if p := Build(domain.Ledger{}, parseFile(t, "itau.ofx"), Options{}); p.Account != "12345-6" {
+		t.Errorf("conta na prévia = %q", p.Account)
+	}
 	if st := parseFile(t, "finan_export.csv"); st.Rows[1].Category != "Lazer" {
 		t.Errorf("categoria do CSV exportado = %q", st.Rows[1].Category)
 	}

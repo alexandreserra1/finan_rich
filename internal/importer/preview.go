@@ -49,6 +49,7 @@ type Preview struct {
 	Format   string `json:"format"`
 	Inverted bool   `json:"inverted"` // entradas e saídas trocadas
 	CardBill bool   `json:"cardBill"` // o arquivo parece fatura de cartão
+	Account  string `json:"account"`  // número da conta no arquivo (OFX), se houver
 	From     string `json:"from"`
 	To       string `json:"to"`
 	Items    []Item `json:"items"`
@@ -57,7 +58,7 @@ type Preview struct {
 // Build prepara a revisão: sentido de cada valor, categoria sugerida,
 // duplicados e pagamentos de fatura.
 func Build(l domain.Ledger, st Statement, o Options) Preview {
-	p := Preview{Format: st.Format, CardBill: st.Card || st.Unsigned, Inverted: st.Unsigned}
+	p := Preview{Format: st.Format, CardBill: st.Card || st.Unsigned, Inverted: st.Unsigned, Account: st.Account}
 	if o.Invert != nil {
 		p.Inverted = *o.Invert
 	}

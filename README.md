@@ -29,7 +29,9 @@ números reais. Seus dados ficam num arquivo no seu PC, sem conta e sem nuvem.
   sugere a categoria de cada lançamento pelo seu histórico e pela descrição (iFood, Uber,
   Netflix...), aprende com as suas correções, não duplica o que já foi importado, avisa o
   que parece já lançado à mão e deixa de fora o pagamento da fatura do cartão. Para o que
-  sobrar sem categoria, a IA pode sugerir (recebe só as descrições).
+  sobrar sem categoria, a IA pode sugerir (recebe só as descrições). Escolha de qual conta
+  ou cartão é o arquivo: as compras entram na fatura, e o próximo extrato da mesma conta já
+  vem com ela escolhida.
 - **Dívidas**: um plano numa frase (o que pagar primeiro, em quantos meses você sai das
   dívidas e quanto de juros economiza), com o valor que dá para pagar a mais por mês e um
   gráfico do plano contra pagar só o mínimo. Avisa quando o mínimo não cobre os juros e mostra
