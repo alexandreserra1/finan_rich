@@ -45,7 +45,7 @@ jobs:
           fi
           git tag -a "$VERSION" -m "finan_rich $VERSION"
           git push origin "$VERSION"
-      - uses: goreleaser/goreleaser-action@v6
+      - uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
         with:
           version: "~> v2"
           args: release --clean

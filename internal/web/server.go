@@ -187,7 +187,7 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, page string, dat
 
 func serverError(w http.ResponseWriter, err error) {
 	log.Printf("erro: %v", err)
-	http.Error(w, "Erro interno: "+err.Error(), http.StatusInternalServerError)
+	http.Error(w, "Erro interno. Os detalhes estão na janela do finan_rich.", http.StatusInternalServerError)
 }
 
 // sameOrigin barra POSTs vindos de outros sites (CSRF): sem login, qualquer página

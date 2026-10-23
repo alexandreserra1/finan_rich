@@ -171,7 +171,7 @@ type pairResponse struct {
 // apiPair troca o código de pareamento por um token do aparelho.
 func (s *Server) apiPair(w http.ResponseWriter, r *http.Request) {
 	key := clientKey(r)
-	if !s.limiter.Allowed(key) {
+	if !s.limiter.Take(key) {
 		writeJSONError(w, http.StatusTooManyRequests, "muitas tentativas erradas; espere alguns minutos")
 		return
 	}
@@ -181,7 +181,6 @@ func (s *Server) apiPair(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.pairing.consume(req.Code, time.Now()) {
-		s.limiter.Fail(key)
 		writeJSONError(w, http.StatusForbidden, "código errado ou vencido; gere outro no computador (Ajustes → App do celular)")
 		return
 	}
@@ -198,7 +197,7 @@ func (s *Server) apiPair(w http.ResponseWriter, r *http.Request) {
 		_, err = s.store.CreateDevice(r.Context(), name, auth.HashToken(token))
 	}
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		internalError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, pairResponse{Token: token, Device: name})

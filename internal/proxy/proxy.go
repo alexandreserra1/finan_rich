@@ -41,7 +41,7 @@ type Limits struct{ DeviceHour, DeviceDay, IPHour, IPDay int }
 var DefaultLimits = Limits{DeviceHour: 30, DeviceDay: 80, IPHour: 60, IPDay: 200}
 
 const (
-	maxBody   = 512 << 10
+	maxBody   = 128 << 10 // cabe a conversa longa com ferramentas; a cota grátis por minuto do Groq é menor ainda
 	maxTokens = 2048
 )
 
@@ -226,6 +226,10 @@ func cors(next http.Handler) http.Handler {
 // maxKeys limita a memória do limitador (cada aparelho e cada IP é uma chave).
 const maxKeys = 100000
 
+// maxDevicesPerIP: aparelhos novos por rede no dia; passou disso, os novos
+// dividem o balde da rede (senão alguém lota o limitador inventando aparelhos).
+const maxDevicesPerIP = 5
+
 type limiter struct {
 	mu     sync.Mutex
 	now    func() time.Time
@@ -235,6 +239,7 @@ type limiter struct {
 type count struct {
 	hour, day     int64 // início da janela (Unix)
 	inHour, inDay int
+	devices       int // aparelhos novos vistos desta rede hoje (só nas chaves "ip:")
 }
 
 func newLimiter(now func() time.Time) *limiter {
@@ -267,15 +272,29 @@ func (l *limiter) allow(device, ip string, lim Limits) string {
 			c.hour, c.inHour = hour, 0
 		}
 		if c.day != day {
-			c.day, c.inDay = day, 0
+			c.day, c.inDay, c.devices = day, 0, 0
 		}
 		return c
+	}
+	if parsed := net.ParseIP(ip); parsed != nil && parsed.To4() == nil {
+		ip = parsed.Mask(net.CIDRMask(64, 128)).String() + "/64" // IPv6: a casa tem o /64 inteiro
+	}
+	ipc := get("ip:" + ip)
+	if ipc == nil {
+		return "o consultor grátis está com movimento demais agora; tente mais tarde ou use sua própria chave grátis em Ajustes"
+	}
+	if _, seen := l.counts["dev:"+device]; device != "" && !seen {
+		if ipc.devices >= maxDevicesPerIP {
+			device = ""
+		} else {
+			ipc.devices++
+		}
 	}
 	if device == "" { // sem identificação (ex.: computador): conta como um aparelho daquela rede
 		device = "anonimo:" + ip
 	}
-	ipc, dev := get("ip:"+ip), get("dev:"+device)
-	if ipc == nil || dev == nil {
+	dev := get("dev:" + device)
+	if dev == nil {
 		return "o consultor grátis está com movimento demais agora; tente mais tarde ou use sua própria chave grátis em Ajustes"
 	}
 	if ipc.inHour >= lim.IPHour || ipc.inDay >= lim.IPDay {

@@ -26,8 +26,12 @@ celular (anonimiza) ──HTTPS──> finanproxy (Cloud Run, chave no Secret Ma
   modelo tem a sua cota.
 - O IP de quem chama é o que o Google acrescenta no fim do `X-Forwarded-For` (o começo pode
   ser inventado); pedido sem identificação de aparelho conta como um aparelho daquela rede.
-  Corpo enviado devagar é cortado em 15 s. O limitador guarda até 100 mil aparelhos/IPs por
-  dia; cheio, recusa gente nova até o dia seguinte (nunca zera quem já está barrado).
+  Corpo enviado devagar é cortado em 15 s, e o pedido aceita até 128 KB. O limitador guarda
+  até 100 mil aparelhos/IPs por dia; cheio, recusa gente nova até o dia seguinte (nunca zera
+  quem já está barrado). Cada rede cria no máximo 5 aparelhos novos por dia (os seguintes
+  dividem o limite da rede), e endereços IPv6 contam por /64: assim não dá para lotar o
+  limitador inventando aparelhos ou trocando de endereço.
+- Roda com uma conta de serviço própria (`finanproxy@`), que só lê a chave do Groq.
 - Não precisa de proxy reverso: o Cloud Run já tem o front-end do Google na frente (TLS, fila,
   concorrência). Teste de carga com Groq falso: 2.000 pedidos simultâneos, todos atendidos.
 - No Cloud Run: no máximo 1 instância. No pior caso, a cota grátis do Groq acaba e o consultor

@@ -42,18 +42,17 @@ func (s *Server) apiSync(w http.ResponseWriter, r *http.Request) {
 	if len(req.Changes) > 0 {
 		var err error
 		if _, notices, err = s.store.ApplyChangesNotices(ctx, req.Changes); err != nil {
-			status := http.StatusInternalServerError
-			if errors.Is(err, store.ErrInvalidChange) {
-				status = http.StatusUnprocessableEntity
+			if !errors.Is(err, store.ErrInvalidChange) {
+				internalError(w, err)
+				return
 			}
-			log.Printf("sync: %v", err)
-			writeJSONError(w, status, err.Error())
+			writeJSONError(w, http.StatusUnprocessableEntity, err.Error()) // o que estava errado no registro
 			return
 		}
 	}
 	changes, cursor, err := s.store.ChangesSince(ctx, req.Cursor, syncPageSize)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		internalError(w, err)
 		return
 	}
 	if changes == nil {
@@ -71,4 +70,11 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 func writeJSONError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, map[string]string{"error": msg})
+}
+
+// internalError grava o detalhe só no log: caminhos e erros do banco não vão
+// para quem pediu (pode ser outro aparelho na rede).
+func internalError(w http.ResponseWriter, err error) {
+	log.Printf("erro: %v", err)
+	writeJSONError(w, http.StatusInternalServerError, "erro interno no computador; os detalhes estão na janela do finan_rich")
 }

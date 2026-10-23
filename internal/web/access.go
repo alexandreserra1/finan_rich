@@ -167,6 +167,10 @@ func clientKey(r *http.Request) string {
 	if err != nil {
 		return r.RemoteAddr
 	}
+	// IPv6: cada casa tem um /64 inteiro; trocar de endereço dentro dele não zera o limite.
+	if ip := net.ParseIP(host); ip != nil && ip.To4() == nil {
+		return ip.Mask(net.CIDRMask(64, 128)).String() + "/64"
+	}
 	return host
 }
 
@@ -189,7 +193,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/entrar?"+url.Values{"volta": {back}, "erro": {msg}}.Encode(), http.StatusSeeOther)
 	}
 	key := clientKey(r)
-	if !s.limiter.Allowed(key) {
+	if !s.limiter.Take(key) {
 		fail("Muitas tentativas erradas. Espere alguns minutos e tente de novo.")
 		return
 	}
@@ -200,7 +204,6 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	}
 	ok, err := auth.CheckPassword(r.FormValue("senha"), hash)
 	if err != nil || !ok {
-		s.limiter.Fail(key)
 		fail("Senha incorreta.")
 		return
 	}

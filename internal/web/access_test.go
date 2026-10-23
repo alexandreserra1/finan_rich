@@ -372,3 +372,17 @@ func TestAISettingsKeyAndChatSafety(t *testing.T) {
 		t.Error("trocar o endereço sem colar a chave de novo não pode levar a chave junto")
 	}
 }
+
+func TestClientKeyGroupsIPv6(t *testing.T) {
+	key := func(addr string) string {
+		r := httptest.NewRequest("GET", "/", nil)
+		r.RemoteAddr = addr
+		return clientKey(r)
+	}
+	if a, b := key("[2001:db8:1:2::10]:5000"), key("[2001:db8:1:2:ffff::1]:6000"); a != b || a != "2001:db8:1:2::/64" {
+		t.Errorf("mesmo /64 deveria dar a mesma chave: %q e %q", a, b)
+	}
+	if k := key("192.168.0.7:5000"); k != "192.168.0.7" {
+		t.Errorf("IPv4 = %q", k)
+	}
+}

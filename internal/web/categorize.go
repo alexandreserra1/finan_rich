@@ -43,7 +43,7 @@ func (s *Server) apiCategorize(w http.ResponseWriter, r *http.Request) {
 	}
 	l, err := s.store.Ledger(ctx)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		internalError(w, err)
 		return
 	}
 	if !llm.IsLocal(ai.Config) {

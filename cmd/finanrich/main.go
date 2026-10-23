@@ -122,7 +122,9 @@ func run(args []string) error {
 			log.Print("acesso pela rede desligado: o app aceita só este computador")
 		}
 
-		httpSrv := &http.Server{Handler: srv.Routes(), ReadHeaderTimeout: 10 * time.Second}
+		// Sem WriteTimeout: o chat responde aos poucos (SSE) e pode passar de minutos.
+		httpSrv := &http.Server{Handler: srv.Routes(), ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 30 * time.Second,
+			IdleTimeout: 2 * time.Minute, MaxHeaderBytes: 64 << 10}
 		served := make(chan error, 1)
 		go func() { served <- httpSrv.Serve(ln) }()
 

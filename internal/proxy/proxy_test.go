@@ -170,13 +170,33 @@ func TestProxySpoofedForwardedFor(t *testing.T) {
 	}
 }
 
+// Uma rede não cria aparelhos sem fim (cada um ocuparia memória do limitador):
+// passando de maxDevicesPerIP no dia, os novos dividem o balde da rede.
+func TestLimiterCapsDevicesPerIP(t *testing.T) {
+	now := time.Date(2026, 10, 22, 10, 0, 0, 0, time.UTC)
+	l := newLimiter(func() time.Time { return now })
+	lim := Limits{DeviceHour: 1 << 30, DeviceDay: 1 << 30, IPHour: 1 << 30, IPDay: 1 << 30}
+	for i := range 300 {
+		l.allow(fmt.Sprintf("falso%d", i), "1.1.1.1", lim)
+	}
+	if n := len(l.counts); n > maxDevicesPerIP+2 {
+		t.Errorf("uma rede criou %d chaves", n)
+	}
+	// IPv6: o mesmo /64 é uma rede só.
+	l.allow("x", "2001:db8:1:2::1", lim)
+	l.allow("y", "2001:db8:1:2:ffff::9", lim)
+	if l.counts["ip:2001:db8:1:2::/64"] == nil || l.counts["ip:2001:db8:1:2::/64"].inDay != 2 {
+		t.Error("endereços do mesmo /64 deveriam contar juntos")
+	}
+}
+
 func TestLimiterFullDoesNotReset(t *testing.T) {
 	now := time.Date(2026, 10, 22, 10, 0, 0, 0, time.UTC)
 	l := newLimiter(func() time.Time { return now })
 	lim := Limits{DeviceHour: 1, DeviceDay: 1, IPHour: 1000, IPDay: 1000}
 	l.allow("barrado", "1.1.1.1", lim)
 	for i := 0; len(l.counts) < maxKeys; i++ {
-		l.allow(fmt.Sprintf("a%d", i), "1.1.1.1", Limits{DeviceHour: 9, DeviceDay: 9, IPHour: 1 << 30, IPDay: 1 << 30})
+		l.allow(fmt.Sprintf("a%d", i), fmt.Sprintf("10.%d.%d.%d", i>>16&255, i>>8&255, i&255), Limits{DeviceHour: 9, DeviceDay: 9, IPHour: 1 << 30, IPDay: 1 << 30})
 	}
 	if msg := l.allow("barrado", "1.1.1.1", lim); msg == "" {
 		t.Error("encher o limitador soltou quem estava barrado")

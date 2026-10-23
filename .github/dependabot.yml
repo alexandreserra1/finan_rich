@@ -1,0 +1,16 @@
+# Avisa (por pull request) quando sai versão nova das dependências, inclusive
+# correções de segurança. Toda atualização passa pelo CI antes de entrar.
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule: { interval: weekly }
+  - package-ecosystem: npm
+    directory: /mobile
+    schedule: { interval: weekly }
+  - package-ecosystem: npm
+    directory: /e2e
+    schedule: { interval: weekly }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }

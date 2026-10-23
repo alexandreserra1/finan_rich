@@ -2,6 +2,8 @@ module github.com/alexandreserra1/finan_rich
 
 go 1.26.0
 
+toolchain go1.26.10
+
 require (
 	github.com/anthropics/anthropic-sdk-go v1.80.0
 	modernc.org/sqlite v1.60.1

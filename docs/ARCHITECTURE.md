@@ -168,6 +168,15 @@ aparelho                                      servidor
   outra origem (`Sec-Fetch-Site`/`Origin`) é recusado, menos a navegação (abrir um link).
   E, sem senha, só valem endereços por IP, `localhost`, `*.local`, `*.ts.net` ou os nomes de
   `FINAN_HOSTS`: um domínio de fora que aponte para `127.0.0.1` (DNS rebinding) recebe 403.
+- **Senha e pareamento** têm limite de 5 tentativas erradas a cada 10 minutos por endereço
+  (IPv6: por /64). A tentativa é contada antes de conferir a senha, então pedidos em paralelo
+  não passam do limite. O servidor corta corpo enviado devagar (30 s) e conexões paradas
+  (2 min); sem limite de escrita, por causa da resposta do chat aos poucos. Erro interno vai
+  só para o log: quem pediu recebe uma mensagem genérica.
+- **Wi-Fi sem cifra**: na rede de casa o tráfego é HTTP. A tela avisa para usar só em rede de
+  confiança e, fora de casa, o Tailscale (HTTPS).
+- **Dependências**: o CI roda `govulncheck` e `npm audit`; o Dependabot abre PR com versões
+  novas. A versão do Go fica fixa no `toolchain` do `go.mod`.
 - **Proxy reverso (nginx, Caddy) não é necessário** e pode ser perigoso: o gargalo medido é o
   SQLite (uma conexão, de propósito), não o HTTP; e um proxy que não mande `X-Forwarded-For`
   faz todo pedido parecer vir de `127.0.0.1`, liberando o acesso sem senha. Para acessar de

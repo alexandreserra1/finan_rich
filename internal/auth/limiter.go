@@ -15,22 +15,29 @@ type Limiter struct {
 	now      func() time.Time
 }
 
+const maxKeys = 10000
+
 func NewLimiter(max int, window time.Duration) *Limiter {
 	return &Limiter{max: max, window: window, failures: map[string][]time.Time{}, now: time.Now}
 }
 
-// Allowed diz se o endereço ainda pode tentar.
-func (l *Limiter) Allowed(key string) bool {
+// Take reserva uma tentativa para o endereço e diz se ele ainda pode tentar.
+// Conta antes de conferir a senha (que demora), para pedidos em paralelo não
+// passarem todos do limite; acertou, chame Reset.
+func (l *Limiter) Take(key string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	return len(l.recent(key)) < l.max
-}
-
-// Fail registra uma tentativa errada.
-func (l *Limiter) Fail(key string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.failures[key] = append(l.recent(key), l.now())
+	if len(l.failures) > maxKeys { // endereços que não voltaram não ficam para sempre na memória
+		for k := range l.failures {
+			l.recent(k)
+		}
+	}
+	recent := l.recent(key)
+	if len(recent) >= l.max {
+		return false
+	}
+	l.failures[key] = append(recent, l.now())
+	return true
 }
 
 // Reset limpa o histórico após um login correto.

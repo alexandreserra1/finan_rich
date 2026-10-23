@@ -153,12 +153,12 @@ func (s *Server) apiChatHistory(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	history, err := s.chatHistory(ctx)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		internalError(w, err)
 		return
 	}
 	ai, err := s.aiSettings(ctx)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		internalError(w, err)
 		return
 	}
 	st := s.aiStatus(ctx, ai)
@@ -180,7 +180,7 @@ func (s *Server) apiChatSend(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) apiChatClear(w http.ResponseWriter, r *http.Request) {
 	if err := s.store.ClearChat(r.Context()); err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		internalError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})

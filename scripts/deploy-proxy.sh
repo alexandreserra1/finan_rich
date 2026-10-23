@@ -26,16 +26,22 @@ if ! g secrets describe groq-api-key >/dev/null 2>&1; then
   [ -n "$KEY" ] || { echo "chave vazia" >&2; exit 1; }
   printf '%s' "$KEY" | g secrets create groq-api-key --data-file=-
   unset KEY
-  number=$(g projects describe "$PROJECT" --format='value(projectNumber)')
-  g secrets add-iam-policy-binding groq-api-key \
-    --member "serviceAccount:$number-compute@developer.gserviceaccount.com" --role roles/secretmanager.secretAccessor >/dev/null
 fi
+
+# Conta só do intermediário: lê o segredo e nada mais. A conta padrão do
+# Compute pode mexer no projeto inteiro; se o contêiner fosse tomado, iria junto.
+SA="finanproxy@$PROJECT.iam.gserviceaccount.com"
+if ! g iam service-accounts describe "$SA" >/dev/null 2>&1; then
+  echo "→ Criando a conta de serviço do intermediário"
+  g iam service-accounts create finanproxy --display-name "finanproxy (só lê a chave do Groq)"
+fi
+g secrets add-iam-policy-binding groq-api-key --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor >/dev/null
 
 echo "→ Construindo a imagem"
 g builds submit --config cmd/finanproxy/cloudbuild.yaml --substitutions "_IMAGE=$IMAGE" .
 
 echo "→ Publicando (escala a zero, no máximo 1 instância)"
-g run deploy finanproxy --image "$IMAGE" --region "$REGION" --allow-unauthenticated \
+g run deploy finanproxy --image "$IMAGE" --region "$REGION" --allow-unauthenticated --service-account "$SA" \
   --min-instances 0 --max-instances 1 --concurrency 20 --memory 256Mi --cpu 1 --timeout 300 \
   --set-secrets GROQ_API_KEY=groq-api-key:latest
 

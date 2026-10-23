@@ -2,6 +2,8 @@ package auth
 
 import (
 	"errors"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -44,24 +46,42 @@ func TestLimiter(t *testing.T) {
 	l := NewLimiter(3, time.Minute)
 	l.now = func() time.Time { return now }
 	for range 3 {
-		if !l.Allowed("ip") {
+		if !l.Take("ip") {
 			t.Fatal("bloqueou cedo demais")
 		}
-		l.Fail("ip")
 	}
-	if l.Allowed("ip") {
-		t.Error("deveria bloquear após 3 erros")
+	if l.Take("ip") {
+		t.Error("deveria bloquear após 3 tentativas sem acerto")
 	}
-	if !l.Allowed("outro-ip") {
+	if !l.Take("outro-ip") {
 		t.Error("bloqueio deve ser por endereço")
 	}
 	now = now.Add(2 * time.Minute)
-	if !l.Allowed("ip") {
+	if !l.Take("ip") {
 		t.Error("bloqueio deveria expirar")
 	}
-	l.Fail("ip")
 	l.Reset("ip")
-	if !l.Allowed("ip") || len(l.failures) != 0 {
+	l.Reset("outro-ip")
+	if len(l.failures) != 0 {
 		t.Error("reset deveria limpar")
+	}
+}
+
+// Muitos pedidos ao mesmo tempo não passam do limite: a vaga é reservada antes
+// de conferir a senha (que demora), não depois.
+func TestLimiterParallel(t *testing.T) {
+	l := NewLimiter(5, time.Minute)
+	var ok atomic.Int32
+	var wg sync.WaitGroup
+	for range 200 {
+		wg.Go(func() {
+			if l.Take("ip") {
+				ok.Add(1)
+			}
+		})
+	}
+	wg.Wait()
+	if ok.Load() != 5 {
+		t.Errorf("passaram %d tentativas, limite 5", ok.Load())
 	}
 }

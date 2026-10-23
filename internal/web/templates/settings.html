@@ -60,6 +60,7 @@
     </div>
     {{else}}<p class="muted">Não encontrei este computador numa rede Wi-Fi ou cabo.</p>{{end}}
     <p class="small muted">Este computador precisa ficar ligado com o finan_rich aberto. Se o celular não conectar, permita o finan_rich no firewall quando o sistema perguntar.</p>
+    <p class="small muted">Use só em redes de confiança (a sua casa). Pelo Wi-Fi a conexão não é cifrada: em Wi-Fi público ou de outras pessoas, quem estiver na mesma rede pode ver o que passa. Fora de casa, use o Tailscale (veja o README), que cifra tudo.</p>
     <details>
       <summary>Trocar a senha ou desligar</summary>
       <form method="post" action="/configuracoes/acesso" class="grid-form">
