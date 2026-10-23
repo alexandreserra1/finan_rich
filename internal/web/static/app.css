@@ -611,3 +611,6 @@ td.num, .num { white-space: nowrap; }
 @media (max-width: 720px) { .pace-chart .ticks text { font-size: 20px; } } /* ~11px de verdade num celular */
 .bank-accounts { display: grid; gap: .5rem; }
 .bank-accounts button { justify-content: space-between; display: flex; text-align: left; }
+.calendar .year-row th { text-align: left; background: var(--surface-2); color: var(--text); font-size: .85rem; letter-spacing: .02em; }
+.calendar td .tag { font-size: .7rem; }
+.tag.ok { --c: var(--accent); }

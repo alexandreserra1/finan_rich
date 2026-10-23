@@ -34,7 +34,8 @@ números reais. Seus dados ficam num arquivo no seu PC, sem conta e sem nuvem.
   vem com ela escolhida.
 - **Dívidas**: um plano numa frase (o que pagar primeiro, em quantos meses você sai das
   dívidas e quanto de juros economiza), com o valor que dá para pagar a mais por mês e um
-  gráfico do plano contra pagar só o mínimo. Avisa quando o mínimo não cobre os juros e mostra
+  gráfico do plano contra pagar só o mínimo, e o calendário mês a mês de quanto pagar em
+  cada dívida até a última acabar. Avisa quando o mínimo não cobre os juros e mostra
   as faturas abertas dos cartões.
 - **Notas**: metas, combinados e ideias, com busca e notas fixadas. O consultor lê as mais
   recentes para entender seus planos.

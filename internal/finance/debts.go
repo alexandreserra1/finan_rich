@@ -69,6 +69,14 @@ type Schedule struct {
 	OK            bool      `json:"ok"`            // false: do jeito simulado, a dívida não acaba
 	BalanceCents  []int64   `json:"balanceCents"`  // saldo total no fim de cada mês; [0] é hoje
 	PaidOff       []PaidOff `json:"paidOff"`       // em que mês cada dívida zera, na ordem
+	Names         []string  `json:"names"`         // as dívidas na ordem da fila (colunas do calendário)
+	Calendar      []Month   `json:"calendar"`      // [i] é o mês i+1: quanto pagar em cada dívida
+}
+
+// Month é um mês do calendário de pagamentos.
+type Month struct {
+	Payments      []int64 `json:"payments"`      // na ordem de Names
+	InterestCents int64   `json:"interestCents"` // juros que entraram no mês
 }
 
 type PaidOff struct {
@@ -112,22 +120,28 @@ func simulate(order []domain.Debt, extraCents int64, rollover bool) Schedule {
 			limit = growthMonths
 		}
 	}
-	s := Schedule{OK: true, BalanceCents: []int64{total}, PaidOff: []PaidOff{}}
+	s := Schedule{OK: true, BalanceCents: []int64{total}, PaidOff: []PaidOff{}, Names: make([]string, len(order)), Calendar: []Month{}}
+	for i, d := range order {
+		s.Names[i] = d.Name
+	}
 	for month := 1; total > 0; month++ {
 		if month > limit {
 			s.OK = false
 			break
 		}
 		paid := int64(0)
+		cal := Month{Payments: make([]int64, len(order))}
 		for i, d := range order {
 			interest := bal[i] * int64(d.MonthlyRateBP) / 10000
-			s.InterestCents += interest
+			cal.InterestCents += interest
 			bal[i] += interest
 		}
+		s.InterestCents += cal.InterestCents
 		for i, d := range order {
 			p := min(d.MinPaymentCents, bal[i])
 			bal[i] -= p
 			paid += p
+			cal.Payments[i] = p
 		}
 		if rollover {
 			rest := budget - paid
@@ -135,8 +149,10 @@ func simulate(order []domain.Debt, extraCents int64, rollover bool) Schedule {
 				p := min(rest, bal[i])
 				bal[i] -= p
 				rest -= p
+				cal.Payments[i] += p
 			}
 		}
+		s.Calendar = append(s.Calendar, cal)
 		prev := total
 		total = 0
 		for i, d := range order {

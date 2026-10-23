@@ -94,14 +94,19 @@ try {
   await page.evaluate(() => window.finanSync());
   ok((await records("debt")).some((d) => d.name === "Empréstimo"), "dívida nova sincronizou");
   // Plano: uma frase com o que pagar primeiro e em quantos meses; pagar a mais encurta.
-  const months = async () => Number((await page.textContent(".plan-lead")).match(/em\s+(\d+)\s+mes/)[1]);
+  // "em 8 meses", "em 1 ano e 6 meses", "em 2 anos": em meses.
+  const toMonths = (text) => { const m = text.replace(/\s+/g, " ").match(/em (?:(\d+) anos?)?(?: e )?(?:(\d+) m[eê]s(?:es)?)? \(/); return Number(m[1] || 0) * 12 + Number(m[2] || 0); };
+  const months = async () => toMonths(await page.textContent(".plan-lead"));
   const before = await months();
-  ok((await page.textContent(".plan-lead")).includes("Pague primeiro") && await page.locator(".debt-chart path.line.now").count() === 1,
+  ok((await page.textContent(".plan-lead")).includes("Pagando") && await page.locator(".debt-chart path.line.now").count() === 1,
     `plano das dívidas com frase e gráfico (${before} meses)`);
   await page.fill("form[data-form=extra] input[name=extra]", "200");
   await page.click("form[data-form=extra] button[type=submit]");
   await page.waitForURL(/extra=20000/);
-  await page.waitForFunction((b) => Number(document.querySelector(".plan-lead")?.textContent.match(/em\s+(\d+)\s+mes/)?.[1]) < b, before);
+  await page.waitForFunction((b) => {
+    const m = document.querySelector(".plan-lead")?.textContent.replace(/\s+/g, " ").match(/em (?:(\d+) anos?)?(?: e )?(?:(\d+) m[eê]s(?:es)?)? \(/);
+    return m && Number(m[1] || 0) * 12 + Number(m[2] || 0) < b;
+  }, before);
   ok(true, `pagando R$ 200 a mais o plano encurta (${before} → ${await months()} meses)`);
   await page.click("tr:has-text('Empréstimo') [data-delete]");
   await page.waitForSelector("td:has-text('Empréstimo')", { state: "detached" });
