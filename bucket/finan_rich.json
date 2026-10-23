@@ -1,19 +1,19 @@
 {
-    "version": "1.8.1",
+    "version": "1.9.0",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/alexandreserra1/finan_rich/releases/download/v1.8.1/finan_rich_1.8.1_windows_amd64.zip",
+            "url": "https://github.com/alexandreserra1/finan_rich/releases/download/v1.9.0/finan_rich_1.9.0_windows_amd64.zip",
             "bin": [
                 "finanrich.exe"
             ],
-            "hash": "2823df6378374d6ccc2d1776b43333561213e592177872eb0db05011f96a990c"
+            "hash": "66ae8e4c1cae6b49d13caa7178ab1a895d7094b1122ddf929630a393f12dd111"
         },
         "arm64": {
-            "url": "https://github.com/alexandreserra1/finan_rich/releases/download/v1.8.1/finan_rich_1.8.1_windows_arm64.zip",
+            "url": "https://github.com/alexandreserra1/finan_rich/releases/download/v1.9.0/finan_rich_1.9.0_windows_arm64.zip",
             "bin": [
                 "finanrich.exe"
             ],
-            "hash": "8f15ff1845d08e5a77088e1e590829b3b6fa3f9a8146f536309dc9e50ce88fa6"
+            "hash": "3fbf1455a23359ad0bcdf6e4c1ad7340db229decc94ad1481af64d482bc50e35"
         }
     },
     "homepage": "https://github.com/alexandreserra1/finan_rich",
