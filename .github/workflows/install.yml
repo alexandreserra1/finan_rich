@@ -13,7 +13,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Instala
         run: sh scripts/install.sh
       - name: Confere
@@ -38,7 +38,7 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Instala
         shell: powershell
         run: Get-Content scripts/install.ps1 -Raw -Encoding UTF8 | Invoke-Expression
