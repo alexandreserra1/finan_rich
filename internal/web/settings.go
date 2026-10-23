@@ -24,6 +24,9 @@ func (s *Server) settings(w http.ResponseWriter, r *http.Request) {
 		"CanQuit": s.onQuit != nil && isLoopback(r),
 	}
 	data["Port"] = s.port
+	if c, err := s.pluggyCredentials(ctx); err == nil {
+		data["Pluggy"] = map[string]any{"ClientID": c.ClientID, "HasSecret": c.ClientSecret != "", "Items": strings.Join(c.ItemIDs, "\n")}
+	}
 	if ts := tailscaleURL(ctx); ts != "" {
 		data["TailscaleURL"] = ts
 		data["TailscaleQR"] = qrDataURI(ts)

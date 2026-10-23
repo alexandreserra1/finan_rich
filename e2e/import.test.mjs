@@ -5,6 +5,7 @@
 // Uso (na pasta e2e): FINANRICH_BIN=../dist/finanrich node import.test.mjs
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
+import { createServer } from "node:http";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -20,7 +21,25 @@ const ok = (cond, msg) => {
   if (!cond) failures++;
 };
 
-const server = spawn(BIN, ["-data", dataDir, "-no-browser", "-addr", `127.0.0.1:${PORT}`], { stdio: "ignore" });
+// Pluggy falsa (Open Finance): uma conta com dois lançamentos.
+const PLUGGY_PORT = 18088;
+const pluggy = createServer((req, res) => {
+  res.setHeader("Content-Type", "application/json");
+  const url = new URL(req.url, "http://x");
+  if (url.pathname === "/auth") return res.end('{"apiKey":"k"}');
+  if (req.headers["x-api-key"] !== "k") { res.statusCode = 403; return res.end("{}"); }
+  if (url.pathname === "/accounts") return res.end('{"results":[{"id":"a1","type":"BANK","name":"Conta Inter","number":"0001234"}]}');
+  if (url.pathname === "/v2/transactions") {
+    return res.end(JSON.stringify({ next: null, results: [
+      { id: "p1", description: "Uber *Trip", amount: -23.5, date: `${url.searchParams.get("dateFrom")}T10:00:00.000Z`, type: "DEBIT", status: "POSTED" },
+      { id: "p2", description: "Pix recebido", amount: 150, date: `${url.searchParams.get("dateFrom")}T11:00:00.000Z`, type: "CREDIT", status: "POSTED" },
+    ] }));
+  }
+  res.statusCode = 404;
+  res.end("{}");
+}).listen(PLUGGY_PORT);
+
+const server = spawn(BIN, ["-data", dataDir, "-no-browser", "-addr", `127.0.0.1:${PORT}`], { stdio: "ignore", env: { ...process.env, FINAN_PLUGGY_URL: `http://127.0.0.1:${PLUGGY_PORT}` } });
 for (let i = 0; i < 100; i++) {
   try { if ((await fetch(`${B}/healthz`)).ok) break; } catch {}
   await new Promise((r) => setTimeout(r, 100));
@@ -114,12 +133,35 @@ try {
   ok(!(await row("Pagamento recebido").locator("input[type=checkbox]").isChecked()), "pagamento da fatura (PDF) vem desmarcado");
   ok(await row("Amazon Marketplace - Parcela 2/10").locator("select option:checked").textContent() === "Compras · Desejos", "parcela da Amazon sugerida em Compras");
 
+  // Open Finance: configura em Ajustes, busca do banco, revisa e importa; buscar de novo não duplica.
+  await page.goto(`${B}/configuracoes`);
+  await page.fill("#open-finance input[name=client_id]", "meu-id");
+  await page.fill("#open-finance input[name=client_secret]", "meu-segredo");
+  await page.fill("#open-finance textarea[name=items]", "item-1");
+  await page.click("#open-finance button[type=submit]");
+  await page.waitForSelector("text=Open Finance salvo");
+  ok(!(await page.content()).includes("meu-segredo"), "Ajustes não mostra o Client Secret");
+  const fetchBank = async () => {
+    await page.goto(`${B}/importar`);
+    await page.click("form[data-form=openfinance] button[type=submit]");
+    await page.click("[data-bank='0']");
+    await page.waitForSelector(".import-table");
+  };
+  await fetchBank();
+  ok(await page.locator(".import-table tbody tr").count() === 2 && (await row("Uber *Trip").locator("td.num").textContent()).includes("−R$ 23,50"), "lançamentos do banco chegam para revisar");
+  await row("Pix recebido").locator("select").selectOption({ index: 1 });
+  await page.click("[data-action=import]");
+  await page.waitForSelector("td:has-text('Uber *Trip')");
+  await fetchBank();
+  ok(await row("Uber *Trip").locator(".status-importado").count() === 1, "buscar do banco de novo não duplica");
+
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);
 } catch (err) {
   ok(false, err.message);
 } finally {
   await browser.close();
   server.kill();
+  pluggy.close();
   rmSync(dataDir, { recursive: true, force: true });
 }
 console.log(failures ? `\n${failures} falha(s)` : "\nTudo certo.");

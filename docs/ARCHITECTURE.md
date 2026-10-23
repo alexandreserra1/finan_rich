@@ -285,6 +285,17 @@ Lê o extrato no aparelho (WebAssembly): funciona offline e o arquivo não sai d
 | `categories.go` | Categoria sugerida: do arquivo, do histórico (descrições parecidas que a pessoa já classificou; aprende com as correções) ou de palavras-chave de lojas e serviços. |
 | `importer_test.go`, `testdata/` | Arquivos no formato de Itaú, Nubank (conta e cartão, OFX e CSV), Inter, BB e do próprio finan_rich. |
 
+**Open Finance** (`internal/pluggy`): `Fetch` pega a chave na Pluggy (`POST /auth`) com o
+Client ID e o Secret da própria pessoa, lista as contas de cada Item ID (`GET /accounts`) e os
+lançamentos já caídos (`GET /v2/transactions`, por cursor, até 50 páginas e 8 MB por resposta).
+O sentido vem do campo `type` (DEBIT/CREDIT), não do sinal. Cada conta vira um
+`importer.Statement` (`Account` = `pluggy:<id>`, FITID = id do lançamento) e segue a revisão
+de sempre (`wasmapi.ImportPreviewStatement`): buscar de novo não duplica. No computador a busca
+é `POST /api/openfinance` (`internal/web/openfinance.go`, credenciais na tabela `settings`, o
+segredo nunca volta para a tela); no app com o Open Finance configurado, roda no
+`advisor.wasm` (`askapi.OpenFinance`) e o Client Secret fica no cofre do sistema
+(`js/openfinance.js`). Nada passa por servidor do finan_rich.
+
 A IA (opcional) fica no servidor: `internal/advisor/categorize.go` pergunta em lotes de 40 e
 só aceita respostas que sejam uma das categorias do tipo certo; `internal/web/categorize.go`
 expõe `POST /api/categorizar`, que recebe só descrições e tipos (sem valores).

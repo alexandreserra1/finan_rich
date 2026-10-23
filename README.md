@@ -139,6 +139,25 @@ Não quer instalar nada? Em **Configurações** dá para usar uma IA na nuvem:
 
 Na nuvem, o resumo das suas finanças é enviado ao provedor junto com cada pergunta.
 
+### 3. (Opcional) Traga os lançamentos direto do banco (Open Finance, grátis)
+
+Pelo **Meu Pluggy**, o Open Finance oficial chega ao finan_rich sem custo. Cada pessoa usa a
+própria conta, e os dados vão do banco para o seu computador ou celular sem passar por
+servidor do finan_rich.
+
+1. Crie uma conta grátis em [dashboard.pluggy.ai](https://dashboard.pluggy.ai), crie uma
+   *Application* e copie o **Client ID** e o **Client Secret**.
+2. Em [meu.pluggy.ai](https://meu.pluggy.ai), conecte seus bancos (a autorização é feita no
+   app do banco).
+3. No painel da Pluggy: sua Application → *Ir para Demo* → ⋮ → *Copiar Item ID* (um por banco).
+4. Cole os três em **Ajustes → Open Finance** (no computador ou no app) e use **Importar →
+   Buscar do banco**. Os lançamentos passam pela mesma revisão da importação de arquivo e
+   buscar de novo não duplica.
+
+Faça os passos 1 a 3 durante o período de teste da conta Pluggy (cerca de 15 dias): depois os
+bancos já conectados continuam funcionando, mas não dá para conectar outros. A importação de
+arquivo (OFX, CSV, PDF) continua sendo o caminho que funciona sempre.
+
 ### Sem internet (modo offline)
 
 Cada aparelho (computador ou celular) guarda uma cópia dos seus dados. Sem conexão com o
@@ -253,6 +272,7 @@ internal/finance/   regras de negócio puras: resumo do mês, dívidas, reserva,
 internal/money/     valores em centavos (int64) e formatação "R$ 1.234,56"
 internal/report/    exportação: .xlsx, CSV, PDF e backup .json, em Go puro (roda no aparelho)
 internal/importer/  importação de extratos OFX/CSV: leitura, categoria sugerida e duplicados
+internal/pluggy/    Open Finance pelo Meu Pluggy: contas e lançamentos viram um extrato
 internal/wasmapi/   ponte JSON entre o navegador e as regras
 internal/store/     SQLite: registros sincronizáveis, chat, sessões, configurações
 internal/llm/       interface Provider + Ollama, APIs compatíveis com OpenAI e Anthropic

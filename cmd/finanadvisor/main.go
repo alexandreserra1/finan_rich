@@ -53,6 +53,11 @@ func main() {
 			ai := str(a, 0)
 			return promise(func() string { return askapi.Check(context.Background(), ai) })
 		}),
+		// openFinance: contas e lançamentos do banco pela Pluggy (Open Finance).
+		"openFinance": js.FuncOf(func(_ js.Value, a []js.Value) any {
+			req := str(a, 0)
+			return promise(func() string { return askapi.OpenFinance(context.Background(), req) })
+		}),
 		// categorize: "IA sugere" da importação de extrato, sem computador.
 		"categorize": js.FuncOf(func(_ js.Value, a []js.Value) any {
 			req := str(a, 0)

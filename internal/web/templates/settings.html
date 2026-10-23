@@ -44,6 +44,30 @@
   <p class="small muted">Qual modelo usar no Ollama: com 16 GB de RAM ou mais, <code>qwen3.5:9b</code> (padrão, o que raciocina melhor); com 8 GB, troque para <code>qwen3.5:4b</code>; em PCs bem fracos, <code>qwen3.5:2b</code>. Quer o mais inteligente sem pesar no PC? Escolha <strong>Ollama Cloud</strong>.</p>
 </section>
 
+<section class="panel" id="open-finance">
+  <h2>Open Finance (seus bancos, sem digitar)</h2>
+  <p class="muted">Traga os lançamentos direto do banco, de graça, pelo <strong>Meu Pluggy</strong>. Cada pessoa usa a própria conta: os dados vão do banco para este computador, sem passar por servidor do finan_rich.</p>
+  <details{{if not .Pluggy.ClientID}} open{{end}}>
+    <summary>Como configurar (uma vez, uns 10 minutos)</summary>
+    <ol class="small">
+      <li>Crie uma conta grátis em <a href="https://dashboard.pluggy.ai" target="_blank" rel="noopener">dashboard.pluggy.ai</a>, crie uma <strong>Application</strong> e copie o <strong>Client ID</strong> e o <strong>Client Secret</strong>.</li>
+      <li>Em <a href="https://meu.pluggy.ai" target="_blank" rel="noopener">meu.pluggy.ai</a>, conecte seus bancos (é o Open Finance oficial, com autorização no app do banco).</li>
+      <li>No painel da Pluggy, abra a sua Application → <em>Ir para Demo</em> → menu ⋮ → <em>Copiar Item ID</em> (um por banco).</li>
+      <li>Cole tudo abaixo. Faça isso durante o período de teste da conta Pluggy (cerca de 15 dias): depois os bancos continuam conectados, mas não dá para incluir outros.</li>
+    </ol>
+  </details>
+  <form method="post" action="/configuracoes/openfinance" class="grid-form">
+    <label>Client ID <input name="client_id" value="{{.Pluggy.ClientID}}" autocomplete="off" spellcheck="false"></label>
+    <label>Client Secret <input type="password" name="client_secret" autocomplete="off" placeholder="{{if .Pluggy.HasSecret}}salvo (deixe em branco para manter){{end}}"></label>
+    <label class="wide">Item IDs (um por linha) <textarea name="items" rows="2" spellcheck="false">{{.Pluggy.Items}}</textarea></label>
+    <div class="form-actions">
+      <button type="submit">Salvar</button>
+      {{if .Pluggy.ClientID}}<button type="submit" name="acao" value="apagar" class="secondary">Apagar credenciais</button>{{end}}
+    </div>
+  </form>
+  <p class="small muted">Depois, em <a href="/importar">Importar extrato</a>, toque em <strong>Buscar do banco</strong>. O Client Secret fica só neste computador e nunca aparece de novo nesta tela.</p>
+</section>
+
 <section class="panel" id="acesso">
   <h2>Acesso pelo celular</h2>
   {{if .EnvPassword}}
@@ -180,7 +204,7 @@
     <a class="button" href="/exportar">Exportar (Excel, CSV, PDF) e backup</a>
     <a class="button secondary-link" href="/configuracoes/backup.db">Baixar o banco completo (.db)</a>
   </div>
-  <p class="small muted">O banco completo inclui também a configuração da IA e a conversa com o consultor. Para restaurá-lo, feche o finan_rich e troque o arquivo <code>finan.db</code> da pasta de dados por ele.</p>
+  <p class="small muted">O banco completo inclui também a configuração da IA (com a chave), as credenciais do Open Finance e a conversa com o consultor: guarde em lugar seguro. Para restaurá-lo, feche o finan_rich e troque o arquivo <code>finan.db</code> da pasta de dados por ele.</p>
 </section>
 {{end}}
 

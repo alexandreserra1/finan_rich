@@ -177,3 +177,11 @@ func TestAccountsAndInstallments(t *testing.T) {
 		t.Errorf("patrimônio: %+v", nw)
 	}
 }
+
+func TestImportPreviewStatement(t *testing.T) {
+	st := `{"Format":"pluggy","Account":"pluggy:a1","Rows":[{"Date":"2026-10-06","Description":"Mercado","AmountCents":-1000,"FITID":"t1"}]}`
+	v, errMsg := decode(t, ImportPreviewStatement(ledger, st, ""))
+	if errMsg != "" || v["account"] != "pluggy:a1" || len(v["items"].([]any)) != 1 {
+		t.Errorf("prévia = %v %q", v, errMsg)
+	}
+}

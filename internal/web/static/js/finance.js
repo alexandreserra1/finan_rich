@@ -38,6 +38,8 @@ export const exportFile = (ledger, options) => unwrap(window.finan.export(JSON.s
 export const importPreview = (ledger, base64, options) => unwrap(window.finan.importPreview(JSON.stringify(ledger), base64, JSON.stringify(options || {})));
 // importPreviewText faz o mesmo com o texto de uma fatura em PDF.
 export const importPreviewText = (ledger, text, options, day) => unwrap(window.finan.importPreviewText(JSON.stringify(ledger), text, JSON.stringify(options || {}), day));
+// importPreviewStatement faz o mesmo com um extrato já pronto (Open Finance).
+export const importPreviewStatement = (ledger, statement, options) => unwrap(window.finan.importPreviewStatement(JSON.stringify(ledger), JSON.stringify(statement), JSON.stringify(options || {})));
 // readBackup confere um backup (.json) e devolve [{ type, record }] já validados.
 export const readBackup = (text) => unwrap(window.finan.readBackup(text));
 // Metas, recorrências e alertas dependem do dia de hoje (do aparelho).

@@ -4,6 +4,7 @@ import * as device from "../device.js";
 import * as finance from "../finance.js";
 import * as cloud from "../cloud-ai.js";
 import * as local from "../local-ai.js";
+import * as openFinance from "../openfinance.js";
 import * as lock from "../lock.js";
 import { resetChat } from "./advisor.js";
 import * as sync from "../sync.js";
@@ -110,6 +111,8 @@ export function render({ server, params, ledger }) {
 
     ${localSection()}
 
+    ${openFinanceSection()}
+
     ${!server ? html`<section class="panel" id="sozinho">
       <h2>Sem computador?</h2>
       ${ledger.categories.length
@@ -157,6 +160,7 @@ export function bind(root, ctx) {
   });
   bindCloud(root, ctx);
   bindLocal(root, ctx);
+  bindOpenFinance(root, ctx);
   bindLock(root, ctx);
   root.querySelector('[data-action="solo"]')?.addEventListener("click", async () => {
     try {
@@ -209,6 +213,8 @@ export function bind(root, ctx) {
     await db.wipe();
     lockState = null; // o bloqueio também sai
     localState = null; // e a escolha da IA dentro do celular (o modelo baixado continua)
+    await openFinance.forget();
+    ofState = undefined;
     await ctx.refresh("Dados deste celular apagados.");
   });
 }
@@ -329,6 +335,70 @@ function bindLock(root, ctx) {
     } catch (err) {
       ctx.error(err);
     }
+  });
+}
+
+// ---------- Open Finance (Meu Pluggy) ----------
+
+let ofState; // undefined = ainda carregando; null = não configurado; { clientId, itemIds }
+
+function openFinanceSection() {
+  if (ofState === undefined) return html`<section id="open-finance" hidden></section>`;
+  const c = ofState || {};
+  return html`<section class="panel" id="open-finance">
+    <h2>Open Finance (seus bancos, sem digitar)</h2>
+    <p class="small muted">Os lançamentos vêm direto do banco, de graça, pelo Meu Pluggy, com a sua própria conta: vão do banco para este celular sem passar por servidor do finan_rich. Depois, use <a href="/importar">Importar → Buscar do banco</a>.</p>
+    <details ${ofState ? "" : "open"}><summary>Como configurar (uma vez)</summary>
+      <ol class="small">
+        <li>Crie uma conta grátis em dashboard.pluggy.ai, crie uma <strong>Application</strong> e copie o <strong>Client ID</strong> e o <strong>Client Secret</strong>.</li>
+        <li>Em meu.pluggy.ai, conecte seus bancos (Open Finance oficial, autorizado no app do banco).</li>
+        <li>No painel da Pluggy: sua Application → <em>Ir para Demo</em> → ⋮ → <em>Copiar Item ID</em> (um por banco).</li>
+        <li>Faça isso durante o teste da conta Pluggy (cerca de 15 dias): depois os bancos continuam, mas não dá para incluir outros.</li>
+      </ol>
+    </details>
+    <form data-form="open-finance" class="grid-form">
+      <label>Client ID <input name="client_id" value="${c.clientId || ""}" autocomplete="off" spellcheck="false" required></label>
+      <label>Client Secret <input type="password" name="client_secret" autocomplete="off" placeholder="${ofState ? "salvo (deixe em branco para manter)" : ""}"></label>
+      <label class="wide">Item IDs (um por linha) <textarea name="items" rows="2" spellcheck="false" required>${(c.itemIds || []).join("\n")}</textarea></label>
+      <div class="form-actions">
+        <button type="submit">Salvar</button>
+        ${ofState ? html`<button type="button" class="secondary" data-action="of-forget">Apagar credenciais</button>` : ""}
+      </div>
+    </form>
+    <p class="small muted">O Client Secret fica no cofre do sistema (o mesmo da digital).</p>
+  </section>`;
+}
+
+function bindOpenFinance(root, ctx) {
+  const redraw = () => {
+    const section = root.querySelector("#open-finance");
+    if (!section) return;
+    section.outerHTML = toString(openFinanceSection());
+    bindOpenFinance(root, ctx);
+  };
+  if (ofState === undefined) {
+    openFinance.config().then((c) => { ofState = c; redraw(); });
+    return;
+  }
+  root.querySelector('[data-form="open-finance"]')?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = e.target.elements;
+    const itemIds = f.items.value.split(/[\s,;]+/).filter(Boolean);
+    try {
+      if (itemIds.some((id) => !/^[0-9A-Za-z-]{1,64}$/.test(id))) throw new Error("Item ID inválido: copie do painel da Pluggy (Ir para Demo → Copiar Item ID)");
+      await openFinance.save({ clientId: f.client_id.value, clientSecret: f.client_secret.value, itemIds });
+      ofState = await openFinance.config();
+      redraw();
+      ctx.flash("Open Finance salvo. Use Importar → Buscar do banco.");
+    } catch (err) {
+      ctx.error(err);
+    }
+  });
+  root.querySelector('[data-action="of-forget"]')?.addEventListener("click", async () => {
+    if (!confirm("Apagar as credenciais do Open Finance deste celular?")) return;
+    await openFinance.forget();
+    ofState = null;
+    redraw();
   });
 }
 

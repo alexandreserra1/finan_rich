@@ -482,6 +482,51 @@ try {
   await desk.evaluate(() => window.finanSync());
   ok((await serverRecords()).filter((r) => r.description === "Cinema" && !r.deleted).length === 1, "no computador, o Adicionar da proposta também lança");
 
+  // Open Finance no app sem computador: o Client Secret vai para o cofre do
+  // sistema (falso aqui) e a busca sai do próprio celular direto para a Pluggy.
+  const ofCtx = await browser.newContext({ ...devices["Pixel 7"] });
+  await ofCtx.addInitScript(() => {
+    // O cofre de verdade sobrevive à troca de tela; o falso guarda no localStorage.
+    const load = () => JSON.parse(localStorage.getItem("cofre-falso") || "{}");
+    const put = (s) => localStorage.setItem("cofre-falso", JSON.stringify(s));
+    window.__vault = () => load();
+    window.Capacitor = { Plugins: { NativeBiometric: {
+      setData: async ({ key, value }) => put({ ...load(), [key]: value }),
+      getData: async ({ key }) => { const s = load(); if (!(key in s)) throw new Error("vazio"); return { value: s[key] }; },
+      deleteData: async ({ key }) => { const s = load(); delete s[key]; put(s); },
+    } } };
+  });
+  const pluggyAuth = [];
+  await ofCtx.route("https://api.pluggy.ai/**", (route) => {
+    const req = route.request();
+    const headers = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Content-Type": "application/json" };
+    if (req.method() === "OPTIONS") return route.fulfill({ status: 204, headers });
+    const url = new URL(req.url());
+    if (url.pathname === "/auth") { pluggyAuth.push(req.postDataJSON()); return route.fulfill({ headers, body: '{"apiKey":"k"}' }); }
+    if (url.pathname === "/accounts") return route.fulfill({ headers, body: '{"results":[{"id":"c1","type":"CREDIT","name":"Cartão","marketingName":"Nubank","number":"4321"}]}' });
+    return route.fulfill({ headers, body: JSON.stringify({ next: null, results: [{ id: "n1", description: "Padaria do Zé", amount: 18.9, date: `${url.searchParams.get("dateFrom")}T09:00:00.000Z`, type: "DEBIT", status: "POSTED" }] }) });
+  });
+  const of = await ofCtx.newPage();
+  of.on("pageerror", (e) => errors.push(e.message));
+  await of.goto(`${APP}/configuracoes`);
+  await of.click("[data-action=solo]");
+  await of.waitForSelector("form[data-form=transaction]", { state: "attached", timeout: 20000 });
+  await of.goto(`${APP}/configuracoes`);
+  await of.waitForSelector("form[data-form=open-finance]");
+  await of.fill("form[data-form=open-finance] input[name=client_id]", "id-do-app");
+  await of.fill("form[data-form=open-finance] input[name=client_secret]", "segredo-do-app");
+  await of.fill("form[data-form=open-finance] textarea[name=items]", "item-9");
+  await of.click("form[data-form=open-finance] button[type=submit]");
+  await of.waitForSelector("text=Open Finance salvo");
+  const saved = await of.evaluate(async () => [window.__vault()["pluggy-secret"], JSON.stringify(await (await import("/static/js/db.js")).getMeta("pluggy", null))]);
+  ok(saved[0] === "segredo-do-app" && !saved[1].includes("segredo"), "Client Secret no cofre do sistema, não no banco do app");
+  await of.goto(`${APP}/importar`);
+  await of.click("form[data-form=openfinance] button[type=submit]");
+  await of.click("[data-bank='0']", { timeout: 30000 });
+  await of.waitForSelector(".import-table input[value='Padaria do Zé']");
+  ok(pluggyAuth[0]?.clientSecret === "segredo-do-app" && (await of.textContent(".import-table")).includes("R$ 18,90"), "no app, a busca vai do celular direto para a Pluggy");
+  await ofCtx.close();
+
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);
 } catch (err) {
   ok(false, err.message);

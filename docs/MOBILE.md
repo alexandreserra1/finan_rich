@@ -192,6 +192,13 @@ A versão do app fica em `mobile/android/app/version.properties`: o workflow de 
 - **Lembretes de vencimento**: `@capacitor/local-notifications` agenda, para cada dívida com dia
   de vencimento, um aviso mensal 2 dias antes, às 9h. É o próprio Android/iOS que avisa,
   então funciona sem internet. Liga e desliga em Ajustes do app (`js/native.js`).
+- **Open Finance** (Ajustes do app → *Open Finance*): lançamentos direto do banco pelo Meu
+  Pluggy, com as credenciais da própria pessoa. O Client ID e os Item IDs ficam no banco do
+  app (meta `pluggy`); o Client Secret, no cofre do sistema (`pluggy-secret`, o mesmo plugin
+  da chave da IA). A busca roda no `advisor.wasm` (`askapi.OpenFinance` → `internal/pluggy`) e
+  sai do celular direto para `api.pluggy.ai` (CapacitorHttp, sem CORS). Sem credenciais no
+  app, mas pareado, quem busca é o computador (`/api/openfinance`). Os lançamentos passam pela
+  revisão da importação e caem na conta escolhida.
 - **Consultor dentro do app**: `js/pages/advisor.js` usa `GET/POST /api/chat` com o token do
   aparelho; a resposta vem em SSE (no app, chega inteira ao final). Respostas podem ser
   salvas como nota.

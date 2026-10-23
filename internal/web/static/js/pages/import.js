@@ -7,14 +7,15 @@ import * as finance from "../finance.js";
 import * as sync from "../sync.js";
 import { endpoint } from "../device.js";
 import { isPDF, pdfText } from "../pdftext.js";
-import { BUCKETS, html, today } from "../ui.js";
+import * as openFinance from "../openfinance.js";
+import { BUCKETS, html, shiftMonth, today } from "../ui.js";
 import { pageHead } from "./dashboard.js";
 
 export const needsData = false;
 
 // O extrato em revisão fica aqui (e não na tela): a tela é redesenhada quando
 // chegam dados da sincronização, e a revisão não pode se perder.
-let state = null; // { fileName, base64 ou text (PDF), preview, aiMessage, accountId }
+let state = null; // { fileName, base64, text (PDF) ou statement (Open Finance), preview, aiMessage, accountId } ou { bank: [{ name, statement }] }
 
 const liveAccounts = (ledger) => ledger.accounts.filter((a) => !a.deleted).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
 
@@ -31,6 +32,7 @@ async function guessAccount(ledger, preview) {
 // buildPreview lê o arquivo guardado no estado (OFX/CSV em base64, ou o texto
 // já extraído do PDF) com as opções da tela.
 function buildPreview(ledger, s, options) {
+  if (s.statement) return finance.importPreviewStatement(ledger, s.statement, options);
   return s.text != null
     ? finance.importPreviewText(ledger, s.text, options, today())
     : finance.importPreview(ledger, s.base64, options);
@@ -55,6 +57,7 @@ function categoryOptions(ledger, kind, selected) {
 
 export function render({ ledger }) {
   if (!state) return renderUpload();
+  if (state.bank) return renderBank();
   const { preview } = state;
   const items = preview.items;
   const selected = items.filter((i) => i.selected);
@@ -104,9 +107,33 @@ export function render({ ledger }) {
     </section>`;
 }
 
+// renderBank: as contas que vieram do Open Finance; escolhe uma para revisar.
+function renderBank() {
+  return html`
+    ${pageHead("Importar extrato")}
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Do banco (Open Finance)</h2>
+        <button type="button" class="secondary" data-action="cancel">Voltar</button>
+      </div>
+      ${state.bank.length
+        ? html`<p class="muted">Escolha a conta ou o cartão para revisar os lançamentos:</p>
+          <div class="bank-accounts">${state.bank.map((a, i) => html`<button type="button" class="secondary" data-bank="${i}">${a.name} <small class="muted">${a.statement.Rows?.length || 0} lançamentos</small></button>`)}</div>`
+        : html`<p class="empty">Nenhuma conta veio da Pluggy. Confira os Item IDs em Ajustes.</p>`}
+    </section>`;
+}
+
 function renderUpload() {
   return html`
     ${pageHead("Importar extrato")}
+    <section class="panel">
+      <h2>Direto do banco</h2>
+      <p class="muted">Com o Open Finance configurado em Ajustes (Meu Pluggy, grátis), os lançamentos vêm do banco sem arquivo.</p>
+      <form data-form="openfinance" class="extra-form">
+        <label>Desde <input type="date" name="from" value="${shiftMonth(today().slice(0, 7), -1)}-01" required></label>
+        <button type="submit">Buscar do banco</button>
+      </form>
+    </section>
     <section class="panel">
       <h2>Traga os lançamentos do banco</h2>
       <p class="muted">Exporte o extrato da conta ou a fatura do cartão no app ou site do banco e escolha o arquivo aqui. O finan_rich sugere a categoria de cada lançamento, aprende com as suas correções e avisa o que já foi importado. O arquivo é lido neste aparelho e não vai para a internet.</p>
@@ -148,7 +175,37 @@ export function bind(root, ctx) {
       ctx.error(err);
     }
   });
+  root.querySelector('[data-form="openfinance"]')?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const button = e.target.querySelector("button");
+    button.disabled = true;
+    button.textContent = "Buscando no banco…";
+    try {
+      state = { bank: await openFinance.fetchAccounts(e.target.elements.from.value) };
+      rerender();
+    } catch (err) {
+      button.disabled = false;
+      button.textContent = "Buscar do banco";
+      ctx.error(err);
+    }
+  });
   if (!state) return;
+  if (state.bank) {
+    root.querySelector('[data-action="cancel"]').addEventListener("click", () => { state = null; rerender(); });
+    root.querySelectorAll("[data-bank]").forEach((b) => b.addEventListener("click", async () => {
+      const { name, statement } = state.bank[Number(b.dataset.bank)];
+      try {
+        const next = { fileName: name, statement, aiMessage: "" };
+        next.preview = buildPreview(ctx.ledger, next, {});
+        next.accountId = await guessAccount(ctx.ledger, next.preview);
+        state = next;
+        rerender();
+      } catch (err) {
+        ctx.error(err);
+      }
+    }));
+    return;
+  }
   const items = state.preview.items;
 
   root.querySelector('[data-action="cancel"]').addEventListener("click", () => { state = null; rerender(); });

@@ -117,6 +117,26 @@ func ImportPreview(ledgerJSON, fileBase64, optionsJSON string) string {
 	return reply(importer.Build(l, st, o), nil)
 }
 
+// ImportPreviewStatement faz a revisão de um extrato que já veio pronto (Open
+// Finance pela Pluggy: internal/pluggy), em vez de um arquivo.
+func ImportPreviewStatement(ledgerJSON, statementJSON, optionsJSON string) string {
+	var l domain.Ledger
+	var st importer.Statement
+	var o importer.Options
+	if err := json.Unmarshal([]byte(ledgerJSON), &l); err != nil {
+		return reply(nil, err)
+	}
+	if err := json.Unmarshal([]byte(statementJSON), &st); err != nil {
+		return reply(nil, err)
+	}
+	if optionsJSON != "" {
+		if err := json.Unmarshal([]byte(optionsJSON), &o); err != nil {
+			return reply(nil, err)
+		}
+	}
+	return reply(importer.Build(l, st, o), nil)
+}
+
 // planInput lê o livro-caixa e a data de hoje do aparelho ("2026-10-15").
 func planInput(ledgerJSON, today string) (domain.Ledger, time.Time, error) {
 	var l domain.Ledger
