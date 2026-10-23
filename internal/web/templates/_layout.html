@@ -28,18 +28,13 @@
   </div>
 </header>
 <nav class="tabs" aria-label="Menu principal">
-  <span class="nav-group" aria-hidden="true">Dinheiro</span>
   <a href="/" {{if eq .Page "dashboard"}}aria-current="page"{{end}}>{{template "icon" "home"}}<span>Painel</span></a>
   <a href="/lancamentos" aria-label="Lançamentos (Extrato)" {{if eq .Page "transactions"}}aria-current="page"{{end}}>{{template "icon" "list"}}<span class="tab-long">Lançamentos</span><span class="tab-short" aria-hidden="true">Extrato</span></a>
-  <a href="/analise" {{if eq .Page "insights"}}aria-current="page"{{end}}>{{template "icon" "chart"}}<span>Análise</span></a>
-  <span class="nav-group" aria-hidden="true">Planejamento</span>
-  <a href="/dividas" {{if eq .Page "debts"}}aria-current="page"{{end}}>{{template "icon" "card"}}<span>Dívidas</span></a>
   <a href="/contas" class="tab-extra" {{if eq .Page "accounts"}}aria-current="page"{{end}}><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 21h18"/></svg><span>Contas</span></a>
+  <a href="/dividas" {{if eq .Page "debts"}}aria-current="page"{{end}}>{{template "icon" "card"}}<span>Dívidas</span></a>
   <a href="/metas" class="tab-extra" {{if eq .Page "goals"}}aria-current="page"{{end}}>{{template "icon" "flag"}}<span>Metas</span></a>
-  <span class="nav-group" aria-hidden="true">Ferramentas</span>
-  <a href="/notas" class="tab-extra" {{if eq .Page "notes"}}aria-current="page"{{end}}>{{template "icon" "note"}}<span>Notas</span></a>
+  <a href="/analise" {{if eq .Page "insights"}}aria-current="page"{{end}}>{{template "icon" "chart"}}<span>Análise</span></a>
   <a href="/chat" {{if eq .Page "chat"}}aria-current="page"{{end}}>{{template "icon" "chat"}}<span class="tab-long">Consultor IA</span><span class="tab-short" aria-hidden="true">Consultor</span></a>
-  <a href="/categorias" class="tab-extra" {{if eq .Page "categories"}}aria-current="page"{{end}}>{{template "icon" "tag"}}<span>Categorias</span></a>
   <a href="/configuracoes" class="nav-end" {{if eq .Page "settings"}}aria-current="page"{{end}}>{{template "icon" "gear"}}<span>Ajustes</span></a>
 </nav>
 {{end}}

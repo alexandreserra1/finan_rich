@@ -2,7 +2,7 @@
 // guardado com as saídas lançadas na categoria da meta (ex.: "Reserva de
 // emergência"), e a tela diz quanto guardar por mês para chegar lá.
 import * as finance from "../finance.js";
-import { BUCKETS, centsInput, html, today } from "../ui.js";
+import { BUCKETS, centsInput, html, today, addPanel } from "../ui.js";
 import { pageHead } from "./dashboard.js";
 
 export function goalCards(views, m, { compact = false } = {}) {
@@ -31,8 +31,7 @@ export function render({ ledger, params }) {
   const cats = ledger.categories.filter((c) => !c.deleted && c.bucket !== "renda").sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   return html`
     ${pageHead("Metas")}
-    <section class="panel">
-      <h2>${editing ? "Editar meta" : "Nova meta"}</h2>
+    ${addPanel("goal", editing ? "Editar meta" : "+ Nova meta", html`
       <form data-form="goal" class="grid-form">
         <label class="wide">Nome <input name="name" required maxlength="80" value="${e.name || ""}" placeholder="Ex.: Reserva de emergência, Viagem, Trocar de carro"></label>
         <label class="half">Quanto quer juntar (R$) <input name="target" required inputmode="decimal" value="${editing ? centsInput(e.targetCents) : ""}" placeholder="10.000,00"></label>
@@ -49,8 +48,7 @@ export function render({ ledger, params }) {
           ${editing ? html`<a href="/metas">Cancelar</a>` : ""}
         </div>
       </form>
-      <p class="small muted">Com uma categoria escolhida, cada gasto lançado nela a partir de hoje conta como dinheiro guardado para a meta (ex.: transferência para a poupança na categoria "Reserva de emergência").</p>
-    </section>
+      <p class="small muted">Com uma categoria escolhida, cada gasto lançado nela a partir de hoje conta como dinheiro guardado para a meta (ex.: transferência para a poupança na categoria "Reserva de emergência").</p>`, !!editing || !views.length)}
     <section class="panel">
       <h2>Suas metas</h2>
       ${views.length ? goalCards(views, m) : html`<p class="empty">Nenhuma meta ainda. Comece pela reserva de emergência: 3 a 6 meses dos seus gastos.</p>`}

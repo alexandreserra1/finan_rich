@@ -86,7 +86,6 @@ code { font-size: .88em; background: var(--surface-2); border: 1px solid var(--b
 }
 .tabs a:hover { background: var(--surface-2); color: var(--text); }
 .tabs a[aria-current="page"] { background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; }
-.nav-group { display: none; }
 .icon { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 
 main {
@@ -107,8 +106,6 @@ main {
   body.has-nav > .tabs a[aria-current="page"]::before {
     content: ""; position: absolute; left: -.75rem; top: .55rem; bottom: .55rem; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent);
   }
-  .nav-group { display: block; padding: 1rem .8rem .35rem; font-size: .7rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-  .nav-group:first-child { padding-top: .5rem; }
   .tabs .nav-end { margin-top: auto; }
   body.has-nav > main { width: 100%; padding: 1.75rem 2rem 3.5rem; margin: 0; max-width: 1120px; }
 }
@@ -577,3 +574,30 @@ html.app-locked body > :not(.app-lock) { visibility: hidden; }
 .app-lock .login form { margin-top: 0; }
 .app-lock h2 { margin: 0; }
 .app-lock .lock-msg { margin: 0; color: var(--neg); min-height: 1.5em; }
+
+/* Cadastro recolhido atrás de "+ Novo…" (addPanel em ui.js): a lista vem primeiro. */
+details.add { margin-top: 0; }
+details.add > summary { list-style: none; margin: 0; color: var(--accent-strong); }
+details.add > summary::-webkit-details-marker { display: none; }
+details.add > summary h2 { display: inline; margin: 0; font-size: 1.05rem; color: inherit; }
+details.add[open] > summary { margin-bottom: 1rem; color: var(--text); }
+details.add:not([open]) { padding-block: .9rem; }
+.more-filters { margin: 0; }
+.more-filters > summary { margin-bottom: .5rem; }
+.more-filters > .grid-form { margin-top: .25rem; }
+td.num, .num { white-space: nowrap; }
+
+@media (max-width: 720px) {
+  /* Lançamentos no celular: uma linha curta por item (descrição e valor em cima;
+     categoria, data e apagar embaixo), em vez de um cartão alto com rótulos. */
+  .tx-list tbody { gap: .4rem; }
+  .tx-list tr { display: grid; grid-template-columns: 1fr auto auto; grid-template-areas: "desc desc val" "cat date act"; align-items: center; gap: .15rem .6rem; padding: .6rem .8rem; }
+  .tx-list td { padding: 0; display: block; }
+  .tx-list td[data-label]::before { content: none; }
+  .tx-list td:nth-child(1) { grid-area: date; color: var(--muted); font-size: .8rem; }
+  .tx-list td.primary { grid-area: desc; font-size: .95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tx-list td:nth-child(3) { grid-area: cat; min-width: 0; overflow: hidden; }
+  .tx-list td:nth-child(3) .tag { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: middle; }
+  .tx-list td.amount { grid-area: val; text-align: right; font-size: 1rem; font-weight: 600; }
+  .tx-list td.actions { grid-area: act; border: 0; margin: 0; padding: 0; width: auto; font-size: .8rem; }
+}

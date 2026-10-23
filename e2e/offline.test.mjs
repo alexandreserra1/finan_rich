@@ -54,6 +54,8 @@ const waitStatus = (page, status, timeout = 15000) =>
   page.waitForFunction((s) => document.getElementById("sync-status")?.dataset.status === s, status, { timeout });
 
 async function addTransaction(page, description, amount) {
+  // No celular o formulário fica recolhido atrás de "+ Novo lançamento".
+  await page.locator("details.add[data-add=transaction]:not([open]) > summary").click({ timeout: 1000 }).catch(() => {});
   await page.fill("input[name=description]", description);
   await page.fill("input[name=amount]", amount);
   await page.click("form[data-form=transaction] button[type=submit]");
@@ -79,7 +81,7 @@ try {
 
   // Online: baixa as categorias, lança, calcula o painel pelo WebAssembly.
   await page.goto(`${B}/lancamentos`);
-  await page.waitForSelector("form[data-form=transaction]", { timeout: 20000 });
+  await page.waitForSelector("form[data-form=transaction]", { state: "attached", timeout: 20000 });
   await page.selectOption("select[name=kind]", "entrada");
   await addTransaction(page, "Salário", "4.500");
   await addTransaction(page, "Aluguel", "1.400");

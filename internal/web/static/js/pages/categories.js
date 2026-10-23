@@ -1,6 +1,6 @@
 // Categorias e divisão do salário.
 import * as finance from "../finance.js";
-import { BUCKETS, SPENDING, centsInput, html } from "../ui.js";
+import { BUCKETS, SPENDING, centsInput, html, addPanel } from "../ui.js";
 import { pageHead } from "./dashboard.js";
 import { canDeleteCategory } from "../finance.js";
 
@@ -27,8 +27,7 @@ export function render({ ledger }) {
       </form>
     </section>
 
-    <section class="panel">
-      <h2>Nova categoria</h2>
+    ${addPanel("category", "+ Nova categoria", html`
       <form data-form="category" class="grid-form">
         <label>Nome <input name="name" required placeholder="Ex.: Pet"></label>
         <label>Grupo
@@ -36,8 +35,7 @@ export function render({ ledger }) {
         </label>
         <label>Orçamento por mês (R$) <input name="budget" inputmode="decimal" placeholder="opcional"></label>
         <button type="submit">Criar</button>
-      </form>
-    </section>
+      </form>`, false)}
 
     <section class="panel">
       <h2>Categorias</h2>

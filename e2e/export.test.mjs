@@ -50,7 +50,8 @@ try {
   await page.click("form[data-form=transaction] button[type=submit]");
   await page.waitForSelector("td:has-text('Mercado do mês')");
 
-  await page.click("nav.tabs a[href='/notas']");
+  await page.click("nav.tabs a[href='/configuracoes']"); // Notas fica em Ajustes
+  await page.click("a.link-card[href='/notas']");
   await page.waitForSelector("form[data-form=note]");
   await page.fill("input[name=title]", "Reserva de emergência");
   await page.fill("textarea[name=body]", "Juntar 6 meses de gastos.\nComeçar com R$ 300 por mês.");

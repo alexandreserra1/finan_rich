@@ -150,6 +150,8 @@ const waitStatus = (page, s, timeout = 15000) =>
   page.waitForFunction((s) => document.getElementById("sync-status")?.dataset.status === s, s, { timeout });
 
 async function addTransaction(page, description, amount) {
+  // No celular o formulário fica recolhido atrás de "+ Novo lançamento".
+  await page.locator("details.add[data-add=transaction]:not([open]) > summary").click({ timeout: 1000 }).catch(() => {});
   await page.fill("input[name=description]", description);
   await page.fill("input[name=amount]", amount);
   await page.click("form[data-form=transaction] button[type=submit]");
@@ -199,7 +201,7 @@ try {
   // Usar só no celular: cria as categorias no aparelho e já dá para lançar.
   await page.goto(`${APP}/configuracoes`);
   await page.click("[data-action=solo]");
-  await page.waitForSelector("form[data-form=transaction]", { timeout: 20000 });
+  await page.waitForSelector("form[data-form=transaction]", { state: "attached", timeout: 20000 });
   // Primeiro uso também só no celular: o Painel guia em vez de ficar vazio.
   await page.goto(`${APP}/`);
   await page.waitForSelector(".welcome:has-text('Passo 1 de 4')", { timeout: 20000 });
@@ -212,7 +214,7 @@ try {
   ok(solo.recurring.some((r) => r.amountCents === 300000 && r.categoryId === "padrao-salario") && solo.prefs.some((p) => p.id === "primeiro-uso"),
     "primeiro uso guiado funciona só no celular (salário recorrente salvo no aparelho)");
   await page.goto(`${APP}/lancamentos`);
-  await page.waitForSelector("form[data-form=transaction]", { timeout: 20000 });
+  await page.waitForSelector("form[data-form=transaction]", { state: "attached", timeout: 20000 });
   await addTransaction(page, "Feira (só celular)", "40");
   ok(true, "sem computador, o app funciona só no celular (categorias criadas no aparelho)");
 
@@ -336,7 +338,7 @@ try {
 
   // Dados vão e voltam com o token do aparelho.
   await page.click("nav.tabs a[href='/lancamentos']");
-  await page.waitForSelector("form[data-form=transaction]", { timeout: 20000 });
+  await page.waitForSelector("form[data-form=transaction]", { state: "attached", timeout: 20000 });
   await addTransaction(page, "Mercado (app)", "250");
   await page.evaluate(() => window.finanSync());
   ok((await serverRecords()).some((r) => r.description === "Mercado (app)" && r.amountCents === 25000), "lançamento do app chegou ao computador");

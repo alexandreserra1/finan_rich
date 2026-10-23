@@ -2,7 +2,7 @@
 // cartão (pelo dia de fechamento) e o patrimônio mês a mês. As contas são de
 // finance.Accounts e finance.NetWorth (Go, pelo WebAssembly); aqui só desenha.
 import * as finance from "../finance.js";
-import { barPct, centsInput, html, today } from "../ui.js";
+import { barPct, centsInput, html, today, addPanel } from "../ui.js";
 import { pageHead } from "./dashboard.js";
 
 export const ACCOUNT_KINDS = { corrente: "Conta corrente", poupanca: "Poupança", carteira: "Carteira", cartao: "Cartão de crédito" };
@@ -70,8 +70,7 @@ export function render({ ledger, params }) {
       <div class="card"><span class="muted">Em aberto nos cartões</span><strong class="${v.cardsOpenCents > 0 ? "neg" : ""}">${m(v.cardsOpenCents)}</strong></div>
     </section>
 
-    <section class="panel">
-      <h2>${editing ? "Editar conta" : "Nova conta ou cartão"}</h2>
+    ${addPanel("account", editing ? "Editar conta" : "+ Nova conta ou cartão", html`
       <form data-form="account" class="grid-form">
         <label class="wide">Nome <input name="name" required maxlength="60" value="${e.name || ""}" placeholder="Ex.: Nubank, Itaú, Carteira, Cartão Nubank"></label>
         <label>Tipo
@@ -88,8 +87,7 @@ export function render({ ledger, params }) {
           ${editing ? html`<a href="/contas">Cancelar</a>` : ""}
         </div>
       </form>
-      <p class="small muted">Saldo = saldo inicial + entradas − saídas lançadas na conta. No cartão, a compra feita depois do fechamento cai na fatura do mês seguinte. Escolha a conta ao lançar.</p>
-    </section>
+      <p class="small muted">Saldo = saldo inicial + entradas − saídas lançadas na conta. No cartão, a compra feita depois do fechamento cai na fatura do mês seguinte. Escolha a conta ao lançar.</p>`, !!editing || !v.accounts.length)}
 
     <section class="panel">
       <h2>Suas contas</h2>

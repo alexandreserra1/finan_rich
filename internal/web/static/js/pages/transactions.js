@@ -1,6 +1,6 @@
 // Lançamentos do mês: formulário, lista e "copiar do mês anterior".
 import * as finance from "../finance.js";
-import { BUCKETS, html, newId, shiftMonth, today } from "../ui.js";
+import { BUCKETS, html, newId, shiftMonth, today, addPanel } from "../ui.js";
 import { pageHead, totalsCards } from "./dashboard.js";
 
 const ORDER = { renda: 0, necessidades: 1, desejos: 2, investimentos: 3 };
@@ -35,6 +35,9 @@ function filterPanel(params, month, cats, found) {
   return html`
     <form data-form="filter" class="grid-form filters" role="search">
       <label class="wide">Buscar <input type="search" name="busca" value="${value("busca")}" placeholder="Ex.: mercado, iFood, aluguel"></label>
+      <details class="wide more-filters" ${["categoria", "tipo", "min", "max", "todos"].some((k) => params.get(k)) || matchMedia("(min-width: 721px)").matches ? "open" : ""}>
+      <summary>Mais filtros</summary>
+      <div class="grid-form">
       <label>Categoria
         <select name="categoria">
           <option value="">Todas</option>
@@ -51,6 +54,8 @@ function filterPanel(params, month, cats, found) {
       <label class="half">Valor de (R$) <input name="min" inputmode="decimal" value="${value("min")}" placeholder="0,00"></label>
       <label class="half">até (R$) <input name="max" inputmode="decimal" value="${value("max")}" placeholder="sem limite"></label>
       <label class="check"><input type="checkbox" name="todos" value="1" ${params.get("todos") ? "checked" : ""}> Em todos os meses</label>
+      </div>
+      </details>
       <div class="form-actions">
         <button type="submit" class="secondary">Buscar</button>
         ${active ? html`<a href="/lancamentos?mes=${month}">Limpar</a>` : ""}
@@ -78,8 +83,7 @@ export function render({ ledger, month, params }) {
 
   return html`
     ${pageHead("Lançamentos", month)}
-    <section class="panel">
-      <h2>Novo lançamento</h2>
+    ${addPanel("transaction", "+ Novo lançamento", html`
       <form data-form="transaction" class="grid-form">
         <label>Tipo
           <select name="kind">
@@ -99,8 +103,7 @@ export function render({ ledger, month, params }) {
         <label class="half">Parcelas <input type="number" name="installments" min="1" max="72" value="1" title="Compra parcelada: o valor é o total, dividido em parcelas mensais"></label>
         <label class="check repeat"><input type="checkbox" name="repeat"> Repetir todo mês</label>
         <button type="submit">Adicionar</button>
-      </form>
-    </section>
+      </form>`, !txs.length && !filtering)}
 
     ${totalsCards(v, false)}
 
@@ -114,7 +117,7 @@ export function render({ ledger, month, params }) {
       </div>
       ${filterPanel(params, month, cats, found)}
       ${txs.length ? html`
-        <div class="table-wrap"><table class="cards-mobile">
+        <div class="table-wrap"><table class="cards-mobile tx-list">
           <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th class="num">Valor</th><th></th></tr></thead>
           <tbody>
             ${txs.map((t) => {

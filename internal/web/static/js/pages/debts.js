@@ -1,6 +1,6 @@
 // Dívidas: cadastro, simulação pagando o mínimo e ordem de pagamento.
 import * as finance from "../finance.js";
-import { centsInput, html, ratePct } from "../ui.js";
+import { addPanel, centsInput, html, ratePct } from "../ui.js";
 import { pageHead } from "./dashboard.js";
 
 export function render({ ledger, params }) {
@@ -17,8 +17,7 @@ export function render({ ledger, params }) {
       <div class="card"><span class="muted">Juros gerados / mês</span><strong class="neg">${m(v.monthlyInterestCents)}</strong></div>
     </section>
 
-    <section class="panel">
-      <h2>${editing ? "Editar dívida" : "Nova dívida"}</h2>
+    ${addPanel("debt", editing ? "Editar dívida" : "+ Nova dívida", html`
       <form data-form="debt" class="grid-form">
         <label>Nome <input name="name" required value="${e.name || ""}" placeholder="Ex.: Cartão Nubank"></label>
         <label>Credor <input name="creditor" value="${e.creditor || ""}" placeholder="Banco/loja"></label>
@@ -30,8 +29,7 @@ export function render({ ledger, params }) {
           <button type="submit">Salvar</button>
           ${editing ? html`<a href="/dividas">Cancelar</a>` : ""}
         </div>
-      </form>
-    </section>
+      </form>`, !!editing || !v.debts.length)}
 
     <section class="panel">
       <h2>Suas dívidas</h2>

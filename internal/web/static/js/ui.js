@@ -18,6 +18,18 @@ export function html(strings, ...values) {
 }
 export const toString = (h) => h[RAW];
 
+// addPanel é o formulário de cadastro recolhido atrás de um botão "+ Novo…":
+// a lista vem primeiro. No computador (tela larga) já abre; aberto ou fechado,
+// continua assim quando a tela é redesenhada.
+const opened = new Map();
+document.addEventListener("toggle", (e) => {
+  if (e.target.matches?.("details.add")) opened.set(e.target.dataset.add, e.target.open);
+}, true);
+export function addPanel(key, title, body, open = false) {
+  const isOpen = open || (opened.get(key) ?? matchMedia("(min-width: 721px)").matches);
+  return html`<details class="panel add" data-add="${key}" ${isOpen ? "open" : ""}><summary><h2>${title}</h2></summary>${body}</details>`;
+}
+
 // newId cria um UUID. crypto.randomUUID só existe em https/localhost; pelo
 // Wi-Fi (http) usamos getRandomValues, que funciona em qualquer contexto.
 export function newId() {
