@@ -64,6 +64,12 @@ mudança, para a gente saber antes deles se a receita quebrou.
 3. Depois de aceito, o F-Droid confere as tags novas (`UpdateCheckMode: Tags`) e publica
    as versões seguintes sozinho.
 
+A versão do F-Droid sai **sem a IA dentro do celular**: o `wllama.wasm` vem compilado do npm, e o
+F-Droid só aceita o que ele mesmo compila. A receita apaga `node_modules/@wllama` depois do
+`npm ci` (e marca em `scandelete`); a cópia do `capacitor:copy:before` pula quando o pacote não
+existe, e o app esconde a opção. O workflow confere que o APK não leva o wllama. Para ter a IA no
+F-Droid um dia, a receita precisaria compilar o llama.cpp para WebAssembly (Emscripten).
+
 Observação: como o F-Droid assina com a chave deles, quem instalou pelo F-Droid não
 atualiza com o APK do GitHub (e vice-versa). Para unificar, dá para tornar o build
 reproduzível e o F-Droid passa a publicar o nosso APK (campo `Binaries:` da receita).

@@ -36,3 +36,5 @@ jobs:
           ./gradlew assembleRelease --no-daemon
           ls -la app/build/outputs/apk/release/
           test -f app/build/outputs/apk/release/app-release-unsigned.apk
+          # O F-Droid não aceita binário pronto: o wllama.wasm (npm) fica de fora.
+          ! unzip -l app/build/outputs/apk/release/app-release-unsigned.apk | grep -q wllama

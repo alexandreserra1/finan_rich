@@ -67,7 +67,10 @@ Builds:
       - go run ./tools/mobilebuild mobile/www
       - cd mobile
       - npm ci --no-audit --no-fund
+      - rm -rf node_modules/@wllama
       - npx cap sync android
+    scandelete:
+      - mobile/node_modules/@wllama
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v[0-9]+\.[0-9]+\.[0-9]+$

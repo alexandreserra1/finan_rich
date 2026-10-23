@@ -186,7 +186,8 @@ A versão do app fica em `mobile/android/app/version.properties`: o workflow de 
     threads) e leva minutos por resposta; a tela avisa quando o celular não tem WebGPU.
   - **Empacotamento**: `@wllama/wllama` é dependência do `mobile/package.json`; o script
     `capacitor:copy:before` copia o JS e o `wllama.wasm` (~8,7 MB, ~2,4 MB comprimido no APK)
-    para `www/static/vendor/wllama` em todo `cap sync`. O programa do computador não leva.
+    para `www/static/vendor/wllama` em todo `cap sync`. O programa do computador não leva, e a
+    versão do F-Droid também não (só aceita o que compila; veja DISTRIBUICAO.md).
   - A política de segurança do app libera `worker-src blob:`, porque o wllama cria o worker
     dele a partir de um blob.
 
