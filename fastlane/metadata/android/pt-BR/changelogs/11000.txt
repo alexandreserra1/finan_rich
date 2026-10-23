@@ -1,3 +1,4 @@
 • Dívidas: diagnóstico feito com os seus números, sem IA: a dívida mais cara, onde dá para guardar e quantos meses antes você sai com cada corte.
 • Gráficos novos e mais bonitos em todas as telas, com o valor ao passar o dedo.
 • Visual com mais cor, no tema claro e no escuro.
+• Consultor com a sua chave do Groq, Gemini ou OpenRouter volta a funcionar (os modelos antigos foram desligados).
