@@ -2,42 +2,31 @@
 // gastar por dia, onde o dinheiro foi e onde dá para economizar. As contas são
 // de finance.Insights (Go, pelo WebAssembly); aqui só desenha.
 import * as finance from "../finance.js";
-import { barPct, html, raw, today } from "../ui.js";
+import { barPct, html, today } from "../ui.js";
+import { chart } from "../charts.js";
 import { budgetBars } from "./dashboard.js";
 import { netWorthPanel } from "./accounts.js";
 
-const W = 600, H = 220, PAD = { l: 8, r: 8, t: 12, b: 24 };
-
-// paceChart desenha o gasto variável acumulado: este mês (linha cheia), o mês
-// passado (tracejada, cinza) e a projeção até o fim do mês (pontilhada).
+// paceChart desenha o gasto variável acumulado: este mês (área cheia), o mês
+// passado (tracejada) e a projeção até o fim do mês (pontilhada).
 function paceChart(v) {
   const m = finance.money;
   const days = Math.max(v.daysInMonth, v.lastPace.length);
   const projected = v.day ? Math.round((v.variableCents * v.daysInMonth) / v.day) : 0;
-  const top = Math.max(1, projected, ...v.pace, ...v.lastPace);
-  const x = (d) => PAD.l + ((d - 1) / Math.max(1, days - 1)) * (W - PAD.l - PAD.r);
-  const y = (c) => H - PAD.b - (c / top) * (H - PAD.t - PAD.b);
-  const path = (s) => s.map((c, i) => `${i ? "L" : "M"}${x(i + 1).toFixed(1)},${y(c).toFixed(1)}`).join("");
-  const ticks = [1, 10, 20, days].map((d) => `<text x="${x(d)}" y="${H - 6}" text-anchor="${d === 1 ? "start" : d === days ? "end" : "middle"}">${d}</text>`).join("");
-  const svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gasto variável acumulado: ${m(v.variableCents)} até o dia ${v.day}; no mês passado, ${m(v.lastMonthSameDayCents)} até o mesmo dia.">
-    <line class="axis" x1="${PAD.l}" x2="${W - PAD.r}" y1="${H - PAD.b}" y2="${H - PAD.b}"/>
-    <g class="ticks">${ticks}</g>
-    ${v.lastPace.length ? `<path class="line last" d="${path(v.lastPace)}"/>` : ""}
-    <path class="line proj" d="M${x(v.day)},${y(v.variableCents)}L${x(v.daysInMonth)},${y(projected)}"/>
-    <path class="line now" d="${path(v.pace)}"/>
-    <circle class="dot now" cx="${x(v.day)}" cy="${y(v.variableCents)}" r="4"/>
-    <line class="cross" y1="${PAD.t}" y2="${H - PAD.b}" x1="-10" x2="-10"/>
-  </svg>`;
+  const span = Math.max(1, v.daysInMonth - v.day);
+  const proj = Array.from({ length: days }, (_, i) => (i + 1 < v.day || i + 1 > v.daysInMonth ? null
+    : Math.round(v.variableCents + ((projected - v.variableCents) * (i + 1 - v.day)) / span)));
   return html`
-    <div class="pace-chart" data-days="${days}">
-      <p class="legend">
-        <span><span class="key now"></span>Este mês</span>
-        <span><span class="key last"></span>Mês passado</span>
-        <span><span class="key proj"></span>Projeção</span>
-      </p>
-      ${raw(svg)}
-      <p class="chart-tip small" aria-live="polite" hidden></p>
-    </div>
+    <div class="pace-chart">${chart({
+      key: "ritmo", type: "line", height: 260,
+      labels: Array.from({ length: days }, (_, i) => String(i + 1)),
+      tip: (i) => `Dia ${i + 1}`,
+      series: [
+        { name: "Este mês", data: v.pace, color: "accent", fill: true },
+        ...(v.lastPace.length ? [{ name: "Mês passado", data: v.lastPace, color: "muted", dash: true }] : []),
+        { name: "Projeção", data: proj, color: "warn", dots: true },
+      ],
+    }, `Gasto variável acumulado: ${m(v.variableCents)} até o dia ${v.day}; no mês passado, ${m(v.lastMonthSameDayCents)} até o mesmo dia.`)}</div>
     <details><summary>Ver em tabela</summary>
       <div class="table-wrap"><table>
         <thead><tr><th>Dia</th><th class="num">Este mês</th><th class="num">Mês passado</th></tr></thead>
@@ -58,7 +47,6 @@ export function render({ ledger }) {
   const v = finance.insights(ledger, today());
   const m = finance.money;
   const maxPlace = v.places.length ? v.places[0].cents : 0;
-  const maxCat = v.categories.length ? v.categories[0].cents : 0;
   const vsLast = v.variableCents - v.lastMonthSameDayCents;
   return html`
     <div class="page-head"><h1>Análise</h1><p class="muted">${v.label} · dia ${v.day} de ${v.daysInMonth}</p></div>
@@ -113,13 +101,21 @@ export function render({ ledger }) {
     <section class="panel">
       <h2>Categorias contra a média</h2>
       <p class="small muted">A porcentagem compara com a média dos 3 meses anteriores.</p>
-      ${v.categories.length ? html`<ul class="hbars">
-        ${v.categories.map((c) => html`<li>
-          <span class="label">${c.name}</span>
-          <span class="track"><span class="fill b-${c.bucket}" style="width: ${barPct(c.cents, maxCat)}%"></span></span>
-          <span class="value">${m(c.cents)} ${diffBadge(c.diffPct, c.avg3Cents)}</span>
-        </li>`)}
-      </ul>` : html`<p class="empty">Nenhum gasto neste mês ainda.</p>`}
+      ${v.categories.length ? html`${chart({
+        key: "media", type: "bar", horizontal: true, height: 44 + v.categories.length * 40,
+        labels: v.categories.map((c) => c.name),
+        tip: (i) => v.categories[i].name + (v.categories[i].avg3Cents ? ` (${v.categories[i].diffPct > 0 ? "+" : ""}${v.categories[i].diffPct}% contra a média)` : ""),
+        series: [
+          { name: "Este mês", data: v.categories.map((c) => c.cents), color: "accent" },
+          { name: "Média de 3 meses", data: v.categories.map((c) => c.avg3Cents), color: "border-strong" },
+        ],
+      }, `Gastos por categoria neste mês contra a média dos 3 meses anteriores.`)}
+      <details><summary>Ver em tabela</summary>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Categoria</th><th class="num">Este mês</th><th class="num">Média</th><th class="num">Diferença</th></tr></thead>
+          <tbody>${v.categories.map((c) => html`<tr><td>${c.name}</td><td class="num">${m(c.cents)}</td><td class="num">${m(c.avg3Cents)}</td><td class="num">${diffBadge(c.diffPct, c.avg3Cents)}</td></tr>`)}</tbody>
+        </table></div>
+      </details>` : html`<p class="empty">Nenhum gasto neste mês ainda.</p>`}
     </section>
     </div>
 
@@ -139,28 +135,4 @@ export function render({ ledger }) {
     </section>` : ""}
     </div>
     ${netWorthPanel(ledger)}`;
-}
-
-// bind liga a dica do gráfico: passar o dedo ou o mouse mostra o dia.
-export function bind(root, ctx) {
-  const box = root.querySelector(".pace-chart");
-  if (!box) return;
-  const v = finance.insights(ctx.ledger, today());
-  const svg = box.querySelector("svg"), tip = box.querySelector(".chart-tip"), cross = box.querySelector(".cross");
-  const days = Number(box.dataset.days);
-  const show = (e) => {
-    const r = svg.getBoundingClientRect();
-    const fx = ((e.clientX - r.left) / r.width) * W;
-    const d = Math.min(days, Math.max(1, Math.round(((fx - PAD.l) / (W - PAD.l - PAD.r)) * (days - 1)) + 1));
-    const cx = PAD.l + ((d - 1) / Math.max(1, days - 1)) * (W - PAD.l - PAD.r);
-    cross.setAttribute("x1", cx);
-    cross.setAttribute("x2", cx);
-    const now = d <= v.pace.length ? finance.money(v.pace[d - 1]) : "—";
-    const last = d <= v.lastPace.length ? finance.money(v.lastPace[d - 1]) : "—";
-    tip.textContent = `Dia ${d}: este mês ${now} · mês passado ${last}`;
-    tip.hidden = false;
-  };
-  svg.addEventListener("pointermove", show);
-  svg.addEventListener("pointerdown", show);
-  svg.addEventListener("pointerleave", () => { tip.hidden = true; cross.setAttribute("x1", -10); cross.setAttribute("x2", -10); });
 }

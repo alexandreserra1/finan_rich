@@ -95,7 +95,7 @@ try {
   await page.goto(`${B}/analise`);
   await page.waitForSelector(".networth");
   ok((await page.textContent(".networth .chart-head")).includes("R$ 1.166,66"), "patrimônio = contas − cartão em aberto");
-  ok(await page.locator(".networth .yearchart .col").count() === 12, "patrimônio dos últimos 12 meses");
+  ok(await page.locator(".networth tbody tr").count() === 12 && await page.locator(".networth canvas").count() === 1, "patrimônio dos últimos 12 meses");
 
   // Importar extrato de uma conta: as linhas entram nela, e o próximo arquivo
   // da mesma conta (mesmo número no OFX) já vem com ela escolhida.

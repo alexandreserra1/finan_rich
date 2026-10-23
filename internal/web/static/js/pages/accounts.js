@@ -2,8 +2,9 @@
 // cartão (pelo dia de fechamento) e o patrimônio mês a mês. As contas são de
 // finance.Accounts e finance.NetWorth (Go, pelo WebAssembly); aqui só desenha.
 import * as finance from "../finance.js";
-import { barPct, centsInput, html, today, addPanel } from "../ui.js";
+import { centsInput, html, today, addPanel } from "../ui.js";
 import { pageHead } from "./dashboard.js";
+import { chart } from "../charts.js";
 
 export const ACCOUNT_KINDS = { corrente: "Conta corrente", poupanca: "Poupança", carteira: "Carteira", cartao: "Cartão de crédito" };
 
@@ -32,7 +33,6 @@ export function netWorthPanel(ledger) {
   const points = finance.netWorth(ledger, today());
   const last = points[points.length - 1];
   const diff = last.netCents - points[0].netCents;
-  const top = Math.max(1, ...points.map((p) => Math.abs(p.netCents)));
   return html`<section class="panel networth">
     <div class="chart-head">
       <h2>Patrimônio</h2>
@@ -40,12 +40,13 @@ export function netWorthPanel(ledger) {
     </div>
     <p class="small muted">Contas ${m(last.accountsCents)} − cartões em aberto ${m(last.cardsCents)} − dívidas ${m(last.debtsCents)}.
       ${diff >= 0 ? "Subiu" : "Caiu"} ${m(Math.abs(diff))} em 12 meses.</p>
-    <div class="yearchart" role="img" aria-label="Patrimônio nos últimos 12 meses: de ${m(points[0].netCents)} para ${m(last.netCents)}">
-      ${points.map((p) => html`<span class="col ${p === last ? "current" : ""}" title="${p.label}: ${m(p.netCents)}">
-        <span class="bars"><span class="${p.netCents < 0 ? "out" : "in"}" style="height: ${barPct(Math.abs(p.netCents), top)}%"></span></span>
-        <small>${p.label.slice(0, 3)}</small>
-      </span>`)}
-    </div>
+    ${chart({
+      key: "patrimonio", type: "line", height: 220,
+      labels: points.map((p) => p.label.slice(0, 3)),
+      tip: (i) => points[i].label,
+      series: [{ name: "Patrimônio", data: points.map((p) => p.netCents), color: last.netCents < 0 ? "neg" : "accent", fill: true }],
+      legend: false,
+    }, `Patrimônio nos últimos 12 meses: de ${m(points[0].netCents)} para ${m(last.netCents)}`)}
     <details><summary>Ver em tabela</summary>
       <div class="table-wrap"><table>
         <thead><tr><th>Mês</th><th class="num">Contas</th><th class="num">Cartões</th><th class="num">Dívidas</th><th class="num">Patrimônio</th></tr></thead>

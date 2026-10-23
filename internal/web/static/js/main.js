@@ -9,6 +9,7 @@ import "./lock.js"; // app do celular: pede digital/rosto ou senha para abrir
 import { applyProposal, proposalButton, saveNote } from "./notes-save.js";
 import { scheduleDebtReminders } from "./native.js";
 import * as finance from "./finance.js";
+import * as charts from "./charts.js";
 import * as sync from "./sync.js";
 import { currentMonth, flash, newId, today, toString } from "./ui.js";
 import * as dashboard from "./pages/dashboard.js";
@@ -147,6 +148,7 @@ function render(message) {
   const ctx = context(path, new URLSearchParams(location.search));
   root.innerHTML = `<p id="flash" hidden></p>` + toString(page.render(ctx));
   page.bind?.(root, ctx);
+  charts.mount(root);
   dirty = false;
   rerenderPending = false;
   document.querySelectorAll("nav.tabs a").forEach((a) => {

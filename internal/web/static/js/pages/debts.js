@@ -2,10 +2,9 @@
 // quanto de juros se economiza), o gráfico e o cadastro. As contas são de
 // finance.Debts (Go): aqui só desenha.
 import * as finance from "../finance.js";
-import { addPanel, centsInput, html, raw, ratePct, shiftMonth, today } from "../ui.js";
+import { addPanel, centsInput, html, ratePct, shiftMonth, today } from "../ui.js";
 import { pageHead } from "./dashboard.js";
-
-const W = 600, H = 220, PAD = { l: 8, r: 8, t: 12, b: 24 };
+import { chart } from "../charts.js";
 
 // horizon é até onde o gráfico vai: o fim do plano, ou do "só o mínimo" se ele
 // acabar; se a dívida só cresce, um pouco além do plano (senão a linha do plano some).
@@ -47,34 +46,21 @@ function calendarTable(v) {
   </details>`;
 }
 
-// debtChart: saldo total mês a mês, seguindo o plano (linha cheia) e pagando só
-// o mínimo (tracejada). Mesmo desenho do gráfico da Análise.
+// debtChart: saldo total mês a mês, seguindo o plano (área cheia) e pagando só
+// o mínimo (tracejada). Passar o dedo mostra o saldo daquele mês.
 function debtChart(v) {
-  const m = finance.money;
   const n = Math.max(1, horizon(v));
-  const plan = v.plan.balanceCents.slice(0, n + 1), min = v.minOnly.balanceCents.slice(0, n + 1);
-  const top = Math.max(1, ...plan, ...min);
-  const x = (i) => PAD.l + (i / n) * (W - PAD.l - PAD.r);
-  const y = (c) => H - PAD.b - (c / top) * (H - PAD.t - PAD.b);
-  const path = (s) => s.map((c, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(c).toFixed(1)}`).join("");
-  const tick = (i, anchor, label) => `<text x="${x(i)}" y="${H - 6}" text-anchor="${anchor}">${label}</text>`;
-  const svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Saldo das dívidas mês a mês: seguindo o plano ${v.plan.ok ? `zera em ${v.plan.months} meses` : "não zera"}; só no mínimo ${v.minOnly.ok ? `zera em ${v.minOnly.months} meses` : "não zera"}.">
-    <line class="axis" x1="${PAD.l}" x2="${W - PAD.r}" y1="${H - PAD.b}" y2="${H - PAD.b}"/>
-    <g class="ticks">${tick(0, "start", "hoje")}${tick(n, "end", `${n} meses`)}</g>
-    <path class="line last" d="${path(min)}"/>
-    <path class="line now" d="${path(plan)}"/>
-    <line class="cross" y1="${PAD.t}" y2="${H - PAD.b}" x1="-10" x2="-10"/>
-  </svg>`;
-  return html`
-    <div class="pace-chart debt-chart" data-months="${n}">
-      <p class="legend">
-        <span><span class="key now"></span>Seguindo o plano</span>
-        <span><span class="key last"></span>Só o mínimo</span>
-      </p>
-      ${raw(svg)}
-      <p class="chart-tip small" aria-live="polite" hidden></p>
-    </div>
-`;
+  const label = (i) => (i ? whenLabel(i) : "Hoje");
+  const upTo = (s) => Array.from({ length: n + 1 }, (_, i) => (i < s.length ? s[i] : null));
+  return html`<div class="debt-chart">${chart({
+    key: "dividas", type: "line", height: 260,
+    labels: Array.from({ length: n + 1 }, (_, i) => (i ? `${label(i).slice(0, 3)}/${label(i).slice(-2)}` : "hoje")),
+    tip: label,
+    series: [
+      { name: "Seguindo o plano", data: upTo(v.plan.balanceCents), color: "accent", fill: true },
+      { name: "Só o mínimo", data: upTo(v.minOnly.balanceCents), color: "neg", dash: true },
+    ],
+  }, `Saldo das dívidas mês a mês: seguindo o plano ${v.plan.ok ? `zera em ${v.plan.months} meses` : "não zera"}; só no mínimo ${v.minOnly.ok ? `zera em ${v.minOnly.months} meses` : "não zera"}.`)}</div>`;
 }
 
 // planPanel diz em poucas linhas o que fazer, com o valor que dá para pagar a mais.
@@ -232,7 +218,6 @@ export function bind(root, ctx) {
     else c.ids.delete(box.dataset.lever);
     ctx.go(planURL(c.typed, c.ids));
   }));
-  bindChart(root, ctx);
   const form = root.querySelector('[data-form="debt"]');
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -262,26 +247,4 @@ export function bind(root, ctx) {
     if (!confirm(`Apagar ${d.name}?`)) return;
     await ctx.remove("debt", d, "Dívida apagada.");
   }));
-}
-
-// bindChart: passar o dedo ou o mouse no gráfico mostra o saldo daquele mês.
-function bindChart(root, ctx) {
-  const box = root.querySelector(".debt-chart");
-  if (!box) return;
-  const v = finance.debts(ctx.ledger, chosen(ctx.ledger, ctx.params).extra);
-  const svg = box.querySelector("svg"), tip = box.querySelector(".chart-tip"), cross = box.querySelector(".cross");
-  const n = Number(box.dataset.months);
-  const at = (s, i) => (i < s.length ? finance.money(s[i]) : "—");
-  const show = (e) => {
-    const r = svg.getBoundingClientRect();
-    const i = Math.min(n, Math.max(0, Math.round(((((e.clientX - r.left) / r.width) * W - PAD.l) / (W - PAD.l - PAD.r)) * n)));
-    const cx = PAD.l + (i / n) * (W - PAD.l - PAD.r);
-    cross.setAttribute("x1", cx);
-    cross.setAttribute("x2", cx);
-    tip.textContent = `${i ? whenLabel(i) : "Hoje"}: plano ${at(v.plan.balanceCents, i)} · só o mínimo ${at(v.minOnly.balanceCents, i)}`;
-    tip.hidden = false;
-  };
-  svg.addEventListener("pointermove", show);
-  svg.addEventListener("pointerdown", show);
-  svg.addEventListener("pointerleave", () => { tip.hidden = true; cross.setAttribute("x1", -10); cross.setAttribute("x2", -10); });
 }

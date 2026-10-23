@@ -109,7 +109,7 @@ try {
   await page.waitForSelector(".alert.danger:has-text('Orçamento de Restaurantes e delivery estourou')");
   ok((await page.textContent("#orcamentos")).includes("estourou R$ 10,00"), "aviso e barra quando o orçamento estoura");
   await page.goto(`${B}/analise`);
-  await page.waitForSelector(".pace-chart svg");
+  await page.waitForSelector(".pace-chart canvas");
   ok(/Orçamentos por categoria[\s\S]*R\$ 110,00 de R\$ 100,00/.test(await page.textContent("main")), "Análise mostra os orçamentos");
 
   // O aviso leva aos lançamentos da categoria.

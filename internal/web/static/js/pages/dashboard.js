@@ -2,6 +2,7 @@
 import * as finance from "../finance.js";
 import { BUCKETS, barPct, html, raw, shiftMonth, today } from "../ui.js";
 import { goalCards } from "./goals.js";
+import { chart } from "../charts.js";
 import * as welcome from "./welcome.js";
 
 export function monthNav(month) {
@@ -67,7 +68,6 @@ export function render(ctx) {
   const v = finance.dashboard(ledger, month);
   const m = finance.money;
   const maxCat = v.categories.length ? v.categories[0].spentCents : 0;
-  const maxMonth = Math.max(0, ...v.year.map((t) => Math.max(t.inCents, t.outCents)));
   const yearIn = v.year.reduce((s, t) => s + t.inCents, 0);
   const yearOut = v.year.reduce((s, t) => s + t.outCents, 0);
   const monthAbbr = (key) => finance.monthLabel(key).slice(0, 3);
@@ -85,6 +85,13 @@ export function render(ctx) {
     <section class="panel">
       <div class="row"><h2>Divisão do salário</h2><a class="small" href="/categorias">Ajustar percentuais</a></div>
       ${v.inCents === 0 ? html`<p class="muted">Lance suas entradas (salário, renda extra) para ver quanto cabe em cada grupo.</p>` : ""}
+      <div class="split">
+      ${v.outCents ? chart({
+        key: "divisao", type: "doughnut", height: 200,
+        labels: v.buckets.map((b) => BUCKETS[b.bucket]),
+        series: [{ name: "Gasto", data: v.buckets.map((b) => b.spentCents), colors: v.buckets.map((b) => b.bucket) }],
+        center: { value: m(v.buckets.reduce((s, b) => s + b.spentCents, 0)), text: "gastos no mês" },
+      }, `Gastos do mês por grupo: ${v.buckets.map((b) => `${BUCKETS[b.bucket]} ${m(b.spentCents)}`).join(", ")}.`) : ""}
       <div class="buckets">
         ${v.buckets.map((b) => html`
           <div class="bucket b-${b.bucket}">
@@ -97,6 +104,7 @@ export function render(ctx) {
                 : html`<span class="muted">resta ${m(b.remainingCents)}</span>`}
             </div>
           </div>`)}
+      </div>
       </div>
     </section>
 
@@ -126,20 +134,17 @@ export function render(ctx) {
     </section>
 
     <section class="panel">
-      <div class="chart-head">
-        <h2>Visão anual ${month.slice(0, 4)}</h2>
-        <p class="legend"><span><span class="dot in"></span>entradas</span><span><span class="dot out"></span>saídas</span></p>
-      </div>
-      <div class="yearchart">
-        ${v.year.map((t) => html`
-          <a class="col ${t.month === month ? "current" : ""}" href="/?mes=${t.month}" title="${finance.monthLabel(t.month)}: entradas ${m(t.inCents)}, saídas ${m(t.outCents)}">
-            <span class="bars">
-              <span class="in" style="height: ${barPct(t.inCents, maxMonth)}%"></span>
-              <span class="out" style="height: ${barPct(t.outCents, maxMonth)}%"></span>
-            </span>
-            <small>${monthAbbr(t.month)}</small>
-          </a>`)}
-      </div>
+      <h2>Visão anual ${month.slice(0, 4)}</h2>
+      ${chart({
+        key: "ano", type: "bar", height: 260,
+        labels: v.year.map((t) => monthAbbr(t.month)),
+        tip: (i) => finance.monthLabel(v.year[i].month),
+        series: [
+          { name: "Entradas", data: v.year.map((t) => t.inCents), color: "in" },
+          { name: "Saídas", data: v.year.map((t) => t.outCents), color: "out" },
+          { name: "Saldo", data: v.year.map((t) => (t.inCents || t.outCents ? t.balanceCents : null)), color: "renda", line: true },
+        ],
+      }, `Entradas e saídas de ${month.slice(0, 4)}: ${m(yearIn)} de entradas e ${m(yearOut)} de saídas.`)}
     </section>
     </div>
 
