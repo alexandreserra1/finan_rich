@@ -51,7 +51,7 @@ try {
   const ctx = await browser.newContext({ ...devices["Pixel 7"], colorScheme: "light" });
   const page = await ctx.newPage();
   // [caminho, pular o formulário de cadastro e mostrar a lista]
-  const shots = [["/", false], ["/lancamentos", true], ["/dividas", true], ["/metas", true]];
+  const shots = [["/", false], ["/lancamentos", true], ["/dividas", false], ["/metas", true]];
   for (const [i, [path, skipForm]] of shots.entries()) {
     await page.goto(B + path);
     await page.waitForSelector("main form, main .panel", { timeout: 20000 });

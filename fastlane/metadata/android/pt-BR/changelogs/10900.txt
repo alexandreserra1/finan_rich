@@ -1,5 +1,6 @@
-• Contas e cartões: saldo, fatura atual e próxima, compra parcelada e patrimônio mês a mês.
-• Busca nos lançamentos, orçamento por categoria com aviso aos 80% e primeiro uso guiado.
-• IA dentro do celular: o consultor roda no aparelho, sem internet (modelo baixado uma vez).
-• Bloqueio do app com digital, rosto ou senha; a chave da IA fica no cofre do sistema.
-• Categoria em uso não pode ser apagada, e mais testes.
+• Dívidas: o plano numa frase, gráfico e calendário mês a mês até a última acabar.
+• Open Finance grátis (Meu Pluggy) e, no Android, as notificações do banco viram lançamentos.
+• Contas e cartões: fatura, compra parcelada e patrimônio.
+• Tema claro, escuro ou automático e telas mais simples.
+• IA dentro do celular, busca, orçamento por categoria e bloqueio com digital.
+• Mais segurança.
