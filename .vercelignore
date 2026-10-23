@@ -1,6 +1,8 @@
-# Na Vercel só vai o intermediário da IA grátis (api/index.go) e os pacotes que ele usa.
+# Na Vercel só vai o intermediário da IA grátis (cmd/finanproxy) e os pacotes que ele usa.
 /*
-!/api
+!/cmd
+/cmd/*
+!/cmd/finanproxy
 !/go.mod
 !/go.sum
 !/vercel.json
