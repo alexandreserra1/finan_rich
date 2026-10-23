@@ -8,6 +8,10 @@
 import { getMeta, setMeta } from "./db.js";
 
 export const isApp = document.documentElement.dataset.app === "mobile";
+// isSite: as mesmas telas publicadas na internet (site/). Os dados ficam no
+// navegador; não há pareamento (uma página https não alcança o computador por http).
+export const isSite = document.documentElement.dataset.site === "web";
+export const here = isSite ? "neste navegador" : "neste celular";
 
 // O token do aparelho vale como senha para sincronizar: no app ele fica no
 // cofre do sistema (o mesmo da chave da IA), não no banco do app.

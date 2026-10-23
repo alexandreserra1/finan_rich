@@ -40,7 +40,8 @@ body {
   background:
     radial-gradient(900px 420px at 8% -120px, color-mix(in srgb, var(--glow-1) 16%, transparent), transparent 70%),
     radial-gradient(800px 380px at 100% -80px, color-mix(in srgb, var(--glow-2) 12%, transparent), transparent 70%),
-    var(--bg) no-repeat;
+    var(--bg);
+  background-repeat: no-repeat; /* em tela curta o brilho não se repete embaixo */
   font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
 }
@@ -570,6 +571,12 @@ label.check.repeat { align-self: center; }
 .steps li[aria-current="step"] { color: var(--text); font-weight: 600; }
 .welcome label small { font-weight: 400; }
 .welcome-skip { margin-top: 1rem; justify-content: flex-start; }
+/* Boas-vindas do site (primeira visita). */
+.start { max-width: 34rem; margin: 2rem auto; padding: 2rem 1.5rem; text-align: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-pop); }
+.start .brand.big { justify-content: center; }
+.start-lead { font-size: 1.08rem; color: var(--text-2); margin: 0 0 1.5rem; }
+.start-actions { display: grid; gap: .6rem; margin-bottom: 1.25rem; }
+.start-actions button { width: 100%; min-height: 52px; font-size: 1.02rem; }
 @media (max-width: 480px) { .steps li { font-size: 0; } .steps li[aria-current="step"] { font-size: .78rem; } }
 
 /* Contas, cartões (faturas) e patrimônio */

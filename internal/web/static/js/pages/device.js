@@ -84,7 +84,7 @@ export function render({ server, params, ledger }) {
     <a class="panel link-card" href="/notas"><span><strong>Notas</strong></span><span aria-hidden="true">›</span></a>
     <a class="panel link-card" href="/categorias"><span><strong>Categorias e divisão do salário</strong></span><span aria-hidden="true">›</span></a>
 
-    <section class="panel" id="parear">
+    ${device.isSite ? "" : html`<section class="panel" id="parear">
       <h2>Computador</h2>
       ${server
         ? html`
@@ -105,15 +105,18 @@ export function render({ server, params, ledger }) {
           <p class="muted">O app guarda seus dados neste celular e funciona sem internet. Para trazer os dados que já estão no computador e manter os dois iguais, conecte-o uma vez ao finan_rich do computador.</p>
           ${fromLink ? html`<p class="notice warn">Confira se o endereço abaixo é mesmo o do seu computador antes de conectar.</p>` : ""}
           ${pairForm(params, false)}`}
-    </section>
+    </section>`}
 
     ${cloudSection(server)}
 
     ${localSection()}
 
-    ${openFinanceSection()}
+    ${device.isSite ? "" : openFinanceSection()}
 
-    ${!server ? html`<section class="panel" id="sozinho">
+    ${device.isSite ? html`<section class="panel" id="sozinho">
+      <h2>Seus dados</h2>
+      <p class="small muted">Ficam só neste navegador: nada vai para servidor do finan_rich. Faça um backup de vez em quando em <a href="/exportar">Exportar</a>; se limpar os dados do navegador, eles se perdem.</p>
+    </section>` : !server ? html`<section class="panel" id="sozinho">
       <h2>Sem computador?</h2>
       ${ledger.categories.length
         ? html`<p class="small muted">Você está usando o finan_rich só neste celular. Faça um backup de vez em quando em <a href="/exportar">Exportar</a>. Se um dia conectar a um computador, tudo vai para lá, sem duplicar categorias.</p>`
@@ -138,10 +141,23 @@ export function render({ server, params, ledger }) {
     ${lockSection()}
 
     <section class="panel">
-      <h2>Dados deste celular</h2>
-      <p class="muted small">Apaga os lançamentos, dívidas e categorias guardados neste celular e desconecta do computador. Os dados que já estão no computador continuam lá.</p>
-      <button type="button" class="secondary" data-action="wipe">Apagar dados deste celular</button>
+      <h2>Dados ${device.here}</h2>
+      <p class="muted small">Apaga os lançamentos, dívidas e categorias guardados ${device.here}${device.isSite ? "." : " e desconecta do computador. Os dados que já estão no computador continuam lá."}</p>
+      <button type="button" class="secondary" data-action="wipe">Apagar dados ${device.here}</button>
     </section>`;
+}
+
+// startSolo começa a usar sem computador: cria as categorias padrão neste aparelho.
+export async function startSolo(ctx, to) {
+  try {
+    await finance.load();
+    const cats = finance.defaultCategories(Date.now());
+    await db.saveManyLocal(cats.map((record) => ({ type: "category", record })));
+    await ctx.refresh();
+    ctx.go(to);
+  } catch (err) {
+    ctx.error(err);
+  }
 }
 
 export function bind(root, ctx) {
@@ -162,17 +178,7 @@ export function bind(root, ctx) {
   bindLocal(root, ctx);
   bindOpenFinance(root, ctx);
   bindLock(root, ctx);
-  root.querySelector('[data-action="solo"]')?.addEventListener("click", async () => {
-    try {
-      await finance.load();
-      const cats = finance.defaultCategories(Date.now());
-      await db.saveManyLocal(cats.map((record) => ({ type: "category", record })));
-      await ctx.refresh();
-      ctx.go("/lancamentos");
-    } catch (err) {
-      ctx.error(err);
-    }
-  });
+  root.querySelector('[data-action="solo"]')?.addEventListener("click", () => startSolo(ctx, "/lancamentos"));
   root.querySelector('[data-action="reminders"]')?.addEventListener("change", async (e) => {
     remindersOn = e.target.checked;
     await setRemindersEnabled(remindersOn, ctx.ledger);
@@ -208,7 +214,7 @@ export function bind(root, ctx) {
     await ctx.refresh("Desconectado do computador.");
   });
   on("wipe", async () => {
-    if (!confirm("Apagar todos os dados deste celular? Os que já estão no computador continuam lá.")) return;
+    if (!confirm(device.isSite ? "Apagar todos os dados deste navegador? Não dá para desfazer." : "Apagar todos os dados deste celular? Os que já estão no computador continuam lá.")) return;
     await cloud.forget(); // a chave da IA no cofre do sistema também
     await device.unpair(); // o token do computador sai do cofre também
     await db.wipe();
@@ -216,7 +222,7 @@ export function bind(root, ctx) {
     localState = null; // e a escolha da IA dentro do celular (o modelo baixado continua)
     await openFinance.forget();
     ofState = undefined;
-    await ctx.refresh("Dados deste celular apagados.");
+    await ctx.refresh(`Dados ${device.here} apagados.`);
   });
 }
 

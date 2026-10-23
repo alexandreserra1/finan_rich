@@ -11,7 +11,8 @@ celular (anonimiza) ──HTTPS──> intermediário (Vercel, chave numa variá
 ```
 
 - **Código**: `cmd/api` (programa) e `internal/proxy` (regras e limites, com testes).
-  O mesmo programa roda na Vercel (`vercel.json` e `.vercelignore`) e no Cloud Run.
+  O mesmo programa roda na Vercel (`vercel.json`; ela procura o programa em `cmd/api`) e no
+  Cloud Run.
 - **Por que Groq**: plano grátis sem cartão, muito rápido, modelos abertos com ferramentas, e
   ele não usa os dados da API para treinar.
 - **Por que Vercel**: plano grátis (Hobby) sem cartão, login com o GitHub e publicação a cada

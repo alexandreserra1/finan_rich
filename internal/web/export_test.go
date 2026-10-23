@@ -25,7 +25,7 @@ func TestServiceWorkerPrecachesEveryModule(t *testing.T) {
 
 func TestExportApp(t *testing.T) {
 	dir := t.TempDir()
-	if err := ExportApp(dir); err != nil {
+	if err := ExportApp(dir, false); err != nil {
 		t.Fatal(err)
 	}
 	index, err := os.ReadFile(filepath.Join(dir, "index.html"))
@@ -50,5 +50,24 @@ func TestExportApp(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, "static", "sw.js")); err == nil {
 		t.Error("sw.js não vai para o app")
+	}
+	if strings.Contains(page, "data-site") || !strings.Contains(page, "connect-src 'self' https: http:") {
+		t.Error("o app do celular não é o site: alcança o computador por http no Wi-Fi")
+	}
+}
+
+// O site (as mesmas telas na internet) se identifica e só fala https.
+func TestExportSite(t *testing.T) {
+	dir := t.TempDir()
+	if err := ExportApp(dir, true); err != nil {
+		t.Fatal(err)
+	}
+	index, err := os.ReadFile(filepath.Join(dir, "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	page := string(index)
+	if !strings.Contains(page, `data-site="web"`) || !strings.Contains(page, "connect-src 'self' https:;") {
+		t.Errorf("index.html do site:\n%s", page[:min(len(page), 600)])
 	}
 }

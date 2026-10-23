@@ -24,6 +24,7 @@ import * as insights from "./pages/insights.js";
 import * as devicePage from "./pages/device.js";
 import * as advisor from "./pages/advisor.js";
 import * as accounts from "./pages/accounts.js";
+import * as start from "./pages/start.js";
 
 const ROUTES = { "/": dashboard, "/lancamentos": transactions, "/dividas": debts, "/categorias": categories, "/notas": notes, "/exportar": exportPage, "/importar": importPage, "/metas": goals, "/analise": insights };
 ROUTES["/contas"] = accounts;
@@ -45,7 +46,7 @@ const LABELS = {
   syncing: () => "Sincronizando…",
   offline: (s) => s.pending ? `Offline · ${s.pending} pendente(s)` : "Offline",
   login: () => device.isApp ? "Pareie de novo" : "Entre de novo para sincronizar",
-  unpaired: () => "Só neste celular", // não é erro: toca para conectar a um computador
+  unpaired: () => device.isSite ? "Só neste navegador" : "Só neste celular", // não é erro: toca para conectar a um computador
   error: () => "Erro ao sincronizar",
 };
 function showStatus(s) {
@@ -137,6 +138,13 @@ function render(message) {
   const path = location.pathname;
   const page = ROUTES[path];
   if (!page || !ledger) return;
+  if (!ledger.categories.length && page.needsData !== false && device.isSite) {
+    // Site na primeira visita: boas-vindas em vez de "conecte ao computador".
+    const ctx = context(path, new URLSearchParams(location.search));
+    root.innerHTML = `<p id="flash" hidden></p>` + toString(start.render(ctx));
+    start.bind(root, ctx);
+    return;
+  }
   if (!ledger.categories.length && page.needsData !== false) {
     root.innerHTML = device.isApp && !server
       ? `<p class="notice warn">Este celular ainda não está conectado ao computador. <a href="/configuracoes">Conectar agora</a> ou <a href="/configuracoes#sozinho">usar só neste celular</a>.</p>`

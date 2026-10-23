@@ -27,7 +27,8 @@ test-wasm:        ## roda as regras compiladas para WebAssembly (precisa do Node
 e2e: wasm         ## testes no navegador: offline, sincronização e app do celular (precisa do Node)
 	go build -o dist/finanrich ./cmd/finanrich
 	go run ./tools/mobilebuild mobile/www
-	cd e2e && npm install --no-audit --no-fund && npx playwright install chromium && FINANRICH_BIN=../dist/finanrich APP_WWW=../mobile/www npm test
+	go run ./tools/mobilebuild -site site/www
+	cd e2e && npm install --no-audit --no-fund && npx playwright install chromium && FINANRICH_BIN=../dist/finanrich APP_WWW=../mobile/www SITE_WWW=../site/www npm test
 
 mobile: wasm      ## prepara o app do celular (mobile/www + projeto Android)
 	go run ./tools/mobilebuild mobile/www

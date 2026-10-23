@@ -53,14 +53,16 @@ jobs:
           node-version: 22
       - run: go generate ./internal/web
       - run: go build -o dist/finanrich ./cmd/finanrich
-      - name: Telas do app do celular
-        run: go run ./tools/mobilebuild mobile/www
-      - name: Testes no navegador (offline, sincronização e app do celular)
+      - name: Telas do app do celular e do site
+        run: |
+          go run ./tools/mobilebuild mobile/www
+          go run ./tools/mobilebuild -site site/www
+      - name: Testes no navegador (offline, sincronização, app do celular e site)
         working-directory: e2e
         run: |
           npm install --no-audit --no-fund
           npx playwright install --with-deps chromium
-          FINANRICH_BIN=../dist/finanrich APP_WWW=../mobile/www npm test
+          FINANRICH_BIN=../dist/finanrich APP_WWW=../mobile/www SITE_WWW=../site/www npm test
 
   android:
     runs-on: ubuntu-latest

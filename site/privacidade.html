@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacidade · finan_rich</title>
+<style>
+  :root { color-scheme: light dark; --bg: #f3f5f4; --text: #15201b; --muted: #5f6b66; --accent: #0f7a5c; --surface: #fff; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0e1412; --text: #e7ece9; --muted: #98a6a0; --accent: #34c08f; --surface: #161e1b; } }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 46rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+  h1 { font-size: 1.8rem; margin: 0 0 .25rem; } h2 { font-size: 1.15rem; margin-top: 2rem; }
+  a { color: var(--accent); } .muted { color: var(--muted); }
+  section { background: var(--surface); border-radius: 16px; padding: .25rem 1.25rem 1rem; margin-top: 1rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Política de privacidade</h1>
+  <p class="muted">finan_rich · atualizada em 23 de outubro de 2026</p>
+
+  <p>O finan_rich é um app de finanças pessoais gratuito e de código aberto
+    (<a href="https://github.com/alexandreserra1/finan_rich">github.com/alexandreserra1/finan_rich</a>).
+    Ele foi feito para que os seus dados fiquem com você.</p>
+
+  <section>
+    <h2>Onde ficam os seus dados</h2>
+    <ul>
+      <li><strong>No seu aparelho.</strong> Lançamentos, contas, dívidas, metas e notas ficam no navegador,
+        no celular ou no computador em que você usa o finan_rich. Não existe servidor do finan_rich que guarde
+        esses dados.</li>
+      <li><strong>No seu Google Drive, se você escolher "Entrar com Google".</strong> Os dados vão para uma pasta
+        de dados do app no <em>seu</em> Drive (escondida, que só o finan_rich lê), para aparecerem nos seus outros
+        aparelhos. O finan_rich não vê nem guarda esse arquivo em lugar nenhum além do seu Drive.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Login com Google: o que o app acessa</h2>
+    <ul>
+      <li><strong>Seu e-mail</strong>, só para mostrar qual conta está ligada.</li>
+      <li><strong>A pasta de dados do app no seu Drive</strong> (permissão <code>drive.appdata</code>). O app não
+        enxerga nenhum outro arquivo do seu Drive.</li>
+    </ul>
+    <p>O uso de informações recebidas das APIs do Google segue a
+      <a href="https://developers.google.com/terms/api-services-user-data-policy">Política de Dados do Usuário dos
+      Serviços de API do Google</a>, incluindo os requisitos de Uso Limitado. Os dados não são vendidos, não são
+      usados para anúncios e não são repassados a ninguém.</p>
+    <p>Para entrar, o código de acesso que o Google devolve passa pelo intermediário do finan_rich (na Vercel), que
+      só o troca com o Google e não guarda nada. Você pode sair a qualquer momento em Ajustes, ou retirar o acesso em
+      <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</p>
+  </section>
+
+  <section>
+    <h2>Consultor com IA</h2>
+    <p>Quando você pergunta ao consultor na nuvem, o app troca nomes de lojas, pessoas, dívidas e metas por apelidos
+      antes de enviar ("Loja AB", "Dívida 1") e deixa as notas de fora. Na opção "finan_rich grátis", a pergunta
+      passa por um intermediário na Vercel até o Groq, que não usa os dados para treinar modelos. O intermediário
+      não guarda as perguntas. Se você usar a sua própria chave de IA, a pergunta vai direto para o provedor que você
+      escolheu.</p>
+  </section>
+
+  <section>
+    <h2>Open Finance e notificações do banco</h2>
+    <p>São opcionais. No Open Finance (Meu Pluggy), os lançamentos vão do banco para o seu aparelho com a sua própria
+      conta Pluggy, sem passar por servidor do finan_rich. No Android, as notificações dos apps de banco que você
+      autorizar viram lançamentos para conferir, e ficam só no celular.</p>
+  </section>
+
+  <section>
+    <h2>Apagar seus dados</h2>
+    <p>Em Ajustes → "Apagar dados" o app apaga tudo do aparelho. O arquivo no seu Drive pode ser apagado em
+      drive.google.com → Configurações → Gerenciar apps → finan_rich → Excluir dados ocultos do app.</p>
+  </section>
+
+  <section>
+    <h2>Contato</h2>
+    <p>Dúvidas ou pedidos: abra uma conversa em
+      <a href="https://github.com/alexandreserra1/finan_rich/issues">github.com/alexandreserra1/finan_rich/issues</a>.</p>
+  </section>
+</main>
+</body>
+</html>

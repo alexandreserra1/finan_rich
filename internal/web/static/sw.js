@@ -23,6 +23,7 @@ const PRECACHE = [
   "/static/js/pages/debts.js", "/static/js/pages/categories.js",
   "/static/js/pages/welcome.js",
   "/static/js/pages/accounts.js",
+  "/static/js/pages/start.js",
   "/static/js/lock.js",
   "/static/js/theme.js",
   "/static/js/openfinance.js",

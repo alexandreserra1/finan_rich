@@ -19,17 +19,23 @@ var browserOnly = map[string]bool{"sw.js": true, "manifest.webmanifest": true, "
 const appCSP = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; style-src-attr 'unsafe-inline'; " +
 	"img-src 'self' data:; connect-src 'self' https: http:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'"
 
+// siteCSP vale para o site (as mesmas telas publicadas na internet, ver site/):
+// só https, porque uma página https não alcança o computador pelo Wi-Fi (http).
+const siteCSP = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; style-src-attr 'unsafe-inline'; " +
+	"img-src 'self' data:; connect-src 'self' https:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'"
+
 // ExportApp grava numa pasta as telas do app que funcionam sem servidor
 // (index.html + static/), para empacotar no app do celular (Capacitor).
 // O app monta as telas com os dados do aparelho e sincroniza com o
-// computador pareado.
-func ExportApp(dir string) error {
+// computador pareado. Com site, grava as mesmas telas para publicar na
+// internet (data-site="web": sem pareamento, dados no navegador).
+func ExportApp(dir string, site bool) error {
 	s, err := New(nil, Options{})
 	if err != nil {
 		return err
 	}
 	var page bytes.Buffer
-	if err := s.pages["app"].Execute(&page, map[string]any{"Page": "dashboard", "AppPage": "dashboard", "Mobile": true}); err != nil {
+	if err := s.pages["app"].Execute(&page, map[string]any{"Page": "dashboard", "AppPage": "dashboard", "Mobile": true, "Site": site}); err != nil {
 		return err
 	}
 	// A política vem logo depois do charset, antes de qualquer script ou estilo.
@@ -37,7 +43,11 @@ func ExportApp(dir string) error {
 	if !bytes.Contains(page.Bytes(), []byte(charset)) {
 		return errors.New("index.html sem <meta charset>: não há onde pôr a política de segurança")
 	}
-	csp := charset + "\n" + `<meta http-equiv="Content-Security-Policy" content="` + appCSP + `">`
+	policy := appCSP
+	if site {
+		policy = siteCSP
+	}
+	csp := charset + "\n" + `<meta http-equiv="Content-Security-Policy" content="` + policy + `">`
 	index := bytes.Replace(page.Bytes(), []byte(charset), []byte(csp), 1)
 	if err := os.RemoveAll(filepath.Join(dir, "static")); err != nil {
 		return err
