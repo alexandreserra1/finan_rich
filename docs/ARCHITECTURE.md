@@ -237,6 +237,7 @@ aparelho                                      servidor
 | Arquivo | Função |
 |---|---|
 | `summary.go` | `Summarize` (resumo do mês e divisão planejado × realizado), `YearTotals`, `RecentTotals`. |
+| `diagnosis.go` | `Diagnose`: o diagnóstico das dívidas sem IA. A dívida que mais gera juros, a categoria que mais pesou no mês e os cortes possíveis (sobra média dos 3 últimos meses, economias da Análise com uma por categoria para não somar o mesmo gasto duas vezes, assinaturas de desejos), cada um com o efeito sozinho no plano (`PayoffSchedule`). O consultor recebe o diagnóstico pronto no retrato (`advisor.Snapshot`). |
 | `debts.go` | `Payoff` (simulação mês a mês), `PlanDebts` (totais, juros mensais, ordem avalanche e bola de neve), `PayoffSchedule` (todas juntas: mínimos + valor a mais, o que sobra de uma quitada vai para a próxima; saldo mês a mês) e `MinimumOnly` (cada uma só no mínimo, para comparar); as duas devolvem o calendário mês a mês (quanto pagar em cada dívida e os juros do mês). |
 | `emergency.go` | `PlanEmergencyFund`: reserva de 3 e 6 meses e prazo com a sobra livre. |
 | `insights.go` | `Insights`: tela Análise — ritmo do mês, projeção, pode gastar por dia, gastos por lugar e por categoria contra a média, assinaturas e onde economizar ([ANALISE.md](ANALISE.md)). |
@@ -419,7 +420,7 @@ Arquivos do navegador (`static/`):
 | `js/pages/transactions.js` | Lançamentos: formulário (categorias filtradas por entrada/saída), lista do mês, busca e filtros (no endereço, então voltar e avançar funcionam), apagar, "copiar do mês anterior". |
 | `js/pages/accounts.js` | Contas e cartões: cadastro, saldos, faturas e o painel de patrimônio (também usado na Análise). |
 | `js/pages/welcome.js` | Primeiro uso guiado, mostrado no Painel até a pessoa terminar ou pular. |
-| `js/pages/debts.js` | Dívidas: o plano numa frase (o que pagar primeiro, em quantos meses, juros economizados), valor a mais por mês (`?extra=`), gráfico plano × só o mínimo, calendário mês a mês agrupado por ano (com o mês em que cada dívida é quitada), prazos em anos e meses, faturas abertas dos cartões, cadastro e edição. |
+| `js/pages/debts.js` | Dívidas: "Onde está o problema" (`finance.diagnose`) com os cortes para marcar (`?cortes=`), o plano numa frase (o que pagar primeiro, em quantos meses, juros economizados), valor a mais por mês (`?extra=`), gráfico plano × só o mínimo, calendário mês a mês agrupado por ano (com o mês em que cada dívida é quitada), prazos em anos e meses, faturas abertas dos cartões, cadastro e edição. |
 | `js/pages/categories.js` | Divisão do salário (percentuais) e categorias (criar, apagar se nada a usa: regra em Go). |
 | `js/pages/notes.js` | Notas: criar, editar, fixar, buscar, apagar e exportar cada uma em PDF ou texto. |
 | `js/pages/export.js` | Exportar (Excel, PDF, CSV por período), backup e restauração. |

@@ -107,6 +107,9 @@ func TestSnapshot(t *testing.T) {
 		"## Anotações do usuário", "- Viagem: Juntar R$ 3.000 até julho",
 		"- Reserva: juntou R$ 1.500,00 de R$ 6.000,00 (25%); prazo março de 2027; precisa guardar R$ 750,00 por mês nos próximos 6 meses",
 		"- Academia: saída de R$ 99,90 todo dia 5, categoria Lazer",
+		"## Diagnóstico das dívidas (contas feitas pelo app; use estes números, não refaça)",
+		"- Dívida mais cara: Cartão, R$ 500,00 de juros por mês (12,50% a.m.)",
+		"- O que mais pesou em outubro de 2026: Lazer, R$ 2.000,00",
 		"## Gastos por estabelecimento", "- Bar do Zé: R$ 2.000,00 em 1 compra(s) nos últimos 12 meses; R$ 2.000,00 em 2026; R$ 2.000,00 neste mês; última em 05/10/2026",
 	} {
 		if !strings.Contains(got, want) {

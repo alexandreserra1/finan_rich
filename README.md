@@ -32,7 +32,10 @@ números reais. Seus dados ficam num arquivo no seu PC, sem conta e sem nuvem.
   sobrar sem categoria, a IA pode sugerir (recebe só as descrições). Escolha de qual conta
   ou cartão é o arquivo: as compras entram na fatura, e o próximo extrato da mesma conta já
   vem com ela escolhida.
-- **Dívidas**: um plano numa frase (o que pagar primeiro, em quantos meses você sai das
+- **Dívidas**: primeiro o diagnóstico, feito só com os seus números (sem IA): a dívida mais
+  cara, o que mais pesou no mês e onde dá para guardar (sobra dos últimos meses, compras
+  frequentes como delivery, assinaturas), cada corte com quantos meses antes você sai e quanto
+  de juros deixa de pagar. Marque os cortes e o plano se refaz. Depois, um plano numa frase (o que pagar primeiro, em quantos meses você sai das
   dívidas e quanto de juros economiza), com o valor que dá para pagar a mais por mês e um
   gráfico do plano contra pagar só o mínimo, e o calendário mês a mês de quanto pagar em
   cada dívida até a última acabar. Avisa quando o mínimo não cobre os juros e mostra

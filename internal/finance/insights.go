@@ -70,6 +70,8 @@ type Saving struct {
 	Title        string `json:"title"`
 	Text         string `json:"text"`
 	MonthlyCents int64  `json:"monthlyCents"`
+	Category     string `json:"category,omitempty"` // a categoria da economia (para não somar duas vezes a mesma)
+	Bucket       string `json:"bucket,omitempty"`
 }
 
 // Subscription é uma cobrança que se repete todo mês.
@@ -78,6 +80,7 @@ type Subscription struct {
 	MonthlyCents int64  `json:"monthlyCents"`
 	YearlyCents  int64  `json:"yearlyCents"`
 	Registered   bool   `json:"registered"` // cadastrada como recorrente
+	Bucket       string `json:"bucket"`     // grupo da categoria (desejos, necessidades...)
 }
 
 // Limites das sugestões (ver docs/ANALISE.md).
@@ -99,6 +102,7 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 	day := today.Day()
 	todayKey := today.Format(domain.DateLayout)
 	cats := l.CategoryIndex()
+	placeCats := placeCategories(l)
 	v := InsightsView{
 		Month: m.Key(), Label: m.Label(), Day: day, DaysInMonth: days,
 		Pace: make([]int64, day), LastPace: make([]int64, lastDays),
@@ -231,7 +235,7 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 		}
 		v.Categories = append(v.Categories, c)
 		if a > 0 && now*100 >= a*(100+overAvgPct) && now-a >= overAvgMinCents {
-			v.Savings = append(v.Savings, Saving{Kind: "categoria", Title: c.Name, MonthlyCents: now - a,
+			v.Savings = append(v.Savings, Saving{Kind: "categoria", Title: c.Name, MonthlyCents: now - a, Category: c.Name, Bucket: c.Bucket,
 				Text: fmt.Sprintf("%s este mês; a média dos últimos meses é %s. Voltar à média economiza %s.", money.Format(now), money.Format(a), money.Format(now-a))})
 		}
 	}
@@ -254,7 +258,8 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 	}
 	for key, r := range recent {
 		if r[0] >= frequentMin && r[1]/r[0] <= frequentTicket {
-			v.Savings = append(v.Savings, Saving{Kind: "frequente", Title: mostUsed(placeNames[key]), MonthlyCents: r[1] / 2,
+			c := cats[placeCats[key]]
+			v.Savings = append(v.Savings, Saving{Kind: "frequente", Title: mostUsed(placeNames[key]), MonthlyCents: r[1] / 2, Category: c.Name, Bucket: c.Bucket,
 				Text: fmt.Sprintf("%d compras em 30 dias, %s no total (média de %s). Cortar pela metade economiza %s por mês.",
 					r[0], money.Format(r[1]), money.Format(r[1]/r[0]), money.Format(r[1]/2))})
 		}
@@ -263,7 +268,7 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 	// "Desejos" acima do planejado na divisão do salário.
 	for _, b := range Summarize(m, l).Buckets {
 		if b.Bucket == domain.BucketDesejos && b.PlannedCents > 0 && b.RemainingCents() < 0 {
-			v.Savings = append(v.Savings, Saving{Kind: "desejos", Title: "Desejos acima do planejado", MonthlyCents: -b.RemainingCents(),
+			v.Savings = append(v.Savings, Saving{Kind: "desejos", Title: "Desejos acima do planejado", MonthlyCents: -b.RemainingCents(), Bucket: domain.BucketDesejos,
 				Text: fmt.Sprintf("Já passou %s do que a divisão do salário reserva para desejos (%s).", money.Format(-b.RemainingCents()), money.Format(b.PlannedCents))})
 		}
 	}
@@ -275,7 +280,7 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 			Text: fmt.Sprintf("No ritmo atual, o mês fecha em %s, %s a mais que o mês passado.", money.Format(v.ProjectedCents), money.Format(d))})
 	}
 
-	v.Subscriptions = subscriptions(l, m, cats, byPlace, placeCount, placeNames)
+	v.Subscriptions = subscriptions(l, m, cats, placeCats, byPlace, placeCount, placeNames)
 	var subsMonth int64
 	for _, s := range v.Subscriptions {
 		subsMonth += s.MonthlyCents
@@ -296,7 +301,7 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 // subscriptions junta as recorrências cadastradas com as cobranças que se
 // repetem sozinhas: o mesmo lugar em pelo menos 3 dos últimos 4 meses, no
 // máximo 2 vezes por mês e com valor parecido (o Rocket Money faz assim).
-func subscriptions(l domain.Ledger, m domain.Month, cats map[string]domain.Category,
+func subscriptions(l domain.Ledger, m domain.Month, cats map[string]domain.Category, placeCats map[string]string,
 	byPlace map[string]map[string]int64, count map[string]map[string]int, names map[string]map[string]int) []Subscription {
 	out := []Subscription{}
 	covered := map[string]bool{}
@@ -306,7 +311,7 @@ func subscriptions(l domain.Ledger, m domain.Month, cats map[string]domain.Categ
 		}
 		key, _ := importer.PlaceKey(r.Description)
 		covered[key] = true
-		out = append(out, Subscription{Name: r.Description, MonthlyCents: r.AmountCents, YearlyCents: 12 * r.AmountCents, Registered: true})
+		out = append(out, Subscription{Name: r.Description, MonthlyCents: r.AmountCents, YearlyCents: 12 * r.AmountCents, Registered: true, Bucket: cats[r.CategoryID].Bucket})
 	}
 	window := []string{m.Key(), m.Prev().Key(), m.Prev().Prev().Key(), m.Prev().Prev().Prev().Key()}
 	for key, byMonth := range byPlace {
@@ -330,7 +335,7 @@ func subscriptions(l domain.Ledger, m domain.Month, cats map[string]domain.Categ
 		if amounts[0]*100 < median*(100-subsTolerance) || amounts[len(amounts)-1]*100 > median*(100+subsTolerance) {
 			continue
 		}
-		out = append(out, Subscription{Name: mostUsed(names[key]), MonthlyCents: median, YearlyCents: 12 * median})
+		out = append(out, Subscription{Name: mostUsed(names[key]), MonthlyCents: median, YearlyCents: 12 * median, Bucket: cats[placeCats[key]].Bucket})
 	}
 	sort.Slice(out, func(i, j int) bool { return less(out[i].MonthlyCents, out[j].MonthlyCents, out[i].Name, out[j].Name) })
 	return out
@@ -367,6 +372,27 @@ func pct(part, total int64) int {
 }
 
 // mostUsed devolve o nome mais usado (empate: ordem alfabética).
+// placeCategories: a categoria mais usada nos gastos de cada lugar (iFood → Restaurantes).
+func placeCategories(l domain.Ledger) map[string]string {
+	counts := map[string]map[string]int{}
+	for _, t := range l.ActiveTransactions() {
+		if t.Kind != domain.KindSaida {
+			continue
+		}
+		if key, _ := importer.PlaceKey(t.Description); key != "" {
+			if counts[key] == nil {
+				counts[key] = map[string]int{}
+			}
+			counts[key][t.CategoryID]++
+		}
+	}
+	out := make(map[string]string, len(counts))
+	for key, c := range counts {
+		out[key] = mostUsed(c)
+	}
+	return out
+}
+
 func mostUsed(names map[string]int) string {
 	best, n := "", 0
 	for name, c := range names {

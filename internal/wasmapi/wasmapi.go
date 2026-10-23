@@ -204,6 +204,15 @@ func Insights(ledgerJSON, today string) string {
 	return reply(finance.Insights(l, day), nil)
 }
 
+// Diagnose é o diagnóstico das dívidas (o que mais custa e onde guardar).
+func Diagnose(ledgerJSON, today string) string {
+	l, day, err := planInput(ledgerJSON, today)
+	if err != nil {
+		return reply(nil, err)
+	}
+	return reply(finance.Diagnose(l, day), nil)
+}
+
 // ImportPreviewText é a ImportPreview de uma fatura em PDF: o aparelho extrai
 // o texto (pdf.js) e manda as linhas; today ("2026-10-15") ajuda a achar o ano.
 func ImportPreviewText(ledgerJSON, text, optionsJSON, today string) string {

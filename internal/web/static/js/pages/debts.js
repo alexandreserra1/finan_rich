@@ -78,7 +78,7 @@ function debtChart(v) {
 }
 
 // planPanel diz em poucas linhas o que fazer, com o valor que dá para pagar a mais.
-function planPanel(v) {
+function planPanel(v, c) {
   const m = finance.money;
   const monthly = v.totalMinCents + v.extraCents;
   const first = v.plan.paidOff[0]?.name || v.avalanche[0];
@@ -96,7 +96,8 @@ function planPanel(v) {
         : html`<p class="notice warn">Com ${m(monthly)} por mês as dívidas não acabam: os juros passam do que você paga. Aumente o valor abaixo, ou converse com o banco sobre trocar por uma dívida mais barata.</p>`}
       <form data-form="extra" class="extra-form">
         <label><span>Quanto dá para pagar <strong>a mais</strong> por mês (R$)</span>
-          <input name="extra" inputmode="decimal" value="${v.extraCents ? centsInput(v.extraCents) : ""}" placeholder="0,00"></label>
+          <input name="extra" inputmode="decimal" value="${c.typed ? centsInput(c.typed) : ""}" placeholder="0,00"></label>
+        ${c.cuts ? html`<p class="small muted">Mais ${m(c.cuts)} dos cortes marcados acima.</p>` : ""}
         <button type="submit" class="secondary">Recalcular</button>
       </form>
       ${debtChart(v)}
@@ -109,8 +110,52 @@ function planPanel(v) {
     </section>`;
 }
 
+// O que vai a mais por mês: o valor digitado mais os cortes marcados no diagnóstico.
+function chosen(ledger, params) {
+  const typed = Math.max(0, Number(params.get("extra")) || 0);
+  const ids = new Set((params.get("cortes") || "").split(",").filter(Boolean));
+  const diag = finance.diagnose(ledger, today());
+  const cuts = diag.levers.filter((l) => ids.has(l.id)).reduce((sum, l) => sum + l.monthlyCents, 0);
+  return { typed, ids, diag, cuts, extra: typed + cuts };
+}
+
+// planURL monta o endereço com o valor a mais e os cortes, para recarregar o plano.
+const planURL = (typed, ids) => {
+  const q = new URLSearchParams();
+  if (typed > 0) q.set("extra", typed);
+  if (ids.size) q.set("cortes", [...ids].join(","));
+  return `/dividas${q.size ? `?${q}` : ""}`;
+};
+
+// diagnosisPanel: o que mais custa e onde dá para guardar, com o efeito de cada
+// corte no plano. Tudo calculado pelas regras (finance.Diagnose), sem IA.
+function diagnosisPanel(c, v, ledger) {
+  const m = finance.money;
+  const { diag } = c;
+  if (!diag.costliest && !diag.levers.length) return "";
+  const base = c.cuts ? finance.debts(ledger, c.typed).plan : null;
+  return html`<section class="panel diagnosis">
+    <h2>Onde está o problema</h2>
+    <ul class="diag-facts">
+      ${diag.costliest ? html`<li><strong>${diag.costliest.name}</strong> é a dívida mais cara: ${m(diag.costliest.monthlyInterestCents)} de juros por mês (${ratePct(diag.costliest.monthlyRateBp)} ao mês).</li>` : ""}
+      ${diag.topCategory ? html`<li>O que mais pesou em ${diag.monthLabel}: <strong>${diag.topCategory.name}</strong>, ${m(diag.topCategory.cents)} (${diag.topCategory.sharePct}% dos gastos).</li>` : ""}
+    </ul>
+    ${diag.levers.length ? html`<h3>Onde dá para guardar</h3>
+      <p class="small muted">Marque o que dá para fazer: o valor vai para as dívidas e o plano abaixo se refaz.</p>
+      <ul class="levers">${diag.levers.map((l) => html`<li><label class="check">
+        <input type="checkbox" data-lever="${l.id}" ${c.ids.has(l.id) ? "checked" : ""}>
+        <span><strong>${l.title}</strong> · ${m(l.monthlyCents)} por mês
+          <small class="muted">${l.text}</small>
+          ${l.ends ? html`<small class="pos">Sozinho, já faz as dívidas terem fim.</small>`
+            : l.monthsSooner > 0 ? html`<small class="pos">Sozinho: sai ${duration(l.monthsSooner)} antes e paga ${m(l.interestSavedCents)} a menos de juros.</small>` : ""}</span>
+      </label></li>`)}</ul>
+      ${c.cuts ? html`<p class="notice ok">Com o que você marcou, vão <strong>${m(c.cuts)}</strong> a mais por mês para as dívidas${base?.ok && v.plan.ok && base.months > v.plan.months ? `: sai ${duration(base.months - v.plan.months)} antes e paga ${m(base.interestCents - v.plan.interestCents)} a menos de juros` : !base?.ok && v.plan.ok ? ": com isso as dívidas passam a ter fim" : ""}.</p>` : ""}` : ""}
+  </section>`;
+}
+
 export function render({ ledger, params }) {
-  const extra = Math.max(0, Number(params.get("extra")) || 0);
+  const c = chosen(ledger, params);
+  const extra = c.extra;
   const v = finance.debts(ledger, extra);
   const m = finance.money;
   const cards = ledger.accounts.some((a) => a.kind === "cartao" && !a.deleted) ? finance.accounts(ledger, today()).cardsOpenCents : 0;
@@ -125,7 +170,8 @@ export function render({ ledger, params }) {
       <div class="card"><span class="muted">Juros gerados / mês</span><strong class="neg">${m(v.monthlyInterestCents)}</strong></div>
     </section>
 
-    ${v.debts.length ? planPanel(v) : ""}
+    ${v.debts.length ? diagnosisPanel(c, v, ledger) : ""}
+    ${v.debts.length ? planPanel(v, c) : ""}
     ${cards > 0 ? html`<p class="notice">Faturas abertas nos cartões: <strong>${m(cards)}</strong> (veja em <a href="/contas">Contas</a>). Pague a fatura inteira para não cair no rotativo, o juro mais caro do país.</p>` : ""}
 
     ${addPanel("debt", editing ? "Editar dívida" : "+ Nova dívida", html`
@@ -175,11 +221,17 @@ export function bind(root, ctx) {
     try {
       const raw = e.target.elements.extra.value.trim();
       const cents = raw ? finance.parseMoney(raw) : 0;
-      ctx.go(cents > 0 ? `/dividas?extra=${cents}` : "/dividas");
+      ctx.go(planURL(cents, chosen(ctx.ledger, ctx.params).ids));
     } catch (err) {
       ctx.error(err);
     }
   });
+  root.querySelectorAll("[data-lever]").forEach((box) => box.addEventListener("change", () => {
+    const c = chosen(ctx.ledger, ctx.params);
+    if (box.checked) c.ids.add(box.dataset.lever);
+    else c.ids.delete(box.dataset.lever);
+    ctx.go(planURL(c.typed, c.ids));
+  }));
   bindChart(root, ctx);
   const form = root.querySelector('[data-form="debt"]');
   form.addEventListener("submit", async (e) => {
@@ -216,7 +268,7 @@ export function bind(root, ctx) {
 function bindChart(root, ctx) {
   const box = root.querySelector(".debt-chart");
   if (!box) return;
-  const v = finance.debts(ctx.ledger, Math.max(0, Number(ctx.params.get("extra")) || 0));
+  const v = finance.debts(ctx.ledger, chosen(ctx.ledger, ctx.params).extra);
   const svg = box.querySelector("svg"), tip = box.querySelector(".chart-tip"), cross = box.querySelector(".cross");
   const n = Number(box.dataset.months);
   const at = (s, i) => (i < s.length ? finance.money(s[i]) : "—");

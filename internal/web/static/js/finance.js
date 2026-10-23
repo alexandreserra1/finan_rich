@@ -49,6 +49,8 @@ export const goals = (ledger, day) => unwrap(window.finan.goals(JSON.stringify(l
 export const recurringDue = (ledger, day) => unwrap(window.finan.recurringDue(JSON.stringify(ledger), day));
 export const alerts = (ledger, day) => unwrap(window.finan.alerts(JSON.stringify(ledger), day));
 export const insights = (ledger, day) => unwrap(window.finan.insights(JSON.stringify(ledger), day));
+// diagnose: o que mais custa nas dívidas, onde dá para guardar e o efeito de cada corte.
+export const diagnose = (ledger, day) => unwrap(window.finan.diagnose(JSON.stringify(ledger), day));
 // canDeleteCategory lança o erro se a categoria ainda tem lançamentos, recorrentes ou metas.
 export const canDeleteCategory = (ledger, id) => unwrap(window.finan.canDeleteCategory(JSON.stringify(ledger), id));
 // searchTransactions filtra os lançamentos (busca da tela Lançamentos) e soma o achado.

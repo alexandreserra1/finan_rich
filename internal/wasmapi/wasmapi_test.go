@@ -193,3 +193,10 @@ func TestNotificationStatement(t *testing.T) {
 		t.Errorf("extrato = %v %q", v, errMsg)
 	}
 }
+
+func TestDiagnose(t *testing.T) {
+	v, errMsg := decode(t, Diagnose(ledger, "2026-10-15"))
+	if errMsg != "" || v["costliest"].(map[string]any)["monthlyInterestCents"] != float64(44800) || v["levers"] == nil {
+		t.Errorf("diagnóstico = %v %q", v, errMsg)
+	}
+}

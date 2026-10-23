@@ -614,3 +614,7 @@ td.num, .num { white-space: nowrap; }
 .calendar .year-row th { text-align: left; background: var(--surface-2); color: var(--text); font-size: .85rem; letter-spacing: .02em; }
 .calendar td .tag { font-size: .7rem; }
 .tag.ok { --c: var(--accent); }
+.diag-facts { margin: .25rem 0 .75rem; padding-left: 1.1rem; display: grid; gap: .35rem; }
+.levers { list-style: none; padding: 0; margin: .5rem 0; display: grid; gap: .5rem; }
+.levers label.check { align-items: flex-start; padding: .6rem .75rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); }
+.levers small { display: block; margin-top: .15rem; }

@@ -36,6 +36,7 @@ func BuildFacts(l domain.Ledger, today time.Time) Facts {
 		Merchants: finance.TopMerchants(l, today, maxMerchants),
 		Alerts:    finance.Alerts(l, today),
 		Insights:  finance.Insights(l, today),
+		Diagnosis: finance.Diagnose(l, today),
 		Names:     categoryNames(l),
 	}
 }
@@ -54,6 +55,7 @@ type Facts struct {
 	Merchants []finance.Merchant // onde mais gastou nos últimos 12 meses
 	Alerts    []finance.Alert
 	Insights  finance.InsightsView // tela Análise: ritmo, pode gastar por dia, onde economizar
+	Diagnosis finance.Diagnosis    // tela Dívidas: o que mais custa e quanto cada corte adianta
 	Names     map[string]string    // categoria: ID → nome
 }
 
@@ -156,6 +158,25 @@ func Snapshot(f Facts) string {
 		}
 		fmt.Fprintf(&b, "Ordem pelo método avalanche (maior juros primeiro, economiza mais): %s\n", names(f.Debts.Avalanche))
 		fmt.Fprintf(&b, "Ordem pelo método bola de neve (menor saldo primeiro): %s\n", names(f.Debts.Snowball))
+		if dg := f.Diagnosis; dg.Costliest != nil || len(dg.Levers) > 0 {
+			b.WriteString("\n## Diagnóstico das dívidas (contas feitas pelo app; use estes números, não refaça)\n")
+			if c := dg.Costliest; c != nil {
+				fmt.Fprintf(&b, "- Dívida mais cara: %s, %s de juros por mês (%s a.m.)\n", c.Name, brl(c.MonthlyInterestCents), RatePct(c.MonthlyRateBP))
+			}
+			if c := dg.TopCategory; c != nil {
+				fmt.Fprintf(&b, "- O que mais pesou em %s: %s, %s (%d%% dos gastos)\n", dg.MonthLabel, c.Name, brl(c.Cents), c.SharePct)
+			}
+			for _, lv := range dg.Levers {
+				fmt.Fprintf(&b, "- Onde guardar: %s, %s/mês. %s", lv.Title, brl(lv.MonthlyCents), lv.Text)
+				switch {
+				case lv.Ends:
+					b.WriteString(" Com isso nas dívidas, elas passam a ter fim.")
+				case lv.MonthsSooner > 0:
+					fmt.Fprintf(&b, " Pondo nas dívidas: sai %d meses antes e paga %s a menos de juros.", lv.MonthsSooner, brl(lv.InterestSavedCents))
+				}
+				b.WriteString("\n")
+			}
+		}
 	}
 
 	writeMonthPlan(&b, f.Plan)
