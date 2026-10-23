@@ -1,16 +1,26 @@
 # Avisa (por pull request) quando sai versão nova das dependências, inclusive
 # correções de segurança. Toda atualização passa pelo CI antes de entrar.
+# Um PR por ecossistema por semana (grupos), e só versões com 14 dias ou mais
+# (cooldown): versão recém-publicada é onde costuma aparecer pacote adulterado.
 version: 2
 updates:
   - package-ecosystem: gomod
     directory: /
     schedule: { interval: weekly }
+    cooldown: { default-days: 14 }
+    groups: { go: { patterns: ["*"] } }
   - package-ecosystem: npm
     directory: /mobile
     schedule: { interval: weekly }
+    cooldown: { default-days: 14 }
+    groups: { app: { patterns: ["*"] } }
   - package-ecosystem: npm
     directory: /e2e
     schedule: { interval: weekly }
+    cooldown: { default-days: 14 }
+    groups: { e2e: { patterns: ["*"] } }
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly }
+    cooldown: { default-days: 14 }
+    groups: { actions: { patterns: ["*"] } }
