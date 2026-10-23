@@ -155,11 +155,13 @@ func TestFreePreset(t *testing.T) {
 		fmt.Fprint(w, "data: {\"choices\":[{\"delta\":{\"content\":\"ok\"}}]}\n\ndata: [DONE]\n\n")
 	}))
 	defer srv.Close()
+	old := llm.FreeProxyURL
+	t.Cleanup(func() { llm.FreeProxyURL = old })
+	llm.FreeProxyURL = ""
 	if strings.Contains(CloudPresets(), `"finan"`) {
 		t.Error("sem endereço, a opção grátis não aparece")
 	}
 	llm.FreeProxyURL = srv.URL
-	t.Cleanup(func() { llm.FreeProxyURL = "" })
 	if !strings.Contains(CloudPresets(), `"id":"finan"`) || !strings.Contains(CloudPresets(), `"free":true`) {
 		t.Errorf("presets = %s", CloudPresets())
 	}
@@ -219,8 +221,9 @@ func TestFreePresetThroughProxy(t *testing.T) {
 	defer groq.Close()
 	free := httptest.NewServer(proxy.New(proxy.Config{Upstream: groq.URL, APIKey: "chave-do-servidor", Models: []string{"modelo-do-servidor"}, Limits: proxy.DefaultLimits}))
 	defer free.Close()
+	old := llm.FreeProxyURL
+	t.Cleanup(func() { llm.FreeProxyURL = old })
 	llm.FreeProxyURL = free.URL
-	t.Cleanup(func() { llm.FreeProxyURL = "" })
 	ai := AIConfig{Preset: llm.FreeID, APIKey: "aparelho-123"}
 
 	aiRaw, _ := json.Marshal(ai)

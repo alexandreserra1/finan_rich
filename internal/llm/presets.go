@@ -94,7 +94,7 @@ var Presets = []Preset{
 // FreeProxyURL é o endereço do intermediário grátis do finan_rich (cmd/api, na
 // Vercel ou no Cloud Run; ver docs/IA-GRATIS.md). Não é segredo: a chave fica no servidor.
 // Vazio: a opção não aparece.
-var FreeProxyURL = ""
+var FreeProxyURL = "https://finan-rich-ia.vercel.app"
 
 // FreeID é o preset do intermediário grátis.
 const FreeID = "finan"
