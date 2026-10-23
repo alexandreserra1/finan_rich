@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"regexp"
 	"slices"
 	"strings"
 	"unicode"
@@ -229,18 +230,30 @@ func (a *Anonymizer) Text(s string) string {
 	return string(out)
 }
 
-// Reveal troca os apelidos de volta pelos nomes (resposta da IA).
+// Reveal troca os apelidos de volta pelos nomes (resposta da IA). Os espaços
+// especiais (o gpt-oss usa o inseparável estreito, U+202F) viram espaço comum
+// antes, senão "Loja AB" não seria reconhecido.
 func (a *Anonymizer) Reveal(s string) string {
+	s = strings.Map(func(r rune) rune {
+		if r != ' ' && unicode.Is(unicode.Zs, r) {
+			return ' '
+		}
+		return r
+	}, s)
+	if len(a.display) == 0 {
+		return s
+	}
 	aliases := make([]string, 0, len(a.display))
-	for al := range a.display {
-		aliases = append(aliases, al)
+	byLower := make(map[string]string, len(a.display))
+	for al, name := range a.display {
+		aliases = append(aliases, regexp.QuoteMeta(al))
+		byLower[strings.ToLower(al)] = name
 	}
-	// "Loja 12" antes de "Loja 1".
+	// "Loja 12" antes de "Loja 1"; palavra inteira e sem ligar para maiúsculas
+	// (o modelo às vezes escreve "loja AB"), para "Dívida 12" não virar "Dívida 1" + "2".
 	slices.SortFunc(aliases, func(x, y string) int { return len(y) - len(x) })
-	for _, al := range aliases {
-		s = strings.ReplaceAll(s, al, a.display[al])
-	}
-	return s
+	re := regexp.MustCompile(`(?i)\b(?:` + strings.Join(aliases, "|") + `)\b`)
+	return re.ReplaceAllStringFunc(s, func(m string) string { return byLower[strings.ToLower(m)] })
 }
 
 // RevealProposal devolve a proposta com os nomes verdadeiros. Campos que a IA

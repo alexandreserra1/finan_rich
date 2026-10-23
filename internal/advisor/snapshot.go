@@ -143,6 +143,7 @@ func Snapshot(f Facts) string {
 			fmt.Fprintf(&b, ": saldo %s, juros de %s a.m. = %s de juros por mês, pagamento mínimo %s",
 				brl(d.BalanceCents), RatePct(d.MonthlyRateBP), brl(d.MonthlyInterestCents), brl(d.MinPaymentCents))
 			if d.Payable {
+				fmt.Fprintf(&b, "; o mínimo cobre os juros e abate %s do saldo por mês", brl(d.MinPaymentCents-d.MonthlyInterestCents))
 				fmt.Fprintf(&b, "; pagando só o mínimo, quita em %d meses e paga %s de juros no total", d.Months, brl(d.InterestCents))
 			} else if d.MinPaymentCents > 0 {
 				fmt.Fprintf(&b, "; o mínimo NÃO cobre os juros (%s < %s): a dívida cresce todo mês", brl(d.MinPaymentCents), brl(d.MonthlyInterestCents))

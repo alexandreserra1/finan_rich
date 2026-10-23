@@ -121,6 +121,16 @@ func TestSnapshot(t *testing.T) {
 	}
 }
 
+// Quando o mínimo cobre os juros, o resumo diz quanto sobra para abater: sem
+// isso, o modelo já chegou a dizer que R$ 480 "não cobrem" R$ 412,80.
+func TestSnapshotSaysMinimumCoversInterest(t *testing.T) {
+	l := domain.Ledger{Debts: []domain.Debt{{Meta: domain.Meta{ID: "d", UpdatedAt: 1}, Name: "Cartão", BalanceCents: 320000, MonthlyRateBP: 1290, MinPaymentCents: 48000}}}
+	got := Snapshot(BuildFacts(l, time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC)))
+	if !strings.Contains(got, "R$ 412,80 de juros por mês, pagamento mínimo R$ 480,00; o mínimo cobre os juros e abate R$ 67,20 do saldo por mês") {
+		t.Errorf("snapshot:\n%s", got)
+	}
+}
+
 // O conhecimento certo vai junto de cada pergunta (no máximo 2 temas).
 func TestKnowledgeFor(t *testing.T) {
 	for q, want := range map[string]string{

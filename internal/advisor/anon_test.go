@@ -45,6 +45,17 @@ func TestAnonymizeHidesNames(t *testing.T) {
 	if got := a.Reveal("Você gastou R$ 82,30 com " + anon.Transactions[0].Description + " e deve na Dívida 1."); got != "Você gastou R$ 82,30 com iFood e deve na Cartão Nubank." {
 		t.Errorf("resposta = %q", got)
 	}
+	// O gpt-oss escreve com espaço inseparável estreito (U+202F) e o apelido
+	// precisa voltar ao nome do mesmo jeito.
+	alias := strings.Replace(anon.Transactions[0].Description, " ", "\u202f", 1)
+	if got := a.Reveal("Gastou R$\u202f82,30 na " + alias + " e deve na Dívida\u00a01."); got != "Gastou R$ 82,30 na iFood e deve na Cartão Nubank." {
+		t.Errorf("resposta com espaço inseparável = %q", got)
+	}
+	// Ele também muda maiúsculas ("loja AB"); "Dívida 12" não é a Dívida 1.
+	lower := strings.ToLower(anon.Transactions[0].Description)
+	if got := a.Reveal("Corte a " + lower + " e a DÍVIDA 1, não a Dívida 12."); got != "Corte a iFood e a Cartão Nubank, não a Dívida 12." {
+		t.Errorf("resposta com maiúsculas trocadas = %q", got)
+	}
 }
 
 // O teto do orçamento é número e vai para a IA; o nome da categoria criada pela pessoa, não.
