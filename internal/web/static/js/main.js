@@ -25,10 +25,11 @@ import * as devicePage from "./pages/device.js";
 import * as advisor from "./pages/advisor.js";
 import * as accounts from "./pages/accounts.js";
 import * as start from "./pages/start.js";
+import * as oauthPage from "./pages/oauth.js";
 
 const ROUTES = { "/": dashboard, "/lancamentos": transactions, "/dividas": debts, "/categorias": categories, "/notas": notes, "/exportar": exportPage, "/importar": importPage, "/metas": goals, "/analise": insights };
 ROUTES["/contas"] = accounts;
-if (device.isApp) Object.assign(ROUTES, { "/configuracoes": devicePage, "/chat": advisor });
+if (device.isApp) Object.assign(ROUTES, { "/configuracoes": devicePage, "/chat": advisor, "/oauth": oauthPage });
 
 const root = document.getElementById("app");
 let ledger = null;
@@ -47,6 +48,7 @@ const LABELS = {
   offline: (s) => s.pending ? `Offline · ${s.pending} pendente(s)` : "Offline",
   login: () => device.isApp ? "Pareie de novo" : "Entre de novo para sincronizar",
   unpaired: () => device.isSite ? "Só neste navegador" : "Só neste celular", // não é erro: toca para conectar a um computador
+  google: () => "Entre de novo com Google",
   error: () => "Erro ao sincronizar",
 };
 function showStatus(s) {
@@ -58,7 +60,7 @@ function showStatus(s) {
     ? "Sem conexão com o computador. Tudo que você fizer fica salvo neste aparelho e é enviado quando a conexão voltar."
     : s.message || (s.lastSync ? `Última sincronização: ${s.lastSync.toLocaleTimeString("pt-BR")}` : "");
   pill.onclick = null;
-  if (device.isApp && (s.status === "login" || s.status === "unpaired")) pill.onclick = () => navigate("/configuracoes");
+  if (device.isApp && (s.status === "login" || s.status === "unpaired" || s.status === "google")) pill.onclick = () => navigate("/configuracoes");
   else if (s.status === "login") pill.onclick = () => { location.href = "/entrar?volta=" + encodeURIComponent(location.pathname); };
 }
 window.addEventListener("finan-sync", async (e) => {
@@ -239,6 +241,8 @@ if (root) {
 const capApp = window.Capacitor?.Plugins?.App;
 if (device.isApp && capApp) {
   const openLink = (link) => {
+    // Volta do login com Google (o site repassa para cá): termina em /oauth.
+    if (link?.startsWith("finanrich://google?")) return navigate("/oauth?" + link.slice("finanrich://google?".length));
     const p = link && device.pairingLink(link);
     if (p) navigate("/configuracoes?" + new URLSearchParams({ url: p.url, codigo: p.code }));
   };

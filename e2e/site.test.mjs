@@ -30,8 +30,8 @@ try {
   // Primeira visita: boas-vindas, sem "conecte ao computador".
   await page.goto(`${SITE}/`);
   await page.waitForSelector(".start button[data-action=solo]", { timeout: 20000 });
-  const welcome = await page.textContent("main");
-  ok(/só neste navegador/.test(welcome) && !/computador/.test(welcome.replace(/programa do computador/, "")),
+  const welcome = await page.innerText("main"); // só o que aparece (sem login com Google configurado, o botão fica escondido)
+  ok(await page.locator(".start-google").isHidden() && /só neste navegador/.test(welcome) && !/computador/.test(welcome.replace(/programa do computador/, "")),
     "primeira visita mostra as boas-vindas do site");
   ok((await page.textContent("#sync-status")) === "Só neste navegador", "status: só neste navegador");
 

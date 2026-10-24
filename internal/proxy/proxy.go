@@ -35,6 +35,10 @@ type Config struct {
 	Models   []string // em ordem de preferência
 	Limits   Limits
 	Client   *http.Client
+
+	// Login com Google (oauth.go): sem os dois, as rotas respondem 404.
+	GoogleClientID, GoogleClientSecret string
+	GoogleTokenURL                     string // padrão: https://oauth2.googleapis.com/token (troca nos testes)
 }
 
 // Modelos abertos do Groq com ferramentas; cada um tem a sua cota grátis.
@@ -47,6 +51,8 @@ const defaultModels = "openai/gpt-oss-120b,qwen/qwen3.8-27b,openai/gpt-oss-20b"
 //	GROQ_API_KEY         chave do Groq (obrigatória)
 //	FINAN_PROXY_MODELS   modelos em ordem, separados por vírgula
 //	FINAN_PROXY_UPSTREAM API no formato OpenAI (padrão: Groq)
+//	GOOGLE_CLIENT_ID     login com Google (ID do cliente "Aplicativo da Web")
+//	GOOGLE_CLIENT_SECRET chave secreta desse cliente (só no servidor)
 func ConfigFromEnv() (Config, error) {
 	key := os.Getenv("GROQ_API_KEY")
 	if key == "" {
@@ -59,10 +65,13 @@ func ConfigFromEnv() (Config, error) {
 		return fallback
 	}
 	return Config{
-		Upstream: env("FINAN_PROXY_UPSTREAM", "https://api.groq.com/openai/v1"),
-		APIKey:   key,
-		Models:   strings.Split(env("FINAN_PROXY_MODELS", defaultModels), ","),
-		Limits:   DefaultLimits,
+		Upstream:           env("FINAN_PROXY_UPSTREAM", "https://api.groq.com/openai/v1"),
+		APIKey:             key,
+		Models:             strings.Split(env("FINAN_PROXY_MODELS", defaultModels), ","),
+		Limits:             DefaultLimits,
+		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
+		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
+		GoogleTokenURL:     os.Getenv("GOOGLE_TOKEN_URL"),
 	}, nil
 }
 
@@ -82,24 +91,28 @@ const (
 
 // Paths são os caminhos que o intermediário atende; no mesmo programa, o resto
 // é do site (cmd/api).
-var Paths = []string{"/healthz", "/chat/completions", "/v1/chat/completions"}
+var Paths = []string{"/healthz", "/chat/completions", "/v1/chat/completions", "/oauth/config", "/oauth/token", "/oauth/refresh"}
 
 // New devolve o handler HTTP do intermediário.
 func New(cfg Config) http.Handler {
 	if cfg.Client == nil {
 		cfg.Client = &http.Client{Timeout: 3 * time.Minute}
 	}
-	h := &handler{cfg: cfg, limiter: newLimiter(time.Now)}
+	h := &handler{cfg: cfg, limiter: newLimiter(time.Now), oauthLimiter: newLimiter(time.Now)}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "ok") })
 	mux.HandleFunc("POST /chat/completions", h.chat)
 	mux.HandleFunc("POST /v1/chat/completions", h.chat)
+	mux.HandleFunc("GET /oauth/config", h.oauthConfig)
+	mux.HandleFunc("POST /oauth/token", h.oauthToken)
+	mux.HandleFunc("POST /oauth/refresh", h.oauthRefresh)
 	return cors(mux)
 }
 
 type handler struct {
-	cfg     Config
-	limiter *limiter
+	cfg          Config
+	limiter      *limiter
+	oauthLimiter *limiter // separado: entrar com Google não gasta a cota do consultor
 
 	mu       sync.Mutex
 	models   []string // modelos preferidos que o Groq ainda tem

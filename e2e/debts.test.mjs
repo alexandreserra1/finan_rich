@@ -166,7 +166,7 @@ try {
     { name: "Empréstimo", balanceCents: 850000, monthlyRateBp: 349, minPaymentCents: 61000 },
   ]);
   s = await open();
-  const diag = await page.evaluate(async () => (await import("/static/js/finance.js")).diagnose(await (await import("/static/js/db.js")).loadLedger(), new Date().toISOString().slice(0, 10)));
+  const diag = await page.evaluate(async () => (await import("/static/js/finance.js")).diagnose(await (await import("/static/js/db.js")).loadLedger(), (await import("/static/js/ui.js")).today()));
   const facts = (await page.textContent(".diagnosis .diag-facts")).replace(/\s+/g, " ");
   ok(facts.includes("Cartão é a dívida mais cara: R$ 412,80 de juros por mês (12,90% ao mês)"), `dívida mais cara: ${facts.trim().slice(0, 90)}…`);
   const levers = diag.levers.map((l) => `${l.kind}:${l.title}`);

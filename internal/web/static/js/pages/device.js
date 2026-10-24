@@ -2,6 +2,7 @@
 import * as db from "../db.js";
 import * as device from "../device.js";
 import * as finance from "../finance.js";
+import * as google from "../google.js";
 import * as cloud from "../cloud-ai.js";
 import * as local from "../local-ai.js";
 import * as openFinance from "../openfinance.js";
@@ -31,6 +32,59 @@ function pairForm(params, paired) {
 }
 
 let remindersOn = true;
+let gState; // conta Google: undefined = carregando; { on, account }
+
+// googleSection: entrar com Google para os dados ficarem no Drive da pessoa.
+// Some se o login não estiver ligado no servidor.
+function googleSection() {
+  if (!gState?.on) return html`<section id="google" hidden></section>`;
+  const st = sync.state;
+  return html`<section class="panel" id="google">
+    <h2>Conta Google</h2>
+    ${gState.account
+      ? html`<p class="notice ok">Conectado como <strong>${gState.account.email || "sua conta Google"}</strong>.</p>
+        <p class="small muted">Seus dados ficam também no seu Google Drive, numa pasta que só o finan_rich usa, e aparecem iguais no celular, no site e no computador.
+          ${st.lastSync ? ` Última sincronização: ${st.lastSync.toLocaleString("pt-BR")}.` : ""}</p>
+        <div class="row-actions">
+          <button type="button" data-action="google-sync">Sincronizar agora</button>
+          <button type="button" class="secondary" data-action="google-out">Sair</button>
+        </div>`
+      : html`<p class="small muted">Entre com Google para não perder seus dados e usar os mesmos no celular, no site e no computador. Eles ficam no seu Google Drive, numa pasta que só o finan_rich usa; nenhum servidor do finan_rich guarda nada.</p>
+        <button type="button" class="google" data-action="google-in"><span class="g" aria-hidden="true">G</span>Entrar com Google</button>`}
+  </section>`;
+}
+
+function bindGoogle(root, ctx) {
+  const redraw = () => {
+    const section = root.querySelector("#google");
+    if (!section) return;
+    section.outerHTML = toString(googleSection());
+    bindGoogle(root, ctx);
+  };
+  if (gState === undefined) {
+    gState = null;
+    Promise.all([google.available(), google.account()])
+      .then(([on, account]) => { gState = { on, account }; })
+      .catch(() => { gState = { on: false }; })
+      .then(redraw);
+  }
+  const on = (action, fn) => root.querySelector(`[data-action="${action}"]`)?.addEventListener("click", async () => {
+    try { await fn(); } catch (err) { ctx.error(err); }
+  });
+  on("google-in", () => google.signIn(device.isSite ? "web" : "app"));
+  on("google-sync", async () => {
+    await sync.sync();
+    if (sync.state.status !== "ok") throw new Error(sync.state.message || "não deu para sincronizar agora; tente de novo");
+    redraw();
+    ctx.flash("Sincronizado com o Google Drive.");
+  });
+  on("google-out", async () => {
+    if (!confirm("Sair da conta Google? Seus dados continuam neste aparelho e no seu Drive.")) return;
+    await google.signOut();
+    gState = { on: true, account: null };
+    await ctx.refresh("Você saiu da conta Google.");
+  });
+}
 let ai = null; // { presets, cfg } da IA na nuvem (carregado depois, do advisor.wasm)
 
 function cloudSection(server) {
@@ -107,6 +161,8 @@ export function render({ server, params, ledger }) {
           ${pairForm(params, false)}`}
     </section>`}
 
+    ${googleSection()}
+
     ${cloudSection(server)}
 
     ${localSection()}
@@ -174,6 +230,7 @@ export function bind(root, ctx) {
       ctx.error(err);
     }
   });
+  bindGoogle(root, ctx);
   bindCloud(root, ctx);
   bindLocal(root, ctx);
   bindOpenFinance(root, ctx);
@@ -215,6 +272,8 @@ export function bind(root, ctx) {
   });
   on("wipe", async () => {
     if (!confirm(device.isSite ? "Apagar todos os dados deste navegador? Não dá para desfazer." : "Apagar todos os dados deste celular? Os que já estão no computador continuam lá.")) return;
+    await google.signOut(); // a conta Google sai antes do banco (o token está nele)
+    gState = undefined;
     await cloud.forget(); // a chave da IA no cofre do sistema também
     await device.unpair(); // o token do computador sai do cofre também
     await db.wipe();
@@ -222,6 +281,7 @@ export function bind(root, ctx) {
     localState = null; // e a escolha da IA dentro do celular (o modelo baixado continua)
     await openFinance.forget();
     ofState = undefined;
+
     await ctx.refresh(`Dados ${device.here} apagados.`);
   });
 }

@@ -114,6 +114,10 @@ aparelho                                      servidor
   (`notices` na resposta do sync).
 - Respostas: `401` → indicador "Entre de novo para sincronizar"; falha de rede → "Offline";
   `422` → registro inválido (mensagem do domínio).
+- **Google Drive** (site; depois app e computador): com "Entrar com Google", cada rodada
+  também sincroniza com o arquivo `finan_rich.json` na pasta de dados do app no Drive da
+  pessoa (`js/gdrive.js`, regra em `internal/drivesync`). Mesma regra de conflito. Veja
+  [GOOGLE.md](GOOGLE.md).
 
 ### 4. Consultor IA
 

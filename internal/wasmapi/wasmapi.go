@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/domain"
+	"github.com/alexandreserra1/finan_rich/internal/drivesync"
 	"github.com/alexandreserra1/finan_rich/internal/finance"
 	"github.com/alexandreserra1/finan_rich/internal/importer"
 	"github.com/alexandreserra1/finan_rich/internal/money"
@@ -292,4 +293,17 @@ func Installments(txJSON string, n int) string {
 		return reply(nil, err)
 	}
 	return reply(finance.Installments(t, n))
+}
+
+// DriveNeedsUpload diz se o aparelho tem registros que faltam no arquivo do
+// Google Drive (ou mais novos que os de lá): então ele regrava o arquivo.
+func DriveNeedsUpload(localJSON, remoteJSON string) string {
+	var local, remote []drivesync.Item
+	if err := json.Unmarshal([]byte(localJSON), &local); err != nil {
+		return reply(nil, err)
+	}
+	if err := json.Unmarshal([]byte(remoteJSON), &remote); err != nil {
+		return reply(nil, err)
+	}
+	return reply(map[string]bool{"upload": drivesync.NeedsUpload(local, remote)}, nil)
 }

@@ -54,6 +54,13 @@ export async function loadLedger() {
   return ledger;
 }
 
+// allRecords devolve todos os registros com o tipo, inclusive os apagados (é o
+// que vai para o arquivo do Google Drive).
+export async function allRecords() {
+  const db = await open();
+  return (await all(db.transaction("records").objectStore("records"))).map(({ type, record }) => ({ type, record }));
+}
+
 // saveManyLocal grava várias alterações de uma vez (ex.: restaurar um backup).
 export async function saveManyLocal(items) {
   const db = await open();

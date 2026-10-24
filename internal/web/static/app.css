@@ -577,6 +577,9 @@ label.check.repeat { align-self: center; }
 .start-lead { font-size: 1.08rem; color: var(--text-2); margin: 0 0 1.5rem; }
 .start-actions { display: grid; gap: .6rem; margin-bottom: 1.25rem; }
 .start-actions button { width: 100%; min-height: 52px; font-size: 1.02rem; }
+.start-google { margin-bottom: 1rem; }
+button.google { display: inline-flex; align-items: center; justify-content: center; gap: .6rem; }
+button.google .g { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #fff; color: #4285f4; font-weight: 800; font-size: .95rem; }
 @media (max-width: 480px) { .steps li { font-size: 0; } .steps li[aria-current="step"] { font-size: .78rem; } }
 
 /* Contas, cartões (faturas) e patrimônio */

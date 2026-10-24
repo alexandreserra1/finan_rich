@@ -1,4 +1,6 @@
-// Sincronização com o computador onde o finan_rich roda.
+// Sincronização com o computador onde o finan_rich roda e, se a pessoa entrou
+// com Google, com o arquivo no Drive dela (gdrive.js). As duas podem conviver:
+// a regra é a mesma (vence a alteração mais recente).
 //
 // Envia a fila de alterações feitas neste aparelho e recebe o que mudou lá
 // (inclusive o que outros aparelhos enviaram). Roda ao abrir, quando a conexão
@@ -7,13 +9,15 @@
 
 import { applyRemote, clearSent, getMeta, pending, setMeta } from "./db.js";
 import { endpoint } from "./device.js";
+import { syncDrive } from "./gdrive.js";
+import * as google from "./google.js";
 
 const PERIOD_MS = 30_000;
 let running = null;
 let again = false;
 let timer = null;
 
-// status: "ok" | "syncing" | "offline" | "login" | "unpaired" | "error"
+// status: "ok" | "syncing" | "offline" | "login" | "unpaired" | "google" | "error"
 // notice: aviso do computador nesta sincronização (ex.: categoria em uso não apagada).
 export const state = { status: "syncing", pending: 0, lastSync: null, message: "", notice: "" };
 
@@ -30,6 +34,8 @@ const unsupported = new Set();
 // preso para sempre no mesmo erro.
 const BATCH = 2000;
 
+let localChanged = false; // houve alteração aqui desde a última rodada do Drive
+
 async function round() {
   const out = await pending();
   state.pending = out.length;
@@ -37,7 +43,19 @@ async function round() {
   let changed = false;
   const notices = [];
   let toSend = out.filter((c) => !unsupported.has(c.type));
+  const linked = await google.account();
+  if (linked) {
+    const touched = localChanged;
+    localChanged = false;
+    try {
+      changed = await syncDrive(touched);
+    } catch (err) {
+      localChanged ||= touched; // tenta de novo na próxima rodada
+      throw err;
+    }
+  }
   const api = await endpoint("/api/sync");
+  if (!api && linked) return changed;
   if (!api) throw Object.assign(new Error("unpaired"), { kind: "unpaired" });
   for (;;) {
     const res = await fetch(api.url, {
@@ -91,7 +109,7 @@ export async function sync() {
       } while (again);
     } catch (err) {
       state.pending = (await pending()).length;
-      if (err.kind === "login" || err.kind === "unpaired") state.status = err.kind;
+      if (err.kind === "login" || err.kind === "unpaired" || err.kind === "google") state.status = err.kind;
       else if (err.kind === "error") { state.status = "error"; state.message = err.message; }
       else state.status = "offline"; // fetch falhou: sem conexão com o computador
       emit();
@@ -104,6 +122,7 @@ export async function sync() {
 
 // soon agenda uma sincronização logo depois de uma alteração local.
 export function soon() {
+  localChanged = true;
   clearTimeout(timer);
   timer = setTimeout(sync, 400);
   pending().then((p) => { state.pending = p.length; emit(); });

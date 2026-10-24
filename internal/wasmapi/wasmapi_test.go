@@ -200,3 +200,14 @@ func TestDiagnose(t *testing.T) {
 		t.Errorf("diagnóstico = %v %q", v, errMsg)
 	}
 }
+
+func TestDriveNeedsUpload(t *testing.T) {
+	got, errMsg := decode(t, DriveNeedsUpload(`[{"type":"goal","record":{"id":"g","updatedAt":2}}]`, `[{"type":"goal","record":{"id":"g","updatedAt":1}}]`))
+	if errMsg != "" || got["upload"] != true {
+		t.Errorf("mais novo aqui = %v %q", got, errMsg)
+	}
+	got, _ = decode(t, DriveNeedsUpload(`[]`, `[{"type":"goal","record":{"id":"g","updatedAt":1}}]`))
+	if got["upload"] != false {
+		t.Errorf("aparelho sem nada novo = %v", got)
+	}
+}

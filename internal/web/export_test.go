@@ -1,6 +1,7 @@
 package web
 
 import (
+	"github.com/alexandreserra1/finan_rich/internal/llm"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -69,5 +70,16 @@ func TestExportSite(t *testing.T) {
 	page := string(index)
 	if !strings.Contains(page, `data-site="web"`) || !strings.Contains(page, "connect-src 'self' https:;") {
 		t.Errorf("index.html do site:\n%s", page[:min(len(page), 600)])
+	}
+}
+
+// O login com Google no app chama o mesmo servidor do consultor grátis.
+func TestGoogleUsesFreeProxyURL(t *testing.T) {
+	js, err := staticFS.ReadFile("static/js/google.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(js), `const SERVER = "`+llm.FreeProxyURL+`"`) {
+		t.Errorf("google.js deve usar o endereço de llm.FreeProxyURL (%s)", llm.FreeProxyURL)
 	}
 }

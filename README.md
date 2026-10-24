@@ -186,6 +186,13 @@ O que precisa do computador ligado: o **Consultor IA** (a IA roda nele) e os **A
   **de fora de casa**, use o Tailscale (grátis): veja *Ajustes → Usar no celular sem
   conexão*. Ele dá ao seu computador um endereço `https://` acessível só pelos seus aparelhos.
 
+### No site, sem instalar nada
+
+Abra **https://finan-rich-ia.vercel.app**. São as mesmas telas do app. Sem conta, os dados
+ficam no navegador; com **Entrar com Google**, ficam também no seu Google Drive (numa pasta
+que só o finan_rich usa) e aparecem iguais em outros navegadores. Nenhum servidor do
+finan_rich guarda seus dados. Detalhes em [docs/GOOGLE.md](docs/GOOGLE.md).
+
 ### No celular
 
 **App Android** (novo): baixe o `.apk` da [última versão](https://github.com/alexandreserra1/finan_rich/releases/latest),

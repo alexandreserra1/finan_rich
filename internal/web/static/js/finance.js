@@ -32,6 +32,8 @@ export const parseMoney = (text) => unwrap(window.finan.parseMoney(text));
 export const money = (cents) => window.finan.formatMoney(cents);
 export const monthLabel = (key) => window.finan.monthLabel(key);
 export const defaultCategories = (now) => unwrap(window.finan.defaultCategories(now));
+// driveNeedsUpload: o aparelho tem algo que o arquivo do Google Drive não tem (regras em internal/drivesync).
+export const driveNeedsUpload = (local, remote) => unwrap(window.finan.driveNeedsUpload(JSON.stringify(local), JSON.stringify(remote))).upload;
 // exportFile gera planilha, CSV, PDF, nota ou backup: { name, mime, data (base64) }.
 export const exportFile = (ledger, options) => unwrap(window.finan.export(JSON.stringify(ledger), JSON.stringify(options), Date.now()));
 // importPreview lê um extrato (OFX/CSV em base64) e devolve as linhas para revisar.
