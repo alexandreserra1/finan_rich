@@ -20,6 +20,12 @@ const ok = (cond, msg) => {
   console.log(`${cond ? "OK   " : "FALHA"} ${msg}`);
   if (!cond) failures++;
 };
+// Abre a janela de novo lançamento (se ainda não estiver aberta).
+const openTx = async (page) => {
+  if (await page.locator("#tx-modal .modal-panel").isVisible()) return;
+  await page.locator('[data-action="new-tx"]:visible').first().click();
+  await page.waitForSelector("#tx-modal .modal-panel");
+};
 
 // Pluggy falsa (Open Finance): uma conta com dois lançamentos.
 const PLUGGY_PORT = 18088;
@@ -55,7 +61,7 @@ try {
   const row = (desc) => page.locator(`.import-table tr:has(input[value="${desc}"])`);
 
   await page.goto(`${B}/lancamentos`);
-  await page.waitForSelector("form[data-form=transaction]", { timeout: 20000 });
+  await page.waitForSelector(".tx-card", { timeout: 20000 });
   await page.click("a[href='/importar']");
   await page.waitForSelector("input[name=statement]", { state: "attached" });
 

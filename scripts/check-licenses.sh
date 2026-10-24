@@ -34,7 +34,7 @@ echo "== Pacotes do app (npm) =="
 
 echo "== Bibliotecas em static/vendor =="
 for d in internal/web/static/vendor/*/; do
-  if grep -qE "Apache License|Permission is hereby granted|Redistribution and use" "$d"LICENSE* 2>/dev/null; then
+  if grep -qE "Apache License|Permission is hereby granted|Redistribution and use|SIL Open Font License" "$d"LICENSE* 2>/dev/null; then # OFL: só fontes
     echo "ok    $d"
   else
     echo "FALHA $d: sem arquivo LICENSE de código aberto"; fail=1

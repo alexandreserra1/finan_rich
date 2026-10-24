@@ -22,6 +22,12 @@ const ok = (cond, msg) => {
   console.log(`${cond ? "OK   " : "FALHA"} ${msg}`);
   if (!cond) failures++;
 };
+// Abre a janela de novo lançamento (se ainda não estiver aberta).
+const openTx = async (page) => {
+  if (await page.locator("#tx-modal .modal-panel").isVisible()) return;
+  await page.locator('[data-action="new-tx"]:visible').first().click();
+  await page.waitForSelector("#tx-modal .modal-panel");
+};
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function startServer() {
@@ -55,7 +61,8 @@ const waitStatus = (page, status, timeout = 15000) =>
 
 async function addTransaction(page, description, amount) {
   // No celular o formulário fica recolhido atrás de "+ Novo lançamento".
-  await page.locator("details.add[data-add=transaction]:not([open]) > summary").click({ timeout: 1000 }).catch(() => {});
+  await openTx(page);
+  await openTx(page);
   await page.fill("input[name=description]", description);
   await page.fill("input[name=amount]", amount);
   await page.click("form[data-form=transaction] button[type=submit]");
@@ -82,7 +89,7 @@ try {
   // Online: baixa as categorias, lança, calcula o painel pelo WebAssembly.
   await page.goto(`${B}/lancamentos`);
   await page.waitForSelector("form[data-form=transaction]", { state: "attached", timeout: 20000 });
-  await page.selectOption("select[name=kind]", "entrada");
+  await openTx(page); await page.click("[data-kind=entrada]");
   await addTransaction(page, "Salário", "4.500");
   await addTransaction(page, "Aluguel", "1.400");
   await waitStatus(page, "ok");

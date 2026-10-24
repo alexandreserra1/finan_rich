@@ -249,7 +249,7 @@ export function render(ctx) {
         ${recent.length ? html`<ul class="tx-mini">
           ${recent.map((t) => {
             const cat = cats.get(t.categoryId);
-            return html`<li><a href="/lancamentos?mes=${t.date.slice(0, 7)}">
+            return html`<li><a href="/lancamentos?mes=${t.date.slice(0, 7)}&editar=${t.id}">
               ${iconTile(cat, t.kind)}
               <span class="tx-text"><span class="tx-desc">${t.description}</span><span class="faint tiny">${cat?.name || "Sem categoria"} · ${shortDate(t.date, now)}</span></span>
               <span class="tx-amt num ${t.kind === "entrada" ? "pos" : ""}">${t.kind === "entrada" ? "+" : "−"}${m(t.amountCents)}</span>

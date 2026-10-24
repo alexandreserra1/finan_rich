@@ -28,6 +28,12 @@ const ok = (cond, msg) => {
   console.log(`${cond ? "OK   " : "FALHA"} ${msg}`);
   if (!cond) failures++;
 };
+// Abre a janela de novo lançamento (se ainda não estiver aberta).
+const openTx = async (page) => {
+  if (await page.locator("#tx-modal .modal-panel").isVisible()) return;
+  await page.locator('[data-action="new-tx"]:visible').first().click();
+  await page.waitForSelector("#tx-modal .modal-panel");
+};
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function waitHealthy() {
@@ -151,7 +157,8 @@ const waitStatus = (page, s, timeout = 15000) =>
 
 async function addTransaction(page, description, amount) {
   // No celular o formulário fica recolhido atrás de "+ Novo lançamento".
-  await page.locator("details.add[data-add=transaction]:not([open]) > summary").click({ timeout: 1000 }).catch(() => {});
+  await openTx(page);
+  await openTx(page);
   await page.fill("input[name=description]", description);
   await page.fill("input[name=amount]", amount);
   await page.click("form[data-form=transaction] button[type=submit]");

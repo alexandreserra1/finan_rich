@@ -13,6 +13,12 @@ const ok = (cond, msg) => {
   console.log(`${cond ? "OK   " : "FALHA"} ${msg}`);
   if (!cond) failures++;
 };
+// Abre a janela de novo lançamento (se ainda não estiver aberta).
+const openTx = async (page) => {
+  if (await page.locator("#tx-modal .modal-panel").isVisible()) return;
+  await page.locator('[data-action="new-tx"]:visible').first().click();
+  await page.waitForSelector("#tx-modal .modal-panel");
+};
 
 const server = spawn(BIN, [], { env: { ...process.env, PORT: String(PORT), GROQ_API_KEY: "teste", FINAN_PROXY_UPSTREAM: "http://127.0.0.1:9" }, stdio: "ignore" });
 for (let i = 0; i < 100; i++) {
@@ -39,7 +45,8 @@ try {
   await page.click(".start button[data-action=solo]");
   await page.waitForSelector(".welcome, .cards", { timeout: 20000 });
   await page.goto(`${SITE}/lancamentos`);
-  await page.locator("details.add[data-add=transaction]:not([open]) > summary").click({ timeout: 2000 }).catch(() => {});
+  await openTx(page);
+  await openTx(page);
   await page.fill("input[name=description]", "Padaria do site");
   await page.fill("input[name=amount]", "12,50");
   await page.click("form[data-form=transaction] button[type=submit]");

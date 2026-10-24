@@ -42,8 +42,8 @@ scripts/clean.sh   # limpeza (veja "Limpeza" abaixo)
   computador, no navegador e no celular.
 - Arquivo novo em `internal/web/static/js` entra na lista `PRECACHE` do `sw.js` (um teste
   confere).
-- Dependência nova: só código aberto (MIT/BSD/ISC/Apache/MPL) e só se não der com o que já
-  existe; `scripts/check-licenses.sh` barra o resto.
+- Dependência nova: só código aberto (MIT/BSD/ISC/Apache/MPL; fontes também SIL OFL) e só se
+  não der com o que já existe; `scripts/check-licenses.sh` barra o resto.
 - Versão é publicada só pelo workflow Release (ele grava `version.properties` e cria a tag).
 - Nunca versionar `dist/`, `mobile/www`, `finance.wasm`, bancos `*.db`, `.env`, keystores.
 

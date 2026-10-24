@@ -16,6 +16,12 @@ const ok = (cond, msg) => {
   console.log(`${cond ? "OK   " : "FALHA"} ${msg}`);
   if (!cond) failures++;
 };
+// Abre a janela de novo lançamento (se ainda não estiver aberta).
+const openTx = async (page) => {
+  if (await page.locator("#tx-modal .modal-panel").isVisible()) return;
+  await page.locator('[data-action="new-tx"]:visible').first().click();
+  await page.waitForSelector("#tx-modal .modal-panel");
+};
 const server = spawn(BIN, ["-data", dataDir, "-no-browser", "-addr", `127.0.0.1:${PORT}`], { stdio: "ignore" });
 for (let i = 0; i < 100; i++) {
   try { if ((await fetch(`${B}/healthz`)).ok) break; } catch {}
@@ -60,15 +66,17 @@ try {
 
   // Compra parcelada em 3x no cartão: 1.000,00 vira 333,34 + 333,33 + 333,33.
   await page.goto(`${B}/lancamentos`);
-  await page.waitForSelector("form[data-form=transaction] select[name=account_id]");
+  await openTx(page); await page.waitForSelector("form[data-form=transaction] select[name=account_id]");
+  await openTx(page);
   await page.fill("input[name=description]", "Geladeira");
   await page.fill("input[name=amount]", "1.000");
   await page.selectOption("select[name=account_id]", { label: "Cartão Nubank" });
   await page.fill("input[name=installments]", "3");
   await page.click("form[data-form=transaction] button[type=submit]");
-  await page.waitForSelector("td:has-text('Geladeira (1/3)')");
+  await page.waitForSelector("tr.tx-row:has(.tx-desc:text-is('Geladeira')):has(.mini-chip:text-is('1/3'))"); // parcela: descrição e o selo 1/3
   // Uma entrada na conta corrente.
-  await page.selectOption("select[name=kind]", "entrada");
+  await openTx(page); await page.click("[data-kind=entrada]");
+  await openTx(page);
   await page.fill("input[name=description]", "Freela");
   await page.fill("input[name=amount]", "500");
   await page.selectOption("select[name=account_id]", { label: "Itaú" });

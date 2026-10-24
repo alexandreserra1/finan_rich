@@ -16,6 +16,12 @@ const ok = (cond, msg) => {
   console.log(`${cond ? "OK   " : "FALHA"} ${msg}`);
   if (!cond) failures++;
 };
+// Abre a janela de novo lançamento (se ainda não estiver aberta).
+const openTx = async (page) => {
+  if (await page.locator("#tx-modal .modal-panel").isVisible()) return;
+  await page.locator('[data-action="new-tx"]:visible').first().click();
+  await page.waitForSelector("#tx-modal .modal-panel");
+};
 const b64url = (buf) => buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
 // ---- Google falso: troca de token (o intermediário chama aqui) ----
@@ -115,7 +121,8 @@ async function login(page) {
 }
 async function addTransaction(page, desc, amount) {
   await page.goto(`${SITE}/lancamentos`);
-  await page.locator("details.add[data-add=transaction]:not([open]) > summary").click({ timeout: 2000 }).catch(() => {});
+  await openTx(page);
+  await openTx(page);
   await page.fill("input[name=description]", desc);
   await page.fill("input[name=amount]", amount);
   await page.click("form[data-form=transaction] button[type=submit]");
@@ -169,7 +176,9 @@ try {
   await a.goto(`${SITE}/lancamentos`);
   await a.waitForSelector("td:has-text('Farmácia do B')", { timeout: 20000 });
   ok(true, "A recebe o lançamento de B");
-  await a.click("tr:has-text('Farmácia do B') [data-delete]");
+  // No celular a lixeira fica na janela de edição: toca na linha e em Apagar.
+  await a.click("tr:has-text('Farmácia do B') td.primary");
+  await a.click("#tx-modal [data-action=delete-editing]");
   await a.waitForSelector("td:has-text('Farmácia do B')", { state: "detached" });
   await until(() => inDrive("Farmácia do B")?.deleted === true, "apagamento de A chegou ao Drive");
   await syncNow(b);

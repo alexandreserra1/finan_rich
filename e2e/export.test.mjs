@@ -19,6 +19,12 @@ const ok = (cond, msg) => {
   console.log(`${cond ? "OK   " : "FALHA"} ${msg}`);
   if (!cond) failures++;
 };
+// Abre a janela de novo lançamento (se ainda não estiver aberta).
+const openTx = async (page) => {
+  if (await page.locator("#tx-modal .modal-panel").isVisible()) return;
+  await page.locator('[data-action="new-tx"]:visible').first().click();
+  await page.waitForSelector("#tx-modal .modal-panel");
+};
 
 const server = spawn(BIN, ["-data", dataDir, "-no-browser", "-addr", `127.0.0.1:${PORT}`], { stdio: "ignore" });
 for (let i = 0; i < 100; i++) {
@@ -44,7 +50,8 @@ try {
 
   // Dados: um lançamento e duas notas.
   await page.goto(`${B}/lancamentos`);
-  await page.waitForSelector("form[data-form=transaction]", { timeout: 20000 });
+  await page.waitForSelector(".tx-card", { timeout: 20000 });
+  await openTx(page);
   await page.fill("input[name=description]", "Mercado do mês");
   await page.fill("input[name=amount]", "812,40");
   await page.click("form[data-form=transaction] button[type=submit]");

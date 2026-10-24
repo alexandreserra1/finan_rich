@@ -91,8 +91,8 @@ export function categoryIcon(category, kind) {
   if (kind === "entrada") return ICONS.in;
   const n = fold(category?.name);
   const rules = [[/restaur|delivery|ifood|lanche|comida|padaria/, "food"], [/mercado|supermerc|feira/, "cart"],
-    [/transporte|uber|combust|carro|onibus|gasolina/, "car"], [/moradia|aluguel|condom|casa\b/, "home"],
-    [/assinatura|lazer|stream|cinema|viage/, "play"], [/saude|farmac|medic|academia/, "heart"], [/conta|luz|agua|internet|energia/, "bolt"],
+    [/transporte|uber|combust|carro|onibus|gasolina/, "car"], [/contas? d|luz|agua|internet|energia/, "bolt"],
+    [/moradia|aluguel|condom|casa\b/, "home"], [/assinatura|lazer|stream|cinema|viage/, "play"], [/saude|farmac|medic|academia/, "heart"],
     [/invest|reserva|poupan/, "grow"], [/educa|curso|escola|livro/, "book"]];
   return ICONS[rules.find(([re]) => re.test(n))?.[1] || (category?.bucket === "investimentos" ? "grow" : "tag")];
 }
@@ -100,4 +100,43 @@ export function categoryIcon(category, kind) {
 export function iconTile(category, kind, size = 34) {
   const color = kind === "entrada" ? "accent" : category?.bucket || "muted";
   return html`<span class="icon-tile" style="--c: var(--${color}); --s: ${size}px"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${categoryIcon(category, kind)}"/></svg></span>`;
+}
+
+// ---------- Janela (modal) e aviso com "Desfazer" (visual Esmeralda) ----------
+
+// openModal mostra uma janela já desenhada na tela (<div class="modal" hidden>):
+// Esc ou o fundo fecham, o foco entra nela e volta para quem abriu.
+export function openModal(modal, trigger) {
+  modal.hidden = false;
+  document.body.classList.add("modal-open");
+  // Uma janela aberta conta como formulário em uso: a sincronização não redesenha por baixo.
+  modal.dispatchEvent(new Event("input", { bubbles: true }));
+  const close = () => closeModal(modal);
+  modal._onKey = (e) => { if (e.key === "Escape") close(); };
+  document.addEventListener("keydown", modal._onKey);
+  modal._trigger = trigger || document.activeElement;
+  modal.querySelectorAll("[data-close]").forEach((el) => { el.onclick = close; });
+  (modal.querySelector("[autofocus]") || modal.querySelector("input, select, textarea, button"))?.focus();
+}
+
+export function closeModal(modal) {
+  if (modal.hidden) return;
+  modal.hidden = true;
+  document.body.classList.remove("modal-open");
+  document.removeEventListener("keydown", modal._onKey);
+  if (modal._trigger?.isConnected) modal._trigger.focus();
+}
+
+// toast mostra um aviso curto embaixo, no centro; com undo, ganha o botão "Desfazer".
+export function toast(message, undo) {
+  document.querySelector(".toast")?.remove();
+  const box = Object.assign(document.createElement("div"), { className: "toast", role: "status" });
+  box.append(Object.assign(document.createElement("i"), { className: "dot" }), Object.assign(document.createElement("span"), { textContent: message }));
+  if (undo) {
+    const btn = Object.assign(document.createElement("button"), { type: "button", textContent: "Desfazer" });
+    btn.onclick = () => { box.remove(); undo(); };
+    box.append(btn);
+  }
+  document.body.append(box);
+  setTimeout(() => box.remove(), undo ? 4500 : 3500);
 }

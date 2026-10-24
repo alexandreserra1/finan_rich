@@ -15,6 +15,12 @@ const ok = (cond, msg) => {
   console.log(`${cond ? "OK   " : "FALHA"} ${msg}`);
   if (!cond) failures++;
 };
+// Abre a janela de novo lançamento (se ainda não estiver aberta).
+const openTx = async (page) => {
+  if (await page.locator("#tx-modal .modal-panel").isVisible()) return;
+  await page.locator('[data-action="new-tx"]:visible').first().click();
+  await page.waitForSelector("#tx-modal .modal-panel");
+};
 const server = spawn(BIN, ["-data", dataDir, "-no-browser", "-addr", `127.0.0.1:${PORT}`], { stdio: "ignore" });
 for (let i = 0; i < 100; i++) {
   try { if ((await fetch(`${B}/healthz`)).ok) break; } catch {}
@@ -37,8 +43,9 @@ try {
 
   // Recorrente começando há 2 meses, dia 1: gera 3 lançamentos (2 atrás, 1 atrás, este).
   await page.goto(`${B}/lancamentos`);
-  await page.waitForSelector("form[data-form=transaction]", { timeout: 20000 });
-  await page.selectOption("select[name=kind]", "entrada");
+  await page.waitForSelector(".tx-card", { timeout: 20000 });
+  await openTx(page); await page.click("[data-kind=entrada]");
+  await openTx(page);
   await page.fill("input[name=description]", "Salário");
   await page.fill("input[name=amount]", "5.000");
   await page.fill("input[name=date]", `${ym(prev)}-01`);
@@ -51,13 +58,13 @@ try {
 
   // Recarregar não duplica; apagar um gerado não volta.
   await page.reload();
-  await page.waitForSelector("form[data-form=transaction]");
+  await page.waitForSelector(".tx-card");
   await page.evaluate(() => window.finanSync());
   ok((await records("transaction")).filter((t) => t.id.startsWith("rec-")).length === 3, "abrir de novo não duplica os recorrentes");
   await page.click("tr:has-text('Salário') [data-delete]");
   await page.waitForSelector("tr:has-text('Salário')", { state: "detached" });
   await page.reload();
-  await page.waitForSelector("form[data-form=transaction]");
+  await page.waitForSelector(".tx-card");
   ok(await page.locator("tr:has-text('Salário')").count() === 0, "lançamento recorrente apagado não volta");
 
   // Pausar e apagar a recorrência.
@@ -128,7 +135,8 @@ try {
   await page.waitForSelector(".goal:has-text('Reserva')");
   // Um aporte lançado na categoria conta para a meta.
   await page.goto(`${B}/lancamentos`);
-  await page.waitForSelector("form[data-form=transaction]");
+  await page.waitForSelector(".tx-card");
+  await openTx(page);
   await page.fill("input[name=description]", "Poupança");
   await page.fill("input[name=amount]", "500");
   await page.selectOption("select[name=category_id]", { label: "Reserva de emergência · Investimentos" });
@@ -142,7 +150,8 @@ try {
 
   // Análise: ritmo, quanto dá para gastar por dia e onde foi o dinheiro.
   await page.goto(`${B}/lancamentos`);
-  await page.waitForSelector("form[data-form=transaction]");
+  await page.waitForSelector(".tx-card");
+  await openTx(page);
   await page.fill("input[name=description]", "iFood pizza");
   await page.fill("input[name=amount]", "45");
   await page.click("form[data-form=transaction] button[type=submit]");

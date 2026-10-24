@@ -16,6 +16,12 @@ const ok = (cond, msg) => {
   console.log(`${cond ? "OK   " : "FALHA"} ${msg}`);
   if (!cond) failures++;
 };
+// Abre a janela de novo lançamento (se ainda não estiver aberta).
+const openTx = async (page) => {
+  if (await page.locator("#tx-modal .modal-panel").isVisible()) return;
+  await page.locator('[data-action="new-tx"]:visible').first().click();
+  await page.waitForSelector("#tx-modal .modal-panel");
+};
 const server = spawn(BIN, ["-data", dataDir, "-no-browser", "-addr", `127.0.0.1:${PORT}`], { stdio: "ignore" });
 for (let i = 0; i < 100; i++) {
   try { if ((await fetch(`${B}/healthz`)).ok) break; } catch {}
@@ -87,6 +93,7 @@ try {
   ok((await records("category")).find((c) => c.name === "Restaurantes e delivery")?.budgetCents === 10000, "teto salvo na categoria e sincronizado");
 
   const add = async (description, amount, category, date) => {
+    await openTx(page);
     await page.fill("form[data-form=transaction] input[name=description]", description);
     await page.fill("form[data-form=transaction] input[name=amount]", amount);
     await page.selectOption("form[data-form=transaction] select[name=category_id]", { label: category });
@@ -95,7 +102,7 @@ try {
     await page.waitForSelector(`td:has-text('${description}')`);
   };
   await page.goto(`${B}/lancamentos`);
-  await page.waitForSelector("form[data-form=transaction]");
+  await page.waitForSelector(".tx-card");
   await add("iFood pizza", "45", "Restaurantes e delivery · Desejos");
   await add("Padaria Açúcar", "35", "Restaurantes e delivery · Desejos");
   await add("Pão de Açúcar", "120", "Mercado · Necessidades");
@@ -104,7 +111,7 @@ try {
   ok((await page.textContent("#orcamentos")).includes("R$ 80,00 de R$ 100,00"), "Painel mostra quanto já foi usado do orçamento");
   ok(await page.isVisible(".alert.warn:has-text('Orçamento de Restaurantes e delivery em 80%')"), "aviso ao chegar a 80%");
   await page.goto(`${B}/lancamentos`);
-  await page.waitForSelector("form[data-form=transaction]");
+  await page.waitForSelector(".tx-card");
   await add("iFood lanche", "30", "Restaurantes e delivery · Desejos");
   await page.goto(`${B}/`);
   await page.waitForSelector(".alert.danger:has-text('Orçamento de Restaurantes e delivery estourou')");
@@ -117,18 +124,18 @@ try {
   await page.goto(`${B}/`);
   await page.click(".alert.danger:has-text('estourou')");
   await page.waitForSelector(".filter-total");
-  ok(await page.locator("tbody tr").count() === 3 && (await page.textContent(".filter-total")).includes("R$ 110,00"), "o aviso abre os lançamentos filtrados pela categoria");
+  ok(await page.locator("tbody tr.tx-row").count() === 3 && (await page.textContent(".filter-total")).includes("R$ 110,00"), "o aviso abre os lançamentos filtrados pela categoria");
 
   // ---------- Busca e filtros ----------
   await page.goto(`${B}/lancamentos`);
-  await page.waitForSelector("form[data-form=transaction]");
+  await page.waitForSelector(".tx-card");
   await add("Pão de Açúcar antigo", "50", "Mercado · Necessidades", `${prevMonth}-10`);
   await page.goto(`${B}/lancamentos`);
   await page.waitForSelector("form[data-form=filter]");
   await page.fill("input[name=busca]", "ACUCAR");
   await page.press("input[name=busca]", "Enter");
   await page.waitForSelector(".filter-total");
-  const descs = async () => (await page.locator("tbody td.primary").allTextContents()).map((s) => s.trim()).sort().join("|");
+  const descs = async () => (await page.locator("tbody .tx-desc").allTextContents()).map((s) => s.trim()).sort().join("|");
   ok(new URL(page.url()).searchParams.get("busca") === "ACUCAR", "a busca fica no endereço");
   ok(await descs() === "Padaria Açúcar|Pão de Açúcar" && (await page.textContent(".filter-total")).includes("R$ 155,00"),
     `busca sem acento nem maiúscula, com o total do achado (${await descs()})`);
@@ -144,7 +151,8 @@ try {
   await page.goto(`${B}/lancamentos?busca=acucar`);
   await page.waitForSelector("form[data-form=filter]");
   await page.check("form[data-form=filter] input[name=todos]");
-  await page.waitForSelector("h2:has-text('Lançamentos de todos os meses')");
+  await page.waitForFunction(() => new URL(location.href).searchParams.get("todos"));
+  await page.waitForSelector(".filter-total");
   ok(await descs() === "Padaria Açúcar|Pão de Açúcar|Pão de Açúcar antigo" && (await page.textContent(".filter-total")).includes("R$ 205,00"),
     "em todos os meses acha também o mês passado");
   await page.goto(`${B}/lancamentos?tipo=entrada&todos=1`);
