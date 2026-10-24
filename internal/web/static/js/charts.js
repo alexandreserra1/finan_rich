@@ -43,14 +43,15 @@ const axisMoney = (cents) => compact.format(cents / 100);
 //           está sob o mouse; as barras dos outros pontos ficam mais apagadas
 //   bar     { max, radius }: largura máxima e raio do topo das barras
 //   dashed  grade tracejada · cutout, size (px) no doughnut
+//   stripInline  a faixa vira texto ao lado da legenda (sem fundo) · cursor  linha vertical no ponto ativo
 export function chart(spec, label) {
   const id = `ch${++seq}`;
   pending.set(id, spec);
   const legend = spec.type === "doughnut" || spec.legend === false ? "" : html`<p class="legend">${spec.series.map((s) =>
     html`<span><span class="key ${s.dash ? "dash" : s.dots ? "dots" : ""}" style="--c: var(--${s.color})"></span>${s.name}</span>`)}</p>`;
+  const strip = spec.strip ? html`<div class="chart-strip ${spec.stripInline ? "inline" : ""}" aria-live="polite">${spec.strip.render(spec.strip.index)}</div>` : "";
   return html`<div class="chart-box chart-${spec.type}">
-    ${legend}
-    ${spec.strip ? html`<div class="chart-strip" aria-live="polite">${spec.strip.render(spec.strip.index)}</div>` : ""}
+    ${spec.stripInline ? html`<div class="chart-top">${legend}${strip}</div>` : html`${legend}${strip}`}
     <div class="chart" data-chart="${id}" style="height: ${spec.height || 240}px${spec.size ? `; width: ${spec.size}px` : ""}">
       <canvas role="img" aria-label="${label}"></canvas>
       ${spec.center ? html`<div class="chart-center"><strong>${spec.center.value}</strong><span>${spec.center.text}</span></div>` : ""}
@@ -64,7 +65,7 @@ const gradient = (color) => ({ chart }) => {
   const a = chart.chartArea;
   if (!a) return alpha(color, 0.15);
   const g = chart.ctx.createLinearGradient(0, a.top, 0, a.bottom);
-  g.addColorStop(0, alpha(color, 0.35));
+  g.addColorStop(0, alpha(color, 0.28));
   g.addColorStop(1, alpha(color, 0));
   return g;
 };
@@ -80,7 +81,7 @@ function datasets(spec) {
     const line = spec.type === "line" || s.line;
     return line
       ? { type: "line", label: s.name, data: s.data, borderColor: c, backgroundColor: s.fill ? gradient(c) : c, fill: !!s.fill,
-          borderWidth: s.dash || s.dots ? 2 : 3, borderDash: s.dash ? [6, 5] : s.dots ? [2, 4] : [], cubicInterpolationMode: "monotone",
+          borderWidth: s.dash || s.dots ? 2 : s.width || 3, borderDash: s.dash ? [6, 5] : s.dots ? [2, 4] : [], cubicInterpolationMode: "monotone",
           pointRadius: 0, pointHoverRadius: 5, pointBackgroundColor: c, pointBorderColor: token("surface"), pointBorderWidth: 2, spanGaps: false, order: 0 }
       : { type: "bar", label: s.name, data: s.data, order: 1, borderSkipped: false,
           // Com a faixa de resumo, só o ponto ativo fica forte (os outros a 55%).
@@ -126,6 +127,21 @@ function setActive(chart, spec, i) {
   if (strip) strip.innerHTML = toString(spec.strip.render(i));
 }
 
+// cursorLine desenha a linha vertical no ponto mostrado na faixa de resumo.
+const cursorLine = {
+  id: "cursor",
+  afterDatasetsDraw(chart) {
+    if (!chart.$cursor || chart.$active == null) return;
+    const x = chart.scales.x.getPixelForValue(chart.$active), { top, bottom } = chart.chartArea;
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.strokeStyle = token("border-2") || token("border");
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke();
+    ctx.restore();
+  },
+};
+
 function config(spec, tip, animate) {
   const muted = token("faint") || token("muted"), grid = token("grid") || token("border");
   const money = { color: muted, callback: (v) => axisMoney(v), maxTicksLimit: 5, maxRotation: 0, font: { size: 11 } };
@@ -139,6 +155,7 @@ function config(spec, tip, animate) {
   return {
     type: spec.type,
     data: { labels: spec.labels, datasets: datasets(spec) },
+    plugins: spec.cursor ? [cursorLine] : [],
     options: {
       responsive: true, maintainAspectRatio: false,
       animation: animate && !matchMedia("(prefers-reduced-motion: reduce)").matches ? { duration: 700, easing: "easeOutQuart" } : false,
@@ -162,7 +179,7 @@ function draw(Chart, item) {
   const tip = item.canvas.parentNode.querySelector(".chart-tip");
   item.chart = new Chart(item.canvas, config(item.spec, tip, !animated.has(key)));
   animated.add(key);
-  if (item.spec.strip) { item.chart.$active = item.spec.strip.index; item.chart.update("none"); }
+  if (item.spec.strip) { item.chart.$cursor = !!item.spec.cursor; item.chart.$active = item.spec.strip.index; item.chart.update("none"); }
   item.canvas.addEventListener("pointerleave", () => {
     tip.hidden = true;
     if (item.spec.strip) setActive(item.chart, item.spec, item.spec.strip.index); // volta ao mês escolhido

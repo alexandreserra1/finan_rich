@@ -76,7 +76,8 @@ try {
   const due = new Date(now.getTime() + 2 * 864e5);
   if (due.getMonth() === now.getMonth()) {
     await page.goto(`${B}/dividas`);
-    await page.waitForSelector("form[data-form=debt]");
+    await page.click('[data-action="new-debt"] >> nth=0'); // a janela de nova dívida
+    await page.waitForSelector("#debt-modal .modal-panel");
     await page.fill("input[name=name]", "Cartão");
     await page.fill("input[name=balance]", "2.000");
     await page.fill("input[name=rate]", "10");
@@ -91,7 +92,8 @@ try {
 
   // Apagar dívida: some da tela, não volta ao recarregar e o apagamento chega ao computador.
   await page.goto(`${B}/dividas`);
-  await page.waitForSelector("form[data-form=debt]");
+  await page.click('[data-action="new-debt"] >> nth=0'); // a janela de nova dívida
+  await page.waitForSelector("#debt-modal .modal-panel");
   await page.fill("input[name=name]", "Empréstimo");
   await page.fill("input[name=balance]", "1.000");
   await page.fill("input[name=rate]", "5");
@@ -107,19 +109,19 @@ try {
   const before = await months();
   ok((await page.textContent(".plan-lead")).includes("Pagando") && await page.locator(".debt-chart canvas").count() === 1,
     `plano das dívidas com frase e gráfico (${before} meses)`);
-  await page.fill("form[data-form=extra] input[name=extra]", "200");
-  await page.click("form[data-form=extra] button[type=submit]");
+  await page.fill("form[data-form=extra] input[name=extra]", "200"); // recalcula sozinho, sem botão
   await page.waitForURL(/extra=20000/);
   await page.waitForFunction((b) => {
     const m = document.querySelector(".plan-lead")?.textContent.replace(/\s+/g, " ").match(/em (?:(\d+) anos?)?(?: e )?(?:(\d+) m[eê]s(?:es)?)? \(/);
     return m && Number(m[1] || 0) * 12 + Number(m[2] || 0) < b;
   }, before);
   ok(true, `pagando R$ 200 a mais o plano encurta (${before} → ${await months()} meses)`);
-  await page.click("tr:has-text('Empréstimo') [data-delete]");
+  await page.click("tr:has-text('Empréstimo') td.primary"); // abre a edição
+  await page.click("#debt-modal [data-action=delete-editing]");
   await page.waitForSelector("td:has-text('Empréstimo')", { state: "detached" });
   await page.evaluate(() => window.finanSync());
   await page.reload();
-  await page.waitForSelector("form[data-form=debt]");
+  await page.waitForSelector("h1:has-text('Dívidas')");
   ok(await page.locator("td:has-text('Empréstimo')").count() === 0 && !(await records("debt")).some((d) => d.name === "Empréstimo"),
     "dívida apagada some aqui e no computador");
 
