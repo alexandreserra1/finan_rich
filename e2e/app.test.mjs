@@ -204,6 +204,7 @@ try {
   await page.waitForSelector("form[data-form=transaction]", { state: "attached", timeout: 20000 });
   // Primeiro uso também só no celular: o Painel guia em vez de ficar vazio.
   await page.goto(`${APP}/`);
+  await page.click(".welcome-empty a[href='/?passo=1']", { timeout: 20000 }); // estado vazio do Painel → começa o guia
   await page.waitForSelector(".welcome:has-text('Passo 1 de 4')", { timeout: 20000 });
   await page.fill(".welcome input[name=amount]", "3.000");
   await page.click(".welcome button[type=submit]");

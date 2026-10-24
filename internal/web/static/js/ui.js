@@ -71,3 +71,33 @@ export function flash(message, kind = "ok") {
   clearTimeout(flash.timer);
   flash.timer = setTimeout(() => { box.hidden = true; }, 4000);
 }
+
+// Ícones (traço, desenhos do Lucide, ISC) dos lançamentos, pela categoria.
+const ICONS = {
+  food: "M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7",
+  cart: "M8 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM19 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM2 2h3l2.7 12.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6",
+  car: "M19 17h2v-4l-3-5H6l-3 5v4h2M7 17a2 2 0 1 0 4 0 2 2 0 1 0-4 0M13 17a2 2 0 1 0 4 0 2 2 0 1 0-4 0",
+  home: "M3 11l9-7 9 7v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z",
+  play: "M5 3l14 9-14 9z",
+  heart: "M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7z",
+  bolt: "M13 2L3 14h9l-1 8 10-12h-9z",
+  grow: "M22 7l-8.5 8.5-5-5L2 17M16 7h6v6",
+  book: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15zM20 17v5H6.5A2.5 2.5 0 0 1 4 19.5",
+  in: "M12 19V5M5 12l7-7 7 7",
+  tag: "M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8zM7 7h.01",
+};
+const fold = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+export function categoryIcon(category, kind) {
+  if (kind === "entrada") return ICONS.in;
+  const n = fold(category?.name);
+  const rules = [[/restaur|delivery|ifood|lanche|comida|padaria/, "food"], [/mercado|supermerc|feira/, "cart"],
+    [/transporte|uber|combust|carro|onibus|gasolina/, "car"], [/moradia|aluguel|condom|casa\b/, "home"],
+    [/assinatura|lazer|stream|cinema|viage/, "play"], [/saude|farmac|medic|academia/, "heart"], [/conta|luz|agua|internet|energia/, "bolt"],
+    [/invest|reserva|poupan/, "grow"], [/educa|curso|escola|livro/, "book"]];
+  return ICONS[rules.find(([re]) => re.test(n))?.[1] || (category?.bucket === "investimentos" ? "grow" : "tag")];
+}
+// iconTile é o quadrado colorido com o ícone (cor do grupo da categoria).
+export function iconTile(category, kind, size = 34) {
+  const color = kind === "entrada" ? "accent" : category?.bucket || "muted";
+  return html`<span class="icon-tile" style="--c: var(--${color}); --s: ${size}px"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${categoryIcon(category, kind)}"/></svg></span>`;
+}

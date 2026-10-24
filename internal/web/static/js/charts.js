@@ -5,7 +5,7 @@
 // A dica (.chart-tip) é HTML: aparece ao passar o dedo ou o mouse e é lida
 // pelo leitor de tela. Cada gráfico continua com a sua tabela "Ver em tabela".
 import * as finance from "./finance.js";
-import { html } from "./ui.js";
+import { html, toString } from "./ui.js";
 
 const pending = new Map(); // gráficos desenhados na tela e ainda não montados
 let live = []; // { canvas, spec, chart }
@@ -38,6 +38,11 @@ const axisMoney = (cents) => compact.format(cents / 100);
 //           no doughnut, uma série com colors: ["necessidades", ...]
 //   tip(i)  título da dica para o ponto i (padrão: o rótulo)
 //   horizontal, stacked, height (px), center: { value, text } no doughnut
+//   strip   { index, render(i), valid(i) }: faixa de resumo acima do gráfico que mostra o
+//           ponto sob o mouse (em vez da dica flutuante); index é o ponto de quando nada
+//           está sob o mouse; as barras dos outros pontos ficam mais apagadas
+//   bar     { max, radius }: largura máxima e raio do topo das barras
+//   dashed  grade tracejada · cutout, size (px) no doughnut
 export function chart(spec, label) {
   const id = `ch${++seq}`;
   pending.set(id, spec);
@@ -45,7 +50,8 @@ export function chart(spec, label) {
     html`<span><span class="key ${s.dash ? "dash" : s.dots ? "dots" : ""}" style="--c: var(--${s.color})"></span>${s.name}</span>`)}</p>`;
   return html`<div class="chart-box chart-${spec.type}">
     ${legend}
-    <div class="chart" data-chart="${id}" style="height: ${spec.height || 240}px">
+    ${spec.strip ? html`<div class="chart-strip" aria-live="polite">${spec.strip.render(spec.strip.index)}</div>` : ""}
+    <div class="chart" data-chart="${id}" style="height: ${spec.height || 240}px${spec.size ? `; width: ${spec.size}px` : ""}">
       <canvas role="img" aria-label="${label}"></canvas>
       ${spec.center ? html`<div class="chart-center"><strong>${spec.center.value}</strong><span>${spec.center.text}</span></div>` : ""}
       <p class="chart-tip" aria-live="polite" hidden></p>
@@ -66,7 +72,8 @@ const gradient = (color) => ({ chart }) => {
 function datasets(spec) {
   if (spec.type === "doughnut") {
     const s = spec.series[0];
-    return [{ label: s.name, data: s.data, backgroundColor: s.colors.map(token), borderColor: token("surface"), borderWidth: 3, hoverOffset: 8, borderRadius: 6 }];
+    return [{ label: s.name, data: s.data, backgroundColor: s.colors.map(token), borderColor: token("surface"),
+      borderWidth: spec.size ? 2 : 3, hoverOffset: spec.size ? 3 : 8, borderRadius: spec.size ? 2 : 6 }];
   }
   return spec.series.map((s) => {
     const c = token(s.color);
@@ -75,8 +82,12 @@ function datasets(spec) {
       ? { type: "line", label: s.name, data: s.data, borderColor: c, backgroundColor: s.fill ? gradient(c) : c, fill: !!s.fill,
           borderWidth: s.dash || s.dots ? 2 : 3, borderDash: s.dash ? [6, 5] : s.dots ? [2, 4] : [], cubicInterpolationMode: "monotone",
           pointRadius: 0, pointHoverRadius: 5, pointBackgroundColor: c, pointBorderColor: token("surface"), pointBorderWidth: 2, spanGaps: false, order: 0 }
-      : { type: "bar", label: s.name, data: s.data, backgroundColor: c, hoverBackgroundColor: alpha(c, 0.8), borderRadius: 6, borderSkipped: false,
-          maxBarThickness: 22, categoryPercentage: 0.7, barPercentage: 0.9, order: 1 };
+      : { type: "bar", label: s.name, data: s.data, order: 1, borderSkipped: false,
+          // Com a faixa de resumo, só o ponto ativo fica forte (os outros a 55%).
+          backgroundColor: spec.strip ? (ctx) => (ctx.dataIndex === ctx.chart.$active ? c : alpha(c, 0.55)) : c,
+          hoverBackgroundColor: spec.strip ? c : alpha(c, 0.8),
+          borderRadius: spec.bar ? { topLeft: spec.bar.radius, topRight: spec.bar.radius } : 6,
+          maxBarThickness: spec.bar?.max || 22, categoryPercentage: spec.bar ? 0.62 : 0.7, barPercentage: spec.bar ? 0.94 : 0.9 };
   });
 }
 
@@ -106,15 +117,25 @@ function tooltip(spec, tip) {
   };
 }
 
+// setActive troca o ponto mostrado na faixa de resumo e destaca as barras dele.
+function setActive(chart, spec, i) {
+  if (chart.$active === i) return;
+  chart.$active = i;
+  chart.update("none");
+  const strip = chart.canvas.closest(".chart-box")?.querySelector(".chart-strip");
+  if (strip) strip.innerHTML = toString(spec.strip.render(i));
+}
+
 function config(spec, tip, animate) {
-  const muted = token("muted"), grid = token("border");
-  const money = { color: muted, callback: (v) => axisMoney(v), maxTicksLimit: 5, maxRotation: 0 };
+  const muted = token("faint") || token("muted"), grid = token("grid") || token("border");
+  const money = { color: muted, callback: (v) => axisMoney(v), maxTicksLimit: 5, maxRotation: 0, font: { size: 11 } };
   // Nome longo de categoria é cortado no eixo; a dica mostra o nome inteiro.
   const short = (l) => (l.length > 18 ? `${l.slice(0, 17)}…` : l);
   const cat = { color: muted, autoSkip: true, maxRotation: 0, maxTicksLimit: spec.horizontal ? undefined : 7,
     callback(v) { return short(String(this.getLabelForValue(v))); } };
-  const valueAxis = { beginAtZero: true, stacked: !!spec.stacked, grid: { color: grid, drawTicks: false }, border: { display: false }, ticks: money };
-  const catAxis = { stacked: !!spec.stacked, grid: { display: false }, border: { color: grid }, ticks: cat };
+  const valueAxis = { beginAtZero: true, stacked: !!spec.stacked, grid: { color: grid, drawTicks: false },
+    border: { display: false, dash: spec.dashed ? [4, 4] : [] }, ticks: money };
+  const catAxis = { stacked: !!spec.stacked, grid: { display: false }, border: { color: token("border-2") || grid }, ticks: { ...cat, font: { size: 11 } } };
   return {
     type: spec.type,
     data: { labels: spec.labels, datasets: datasets(spec) },
@@ -123,9 +144,13 @@ function config(spec, tip, animate) {
       animation: animate && !matchMedia("(prefers-reduced-motion: reduce)").matches ? { duration: 700, easing: "easeOutQuart" } : false,
       interaction: spec.type === "doughnut" ? { mode: "nearest", intersect: true } : { mode: "index", intersect: false },
       indexAxis: spec.horizontal ? "y" : "x",
-      cutout: "72%",
-      layout: { padding: { top: 6 } },
-      plugins: { legend: { display: false }, tooltip: { enabled: false, external: tooltip(spec, tip) } },
+      cutout: spec.cutout || "72%",
+      layout: { padding: { top: spec.size ? 0 : 6 } },
+      plugins: { legend: { display: false }, tooltip: spec.strip ? { enabled: false } : { enabled: false, external: tooltip(spec, tip) } },
+      onHover: spec.strip ? (evt, _els, chart) => {
+        const i = chart.getElementsAtEventForMode(evt, "index", { intersect: false }, false)[0]?.index;
+        if (i != null && (!spec.strip.valid || spec.strip.valid(i))) setActive(chart, spec, i);
+      } : undefined,
       scales: spec.type === "doughnut" ? {} : spec.horizontal ? { x: valueAxis, y: catAxis } : { x: catAxis, y: valueAxis },
     },
   };
@@ -137,7 +162,11 @@ function draw(Chart, item) {
   const tip = item.canvas.parentNode.querySelector(".chart-tip");
   item.chart = new Chart(item.canvas, config(item.spec, tip, !animated.has(key)));
   animated.add(key);
-  item.canvas.addEventListener("pointerleave", () => { tip.hidden = true; });
+  if (item.spec.strip) { item.chart.$active = item.spec.strip.index; item.chart.update("none"); }
+  item.canvas.addEventListener("pointerleave", () => {
+    tip.hidden = true;
+    if (item.spec.strip) setActive(item.chart, item.spec, item.spec.strip.index); // volta ao mês escolhido
+  });
 }
 
 // mount liga os gráficos que a tela acabou de desenhar (e solta os antigos).

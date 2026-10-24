@@ -38,6 +38,7 @@ try {
 
   // ---------- Primeiro uso ----------
   await page.goto(`${B}/`);
+  await page.click(".welcome-empty a[href='/?passo=1']", { timeout: 20000 }); // estado vazio do Painel → começa o guia
   await page.waitForSelector(".welcome:has-text('Passo 1 de 4')", { timeout: 20000 });
   ok(true, "sem lançamentos, o Painel mostra o passo a passo");
   await page.fill(".welcome input[name=amount]", "4.000");

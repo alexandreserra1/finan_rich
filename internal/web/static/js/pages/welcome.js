@@ -75,10 +75,34 @@ function body(step, ledger) {
   }
 }
 
+const STEP_HINTS = ["Vira um salário que entra sozinho todo mês.", "50/30/20 ou a sua: essencial, desejos e guardar.",
+  "Mostra os juros e qual pagar primeiro.", "A reserva de emergência é o começo de quase todo mundo."];
+
 export function render({ ledger, params }) {
+  // Sem passo escolhido: o estado vazio do Painel, com o começo do guia.
+  if (!params.get("passo")) {
+    return html`
+      <div class="page-head"><div class="title"><span class="kicker">Visão do mês</span><h1>Painel</h1></div></div>
+      <section class="welcome welcome-empty">
+        <div class="card hero first-use">
+          <span class="hero-label caps">Primeiro uso</span>
+          <div class="first-use-text">
+            <h2>Seu painel começa pelo salário.</h2>
+            <p>Quatro passos, uns 2 minutos. Depois o mês se monta sozinho: entradas, saídas e quanto cabe em cada grupo.</p>
+          </div>
+          <div class="first-use-actions">
+            <a class="btn" href="/?passo=1">Começar agora</a>
+            <button type="button" class="link plain" data-action="finish">Pular e ir para o Painel</button>
+          </div>
+        </div>
+        <ol class="panel step-list">
+          ${STEPS.map((title, i) => html`<li><span class="step-n">${i + 1}</span><span><strong>${title}</strong><span class="muted small">${STEP_HINTS[i]}</span></span></li>`)}
+        </ol>
+      </section>`;
+  }
   const step = stepOf(params);
   return html`
-    <div class="page-head"><h1>Bem-vindo ao finan_rich</h1></div>
+    <div class="page-head"><div class="title"><span class="kicker">Primeiro uso · passo ${step} de ${STEPS.length}</span><h1>Bem-vindo ao finan_rich</h1></div></div>
     <section class="panel welcome">
       <ol class="steps" aria-label="Passos">
         ${STEPS.map((s, i) => html`<li class="${i + 1 < step ? "done" : ""}" ${i + 1 === step ? html`aria-current="step"` : ""}>${s}</li>`)}
@@ -104,6 +128,7 @@ export function bind(root, ctx) {
   root.querySelectorAll('[data-action="finish"]').forEach((b) => b.addEventListener("click", () => finish().catch((err) => ctx.error(err))));
 
   const form = root.querySelector('[data-form="welcome"]');
+  if (!form) return; // estado vazio: só o "Começar agora" e o "Pular"
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const f = form.elements;
