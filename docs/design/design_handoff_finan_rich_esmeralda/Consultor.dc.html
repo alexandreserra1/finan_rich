@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="finan-proto.js"></script>
+<style>
+body{margin:0;background:#0a0d0c;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-hi)}
+:focus-visible{outline:2px solid var(--accent,#34c08f);outline-offset:2px}
+textarea::placeholder{color:#6c7a74}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes dot{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
+@keyframes shimmer{from{background-position:-200px 0}to{background-position:200px 0}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</helmet>
+<div style="{{ rootStyle }}">
+  <aside style="position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:4px;padding:20px 14px;border-right:1px solid var(--border);background:var(--side);box-sizing:border-box">
+    <a href="Painel.dc.html" style="display:flex;align-items:center;gap:10px;padding:4px 8px 22px;color:var(--text);font-weight:600;font-size:16px;letter-spacing:-0.01em">
+      <img src="brand-mark.png" width="32" height="32" alt="" style="display:block;border-radius:8px;box-shadow:0 0 0 1px var(--border-2)">
+      <span>finan<span style="color:var(--accent)">_rich</span></span>
+    </a>
+    <sc-for list="{{ nav }}" as="n" hint-placeholder-count="7">
+      <a href="{{ n.href }}" style="{{ n.style }}" style-hover="background:var(--hover);color:var(--text)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+        <span>{{ n.label }}</span>
+      </a>
+    </sc-for>
+    <div style="margin-top:auto;display:flex;flex-direction:column;gap:4px">
+      <a href="Ajustes.dc.html" style="{{ settingsStyle }}" style-hover="background:var(--hover);color:var(--text)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ settingsIcon }}"></path></svg>
+        <span>Ajustes</span>
+      </a>
+      <button type="button" onClick="{{ toggleTheme }}" style="display:flex;align-items:center;gap:12px;padding:9px 10px;border:0;border-radius:9px;background:transparent;color:var(--muted);font:inherit;font-weight:500;cursor:pointer;text-align:left" style-hover="background:var(--hover);color:var(--text)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ themeIcon }}"></path></svg>
+        <span>{{ themeLabel }}</span>
+      </button>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--muted)">
+        <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)"></span>
+        <span>Sincronizado · 03:12</span>
+      </div>
+    </div>
+  </aside>
+
+  <div style="display:grid;grid-template-columns:minmax(0,1fr) 300px;min-width:0;height:100vh">
+    <main style="display:flex;flex-direction:column;min-width:0;height:100vh">
+      <header style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 32px;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:12px">
+          <img src="brand-mark.png" width="36" height="36" alt="" style="display:block;border-radius:10px;box-shadow:0 0 0 1px var(--accent-line)">
+          <div style="display:flex;flex-direction:column">
+            <h1 style="margin:0;font-size:17px;font-weight:600;letter-spacing:-0.015em">Consultor IA</h1>
+            <span style="{{ statusStyle }}"><i style="{{ statusDot }}"></i>{{ statusText }}</span>
+          </div>
+        </div>
+        <sc-if value="{{ hasHistory }}" hint-placeholder-val="{{ true }}">
+          <button type="button" onClick="{{ reset }}" style="display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;border:1px solid var(--border-2);border-radius:10px;background:transparent;color:var(--text);font:inherit;font-size:13px;cursor:pointer;white-space:nowrap;flex:none" style-hover="background:var(--hover)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>Nova conversa</button>
+        </sc-if>
+      </header>
+
+      <div ref="{{ scrollRef }}" style="flex:1;overflow:auto;padding:28px 32px">
+        <div style="max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:22px">
+
+          <sc-if value="{{ noAI }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:14px;padding:24px;border:1px solid color-mix(in srgb,var(--warn) 35%,var(--border));border-radius:16px;background:var(--warn-soft)">
+              <strong style="font-size:16px;font-weight:600">O consultor precisa de uma IA para funcionar.</strong>
+              <span style="font-size:14px;color:var(--text-2)">A recomendada é o Ollama: grátis, sem chave e seus dados não saem do computador. Ou escolha uma IA na nuvem com plano grátis (Groq, Gemini, OpenRouter).</span>
+              <a href="Ajustes.dc.html" style="align-self:flex-start;display:flex;align-items:center;height:40px;padding:0 16px;border-radius:10px;background:var(--accent);color:var(--accent-ink);font-weight:600" style-hover="background:var(--accent-hi);color:var(--accent-ink)">Configurar em Ajustes</a>
+              <span style="font-size:12px;color:var(--muted)">O resto do app funciona normalmente sem IA.</span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ showWelcome }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:20px;padding-top:6vh;animation:rise .4s ease both">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <h2 style="margin:0;font-size:30px;font-weight:600;letter-spacing:-0.03em">Pergunte sobre o seu dinheiro.</h2>
+                <p style="margin:0;font-size:15px;color:var(--text-2);max-width:560px">O consultor vê seus lançamentos, dívidas, metas e notas. As contas são feitas pelo app; a IA interpreta e aconselha. Para lançar algo, ele sugere e você confirma.</p>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:10px">
+                <sc-for list="{{ suggestions }}" as="s" hint-placeholder-count="4">
+                  <button type="button" onClick="{{ s.ask }}" style="display:flex;flex-direction:column;gap:6px;padding:16px;border:1px solid var(--border);border-radius:14px;background:var(--surface);color:var(--text);font:inherit;text-align:left;cursor:pointer;transition:border-color .15s,background-color .15s,transform .15s" style-hover="border-color:var(--accent-line);background:var(--hover);transform:translateY(-1px)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{ s.icon }}"></path></svg>
+                    <span style="font-size:14px;font-weight:500">{{ s.q }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-for list="{{ messages }}" as="m" hint-placeholder-count="0">
+            <sc-if value="{{ m.isUser }}" hint-placeholder-val="{{ false }}">
+              <div style="align-self:flex-end;max-width:78%;padding:12px 16px;border-radius:16px 16px 4px 16px;background:var(--accent);color:var(--accent-ink);font-size:14px;animation:rise .25s ease both">{{ m.text }}</div>
+            </sc-if>
+            <sc-if value="{{ m.isBot }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;gap:14px;animation:rise .3s ease both">
+                <img src="brand-mark.png" width="28" height="28" alt="" style="display:block;flex:none;border-radius:8px;box-shadow:0 0 0 1px var(--border-2)">
+                <div style="display:flex;flex-direction:column;gap:12px;min-width:0;flex:1;font-size:14px;line-height:1.6;color:var(--text)">
+                  <p style="margin:0">{{ m.lead }}</p>
+                  <sc-if value="{{ m.hasTable }}" hint-placeholder-val="{{ false }}">
+                    <div style="border:1px solid var(--border);border-radius:12px;overflow:hidden">
+                      <sc-for list="{{ m.rows }}" as="r" hint-placeholder-count="3">
+                        <div style="{{ r.style }}"><span>{{ r.a }}</span><span style="font-variant-numeric:tabular-nums;text-align:right">{{ r.b }}</span><span style="{{ r.cStyle }}">{{ r.c }}</span></div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ m.hasList }}" hint-placeholder-val="{{ false }}">
+                    <ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px"><sc-for list="{{ m.list }}" as="li" hint-placeholder-count="3"><li>{{ li }}</li></sc-for></ol>
+                  </sc-if>
+                  <sc-if value="{{ m.tail }}" hint-placeholder-val="{{ false }}"><p style="margin:0;color:var(--text-2)">{{ m.tail }}</p></sc-if>
+                  <sc-for list="{{ m.proposals }}" as="p" hint-placeholder-count="0">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px dashed var(--border-2);border-radius:12px;background:var(--surface)">
+                      <span style="display:flex;flex-direction:column"><span style="font-size:11px;color:var(--faint);letter-spacing:.04em;text-transform:uppercase">{{ p.kind }}</span><span style="font-weight:500">{{ p.label }}</span></span>
+                      <button type="button" onClick="{{ p.apply }}" disabled="{{ p.done }}" style="{{ p.btnStyle }}">{{ p.btn }}</button>
+                    </div>
+                  </sc-for>
+                  <div style="display:flex;gap:4px">
+                    <button type="button" onClick="{{ m.save }}" style="display:flex;align-items:center;gap:6px;height:28px;padding:0 8px;border:0;border-radius:7px;background:transparent;color:var(--muted);font:inherit;font-size:12px;cursor:pointer" style-hover="background:var(--hover);color:var(--text)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6"></path></svg>{{ m.saveLabel }}</button>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+          </sc-for>
+
+          <sc-if value="{{ thinking }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:14px;animation:rise .25s ease both">
+              <img src="brand-mark.png" width="28" height="28" alt="" style="display:block;flex:none;border-radius:8px;box-shadow:0 0 0 1px var(--accent-line)">
+              <div style="display:flex;flex-direction:column;gap:10px;flex:1">
+                <span style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)">
+                  <span style="display:flex;gap:4px"><i style="width:5px;height:5px;border-radius:50%;background:var(--accent);animation:dot 1.2s infinite"></i><i style="width:5px;height:5px;border-radius:50%;background:var(--accent);animation:dot 1.2s .15s infinite"></i><i style="width:5px;height:5px;border-radius:50%;background:var(--accent);animation:dot 1.2s .3s infinite"></i></span>
+                  Lendo seus lançamentos e fazendo as contas…
+                </span>
+                <span style="height:10px;width:82%;border-radius:6px;background:linear-gradient(90deg,var(--surface-2),var(--hover),var(--surface-2));background-size:400px 100%;animation:shimmer 1.4s linear infinite"></span>
+                <span style="height:10px;width:64%;border-radius:6px;background:linear-gradient(90deg,var(--surface-2),var(--hover),var(--surface-2));background-size:400px 100%;animation:shimmer 1.4s linear infinite"></span>
+                <span style="font-size:12px;color:var(--faint)">No computador, a primeira resposta pode demorar enquanto o modelo carrega.</span>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isError }}" hint-placeholder-val="{{ false }}">
+            <div role="alert" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid color-mix(in srgb,var(--neg) 35%,transparent);border-radius:12px;background:var(--neg-soft);font-size:13px">
+              <span><b style="font-weight:600">Sem conexão com o computador.</b> O consultor roda lá: deixe o finan_rich aberto e no mesmo Wi-Fi.</span>
+              <button type="button" onClick="{{ retry }}" style="flex:none;height:32px;padding:0 12px;border:1px solid var(--border-2);border-radius:8px;background:var(--surface);color:var(--text);font:inherit;font-size:13px;cursor:pointer">Tentar de novo</button>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+
+      <div style="padding:14px 32px 22px;border-top:1px solid var(--border)">
+        <form onSubmit="{{ send }}" style="max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:flex-end;gap:10px;padding:10px 10px 10px 16px;border:1px solid var(--border-2);border-radius:16px;background:var(--surface);box-shadow:var(--shadow);transition:border-color .15s" style-focus="border-color:var(--accent)">
+            <textarea rows="1" value="{{ draft }}" onInput="{{ onDraft }}" onKeyDown="{{ onKey }}" disabled="{{ inputOff }}" placeholder="Pergunte sobre dívidas, gastos, metas… ou “lança 30 reais do cinema”" aria-label="Mensagem" style="flex:1;min-height:24px;max-height:160px;resize:none;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:14px;line-height:1.5;padding:6px 0"></textarea>
+            <button type="submit" disabled="{{ sendOff }}" aria-label="Enviar" style="{{ sendStyle }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></button>
+          </div>
+          <span style="font-size:11px;color:var(--faint);text-align:center">Enter envia · Shift+Enter quebra a linha · Confira os números antes de seguir um plano.</span>
+        </form>
+      </div>
+    </main>
+
+    <aside aria-label="O que o consultor vê" style="display:flex;flex-direction:column;gap:16px;padding:22px 20px;border-left:1px solid var(--border);background:var(--side);overflow:auto">
+      <h2 style="margin:0;font-size:13px;font-weight:600;color:var(--text-2)">O que o consultor vê</h2>
+      <div style="display:flex;flex-direction:column;border:1px solid var(--border);border-radius:12px;overflow:hidden">
+        <sc-for list="{{ context }}" as="c" hint-placeholder-count="5">
+          <div style="display:flex;justify-content:space-between;gap:10px;padding:10px 12px;border-top:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">{{ c.k }}</span><span style="font-variant-numeric:tabular-nums;font-weight:500;text-align:right">{{ c.v }}</span></div>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;padding:14px;border:1px solid var(--border);border-radius:12px;font-size:12px;color:var(--muted)">
+        <strong style="font-size:13px;font-weight:600;color:var(--text)">Privacidade</strong>
+        <span>Usando <b style="color:var(--text-2);font-weight:500">qwen3.5:9b</b> pelo Ollama, neste computador. Nada sai daqui.</span>
+        <span>Na nuvem, nomes de lojas, dívidas e metas vão com apelidos.</span>
+        <a href="Ajustes.dc.html" style="font-size:12px">Trocar o modelo</a>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;padding:14px;border:1px solid var(--border);border-radius:12px;font-size:12px;color:var(--muted)">
+        <strong style="font-size:13px;font-weight:600;color:var(--text)">Ele também faz</strong>
+        <span>Lançar, corrigir e apagar lançamentos, criar metas, cadastrar e pagar dívidas. Cada mudança vira um cartão: nada muda sem você tocar nele.</span>
+      </div>
+    </aside>
+  </div>
+
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div role="status" style="position:fixed;z-index:50;left:50%;bottom:110px;transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid var(--border-2);border-radius:12px;background:var(--surface);box-shadow:var(--shadow-pop);font-size:13px;animation:rise .2s ease both"><span style="width:8px;height:8px;border-radius:50%;background:var(--accent)"></span>{{ toast }}</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;estado&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;conversa&quot;,&quot;vazio&quot;,&quot;pensando&quot;,&quot;erro&quot;,&quot;sem IA&quot;],&quot;default&quot;:&quot;conversa&quot;,&quot;tsType&quot;:&quot;'conversa' | 'vazio' | 'pensando' | 'erro' | 'sem IA'&quot;}}">
+class Component extends DCLogic {
+  state = { history: null, draft: "", busy: false, err: false, applied: {}, saved: {}, toast: "", pending: null };
+  scroll = React.createRef();
+  REPLIES = {
+    gastos: { lead: "Em outubro, três categorias estão acima da sua média dos últimos 3 meses. Restaurantes e delivery é a que mais pesa:", rows: [["Restaurantes e delivery", "R$ 864,30", "+41%"], ["Compras", "R$ 282,90", "+34%"], ["Lazer", "R$ 538,90", "+18%"]], tail: "A compra parcelada do tênis explica Compras; ela some em março. Restaurantes e delivery é o hábito: 9 saídas no mês, 41% acima da média. Cortando 30%, sobram uns R$ 260 por mês, que no seu plano de dívidas tiram 2 meses de prazo." },
+    divida: { lead: "Pague primeiro o Rotativo cartão C6. Ele cobra 13,50% ao mês: R$ 396,90 de juros só em outubro, mais que as outras duas juntas.", list: ["Mantenha o mínimo no empréstimo do Itaú (R$ 486,00) e na moto (R$ 310,00).", "Todo o resto vai para o C6: com R$ 300 a mais por mês, ele zera em 6 meses.", "Depois, o que você pagava no C6 vai para o empréstimo do Itaú."], tail: "Se o banco oferecer trocar o rotativo por um parcelamento com juros menores, vale muito a pena: é o juro mais caro do país." },
+    ifood: { lead: "Em 2026 você gastou R$ 4.982,60 com iFood, em 96 pedidos. Média de R$ 51,90 por pedido e R$ 498,26 por mês.", rows: [["Mês com mais pedidos", "maio", "14 pedidos"], ["Este mês", "R$ 297,20", "5 pedidos"], ["Média mensal", "R$ 498,26", "9,6 pedidos"]], tail: "Em outubro, até agora, você está abaixo da média: o que pesou foram os restaurantes (Outback, Madero, Coco Bambu)." },
+    meta: { lead: "Sua Reserva de emergência está em R$ 4.200,00 de R$ 10.000,00 (42%). No ritmo atual de R$ 600 por mês, você chega lá em agosto de 2027.", list: ["Guardando R$ 800 por mês, chega em junho de 2027: 2 meses antes.", "O freela de R$ 1.200 deste mês adiantaria 2 meses se fosse direto para a meta."], tail: "Quer que eu guarde os R$ 1.200 do freela na meta?", proposals: [{ kind: "Guardar na meta", label: "R$ 1.200,00 em Reserva de emergência", btn: ["Guardar", "Guardado"] }] },
+    lanca: { lead: "Entendi. Vou lançar como saída em Lazer, hoje, no cartão Nubank.", proposals: [{ kind: "Novo lançamento", label: "Cinema · R$ 30,00 · Lazer · 24/10", btn: ["Adicionar", "Adicionado"] }] },
+  };
+  SUG = [["Onde estou gastando demais este mês?", "gastos", "M3 3v18h18M7 15l4-4 3 3 5-6"], ["Qual dívida devo pagar primeiro?", "divida", "M2 7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2zM2 10h20"], ["Quanto gastei com iFood este ano?", "ifood", "M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"], ["Como chego na minha meta mais rápido?", "meta", "M4 22V4M4 4h12l-2 4 2 4H4"]];
+  componentDidMount() {
+    this.h = () => this.forceUpdate();
+    window.addEventListener("fr-theme", this.h);
+    if (!window.FR) this.t = setInterval(() => { if (window.FR) { clearInterval(this.t); this.forceUpdate(); } }, 40);
+  }
+  componentDidUpdate() { const el = this.scroll.current; if (el) el.scrollTop = el.scrollHeight; }
+  componentWillUnmount() { window.removeEventListener("fr-theme", this.h); clearInterval(this.t); clearTimeout(this.b); clearTimeout(this.tt); }
+  flash(toast) { clearTimeout(this.tt); this.setState({ toast }); this.tt = setTimeout(() => this.setState({ toast: "" }), 3200); }
+  initial() {
+    const e = this.props.estado ?? "conversa";
+    if (e === "conversa" || e === "pensando" || e === "erro") return [{ role: "user", text: "Qual dívida devo pagar primeiro?" }, { role: "bot", key: "divida" }, { role: "user", text: "lança 30 reais do cinema" }, { role: "bot", key: "lanca" }];
+    return [];
+  }
+  ask(q) {
+    const n = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const t = n(q);
+    const key = /ifood/.test(t) ? "ifood" : /divid|pagar primeiro/.test(t) ? "divida" : /meta|reserva/.test(t) ? "meta" : /lanc|reais/.test(t) ? "lanca" : "gastos";
+    const h = [...(this.state.history || this.initial()), { role: "user", text: q }];
+    this.setState({ history: h, draft: "", busy: true, err: false });
+    clearTimeout(this.b);
+    this.b = setTimeout(() => this.setState({ history: [...h, { role: "bot", key }], busy: false }), 1500);
+  }
+  renderVals() {
+    const FR = window.FR;
+    if (!FR) return {};
+    const s = this.state, e = this.props.estado ?? "conversa";
+    const noAI = e === "sem IA";
+    const hist = s.history || this.initial();
+    const thinking = s.busy || (e === "pensando" && !s.history);
+    const isError = s.err || (e === "erro" && !s.history);
+    const messages = hist.map((m, i) => {
+      if (m.role === "user") return { isUser: true, isBot: false, text: m.text, proposals: [], rows: [], list: [] };
+      const r = this.REPLIES[m.key];
+      return { isUser: false, isBot: true, lead: r.lead, tail: r.tail || "", hasTable: !!r.rows, hasList: !!r.list, list: r.list || [],
+        rows: (r.rows || []).map(([a, b, c], k) => ({ a, b, c, style: `display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) 90px;gap:12px;padding:10px 14px;font-size:13px;${k ? "border-top:1px solid var(--border)" : ""};${k === 0 ? "background:var(--surface-2)" : ""}`, cStyle: `text-align:right;font-variant-numeric:tabular-nums;font-weight:500;color:${c.startsWith("+") ? "var(--neg)" : "var(--muted)"}` })),
+        proposals: (r.proposals || []).map((p, j) => { const id = i + ":" + j, done = !!s.applied[id]; return { ...p, done, btn: p.btn[done ? 1 : 0],
+          btnStyle: `flex:none;height:34px;padding:0 14px;border:0;border-radius:9px;font:inherit;font-size:13px;font-weight:600;cursor:${done ? "default" : "pointer"};${done ? "background:var(--accent-soft);color:var(--accent)" : "background:var(--accent);color:var(--accent-ink)"}`,
+          apply: () => { if (done) return; this.setState({ applied: { ...s.applied, [id]: true } }); this.flash("Pronto: " + p.label); } }; }),
+        saveLabel: s.saved[i] ? "Salvo em Notas" : "Salvar como nota",
+        save: () => { this.setState({ saved: { ...s.saved, [i]: true } }); this.flash("Resposta salva em Notas."); },
+      };
+    });
+    const busy = thinking;
+    const canSend = !!s.draft.trim() && !busy && !noAI;
+    return {
+      ...FR.shell("Consultor IA"),
+      noAI, showWelcome: !noAI && !hist.length && !thinking, hasHistory: hist.length > 0, messages, thinking, isError, scrollRef: this.scroll,
+      statusText: noAI ? "Nenhuma IA configurada" : isError ? "Sem conexão com o computador" : busy ? "Pensando…" : "qwen3.5:9b · no seu computador",
+      statusStyle: "display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)",
+      statusDot: `width:6px;height:6px;border-radius:50%;background:${noAI ? "var(--warn)" : isError ? "var(--neg)" : "var(--accent)"}`,
+      suggestions: this.SUG.map(([q, , icon]) => ({ q, icon, ask: () => this.ask(q) })),
+      draft: s.draft, onDraft: (ev) => this.setState({ draft: ev.target.value }),
+      onKey: (ev) => { if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); if (canSend) this.ask(s.draft.trim()); } },
+      send: (ev) => { ev.preventDefault(); if (canSend) this.ask(s.draft.trim()); },
+      inputOff: noAI || busy, sendOff: !canSend,
+      sendStyle: `display:grid;place-items:center;flex:none;width:38px;height:38px;border:0;border-radius:11px;cursor:${canSend ? "pointer" : "default"};transition:background-color .15s;${canSend ? "background:var(--accent);color:var(--accent-ink)" : "background:var(--surface-2);color:var(--faint)"}`,
+      reset: () => this.setState({ history: [], busy: false, err: false, applied: {}, saved: {} }),
+      retry: () => this.setState({ err: false, history: hist }),
+      context: [{ k: "Renda do mês", v: "R$ 8.420,00" }, { k: "Saldo do mês", v: "R$ 2.282,60" }, { k: "Dívidas", v: "R$ 12.480,00 · 3" }, { k: "Metas", v: "1 · 42%" }, { k: "Notas recentes", v: "4" }],
+      toast: s.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>

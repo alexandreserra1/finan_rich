@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="finan-proto.js"></script>
+<style>
+body{margin:0;background:#0a0d0c;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-hi)}
+:focus-visible{outline:2px solid var(--accent,#34c08f);outline-offset:2px}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</helmet>
+<div style="{{ rootStyle }}">
+  <aside style="position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:4px;padding:20px 14px;border-right:1px solid var(--border);background:var(--side);box-sizing:border-box">
+    <a href="Painel.dc.html" style="display:flex;align-items:center;gap:10px;padding:4px 8px 22px;color:var(--text);font-weight:600;font-size:16px;letter-spacing:-0.01em">
+      <img src="brand-mark.png" width="32" height="32" alt="" style="display:block;border-radius:8px;box-shadow:0 0 0 1px var(--border-2)">
+      <span>finan<span style="color:var(--accent)">_rich</span></span>
+    </a>
+    <sc-for list="{{ nav }}" as="n" hint-placeholder-count="7">
+      <a href="{{ n.href }}" style="{{ n.style }}" style-hover="background:var(--hover);color:var(--text)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+        <span>{{ n.label }}</span>
+      </a>
+    </sc-for>
+    <div style="margin-top:auto;display:flex;flex-direction:column;gap:4px">
+      <a href="Ajustes.dc.html" style="{{ settingsStyle }}" style-hover="background:var(--hover);color:var(--text)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ settingsIcon }}"></path></svg>
+        <span>Ajustes</span>
+      </a>
+      <button type="button" onClick="{{ toggleTheme }}" style="display:flex;align-items:center;gap:12px;padding:9px 10px;border:0;border-radius:9px;background:transparent;color:var(--muted);font:inherit;font-weight:500;cursor:pointer;text-align:left" style-hover="background:var(--hover);color:var(--text)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ themeIcon }}"></path></svg>
+        <span>{{ themeLabel }}</span>
+      </button>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--muted)">
+        <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)"></span>
+        <span>Sincronizado · 03:12</span>
+      </div>
+    </div>
+  </aside>
+
+  <main style="padding:28px 36px 56px;display:flex;flex-direction:column;gap:20px;max-width:1240px;width:100%;box-sizing:border-box;min-width:0">
+    <header style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span style="font-size:13px;color:var(--faint)">Visão do mês</span>
+        <h1 style="margin:0;font-size:28px;font-weight:600;letter-spacing:-0.025em">Painel</h1>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="display:flex;align-items:center;gap:2px;padding:3px;border:1px solid var(--border);border-radius:10px;background:var(--surface)">
+          <button type="button" aria-label="Mês anterior" style="width:32px;height:32px;border:0;border-radius:7px;background:transparent;color:var(--text-2);cursor:pointer;font-size:16px" style-hover="background:var(--hover)">‹</button>
+          <span style="min-width:128px;text-align:center;font-weight:500;font-size:13px">outubro de 2026</span>
+          <button type="button" aria-label="Próximo mês" style="width:32px;height:32px;border:0;border-radius:7px;background:transparent;color:var(--text-2);cursor:pointer;font-size:16px" style-hover="background:var(--hover)">›</button>
+        </div>
+        <a href="Lancamentos.dc.html" style="display:flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:10px;background:var(--accent);color:var(--accent-ink);font-weight:600" style-hover="background:var(--accent-hi);color:var(--accent-ink)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+          Novo lançamento
+        </a>
+      </div>
+    </header>
+
+    <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+      <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:14px">
+        <div style="position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;gap:36px;min-height:340px;padding:28px;border:1px solid var(--hero-border);border-radius:16px;background:var(--hero);color:#fff">
+          <span style="font-size:12px;color:var(--hero-muted);letter-spacing:.04em;text-transform:uppercase">Primeiro uso</span>
+          <div style="display:flex;flex-direction:column;gap:12px;max-width:420px">
+            <h2 style="margin:0;font-size:30px;font-weight:600;letter-spacing:-0.03em;line-height:1.1">Seu painel começa pelo salário.</h2>
+            <p style="margin:0;color:var(--hero-muted);font-size:14px">Quatro passos, uns 2 minutos. Depois o mês se monta sozinho: entradas, saídas e quanto cabe em cada grupo.</p>
+          </div>
+          <a href="Boas-vindas.dc.html" style="align-self:flex-start;display:flex;align-items:center;gap:8px;height:42px;padding:0 18px;border-radius:10px;background:#34c08f;color:#05140f;font-weight:600" style-hover="background:#5fd6aa;color:#05140f">Começar agora</a>
+        </div>
+        <ol style="list-style:none;margin:0;padding:8px;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:16px;background:var(--surface)">
+          <sc-for list="{{ steps }}" as="s" hint-placeholder-count="4">
+            <li style="display:grid;grid-template-columns:36px minmax(0,1fr);gap:14px;align-items:center;padding:16px;border-radius:10px">
+              <span style="display:grid;place-items:center;width:36px;height:36px;border-radius:10px;border:1px solid var(--border-2);font-weight:600;color:var(--text-2)">{{ s.n }}</span>
+              <span style="display:flex;flex-direction:column;gap:2px"><strong style="font-weight:600">{{ s.title }}</strong><span style="font-size:13px;color:var(--muted)">{{ s.hint }}</span></span>
+            </li>
+          </sc-for>
+        </ol>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{ hasData }}" hint-placeholder-val="{{ true }}">
+    <section aria-label="Avisos" style="display:flex;flex-wrap:wrap;gap:10px">
+      <sc-for list="{{ alerts }}" as="a" hint-placeholder-count="3">
+        <a href="{{ a.href }}" style="display:flex;align-items:center;gap:10px;padding:8px 14px;border:1px solid var(--border);border-radius:99px;background:var(--surface);font-size:13px" style-hover="border-color:var(--border-2);background:var(--hover)">
+          <span style="{{ a.dot }}"></span>
+          <strong style="font-weight:500;color:var(--text)">{{ a.title }}</strong>
+          <span style="color:var(--muted)">{{ a.text }}</span>
+        </a>
+      </sc-for>
+    </section>
+
+    <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:14px">
+      <div style="grid-column:span 2;display:flex;flex-direction:column;justify-content:space-between;gap:22px;padding:22px 24px;border:1px solid var(--hero-border);border-radius:16px;background:var(--hero);color:#fff;animation:rise .4s ease both">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:13px;color:var(--hero-muted)">Saldo do mês</span>
+          <span style="font-size:12px;color:#7fe0b8;padding:3px 9px;border-radius:99px;background:rgba(52,192,143,.16)">+R$ 752,60 vs. setembro</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <strong style="font-size:46px;font-weight:600;letter-spacing:-0.035em;line-height:1;font-variant-numeric:tabular-nums">{{ balance }}</strong>
+          <span style="font-size:13px;color:var(--hero-muted)">Guardado (saldo + investido): <b style="color:#7fe0b8;font-weight:600">27% da renda</b></span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;height:6px;border-radius:99px;overflow:hidden;background:var(--hero-track)">
+            <span style="width:73%;background:#f07163"></span>
+            <span style="flex:1;background:#34c08f"></span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--hero-muted)">
+            <span>73% da renda já saiu</span><span>sobra {{ balance }}</span>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;padding:20px 22px;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow);animation:rise .4s .05s ease both">
+        <span style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)"><span style="display:grid;place-items:center;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);color:var(--accent)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></span>Entradas</span>
+        <strong style="font-size:28px;font-weight:600;letter-spacing:-0.03em;font-variant-numeric:tabular-nums">{{ income }}</strong>
+        <span style="font-size:12px;color:var(--faint)">Salário + renda extra</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;padding:20px 22px;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow);animation:rise .4s .1s ease both">
+        <span style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)"><span style="display:grid;place-items:center;width:26px;height:26px;border-radius:8px;background:var(--neg-soft);color:var(--neg)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"></path></svg></span>Saídas</span>
+        <strong style="font-size:28px;font-weight:600;letter-spacing:-0.03em;font-variant-numeric:tabular-nums">{{ spent }}</strong>
+        <span style="font-size:12px;color:var(--faint)">73% do que entrou</span>
+      </div>
+    </section>
+
+    <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:14px">
+      <div style="grid-column:span 2;display:flex;flex-direction:column;gap:18px;padding:22px 24px;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow);min-width:0">
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:flex-start">
+          <div style="display:flex;flex-direction:column;gap:2px">
+            <h2 style="margin:0;font-size:15px;font-weight:600">Fluxo de caixa · 2026</h2>
+            <span style="font-size:12px;color:var(--faint)">Entradas e saídas por mês, em R$</span>
+          </div>
+          <div style="display:flex;gap:16px;font-size:12px;color:var(--muted)">
+            <span style="display:flex;align-items:center;gap:6px"><i style="width:8px;height:8px;border-radius:2px;background:var(--accent)"></i>Entradas</span>
+            <span style="display:flex;align-items:center;gap:6px"><i style="width:8px;height:8px;border-radius:2px;background:var(--neg)"></i>Saídas</span>
+          </div>
+        </div>
+        <div aria-live="polite" style="display:flex;flex-wrap:wrap;gap:6px 22px;padding:10px 14px;border-radius:10px;background:var(--inset);font-size:13px;font-variant-numeric:tabular-nums">
+          <strong style="font-weight:600;min-width:120px">{{ tip.label }}</strong>
+          <span style="color:var(--muted)">Entradas <b style="color:var(--text);font-weight:500">{{ tip.in }}</b></span>
+          <span style="color:var(--muted)">Saídas <b style="color:var(--text);font-weight:500">{{ tip.out }}</b></span>
+          <span style="color:var(--muted)">Saldo <b style="{{ tip.balStyle }}">{{ tip.bal }}</b></span>
+        </div>
+        <div style="display:grid;grid-template-columns:44px minmax(0,1fr);gap:8px">
+          <div style="display:flex;flex-direction:column;justify-content:space-between;height:200px;font-size:11px;color:var(--faint);text-align:right;font-variant-numeric:tabular-nums">
+            <span>10 mil</span><span>7,5 mil</span><span>5 mil</span><span>2,5 mil</span><span>0</span>
+          </div>
+          <div style="position:relative;display:flex;flex-direction:column;gap:8px;min-width:0">
+            <div style="position:absolute;inset:0 0 22px 0;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none">
+              <span style="border-top:1px solid var(--grid)"></span><span style="border-top:1px dashed var(--grid)"></span><span style="border-top:1px dashed var(--grid)"></span><span style="border-top:1px dashed var(--grid)"></span><span style="border-top:1px solid var(--border-2)"></span>
+            </div>
+            <div role="img" aria-label="Entradas e saídas por mês em 2026" style="position:relative;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));height:200px">
+              <sc-for list="{{ year }}" as="m" hint-placeholder-count="12">
+                <div onMouseEnter="{{ m.enter }}" style="{{ m.colStyle }}">
+                  <span style="{{ m.inStyle }}"></span>
+                  <span style="{{ m.outStyle }}"></span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(12,minmax(0,1fr));font-size:11px;color:var(--faint);text-align:center">
+              <sc-for list="{{ year }}" as="m" hint-placeholder-count="12"><span>{{ m.abbr }}</span></sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:18px;padding:22px 24px;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow);min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <h2 style="margin:0;font-size:15px;font-weight:600">Divisão do salário</h2>
+          <a href="Ajustes.dc.html" style="font-size:12px">Ajustar</a>
+        </div>
+        <div style="display:flex;align-items:center;gap:18px">
+          <div role="img" aria-label="Gastos do mês por grupo" style="position:relative;width:118px;height:118px;flex:none;border-radius:50%;background:{{ donutBg }}">
+            <div style="position:absolute;inset:14px;border-radius:50%;background:var(--surface);display:grid;place-content:center;text-align:center">
+              <strong style="font-size:15px;font-weight:600;font-variant-numeric:tabular-nums">R$ 6,1 mil</strong>
+              <span style="font-size:10px;color:var(--faint)">gastos no mês</span>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.55">Regra <b style="color:var(--text);font-weight:500">50/30/20</b> sobre {{ income }} de renda.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <sc-for list="{{ buckets }}" as="b" hint-placeholder-count="3">
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;justify-content:space-between;font-size:13px">
+                <span style="display:flex;align-items:center;gap:8px"><i style="{{ b.swatch }}"></i>{{ b.name }}</span>
+                <span style="color:var(--muted);font-variant-numeric:tabular-nums">{{ b.used }}</span>
+              </div>
+              <div style="height:6px;border-radius:99px;background:var(--track);overflow:hidden"><span style="{{ b.bar }}"></span></div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums"><span>{{ b.spent }} de {{ b.planned }}</span><span>resta {{ b.left }}</span></div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+
+    <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px">
+      <div style="display:flex;flex-direction:column;gap:16px;padding:22px 24px;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow);min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <h2 style="margin:0;font-size:15px;font-weight:600">Para onde o dinheiro foi</h2>
+          <a href="Analise.dc.html" style="font-size:12px">Análise</a>
+        </div>
+        <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px">
+          <sc-for list="{{ cats }}" as="c" hint-placeholder-count="7">
+            <li style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;font-size:13px">
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.name }}</span>
+              <span style="font-variant-numeric:tabular-nums">{{ c.value }} <small style="color:var(--faint);margin-left:4px">{{ c.share }}</small></span>
+              <span style="grid-column:1 / -1;height:4px;border-radius:99px;background:var(--track);overflow:hidden"><span style="{{ c.bar }}"></span></span>
+            </li>
+          </sc-for>
+        </ul>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px;padding:22px 24px;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow);min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+          <h2 style="margin:0;font-size:15px;font-weight:600">Últimos lançamentos</h2>
+          <a href="Lancamentos.dc.html" style="font-size:12px">Ver todos</a>
+        </div>
+        <sc-for list="{{ txs }}" as="t" hint-placeholder-count="6">
+          <div style="display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:12px;align-items:center;padding:8px 6px;margin:0 -6px;border-radius:10px" style-hover="background:var(--hover)">
+            <span style="{{ t.iconBox }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{ t.icon }}"></path></svg></span>
+            <span style="display:flex;flex-direction:column;min-width:0">
+              <span style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ t.desc }}</span>
+              <span style="font-size:11px;color:var(--faint)">{{ t.cat }} · {{ t.date }}</span>
+            </span>
+            <span style="{{ t.amtStyle }}">{{ t.amt }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+        <div style="display:flex;flex-direction:column;gap:6px;padding:22px 24px;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)">
+          <h2 style="margin:0 0 8px;font-size:15px;font-weight:600">Próximos vencimentos</h2>
+          <sc-for list="{{ due }}" as="d" hint-placeholder-count="3">
+            <div style="display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:12px;align-items:center;padding:6px 0">
+              <span style="{{ d.dayBox }}"><b style="font-size:14px;font-weight:600;line-height:1">{{ d.day }}</b><small style="font-size:9px;letter-spacing:.06em">{{ d.mon }}</small></span>
+              <span style="display:flex;flex-direction:column;min-width:0"><span style="font-size:13px;font-weight:500">{{ d.name }}</span><span style="{{ d.whenStyle }}">{{ d.when }}</span></span>
+              <span style="font-size:13px;font-variant-numeric:tabular-nums">{{ d.amt }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <a href="Dividas.dc.html" style="display:flex;flex-direction:column;gap:12px;padding:22px 24px;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow);color:var(--text)" style-hover="border-color:var(--border-2);color:var(--text)">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <h2 style="margin:0;font-size:15px;font-weight:600">Dívidas</h2>
+            <span style="font-size:12px;color:var(--accent)">Ver plano →</span>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+            <strong style="font-size:24px;font-weight:600;letter-spacing:-0.025em;font-variant-numeric:tabular-nums">{{ debtTotal }}</strong>
+            <span style="font-size:12px;color:var(--neg)">{{ debtInterest }} de juros/mês</span>
+          </div>
+          <span style="font-size:12px;color:var(--muted)">3 dívidas · seguindo o plano, livre em <b style="color:var(--text);font-weight:500">{{ debtFree }}</b></span>
+        </a>
+      </div>
+    </section>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;estado&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;com dados&quot;,&quot;primeiro uso&quot;],&quot;default&quot;:&quot;com dados&quot;,&quot;tsType&quot;:&quot;'com dados' | 'primeiro uso'&quot;}}">
+class Component extends DCLogic {
+  state = { hover: 9 };
+  componentDidMount() {
+    this.h = () => this.forceUpdate();
+    window.addEventListener("fr-theme", this.h);
+    if (!window.FR) this.t = setInterval(() => { if (window.FR) { clearInterval(this.t); this.forceUpdate(); } }, 40);
+  }
+  componentWillUnmount() { window.removeEventListener("fr-theme", this.h); clearInterval(this.t); }
+  renderVals() {
+    const FR = window.FR;
+    if (!FR) return {};
+    const { R } = FR;
+    const empty = (this.props.estado ?? "com dados") === "primeiro uso";
+    const inc = 8420, out = 6137.4, bal = inc - out;
+    const steps = [["Quanto você ganha", "Vira um salário que entra sozinho todo mês."], ["Divisão do salário", "50/30/20 ou a sua: essencial, desejos e guardar."], ["Dívidas", "Mostra os juros e qual pagar primeiro."], ["Uma meta", "A reserva de emergência é o começo de quase todo mundo."]].map(([title, hint], i) => ({ n: i + 1, title, hint }));
+    const alerts = [
+      { title: "Fatura Nubank vence em 3 dias", text: "R$ 1.842,60", c: "var(--neg)", href: "Contas.dc.html" },
+      { title: "Restaurantes passou do teto", text: "108% de R$ 800,00", c: "var(--warn)", href: "Analise.dc.html" },
+      { title: "Reserva de emergência", text: "42% da meta", c: "var(--accent)", href: "Metas.dc.html" },
+    ].map((a) => ({ ...a, dot: `width:7px;height:7px;border-radius:50%;background:${a.c}` }));
+    const Y = [[8200, 7650], [8200, 6980], [8420, 7340], [8420, 6210], [8420, 8890], [8420, 6520], [9150, 7010], [8420, 6480], [8420, 6890], [8420, 6137.4], [null, null], [null, null]];
+    const AB = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+    const h = this.state.hover;
+    const bar = (v, c, k) => `width:min(11px,40%);height:${((v || 0) / 10000) * 100}%;border-radius:3px 3px 0 0;background:${c};opacity:${k === h ? 1 : 0.55};transition:opacity .15s,height .6s cubic-bezier(.2,.8,.2,1)`;
+    const year = Y.map(([i, o], k) => ({
+      abbr: AB[k],
+      enter: () => i != null && this.setState({ hover: k }),
+      colStyle: `display:flex;align-items:flex-end;justify-content:center;gap:3px;padding:0 4px;border-radius:6px 6px 0 0;cursor:${i != null ? "pointer" : "default"};background:${k === h ? "var(--hover)" : "transparent"};transition:background .15s`,
+      inStyle: bar(i, "var(--accent)", k), outStyle: bar(o, "var(--neg)", k),
+    }));
+    const [ti, to] = Y[h];
+    const tip = { label: FR.MESF[h] + " de 2026", in: R(ti), out: R(to), bal: R(ti - to, true), balStyle: `font-weight:500;color:${ti - to < 0 ? "var(--neg)" : "var(--pos)"}` };
+    const B = [["Necessidades", "var(--nec)", 4210, 3684.2], ["Desejos", "var(--des)", 2526, 1853.2], ["Investimentos", "var(--inv)", 1684, 600]];
+    let acc = 0;
+    const stops = B.map(([, c, , s]) => { const a = acc; acc += (s / out) * 100; return `${c} ${a}% ${acc - 0.8}%, var(--surface) ${acc - 0.8}% ${acc}%`; });
+    const buckets = B.map(([name, c, p, s]) => ({ name, spent: R(s), planned: R(p), left: R(p - s), used: Math.round((s / p) * 100) + "% usado", swatch: `width:8px;height:8px;border-radius:2px;background:${c}`, bar: `display:block;height:100%;width:${Math.min(100, (s / p) * 100)}%;border-radius:99px;background:${c}` }));
+    const C = [["Moradia", 1950, "var(--nec)"], ["Mercado", 982.4, "var(--nec)"], ["Restaurantes e delivery", 864.3, "var(--des)"], ["Investimentos", 600, "var(--inv)"], ["Lazer", 538.9, "var(--des)"], ["Transporte", 451.8, "var(--nec)"], ["Contas da casa", 300, "var(--nec)"]];
+    const cats = C.map(([name, v, c]) => ({ name, value: R(v), share: Math.round((v / out) * 100) + "%", bar: `display:block;height:100%;width:${(v / 1950) * 100}%;border-radius:99px;background:${c}` }));
+    const I = { food: "M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7", cart: "M8 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM19 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM2 2h3l2.7 12.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6", car: "M19 17h2v-4l-3-5H6l-3 5v4h2M7 17a2 2 0 1 0 4 0 2 2 0 1 0-4 0M13 17a2 2 0 1 0 4 0 2 2 0 1 0-4 0", in: "M12 19V5M5 12l7-7 7 7", play: "M5 3l14 9-14 9z", home: "M3 11l9-7 9 7v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" };
+    const T = [["iFood", "Restaurantes e delivery", "hoje", -58.9, "food", "var(--des)"], ["Pão de Açúcar", "Mercado", "ontem", -312.45, "cart", "var(--nec)"], ["Uber", "Transporte", "22 out", -24.8, "car", "var(--nec)"], ["Freela — site", "Renda extra", "21 out", 1200, "in", "var(--inv)"], ["Netflix", "Assinaturas", "20 out", -55.9, "play", "var(--des)"], ["Aluguel", "Moradia", "10 out", -1950, "home", "var(--nec)"]];
+    const txs = T.map(([desc, cat, date, v, ic, c]) => ({ desc, cat, date, amt: R(v, true), icon: I[ic], iconBox: `display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:color-mix(in srgb,${c} 14%,transparent);color:${c}`, amtStyle: `font-size:13px;font-weight:500;font-variant-numeric:tabular-nums;color:${v > 0 ? "var(--pos)" : "var(--text)"}` }));
+    const D = [["27", "OUT", "Fatura Nubank", "em 3 dias", 1842.6, true], ["28", "OUT", "Empréstimo pessoal Itaú", "em 4 dias", 486, false], ["05", "NOV", "Financiamento moto", "em 12 dias", 310, false]];
+    const due = D.map(([day, mon, name, when, v, u]) => ({ day, mon, name, when, amt: R(v), dayBox: `display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:42px;height:42px;border-radius:10px;background:${u ? "var(--neg-soft)" : "var(--surface-2)"};color:${u ? "var(--neg)" : "var(--text-2)"}`, whenStyle: `font-size:11px;color:${u ? "var(--neg)" : "var(--faint)"}` }));
+    const p = FR.plan(FR.DEBTS, 300);
+    const debtInterest = FR.DEBTS.reduce((s, d) => s + (d.balance * d.rate) / 100, 0);
+    return {
+      ...FR.shell("Painel"), isEmpty: empty, hasData: !empty, steps, alerts, year, tip, buckets, cats, txs, due,
+      balance: R(bal), income: R(inc), spent: R(out), donutBg: `conic-gradient(${stops.join(",")})`,
+      debtTotal: R(FR.DEBTS.reduce((s, d) => s + d.balance, 0)), debtInterest: R(debtInterest), debtFree: FR.monthAfter(p.months),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -13,7 +13,7 @@ const APP_ROUTES = ["/", "/lancamentos", "/dividas", "/categorias", "/notas", "/
 APP_ROUTES.push("/contas");
 const PRECACHE = [
   ...APP_ROUTES, "/offline",
-  "/static/app.css", "/static/app.js", "/static/chat.js", "/static/settings.js", "/static/favicon.svg",
+  "/static/app.css", "/static/app.js", "/static/chat.js", "/static/settings.js", "/static/favicon.svg", "/static/brand-mark.png",
   "/static/icons/icon-192.png", "/static/finance.wasm",
   "/static/js/main.js", "/static/js/db.js", "/static/js/sync.js", "/static/js/finance.js", "/static/js/ui.js",
   "/static/js/device.js", "/static/js/pages/device.js", "/static/js/pages/advisor.js",

@@ -4,55 +4,64 @@
    põe data-theme no <html> (automático segue o aparelho). */
 
 :root {
-  --bg: #f3f5f4; --surface: #ffffff; --surface-2: #f7f9f8; --text: #15201b; --text-2: #3d4843;
-  --muted: #5f6b66; --border: #e2e7e4; --border-strong: #d5ddd9; --border-input: #838f89; --track: #e9eeeb;
-  --accent: #0f7a5c; --accent-strong: #0b5e47; --accent-soft: #e7f3ee; --accent-text: #ffffff;
-  --ring: color-mix(in srgb, var(--accent) 28%, transparent);
-  --hero: #0f2e25; --hero-text: #ffffff; --hero-muted: #b9d6cb; --hero-pos: #7fe0b8; --hero-neg: #ffb4aa; --hero-line: #2a4a40;
-  --pos: #0f7a5c; --neg: #b8382a; --neg-text: #ffffff; --neg-soft: #fbecea; --warn: #bc7718; --warn-soft: #fdf3e2; --warn-text: #8a5a0b;
-  --necessidades: #2f6fd6; --desejos: #bc7718; --investimentos: #0f9b6e; --renda: #7a5ad1;
-  --in: #0f9b6e; --out: #d4574a;
-  --accent-2: #1683a3; --glow-1: #12a07a; --glow-2: #6d5ad6;
-  --radius: 20px; --radius-sm: 12px; --radius-xs: 8px;
-  --shadow: 0 1px 2px rgb(16 24 20 / .04), 0 6px 20px -12px rgb(16 24 20 / .14);
-  --shadow-pop: 0 10px 30px -12px rgb(16 24 20 / .25);
-  --top-h: 60px; --side-w: 232px; --tabbar-h: 64px;
+  /* Esmeralda (docs/design/design_handoff_finan_rich_esmeralda). Claro aqui; escuro abaixo. */
+  --bg: #f4f6f5; --side: #fbfcfb; --surface: #ffffff; --surface-2: #f3f6f4; --hover: #eef2f0; --inset: #f3f6f4;
+  --border: #e2e7e4; --border-2: #d5ddd9; --grid: #edf1ef; --track: #e9eeeb;
+  --border-input: #838f89; /* borda de campo: 3:1 sobre o fundo (acessibilidade) */
+  --text: #15201b; --text-2: #3d4843; --muted: #5f6b66; --faint: #66726c;
+  --accent: #0f7a5c; --accent-hi: #0b5e47; --accent-ink: #ffffff; --accent-soft: #e3f2eb; --accent-line: #bfe0d2;
+  --pos: #0f7a5c; --neg: #c2412f; --neg-soft: #fceeec; --warn: #a8650c; --warn-soft: #fdf3e2; --warn-text: #8a5a0b;
+  --necessidades: #2f6fd6; --desejos: #bc7718; --investimentos: #0f9b6e; --renda: #7a5ad1; --accent-2: #1683a3;
+  /* O cartão de destaque é escuro nos dois temas. --hero (cor sólida) vale para o teste de contraste. */
+  --hero: #0f2e25; --hero-bg: linear-gradient(160deg, #0f2e25 0%, #123a2e 100%); --hero-border: #0f2e25;
+  --hero-text: #ffffff; --hero-muted: #b9d6cb; --hero-pos: #7fe0b8; --hero-neg: #f07163; --hero-track: #24574a;
+  --shadow: 0 1px 2px rgb(16 24 20 / .04), 0 6px 20px -12px rgb(16 24 20 / .12);
+  --shadow-pop: 0 18px 40px -16px rgb(16 24 20 / .28);
+  --scrim: rgb(16 24 20 / .38);
+  /* Nomes antigos, usados pelas telas e pelos gráficos. */
+  --border-strong: var(--border-2); --accent-strong: var(--accent-hi); --accent-text: var(--accent-ink);
+  --neg-text: #ffffff; --in: var(--accent); --out: var(--neg); --hero-line: var(--hero-track);
+  --ring: var(--accent);
+  --radius: 16px; --radius-sm: 10px; --radius-xs: 8px;
+  --top-h: 56px; --side-w: 240px; --tabbar-h: 64px;
   color-scheme: light;
 }
 :root[data-theme="dark"] {
-  --bg: #0e1412; --surface: #161e1b; --surface-2: #1b2421; --text: #e7ece9; --text-2: #c3ccc8;
-  --muted: #98a6a0; --border: #26322d; --border-strong: #33413b; --border-input: #62706a; --track: #24302b;
-  --accent: #34c08f; --accent-strong: #5fd6aa; --accent-soft: #173229; --accent-text: #06140f;
-  --hero: #123a2e; --hero-text: #ffffff; --hero-muted: #a9cbbf; --hero-pos: #7fe0b8; --hero-line: #24574a;
-  --pos: #3cc896; --neg: #f07163; --neg-text: #1d0a07; --neg-soft: #3a1f1c; --warn: #f0a845; --warn-soft: #33270f; --warn-text: #f3c57c;
-  --necessidades: #5a93f0; --desejos: #f0a845; --investimentos: #31c38f; --renda: #a184f0;
-  --in: #31c38f; --out: #f07163;
-  --accent-2: #3fb6d8; --glow-1: #1c8f6c; --glow-2: #5b48c4;
-  --shadow: 0 1px 0 rgb(255 255 255 / .03) inset;
-  --shadow-pop: 0 12px 32px -12px rgb(0 0 0 / .6);
+  --bg: #0a0d0c; --side: #0c100f; --surface: #101614; --surface-2: #141c1a; --hover: #141c1a; --inset: #0c1110;
+  --border: #1a2421; --border-2: #24302c; --grid: #18211e; --track: #1a2421;
+  --border-input: #62706a;
+  --text: #e8eeeb; --text-2: #b9c4bf; --muted: #8d9a95; --faint: #788680;
+  /* Os "soft" do design são translúcidos; aqui já misturados sobre o cartão (o teste de contraste lê hex). */
+  --accent: #34c08f; --accent-hi: #5fd6aa; --accent-ink: #05140f; --accent-soft: #152c24; --accent-line: #1d3a30;
+  --pos: #7fe0b8; --neg: #f07163; --neg-soft: #2d221e; --warn: #f0a845; --warn-soft: #2d291a; --warn-text: #f3c57c;
+  --necessidades: #5a93f0; --desejos: #f0a845; --investimentos: #34c08f; --renda: #a184f0; --accent-2: #3fb6d8;
+  --hero: #0f2a22; --hero-bg: linear-gradient(160deg, #0f2a22 0%, #0e1714 60%); --hero-border: #1d3a30;
+  --hero-muted: #a9cbbf; --hero-track: #1a2a25;
+  --neg-text: #1d0a07;
+  --shadow: 0 1px 0 rgb(255 255 255 / .02) inset;
+  --shadow-pop: 0 18px 40px -16px rgb(0 0 0 / .7);
+  --scrim: rgb(3 6 5 / .62);
   color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {
-  margin: 0; color: var(--text);
-  background:
-    radial-gradient(900px 420px at 8% -120px, color-mix(in srgb, var(--glow-1) 16%, transparent), transparent 70%),
-    radial-gradient(800px 380px at 100% -80px, color-mix(in srgb, var(--glow-2) 12%, transparent), transparent 70%),
-    var(--bg);
-  background-repeat: no-repeat; /* em tela curta o brilho não se repete embaixo */
-  font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  margin: 0; color: var(--text); background: var(--bg);
+  font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  transition: background-color .3s ease, color .3s ease; /* troca de tema suave */
 }
 /* Quem pediu menos movimento no sistema não vê transições. */
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
 a { color: var(--accent); text-underline-offset: 2px; }
 a:hover { color: var(--accent-strong); }
 h1, h2, h3 { letter-spacing: -.015em; line-height: 1.25; }
-h2 { font-size: 1.08rem; font-weight: 650; margin: 0 0 1rem; }
-h3 { font-size: 1rem; margin: 0 0 .5rem; }
-:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+h2 { font-size: 15px; font-weight: 600; margin: 0 0 1rem; }
+h3 { font-size: 14px; font-weight: 600; margin: 0 0 .5rem; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num, .money { font-variant-numeric: tabular-nums; }
+.faint { color: var(--faint); }
 [hidden] { display: none !important; }
 code { font-size: .88em; background: var(--surface-2); border: 1px solid var(--border); padding: .05em .35em; border-radius: 6px; overflow-wrap: anywhere; }
 .muted { color: var(--muted); } .small { font-size: .875rem; }
@@ -62,69 +71,83 @@ code { font-size: .88em; background: var(--surface-2); border: 1px solid var(--b
 .row > h2 { margin: 0; }
 .panel > .row:first-child { margin-bottom: .75rem; }
 
-/* ---------- Topo ---------- */
+/* ---------- Topo (celular e tablet; no computador a marca e o status vão para o menu) ---------- */
 .top {
   position: sticky; top: 0; z-index: 20;
   display: flex; align-items: center; justify-content: space-between; gap: 1rem;
   min-height: var(--top-h); padding: 0 1.25rem; padding-top: env(safe-area-inset-top);
   padding-left: max(1.25rem, env(safe-area-inset-left)); padding-right: max(1.25rem, env(safe-area-inset-right));
-  background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: saturate(1.4) blur(10px);
+  background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: saturate(1.4) blur(10px);
   border-bottom: 1px solid var(--border);
 }
-.brand { display: inline-flex; align-items: center; font-weight: 700; font-size: 1.12rem; color: var(--text); text-decoration: none; letter-spacing: -.01em; }
+.brand { display: inline-flex; align-items: center; font-weight: 600; font-size: 16px; color: var(--text); text-decoration: none; letter-spacing: -.01em; }
 .brand:hover { color: var(--text); }
 .brand span { color: var(--accent); }
-/* Mesmo desenho do ícone do app e da aba (favicon.svg). */
-.brand::before { content: ""; width: 32px; height: 32px; flex: none; margin-right: .6rem; background: url("favicon.svg") center / contain no-repeat; }
+/* A pantera (brand-mark.png) é arte em pixel: sem suavizar ao ampliar. */
+.brand::before { content: ""; width: 32px; height: 32px; flex: none; margin-right: 10px; border-radius: 8px; box-shadow: 0 0 0 1px var(--border-2);
+  background: #000 url("brand-mark.png") center / cover no-repeat; image-rendering: pixelated; }
 .brand.big { font-size: 1.6rem; margin: 0 0 .75rem; }
-.brand.big::before { width: 44px; height: 44px; }
+.brand.big::before { width: 44px; height: 44px; border-radius: 11px; }
 .tab-short { display: none; }
 .top-actions { display: flex; gap: .5rem; align-items: center; }
 .top-actions form { margin: 0; }
 .small-btn { padding: .4rem .85rem; font-size: .85rem; }
+.sync-pill { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 99px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.sync-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--faint); flex: none; }
+.sync-pill[data-status="ok"]::before { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.sync-pill[data-status="syncing"]::before { background: var(--accent); }
+.sync-pill[data-status="offline"]::before, .sync-pill[data-status="login"]::before, .sync-pill[data-status="google"]::before { background: var(--warn); }
+.sync-pill[data-status="error"]::before { background: var(--neg); }
+.sync-pill[data-status="unpaired"]::before { background: var(--faint); }
+button.sync-pill { cursor: pointer; background: transparent; min-height: 0; box-shadow: none; font-weight: 400; }
 
 /* ---------- Navegação ---------- */
-.tabs { display: flex; gap: .25rem; padding: .5rem 1rem; background: var(--surface); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+.tabs { display: flex; gap: .25rem; padding: .5rem 1rem; background: var(--side); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
 .tabs::-webkit-scrollbar { display: none; }
-.tabs a {
-  display: flex; align-items: center; gap: .55rem; padding: .5rem .8rem; border-radius: var(--radius-sm);
-  color: var(--muted); text-decoration: none; white-space: nowrap; font-weight: 500;
+.tabs a, .tabs .theme-toggle {
+  display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 9px;
+  color: var(--muted); text-decoration: none; white-space: nowrap; font-weight: 500; font-size: 14px;
   transition: background-color .15s, color .15s;
 }
-.tabs a:hover { background: var(--surface-2); color: var(--text); }
-.tabs a[aria-current="page"] { background: linear-gradient(90deg, var(--accent-soft), color-mix(in srgb, var(--accent-soft) 30%, transparent)); color: var(--accent-strong); font-weight: 650; }
-.icon { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.tabs a:hover, .tabs .theme-toggle:hover { background: var(--hover); color: var(--text); }
+.tabs a[aria-current="page"] { background: var(--accent-soft); color: var(--text); box-shadow: inset 0 0 0 1px var(--accent-line); }
+.tabs .side-only, .tabs .side-brand { display: none; }
+.theme-toggle { border: 0; background: transparent; font: inherit; cursor: pointer; text-align: left; min-height: 0; box-shadow: none; }
+.theme-toggle:hover { transform: none; }
+.icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 
 main {
-  max-width: 1080px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem;
+  max-width: 1240px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem;
   padding-left: max(1.25rem, env(safe-area-inset-left)); padding-right: max(1.25rem, env(safe-area-inset-right));
 }
 
-/* Computador: menu lateral fixo à esquerda. */
+/* Computador: menu lateral com a marca, o tema e o status da sincronização (sem a barra do topo). */
 @media (min-width: 1024px) {
-  body.has-nav { display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr); grid-template-rows: auto 1fr; min-height: 100vh; }
-  body.has-nav > .top { grid-column: 1 / -1; }
+  body.has-nav { display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr); min-height: 100vh; }
+  body.has-nav > .top { display: none; }
   body.has-nav > .tabs {
-    position: sticky; top: var(--top-h); align-self: start; height: calc(100vh - var(--top-h));
-    flex-direction: column; gap: 2px; padding: .75rem .75rem 1.25rem; overflow: auto;
-    background: var(--surface); border-bottom: 0; border-right: 1px solid var(--border);
+    position: sticky; top: 0; align-self: start; height: 100vh; grid-row: 1 / span 2;
+    flex-direction: column; gap: 4px; padding: 20px 14px; overflow: auto;
+    background: var(--side); border-bottom: 0; border-right: 1px solid var(--border);
   }
-  body.has-nav > .tabs a { position: relative; padding: .6rem .8rem; }
-  body.has-nav > .tabs a[aria-current="page"]::before {
-    content: ""; position: absolute; left: -.75rem; top: .55rem; bottom: .55rem; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent);
-  }
+  .tabs .side-brand { display: inline-flex; padding: 4px 8px 22px; }
+  .tabs .side-brand, .tabs .side-brand:hover, .tabs .side-brand[aria-current] { background: transparent; box-shadow: none; color: var(--text); gap: 0; font-size: 16px; font-weight: 600; }
+  .tabs .side-only { display: flex; }
   .tabs .nav-end { margin-top: auto; }
-  body.has-nav > main { width: 100%; padding: 1.75rem 2rem 3.5rem; margin: 0; max-width: 1120px; }
+  .tabs .sync-pill { margin-top: 8px; padding: 10px 12px; border-radius: 10px; }
+  body.has-nav > main { width: 100%; padding: 28px 36px 56px; margin: 0; max-width: 1240px; }
 }
 
 /* ---------- Cabeçalho de página e navegação de mês ---------- */
-.page-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1rem; margin-bottom: 1.25rem; }
-.page-head h1 { margin: 0; font-size: 1.9rem; font-weight: 800; letter-spacing: -.03em;
-  background: linear-gradient(95deg, var(--text) 30%, var(--accent) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.monthnav { display: inline-flex; align-items: center; gap: .25rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 4px; box-shadow: var(--shadow); }
-.monthnav strong { min-width: 9.5rem; text-align: center; font-size: .98rem; }
-.monthnav a { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 8px; text-decoration: none; color: var(--text); font-size: 1.4rem; line-height: 1; }
-.monthnav a:hover { background: var(--surface-2); color: var(--text); }
+.page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.page-head .title { display: flex; flex-direction: column; gap: 4px; }
+.page-head .kicker { font-size: 13px; color: var(--faint); }
+.page-head h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -.025em; line-height: 1.15; }
+.page-head .actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.monthnav { display: inline-flex; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+.monthnav strong { min-width: 128px; text-align: center; font-size: 13px; font-weight: 500; }
+.monthnav a { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 7px; text-decoration: none; color: var(--text-2); font-size: 16px; line-height: 1; }
+.monthnav a:hover { background: var(--hover); color: var(--text); }
 
 /* ---------- Painéis e cartões ---------- */
 .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.4rem 1.5rem; margin-bottom: 1.25rem; box-shadow: var(--shadow); }
@@ -337,16 +360,11 @@ body:not(.has-nav) > main { width: 100%; padding: 1.5rem 1.25rem; }
 .chat-form textarea { resize: vertical; }
 
 /* ---------- Indicador de sincronização ---------- */
-.sync-pill { display: inline-flex; align-items: center; gap: .4rem; font-size: .8rem; font-weight: 500; padding: .25rem .7rem; border-radius: 999px; background: var(--surface-2); color: var(--muted); white-space: nowrap; cursor: default; }
-.sync-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
-.sync-pill[data-status="ok"] { background: var(--accent-soft); color: var(--accent-strong); }
-.sync-pill[data-status="ok"]::before { background: var(--pos); }
-.sync-pill[data-status="syncing"]::before { background: var(--warn); animation: pulse 1s ease-in-out infinite alternate; }
-.sync-pill[data-status="offline"] { background: var(--warn-soft); color: var(--warn-text); }
-.sync-pill[data-status="offline"]::before { background: transparent; border: 1.5px solid currentColor; }
-.sync-pill[data-status="unpaired"] { background: var(--surface-2); color: var(--muted); cursor: pointer; }
-.sync-pill[data-status="unpaired"]::before { background: var(--muted); }
-.sync-pill[data-status="login"], .sync-pill[data-status="error"] { background: var(--neg-soft); color: var(--neg); cursor: pointer; }
+/* No topo (celular), a pílula é colorida; no menu do computador, neutra com a bolinha colorida. */
+.top .sync-pill[data-status="ok"] { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.top .sync-pill[data-status="offline"], .top .sync-pill[data-status="google"] { background: var(--warn-soft); color: var(--warn-text); border-color: transparent; }
+.top .sync-pill[data-status="login"], .top .sync-pill[data-status="error"] { background: var(--neg-soft); color: var(--neg); border-color: transparent; }
+.sync-pill[data-status="syncing"]::before { animation: pulse 1s ease-in-out infinite alternate; }
 @keyframes pulse { from { opacity: .35; } to { opacity: 1; } }
 
 /* ---------- Tablet ---------- */
@@ -360,22 +378,22 @@ body:not(.has-nav) > main { width: 100%; padding: 1.5rem 1.25rem; }
   :root { --top-h: 56px; }
   body.has-nav { padding-bottom: calc(var(--tabbar-h) + 1.25rem + env(safe-area-inset-bottom)); }
   .top { padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right)); }
-  .brand::before { width: 28px; height: 28px; }
+  .brand::before { width: 28px; height: 28px; border-radius: 7px; }
   /* Barra flutuante: solta da borda, com cantos arredondados. */
   .tabs {
     position: fixed; z-index: 30; gap: 0; justify-content: space-around; overflow: visible;
     left: max(.6rem, env(safe-area-inset-left)); right: max(.6rem, env(safe-area-inset-right));
     bottom: calc(.6rem + env(safe-area-inset-bottom));
-    padding: .3rem .2rem; border-radius: 22px;
-    background: color-mix(in srgb, var(--surface) 90%, transparent); backdrop-filter: saturate(1.5) blur(14px);
+    padding: 6px 4px; border-radius: 22px;
+    background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: saturate(1.5) blur(14px);
     border: 1px solid var(--border); box-shadow: var(--shadow-pop);
   }
-  .tabs a { flex: 1 1 0; flex-direction: column; gap: .15rem; padding: .2rem .1rem; font-size: .68rem; font-weight: 500; text-align: center; min-width: 0; min-height: 52px; justify-content: center; }
+  .tabs a { flex: 1 1 0; flex-direction: column; gap: 2px; padding: .2rem .1rem; font-size: 10.5px; font-weight: 500; text-align: center; min-width: 0; min-height: 52px; justify-content: center; }
   .tabs a:hover { background: transparent; }
-  .tabs a .icon { width: 52px; height: 28px; padding: 4px 16px; border-radius: 99px; transition: background-color .15s; }
+  .tabs a .icon { width: 52px; height: 28px; padding: 4px 16px; border-radius: 99px; transition: background-color .15s; stroke-width: 1.9; }
   .tabs a span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-  .tabs a[aria-current="page"] { color: var(--accent-strong); background: transparent; font-weight: 600; }
-  .tabs a[aria-current="page"] .icon { background: var(--accent-soft); }
+  .tabs a[aria-current="page"] { color: var(--text); background: transparent; font-weight: 600; box-shadow: none; }
+  .tabs a[aria-current="page"] .icon { background: var(--accent-soft); color: var(--accent); }
   .tabs .tab-extra { display: none; }
   /* Nome curto na barra de baixo; o completo continua para leitores de tela. */
   .tabs a .tab-short { display: inline; }

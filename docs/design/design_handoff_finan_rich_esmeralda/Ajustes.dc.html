@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="finan-proto.js"></script>
+<style>
+body{margin:0;background:#0a0d0c;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-hi)}
+:focus-visible{outline:2px solid var(--accent,#34c08f);outline-offset:2px}
+html{scroll-behavior:smooth}
+@keyframes pop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
+</style>
+</helmet>
+<div style="{{ rootStyle }}">
+  <aside style="position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:4px;padding:20px 14px;border-right:1px solid var(--border);background:var(--side);box-sizing:border-box">
+    <a href="Painel.dc.html" style="display:flex;align-items:center;gap:10px;padding:4px 8px 22px;color:var(--text);font-weight:600;font-size:16px;letter-spacing:-0.01em">
+      <img src="brand-mark.png" width="32" height="32" alt="" style="display:block;border-radius:8px;box-shadow:0 0 0 1px var(--border-2)">
+      <span>finan<span style="color:var(--accent)">_rich</span></span>
+    </a>
+    <sc-for list="{{ nav }}" as="n" hint-placeholder-count="7">
+      <a href="{{ n.href }}" style="{{ n.style }}" style-hover="background:var(--hover);color:var(--text)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+        <span>{{ n.label }}</span>
+      </a>
+    </sc-for>
+    <div style="margin-top:auto;display:flex;flex-direction:column;gap:4px">
+      <a href="Ajustes.dc.html" style="{{ settingsStyle }}" style-hover="background:var(--hover);color:var(--text)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ settingsIcon }}"></path></svg>
+        <span>Ajustes</span>
+      </a>
+      <button type="button" onClick="{{ toggleTheme }}" style="display:flex;align-items:center;gap:12px;padding:9px 10px;border:0;border-radius:9px;background:transparent;color:var(--muted);font:inherit;font-weight:500;cursor:pointer;text-align:left" style-hover="background:var(--hover);color:var(--text)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ themeIcon }}"></path></svg>
+        <span>{{ themeLabel }}</span>
+      </button>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--muted)">
+        <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)"></span>
+        <span>Sincronizado · 03:12</span>
+      </div>
+    </div>
+  </aside>
+
+  <div style="display:grid;grid-template-columns:200px minmax(0,1fr);gap:32px;padding:28px 36px 80px;max-width:1160px;width:100%;box-sizing:border-box;min-width:0">
+    <nav aria-label="Seções de ajustes" style="position:sticky;top:28px;align-self:start;display:flex;flex-direction:column;gap:2px">
+      <h1 style="margin:0 0 16px;font-size:28px;font-weight:600;letter-spacing:-0.025em">Ajustes</h1>
+      <sc-for list="{{ sections }}" as="s" hint-placeholder-count="7">
+        <a href="{{ s.href }}" style="padding:7px 10px;border-radius:8px;color:var(--muted);font-size:13px;font-weight:500" style-hover="background:var(--hover);color:var(--text)">{{ s.label }}</a>
+      </sc-for>
+    </nav>
+
+    <main style="display:flex;flex-direction:column;gap:16px;min-width:0">
+      <section id="aparencia" style="display:flex;flex-direction:column;gap:16px;padding:22px 24px;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)">
+        <div style="display:flex;flex-direction:column;gap:2px"><h2 style="margin:0;font-size:16px;font-weight:600">Aparência</h2><span style="font-size:13px;color:var(--muted)">Vale só para este aparelho e não vai na sincronização.</span></div>
+        <div role="radiogroup" aria-label="Tema" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
+          <sc-for list="{{ themes }}" as="t" hint-placeholder-count="3">
+            <button type="button" role="radio" aria-checked="{{ t.on }}" onClick="{{ t.pick }}" style="{{ t.style }}">
+              <span style="{{ t.preview }}"><span style="{{ t.side }}"></span><span style="display:flex;flex-direction:column;gap:5px;flex:1;padding:10px"><i style="{{ t.bar1 }}"></i><i style="{{ t.bar2 }}"></i><i style="{{ t.card }}"></i></span></span>
+              <span style="display:flex;align-items:center;justify-content:space-between;width:100%"><strong style="font-weight:500">{{ t.label }}</strong><span style="{{ t.radio }}"></span></span>
+            </button>
+          </sc-for>
+        </div>
+      </section>
+
+      <section id="conta" style="display:flex;flex-direction:column;gap:14px;padding:22px 24px;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)">
+        <div style="display:flex;flex-direction:column;gap:2px"><h2 style="margin:0;font-size:16px;font-weight:600">Conta e sincronização</h2><span style="font-size:13px;color:var(--muted)">Com Google, os dados ficam também no seu Drive e aparecem iguais em outros navegadores.</span></div>
+        <sc-if value="{{ signedIn }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--border);border-radius:12px">
+            <span style="display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-weight:600">A</span>
+            <span style="display:flex;flex-direction:column;flex:1;min-width:0"><strong style="font-weight:500">alexandre@gmail.com</strong><span style="font-size:12px;color:var(--faint)">Google Drive · pasta do finan_rich · sincronizado às 03:12</span></span>
+            <button type="button" onClick="{{ signOut }}" style="height:36px;padding:0 14px;border:1px solid var(--border-2);border-radius:10px;background:transparent;color:var(--text);font:inherit;font-size:13px;cursor:pointer" style-hover="background:var(--hover)">Sair</button>
+          </div>
+          <span style="font-size:12px;color:var(--faint)">Ao sair, os dados guardados neste aparelho são apagados. Eles continuam no seu Drive.</span>
+        </sc-if>
+        <sc-if value="{{ signedOut }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:14px;border:1px dashed var(--border-2);border-radius:12px">
+            <span style="display:flex;flex-direction:column;flex:1;min-width:220px"><strong style="font-weight:500">Só neste navegador</strong><span style="font-size:12px;color:var(--faint)">Se limpar os dados do navegador, eles se perdem. Faça backup de vez em quando.</span></span>
+            <button type="button" onClick="{{ signIn }}" style="display:flex;align-items:center;gap:10px;height:40px;padding:0 16px;border:0;border-radius:10px;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:600;cursor:pointer" style-hover="background:var(--accent-hi)"><span style="display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#fff;color:#4285f4;font-weight:700;font-size:12px">G</span>Entrar com Google</button>
+          </div>
+        </sc-if>
+      </section>
+
+      <section id="exibicao" style="display:flex;flex-direction:column;gap:14px;padding:22px 24px;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)">
+        <h2 style="margin:0;font-size:16px;font-weight:600">Exibição financeira</h2>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;padding:12px 0;border-top:1px solid var(--border)">
+          <span style="display:flex;flex-direction:column"><strong style="font-weight:500">Moeda e formato</strong><span style="font-size:12px;color:var(--faint)">Valores em centavos, sem arredondamento. É o único formato que o app suporta hoje.</span></span>
+          <span style="padding:6px 12px;border-radius:8px;background:var(--surface-2);font-size:13px;font-variant-numeric:tabular-nums">Real · R$ 1.234,56</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;padding:12px 0 0;border-top:1px solid var(--border)">
+          <span style="display:flex;justify-content:space-between;gap:12px;align-items:baseline"><span style="display:flex;flex-direction:column"><strong style="font-weight:500">Divisão do salário</strong><span style="font-size:12px;color:var(--faint)">Quanto da renda vai para cada grupo. A soma precisa dar 100%.</span></span><span style="{{ splitSumStyle }}">{{ splitSum }}</span></span>
+          <div style="display:flex;height:10px;border-radius:99px;overflow:hidden;gap:2px"><sc-for list="{{ split }}" as="b" hint-placeholder-count="3"><span style="{{ b.seg }}"></span></sc-for></div>
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
+            <sc-for list="{{ split }}" as="b" hint-placeholder-count="3">
+              <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--text-2)"><span style="display:flex;align-items:center;gap:8px"><i style="{{ b.dot }}"></i>{{ b.name }}</span>
+                <span style="display:flex;align-items:center;height:42px;padding:0 12px;border:1px solid var(--border-2);border-radius:10px;background:var(--inset)"><input type="number" min="0" max="100" value="{{ b.v }}" onInput="{{ b.set }}" style="flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-variant-numeric:tabular-nums"><span style="color:var(--faint)">%</span></span>
+                <small style="font-weight:400;color:var(--faint)">{{ b.hint }}</small>
+              </label>
+            </sc-for>
+          </div>
+        </div>
+      </section>
+
+      <section id="ia" style="display:flex;flex-direction:column;gap:16px;padding:22px 24px;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)">
+        <div style="display:flex;flex-direction:column;gap:2px"><h2 style="margin:0;font-size:16px;font-weight:600">Consultor IA</h2><span style="font-size:13px;color:var(--muted)">A recomendada é o Ollama: grátis, sem chave, e seus dados não saem do computador.</span></div>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:var(--accent-soft);font-size:13px"><span style="width:7px;height:7px;border-radius:50%;background:var(--accent)"></span>Pronto para usar: <b style="font-weight:600">Ollama</b> com o modelo <code style="font-family:'Geist Mono',monospace;font-size:12px;padding:1px 6px;border-radius:5px;background:var(--surface)">qwen3.5:9b</code></div>
+        <div role="radiogroup" aria-label="Provedor" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:8px">
+          <sc-for list="{{ presets }}" as="p" hint-placeholder-count="6">
+            <button type="button" role="radio" aria-checked="{{ p.on }}" onClick="{{ p.pick }}" style="{{ p.style }}">
+              <span style="{{ p.radio }}"></span>
+              <span style="display:flex;flex-direction:column;gap:2px;text-align:left"><span style="display:flex;gap:8px;align-items:center"><strong style="font-weight:500">{{ p.name }}</strong><sc-if value="{{ p.tag }}" hint-placeholder-val="{{ false }}"><span style="font-size:10px;padding:1px 6px;border-radius:99px;background:var(--accent-soft);color:var(--accent);font-weight:600">{{ p.tag }}</span></sc-if></span><span style="font-size:12px;color:var(--faint)">{{ p.desc }}</span></span>
+            </button>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px">
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--text-2)">Modelo<input value="{{ model }}" onInput="{{ onModel }}" style="height:42px;padding:0 12px;border:1px solid var(--border-2);border-radius:10px;background:var(--inset);color:var(--text);font-family:'Geist Mono',monospace;font-size:13px;box-sizing:border-box"></label>
+          <sc-if value="{{ needsKey }}" hint-placeholder-val="{{ false }}"><label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--text-2)">Chave da API<input type="password" placeholder="cole sua chave aqui" autocomplete="off" style="height:42px;padding:0 12px;border:1px solid var(--border-2);border-radius:10px;background:var(--inset);color:var(--text);font:inherit;box-sizing:border-box"><small style="font-weight:400;color:var(--faint)">Na nuvem, o resumo das suas finanças vai junto com cada pergunta.</small></label></sc-if>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px">
+          <button type="button" onClick="{{ saveAI }}" style="height:40px;padding:0 16px;border:0;border-radius:10px;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:600;cursor:pointer" style-hover="background:var(--accent-hi)">Salvar</button>
+          <button type="button" onClick="{{ test }}" style="display:flex;align-items:center;gap:8px;height:40px;padding:0 14px;border:1px solid var(--border-2);border-radius:10px;background:transparent;color:var(--text);font:inherit;cursor:pointer" style-hover="background:var(--hover)"><sc-if value="{{ testing }}" hint-placeholder-val="{{ false }}"><span style="width:12px;height:12px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:spin .7s linear infinite"></span></sc-if>Testar conexão</button>
+          <span style="{{ testStyle }}">{{ testMsg }}</span>
+        </div>
+      </section>
+
+      <section id="openfinance" style="display:flex;flex-direction:column;gap:12px;padding:22px 24px;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:2px"><h2 style="margin:0;font-size:16px;font-weight:600">Open Finance</h2><span style="font-size:13px;color:var(--muted)">Lançamentos direto do banco, de graça, pelo Meu Pluggy. Sem passar por servidor do finan_rich.</span></div>
+          <span style="font-size:12px;padding:3px 9px;border-radius:99px;border:1px solid var(--border-2);color:var(--muted)">Não configurado</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px">
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--text-2)">Client ID<input autocomplete="off" spellcheck="false" style="height:42px;padding:0 12px;border:1px solid var(--border-2);border-radius:10px;background:var(--inset);color:var(--text);font-family:'Geist Mono',monospace;font-size:13px;box-sizing:border-box"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--text-2)">Client Secret<input type="password" autocomplete="off" style="height:42px;padding:0 12px;border:1px solid var(--border-2);border-radius:10px;background:var(--inset);color:var(--text);font:inherit;box-sizing:border-box"></label>
+        </div>
+        <span style="font-size:12px;color:var(--faint)">Como configurar: crie uma Application em dashboard.pluggy.ai, conecte os bancos em meu.pluggy.ai e cole os Item IDs. Uns 10 minutos, uma vez.</span>
+      </section>
+
+      <section id="celular" style="display:flex;flex-direction:column;gap:12px;padding:22px 24px;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)">
+        <div style="display:flex;flex-direction:column;gap:2px"><h2 style="margin:0;font-size:16px;font-weight:600">Celular</h2><span style="font-size:13px;color:var(--muted)">O app Android guarda os dados, abre sem internet e sincroniza pelo Wi-Fi.</span></div>
+        <div style="display:flex;flex-direction:column;border:1px solid var(--border);border-radius:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px"><span style="display:flex;flex-direction:column"><strong style="font-weight:500">Galaxy A54</strong><span style="font-size:12px;color:var(--faint)">pareado em 12/09/2026 · última sincronização 24/10 02:58</span></span><button type="button" style="height:32px;padding:0 12px;border:1px solid var(--border-2);border-radius:8px;background:transparent;color:var(--text);font:inherit;font-size:13px;cursor:pointer" style-hover="background:var(--neg-soft);color:var(--neg);border-color:transparent">Desconectar</button></div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button type="button" style="height:40px;padding:0 14px;border:1px solid var(--border-2);border-radius:10px;background:transparent;color:var(--text);font:inherit;cursor:pointer" style-hover="background:var(--hover)">Parear outro celular</button>
+          <button type="button" style="height:40px;padding:0 14px;border:1px solid var(--border-2);border-radius:10px;background:transparent;color:var(--text);font:inherit;cursor:pointer" style-hover="background:var(--hover)">Acesso pelo navegador do celular</button>
+        </div>
+      </section>
+
+      <section id="dados" style="display:flex;flex-direction:column;gap:12px;padding:22px 24px;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)">
+        <div style="display:flex;flex-direction:column;gap:2px"><h2 style="margin:0;font-size:16px;font-weight:600">Seus dados</h2><span style="font-size:13px;color:var(--muted)">Tudo num único arquivo neste computador, o <code style="font-family:'Geist Mono',monospace;font-size:12px">finan.db</code>.</span></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:10px">
+          <a href="#" style="display:flex;flex-direction:column;gap:4px;padding:14px;border:1px solid var(--border);border-radius:12px;color:var(--text)" style-hover="border-color:var(--accent-line);background:var(--hover);color:var(--text)"><strong style="font-weight:500">Exportar</strong><span style="font-size:12px;color:var(--faint)">Excel (.xlsx), CSV ou relatório em PDF</span></a>
+          <a href="#" style="display:flex;flex-direction:column;gap:4px;padding:14px;border:1px solid var(--border);border-radius:12px;color:var(--text)" style-hover="border-color:var(--accent-line);background:var(--hover);color:var(--text)"><strong style="font-weight:500">Backup (.json)</strong><span style="font-size:12px;color:var(--faint)">Todos os registros, em qualquer aparelho</span></a>
+          <a href="#" style="display:flex;flex-direction:column;gap:4px;padding:14px;border:1px solid var(--border);border-radius:12px;color:var(--text)" style-hover="border-color:var(--accent-line);background:var(--hover);color:var(--text)"><strong style="font-weight:500">Banco completo (.db)</strong><span style="font-size:12px;color:var(--faint)">Inclui a chave da IA: guarde em lugar seguro</span></a>
+        </div>
+      </section>
+
+      <section id="sessao" style="display:flex;flex-direction:column;gap:12px;padding:22px 24px;border:1px solid color-mix(in srgb,var(--neg) 22%,var(--border));border-radius:16px;background:var(--surface);box-shadow:var(--shadow)">
+        <h2 style="margin:0;font-size:16px;font-weight:600">Sessão</h2>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px"><span style="display:flex;flex-direction:column;flex:1;min-width:240px"><strong style="font-weight:500">Fechar o finan_rich</strong><span style="font-size:12px;color:var(--faint)">Desliga o programa neste computador. Seus dados ficam salvos; o celular sincroniza quando abrir de novo.</span></span><button type="button" style="height:40px;padding:0 14px;border:1px solid color-mix(in srgb,var(--neg) 40%,transparent);border-radius:10px;background:transparent;color:var(--neg);font:inherit;font-weight:500;cursor:pointer" style-hover="background:var(--neg-soft)">Fechar o finan_rich</button></div>
+      </section>
+    </main>
+  </div>
+
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div role="status" style="position:fixed;z-index:50;left:50%;bottom:28px;transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid var(--border-2);border-radius:12px;background:var(--surface);box-shadow:var(--shadow-pop);font-size:13px;animation:pop .2s ease both"><span style="width:8px;height:8px;border-radius:50%;background:var(--accent)"></span>{{ toast }}</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { google: true, split: { nec: 50, des: 30, inv: 20 }, preset: "ollama", model: "qwen3.5:9b", testing: false, test: "", toast: "" };
+  PRESETS = [["ollama", "Ollama", "Grátis, no seu computador. Nada sai daqui.", "Recomendado", "qwen3.5:9b", false], ["ollama-cloud", "Ollama Cloud", "Modelos gigantes, grátis com limite de uso.", "", "qwen3.5:397b-cloud", false], ["groq", "Groq", "Nuvem com plano grátis.", "", "llama-3.3-70b-versatile", true], ["openrouter", "OpenRouter", "Modelos :free grátis.", "", "deepseek/deepseek-chat:free", true], ["deepseek", "DeepSeek", "Centavos por conversa.", "", "deepseek-chat", true], ["anthropic", "Anthropic Claude", "Pago.", "", "claude-sonnet-4-5", true]];
+  componentDidMount() {
+    this.h = () => this.forceUpdate();
+    window.addEventListener("fr-theme", this.h);
+    if (!window.FR) this.t = setInterval(() => { if (window.FR) { clearInterval(this.t); this.forceUpdate(); } }, 40);
+  }
+  componentWillUnmount() { window.removeEventListener("fr-theme", this.h); clearInterval(this.t); clearTimeout(this.tt); clearTimeout(this.x); }
+  flash(toast) { clearTimeout(this.tt); this.setState({ toast }); this.tt = setTimeout(() => this.setState({ toast: "" }), 3000); }
+  renderVals() {
+    const FR = window.FR;
+    if (!FR) return {};
+    const s = this.state, pref = FR.pref();
+    const themes = [["claro", "Claro", false], ["escuro", "Escuro", true], ["sistema", "Igual ao aparelho", null]].map(([v, label, dark]) => {
+      const on = pref === v;
+      const bg = dark === null ? "linear-gradient(90deg,#f4f6f5 50%,#0a0d0c 50%)" : dark ? "#0a0d0c" : "#f4f6f5";
+      const ink = dark ? "#1a2421" : "#e2e7e4";
+      return { label, on: String(on), pick: () => { FR.setTheme(v); this.flash(`Tema: ${label.toLowerCase()}.`); },
+        style: `display:flex;flex-direction:column;gap:10px;padding:10px;border:1px solid ${on ? "var(--accent)" : "var(--border)"};border-radius:14px;background:${on ? "var(--accent-soft)" : "transparent"};color:var(--text);font:inherit;font-size:13px;cursor:pointer;transition:border-color .15s,background-color .15s`,
+        preview: `display:flex;height:74px;border-radius:9px;overflow:hidden;border:1px solid var(--border);background:${bg}`,
+        side: `width:22%;background:${dark === false ? "#fbfcfb" : dark ? "#0c100f" : "linear-gradient(90deg,#fbfcfb,#0c100f)"};border-right:1px solid ${ink}`,
+        bar1: `height:6px;width:50%;border-radius:4px;background:${dark === false ? "#15201b" : "#e8eeeb"};opacity:.7`,
+        bar2: "height:6px;width:30%;border-radius:4px;background:#34c08f",
+        card: `flex:1;border-radius:6px;background:${dark === false ? "#ffffff" : dark ? "#101614" : "linear-gradient(90deg,#fff 50%,#101614 50%)"};border:1px solid ${ink}`,
+        radio: `width:16px;height:16px;border-radius:50%;box-sizing:border-box;border:${on ? "5px solid var(--accent)" : "1.5px solid var(--border-2)"}` };
+    });
+    const B = [["nec", "Necessidades", "var(--nec)", "moradia, mercado, contas, transporte"], ["des", "Desejos", "var(--des)", "lazer, restaurantes, compras"], ["inv", "Investimentos", "var(--inv)", "reserva de emergência e investimentos"]];
+    const sum = B.reduce((a, [k]) => a + (Number(s.split[k]) || 0), 0);
+    const split = B.map(([k, name, c, hint]) => ({ name, hint, v: s.split[k], set: (e) => this.setState({ split: { ...this.state.split, [k]: e.target.value } }),
+      dot: `width:8px;height:8px;border-radius:2px;background:${c}`, seg: `flex:${Number(s.split[k]) || 0} 1 0;background:${c};transition:flex-grow .3s ease` }));
+    const presets = this.PRESETS.map(([id, name, desc, tag, model]) => { const on = s.preset === id; return { name, desc, tag, on: String(on),
+      pick: () => this.setState({ preset: id, model, test: "" }),
+      style: `display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid ${on ? "var(--accent)" : "var(--border)"};border-radius:12px;background:${on ? "var(--accent-soft)" : "transparent"};color:var(--text);font:inherit;font-size:13px;cursor:pointer;transition:border-color .15s,background-color .15s`,
+      radio: `flex:none;width:16px;height:16px;margin-top:2px;border-radius:50%;box-sizing:border-box;border:${on ? "5px solid var(--accent)" : "1.5px solid var(--border-2)"}` }; });
+    const p = this.PRESETS.find((x) => x[0] === s.preset);
+    return {
+      ...FR.shell("Ajustes"),
+      sections: [["#aparencia", "Aparência"], ["#conta", "Conta e sincronização"], ["#exibicao", "Exibição financeira"], ["#ia", "Consultor IA"], ["#openfinance", "Open Finance"], ["#celular", "Celular"], ["#dados", "Seus dados"], ["#sessao", "Sessão"]].map(([href, label]) => ({ href, label })),
+      themes, signedIn: s.google, signedOut: !s.google,
+      signOut: () => { this.setState({ google: false }); this.flash("Você saiu. Os dados continuam no seu Drive."); },
+      signIn: () => { this.setState({ google: true }); this.flash("Conectado ao Google Drive."); },
+      split, splitSum: sum === 100 ? "Soma 100%" : `Soma ${sum}% · precisa dar 100%`,
+      splitSumStyle: `font-size:12px;font-weight:600;white-space:nowrap;color:${sum === 100 ? "var(--pos)" : "var(--neg)"}`,
+      presets, model: s.model, onModel: (e) => this.setState({ model: e.target.value }), needsKey: p[5],
+      saveAI: () => this.flash(`Consultor: ${p[1]} com ${s.model}.`),
+      testing: s.testing,
+      test: () => { this.setState({ testing: true, test: "" }); clearTimeout(this.x); this.x = setTimeout(() => this.setState({ testing: false, test: p[5] ? "err" : "ok" }), 1200); },
+      testMsg: s.test === "ok" ? "Conectado. O modelo respondeu em 1,8 s." : s.test === "err" ? "Chave inválida ou ausente." : "",
+      testStyle: `font-size:13px;color:${s.test === "err" ? "var(--neg)" : "var(--pos)"}`,
+      toast: s.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>

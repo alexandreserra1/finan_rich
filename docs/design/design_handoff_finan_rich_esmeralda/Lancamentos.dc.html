@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="finan-proto.js"></script>
+<style>
+body{margin:0;background:#0a0d0c;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-hi)}
+:focus-visible{outline:2px solid var(--accent,#34c08f);outline-offset:2px}
+input::placeholder{color:#6c7a74}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes pop{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</helmet>
+<div style="{{ rootStyle }}">
+  <aside style="position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:4px;padding:20px 14px;border-right:1px solid var(--border);background:var(--side);box-sizing:border-box">
+    <a href="Painel.dc.html" style="display:flex;align-items:center;gap:10px;padding:4px 8px 22px;color:var(--text);font-weight:600;font-size:16px;letter-spacing:-0.01em">
+      <img src="brand-mark.png" width="32" height="32" alt="" style="display:block;border-radius:8px;box-shadow:0 0 0 1px var(--border-2)">
+      <span>finan<span style="color:var(--accent)">_rich</span></span>
+    </a>
+    <sc-for list="{{ nav }}" as="n" hint-placeholder-count="7">
+      <a href="{{ n.href }}" style="{{ n.style }}" style-hover="background:var(--hover);color:var(--text)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+        <span>{{ n.label }}</span>
+      </a>
+    </sc-for>
+    <div style="margin-top:auto;display:flex;flex-direction:column;gap:4px">
+      <a href="Ajustes.dc.html" style="{{ settingsStyle }}" style-hover="background:var(--hover);color:var(--text)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ settingsIcon }}"></path></svg>
+        <span>Ajustes</span>
+      </a>
+      <button type="button" onClick="{{ toggleTheme }}" style="display:flex;align-items:center;gap:12px;padding:9px 10px;border:0;border-radius:9px;background:transparent;color:var(--muted);font:inherit;font-weight:500;cursor:pointer;text-align:left" style-hover="background:var(--hover);color:var(--text)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ themeIcon }}"></path></svg>
+        <span>{{ themeLabel }}</span>
+      </button>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--muted)">
+        <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)"></span>
+        <span>Sincronizado · 03:12</span>
+      </div>
+    </div>
+  </aside>
+
+  <main style="padding:28px 36px 56px;display:flex;flex-direction:column;gap:18px;max-width:1240px;width:100%;box-sizing:border-box;min-width:0">
+    <header style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span style="font-size:13px;color:var(--faint)">Receitas e despesas</span>
+        <h1 style="margin:0;font-size:28px;font-weight:600;letter-spacing:-0.025em">Lançamentos</h1>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px">
+        <div style="display:flex;align-items:center;gap:2px;padding:3px;border:1px solid var(--border);border-radius:10px;background:var(--surface)">
+          <button type="button" aria-label="Mês anterior" style="width:32px;height:32px;border:0;border-radius:7px;background:transparent;color:var(--text-2);cursor:pointer;font-size:16px" style-hover="background:var(--hover)">‹</button>
+          <span style="min-width:128px;text-align:center;font-weight:500;font-size:13px">outubro de 2026</span>
+          <button type="button" aria-label="Próximo mês" style="width:32px;height:32px;border:0;border-radius:7px;background:transparent;color:var(--text-2);cursor:pointer;font-size:16px" style-hover="background:var(--hover)">›</button>
+        </div>
+        <button type="button" style="display:flex;align-items:center;gap:8px;height:40px;padding:0 14px;border:1px solid var(--border-2);border-radius:10px;background:transparent;color:var(--text);font:inherit;font-weight:500;cursor:pointer" style-hover="background:var(--hover)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path></svg>Importar extrato
+        </button>
+        <button type="button" onClick="{{ openNew }}" style="display:flex;align-items:center;gap:8px;height:40px;padding:0 16px;border:0;border-radius:10px;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:600;cursor:pointer" style-hover="background:var(--accent-hi)" style-active="transform:translateY(1px)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>Novo lançamento
+        </button>
+      </div>
+    </header>
+
+    <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--surface)">
+      <div style="display:flex;flex-direction:column;gap:4px;padding:16px 20px;box-shadow:inset -1px 0 0 var(--border)"><span style="font-size:12px;color:var(--muted)">{{ sumLabel }}</span><strong style="font-size:20px;font-weight:600;letter-spacing:-0.02em;font-variant-numeric:tabular-nums">{{ sumCount }}</strong></div>
+      <div style="display:flex;flex-direction:column;gap:4px;padding:16px 20px;box-shadow:inset -1px 0 0 var(--border)"><span style="font-size:12px;color:var(--muted)">Entradas</span><strong style="font-size:20px;font-weight:600;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;color:var(--pos)">{{ sumIn }}</strong></div>
+      <div style="display:flex;flex-direction:column;gap:4px;padding:16px 20px;box-shadow:inset -1px 0 0 var(--border)"><span style="font-size:12px;color:var(--muted)">Saídas</span><strong style="font-size:20px;font-weight:600;letter-spacing:-0.02em;font-variant-numeric:tabular-nums">{{ sumOut }}</strong></div>
+      <div style="display:flex;flex-direction:column;gap:4px;padding:16px 20px;box-shadow:inset -1px 0 0 var(--border)"><span style="font-size:12px;color:var(--muted)">Saldo</span><strong style="{{ sumBalStyle }}">{{ sumBal }}</strong></div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow);min-width:0">
+      <div role="search" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border)">
+        <label style="flex:1 1 260px;display:flex;align-items:center;gap:10px;height:40px;padding:0 12px;border:1px solid var(--border-2);border-radius:10px;background:var(--inset)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+          <input type="search" value="{{ q }}" onInput="{{ onSearch }}" placeholder="Buscar: mercado, iFood, aluguel…" aria-label="Buscar lançamentos" style="flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:14px">
+        </label>
+        <div role="radiogroup" aria-label="Tipo" style="display:flex;gap:2px;padding:3px;border:1px solid var(--border);border-radius:10px;background:var(--inset)">
+          <sc-for list="{{ kinds }}" as="k" hint-placeholder-count="3">
+            <button type="button" role="radio" aria-checked="{{ k.on }}" onClick="{{ k.pick }}" style="{{ k.style }}">{{ k.label }}</button>
+          </sc-for>
+        </div>
+        <select aria-label="Categoria" value="{{ cat }}" onChange="{{ onCat }}" style="height:40px;padding:0 12px;border:1px solid var(--border-2);border-radius:10px;background:var(--inset);color:var(--text);font:inherit;font-size:13px;cursor:pointer">
+          <sc-for list="{{ catOptions }}" as="o" hint-placeholder-count="8"><option value="{{ o.value }}">{{ o.label }}</option></sc-for>
+        </select>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2);cursor:pointer"><input type="checkbox" checked="{{ allMonths }}" onChange="{{ toggleAll }}" style="width:16px;height:16px;accent-color:var(--accent)">Todos os meses</label>
+        <sc-if value="{{ filtering }}" hint-placeholder-val="{{ false }}">
+          <button type="button" onClick="{{ clear }}" style="height:32px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--accent);font:inherit;font-size:13px;cursor:pointer" style-hover="background:var(--accent-soft)">Limpar</button>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ hasRows }}" hint-placeholder-val="{{ true }}">
+        <div role="table" aria-label="Lançamentos" style="display:flex;flex-direction:column;padding:6px 8px 10px">
+          <div role="row" style="display:grid;grid-template-columns:40px minmax(0,1.6fr) minmax(0,1fr) minmax(0,.8fr) 140px 72px;gap:14px;padding:10px 12px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--faint)">
+            <span></span><span role="columnheader">Descrição</span><span role="columnheader">Categoria</span><span role="columnheader">Conta</span><span role="columnheader" style="text-align:right">Valor</span><span></span>
+          </div>
+          <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+            <div style="display:flex;justify-content:space-between;padding:14px 12px 6px;font-size:12px;color:var(--muted)">
+              <strong style="font-weight:600;color:var(--text-2)">{{ g.label }}</strong>
+              <span style="font-variant-numeric:tabular-nums">{{ g.total }}</span>
+            </div>
+            <sc-for list="{{ g.rows }}" as="t" hint-placeholder-count="3">
+              <div role="row" onClick="{{ t.edit }}" style="display:grid;grid-template-columns:40px minmax(0,1.6fr) minmax(0,1fr) minmax(0,.8fr) 140px 72px;gap:14px;align-items:center;padding:9px 12px;border-radius:10px;cursor:pointer;transition:background-color .12s;animation:rise .3s ease both" style-hover="background:var(--hover)">
+                <span style="{{ t.iconBox }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{ t.icon }}"></path></svg></span>
+                <span role="cell" style="display:flex;align-items:center;gap:8px;min-width:0">
+                  <span style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ t.desc }}</span>
+                  <sc-if value="{{ t.rec }}" hint-placeholder-val="{{ false }}"><span title="Repete todo mês" style="font-size:11px;padding:1px 7px;border-radius:99px;border:1px solid var(--border-2);color:var(--muted)">↻ mensal</span></sc-if>
+                  <sc-if value="{{ t.inst }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;padding:1px 7px;border-radius:99px;border:1px solid var(--border-2);color:var(--muted)">{{ t.inst }}</span></sc-if>
+                </span>
+                <span role="cell" style="min-width:0"><span style="{{ t.tag }}"><i style="{{ t.dot }}"></i>{{ t.cat }}</span></span>
+                <span role="cell" style="font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ t.account }}</span>
+                <span role="cell" style="{{ t.amtStyle }}">{{ t.amt }}</span>
+                <span style="display:flex;justify-content:flex-end;gap:2px">
+                  <button type="button" onClick="{{ t.del }}" aria-label="Apagar" style="display:grid;place-items:center;width:30px;height:30px;border:0;border-radius:8px;background:transparent;color:var(--faint);cursor:pointer" style-hover="background:var(--neg-soft);color:var(--neg)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"></path></svg></button>
+                </span>
+              </div>
+            </sc-for>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ noRows }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:64px 24px;text-align:center">
+          <div aria-hidden="true" style="position:relative;width:96px;height:72px">
+            <span style="position:absolute;left:8px;top:14px;width:80px;height:52px;border-radius:12px;border:1px solid var(--border-2);background:var(--surface-2);transform:rotate(-6deg)"></span>
+            <span style="position:absolute;left:8px;top:8px;width:80px;height:52px;border-radius:12px;border:1px solid var(--accent-line);background:var(--surface);display:flex;flex-direction:column;justify-content:center;gap:7px;padding:0 14px;box-sizing:border-box"><i style="height:5px;width:70%;border-radius:9px;background:var(--accent)"></i><i style="height:5px;width:45%;border-radius:9px;background:var(--border-2)"></i></span>
+          </div>
+          <strong style="font-size:16px;font-weight:600">{{ emptyTitle }}</strong>
+          <span style="max-width:380px;font-size:13px;color:var(--muted)">{{ emptyText }}</span>
+          <div style="display:flex;gap:8px">
+            <button type="button" onClick="{{ clear }}" style="height:38px;padding:0 14px;border:1px solid var(--border-2);border-radius:10px;background:transparent;color:var(--text);font:inherit;cursor:pointer" style-hover="background:var(--hover)">Limpar filtros</button>
+            <button type="button" onClick="{{ openNew }}" style="height:38px;padding:0 14px;border:0;border-radius:10px;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:600;cursor:pointer">Novo lançamento</button>
+          </div>
+        </div>
+      </sc-if>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:6px;padding:20px 24px;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px">
+        <h2 style="margin:0;font-size:15px;font-weight:600">Recorrentes</h2>
+        <span style="font-size:12px;color:var(--faint)">Entram sozinhos todo mês, no dia marcado, em todos os aparelhos.</span>
+      </div>
+      <sc-for list="{{ recurring }}" as="r" hint-placeholder-count="4">
+        <div style="{{ r.rowStyle }}">
+          <span style="display:flex;flex-direction:column;min-width:0"><strong style="font-weight:500">{{ r.desc }}</strong><span style="font-size:12px;color:var(--faint)">{{ r.meta }}</span></span>
+          <span style="{{ r.amtStyle }}">{{ r.amt }}</span>
+          <button type="button" onClick="{{ r.toggle }}" style="height:30px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--accent);font:inherit;font-size:13px;cursor:pointer" style-hover="background:var(--accent-soft)">{{ r.action }}</button>
+        </div>
+      </sc-for>
+    </section>
+  </main>
+
+  <sc-if value="{{ formOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeForm }}" style="position:fixed;inset:0;z-index:40;background:var(--scrim);backdrop-filter:blur(2px);animation:fade .18s ease both"></div>
+    <div role="dialog" aria-modal="true" aria-labelledby="tx-title" style="position:fixed;z-index:41;top:50%;left:50%;transform:translate(-50%,-50%);width:min(560px,calc(100vw - 32px));max-height:calc(100vh - 48px);overflow:auto;border:1px solid var(--border-2);border-radius:18px;background:var(--surface);box-shadow:var(--shadow-pop)">
+      <div style="animation:pop .22s cubic-bezier(.2,.8,.2,1) both;display:flex;flex-direction:column;gap:18px;padding:24px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h2 id="tx-title" style="margin:0;font-size:18px;font-weight:600;letter-spacing:-0.015em">{{ formTitle }}</h2>
+          <button type="button" onClick="{{ closeForm }}" aria-label="Fechar" style="display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer" style-hover="background:var(--hover);color:var(--text)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
+        </div>
+        <div role="radiogroup" aria-label="Tipo" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:12px;background:var(--inset)">
+          <button type="button" onClick="{{ setOut }}" style="{{ outTab }}">Saída (gasto)</button>
+          <button type="button" onClick="{{ setIn }}" style="{{ inTab }}">Entrada</button>
+        </div>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--text-2)">Valor
+          <span style="{{ amountBox }}"><span style="font-size:20px;color:var(--faint)">R$</span><input value="{{ f.amount }}" onInput="{{ onAmount }}" inputmode="decimal" placeholder="0,00" aria-invalid="{{ errAmount }}" style="flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:28px;font-weight:600;letter-spacing:-0.02em;font-variant-numeric:tabular-nums"></span>
+          <sc-if value="{{ errAmount }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:var(--neg)">{{ errAmount }}</span></sc-if>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--text-2)">Descrição
+          <input value="{{ f.desc }}" onInput="{{ onDesc }}" placeholder="Ex.: Aluguel" aria-invalid="{{ errDesc }}" style="{{ descStyle }}">
+          <sc-if value="{{ errDesc }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:var(--neg)">{{ errDesc }}</span></sc-if>
+        </label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--text-2)">Categoria
+            <select value="{{ f.cat }}" onChange="{{ onFormCat }}" style="height:44px;padding:0 12px;border:1px solid var(--border-2);border-radius:10px;background:var(--inset);color:var(--text);font:inherit">
+              <sc-for list="{{ formCats }}" as="o" hint-placeholder-count="6"><option value="{{ o.value }}">{{ o.label }}</option></sc-for>
+            </select>
+          </label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--text-2)">Data
+            <input type="date" value="{{ f.date }}" onInput="{{ onDate }}" style="height:44px;padding:0 12px;border:1px solid var(--border-2);border-radius:10px;background:var(--inset);color:var(--text);font:inherit;color-scheme:inherit;box-sizing:border-box">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--text-2)">Conta ou cartão
+            <select value="{{ f.account }}" onChange="{{ onAccount }}" style="height:44px;padding:0 12px;border:1px solid var(--border-2);border-radius:10px;background:var(--inset);color:var(--text);font:inherit">
+              <option value="">Sem conta</option><option value="Nubank">Cartão Nubank</option><option value="Itaú">Conta Itaú</option><option value="Inter">Conta Inter</option>
+            </select>
+          </label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--text-2)">Parcelas
+            <input type="number" min="1" max="72" value="{{ f.parts }}" onInput="{{ onParts }}" style="height:44px;padding:0 12px;border:1px solid var(--border-2);border-radius:10px;background:var(--inset);color:var(--text);font:inherit;box-sizing:border-box">
+          </label>
+        </div>
+        <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;font-size:13px;cursor:pointer"><input type="checkbox" checked="{{ f.repeat }}" onChange="{{ onRepeat }}" style="width:16px;height:16px;accent-color:var(--accent)"><span style="display:flex;flex-direction:column"><strong style="font-weight:500">Repetir todo mês</strong><span style="font-size:12px;color:var(--faint)">Salário, aluguel e assinaturas entram sozinhos.</span></span></label>
+        <sc-if value="{{ errBoth }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:var(--neg)">Escolha repetir todo mês ou parcelar, não os dois.</span></sc-if>
+        <div style="display:flex;justify-content:space-between;gap:10px;padding-top:4px">
+          <sc-if value="{{ editing }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ delEditing }}" style="height:44px;padding:0 14px;border:0;border-radius:10px;background:transparent;color:var(--neg);font:inherit;font-weight:500;cursor:pointer" style-hover="background:var(--neg-soft)">Apagar</button></sc-if>
+          <span style="flex:1"></span>
+          <button type="button" onClick="{{ closeForm }}" style="height:44px;padding:0 16px;border:1px solid var(--border-2);border-radius:10px;background:transparent;color:var(--text);font:inherit;font-weight:500;cursor:pointer" style-hover="background:var(--hover)">Cancelar</button>
+          <button type="button" onClick="{{ submit }}" style="height:44px;padding:0 20px;border:0;border-radius:10px;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:600;cursor:pointer" style-hover="background:var(--accent-hi)">{{ submitLabel }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div role="status" style="position:fixed;z-index:50;left:50%;bottom:28px;transform:translateX(-50%);display:flex;align-items:center;gap:14px;padding:12px 14px 12px 16px;border:1px solid var(--border-2);border-radius:12px;background:var(--surface);box-shadow:var(--shadow-pop);font-size:13px;animation:pop .2s ease both">
+      <span style="width:8px;height:8px;border-radius:50%;background:var(--accent)"></span>
+      <span>{{ toast }}</span>
+      <sc-if value="{{ canUndo }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ undo }}" style="height:28px;padding:0 10px;border:0;border-radius:7px;background:var(--accent-soft);color:var(--accent);font:inherit;font-weight:600;cursor:pointer">Desfazer</button></sc-if>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { q: "", kind: "", cat: "", all: false, form: null, errors: {}, toast: "", undoTx: null, paused: {}, txs: null };
+  CATS = [["Salário", "renda"], ["Renda extra", "renda"], ["Moradia", "nec"], ["Mercado", "nec"], ["Transporte", "nec"], ["Contas da casa", "nec"], ["Saúde", "nec"], ["Restaurantes e delivery", "des"], ["Lazer", "des"], ["Assinaturas", "des"], ["Compras", "des"], ["Investimentos", "inv"]];
+  ICON = { renda: "M12 19V5M5 12l7-7 7 7", Moradia: "M3 11l9-7 9 7v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z", Mercado: "M8 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM19 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM2 2h3l2.7 12.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6", Transporte: "M19 17h2v-4l-3-5H6l-3 5v4h2M7 17a2 2 0 1 0 4 0 2 2 0 1 0-4 0M13 17a2 2 0 1 0 4 0 2 2 0 1 0-4 0", "Contas da casa": "M13 2L3 14h9l-1 8 10-12h-9z", "Saúde": "M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z", "Restaurantes e delivery": "M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7", Lazer: "M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2zM13 5v2M13 17v2M13 11v2", Assinaturas: "M5 3l14 9-14 9z", Compras: "M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0", Investimentos: "M22 7l-8.5 8.5-5-5L2 17M16 7h6v6" };
+  SEED = [
+    ["t1", "2026-10-24", "iFood", "Restaurantes e delivery", -58.9, "Nubank"], ["t2", "2026-10-23", "Pão de Açúcar", "Mercado", -312.45, "Nubank"], ["t3", "2026-10-22", "Uber", "Transporte", -24.8, "Nubank"],
+    ["t4", "2026-10-22", "iFood", "Restaurantes e delivery", -71.4, "Nubank"], ["t5", "2026-10-21", "Freela — site", "Renda extra", 1200, "Inter"], ["t6", "2026-10-20", "Netflix", "Assinaturas", -55.9, "Nubank", "rec"],
+    ["t7", "2026-10-18", "Cinema", "Lazer", -64, "Nubank"], ["t8", "2026-10-17", "Farmácia São Paulo", "Saúde", -89.3, "Itaú"], ["t9", "2026-10-15", "Tênis — Centauro", "Compras", -282.9, "Nubank", null, "3/6"], ["t18", "2026-10-19", "Outback", "Restaurantes e delivery", -186.9, "Nubank"], ["t19", "2026-10-16", "iFood", "Restaurantes e delivery", -62.4, "Nubank"], ["t20", "2026-10-14", "iFood", "Restaurantes e delivery", -48.7, "Nubank"], ["t21", "2026-10-11", "Madero", "Restaurantes e delivery", -142, "Nubank"], ["t22", "2026-10-09", "iFood", "Restaurantes e delivery", -55.8, "Nubank"], ["t23", "2026-10-02", "Coco Bambu", "Restaurantes e delivery", -238.2, "Nubank"], ["t24", "2026-10-19", "Show — Allianz Parque", "Lazer", -280, "Nubank"], ["t25", "2026-10-04", "Steam", "Lazer", -94.9, "Nubank"], ["t26", "2026-10-13", "Bar do Zé", "Lazer", -100, "Nubank"], ["t27", "2026-10-07", "Posto Shell", "Transporte", -250, "Itaú"], ["t28", "2026-10-14", "Uber", "Transporte", -32.6, "Nubank"], ["t29", "2026-10-01", "Bilhete Único", "Transporte", -144.4, "Itaú"], ["t30", "2026-10-19", "Hortifruti", "Mercado", -263.85, "Itaú"], ["t31", "2026-10-12", "Sabesp", "Contas da casa", -113.6, "Itaú"],
+    ["t10", "2026-10-12", "Assaí", "Mercado", -406.1, "Itaú"], ["t11", "2026-10-10", "Aluguel", "Moradia", -1950, "Itaú", "rec"], ["t12", "2026-10-08", "Enel", "Contas da casa", -186.4, "Itaú"],
+    ["t13", "2026-10-05", "Salário", "Salário", 7220, "Itaú", "rec"], ["t14", "2026-10-05", "Tesouro Selic", "Investimentos", -600, "Inter"], ["t15", "2026-10-03", "Spotify", "Assinaturas", -21.9, "Nubank", "rec"],
+    ["t16", "2026-09-28", "Bar do Zé", "Lazer", -132, "Nubank"], ["t17", "2026-09-26", "iFood", "Restaurantes e delivery", -48.5, "Nubank"],
+  ];
+  componentDidMount() {
+    this.h = () => this.forceUpdate();
+    window.addEventListener("fr-theme", this.h);
+    if (!window.FR) this.t = setInterval(() => { if (window.FR) { clearInterval(this.t); this.forceUpdate(); } }, 40);
+    this.k = (e) => { if (e.key === "Escape" && this.state.form) this.setState({ form: null }); };
+    window.addEventListener("keydown", this.k);
+  }
+  componentWillUnmount() { window.removeEventListener("fr-theme", this.h); window.removeEventListener("keydown", this.k); clearInterval(this.t); clearTimeout(this.tt); }
+  txs() { return this.state.txs || this.SEED.map(([id, date, desc, cat, v, account, rec, inst]) => ({ id, date, desc, cat, v, account, rec: !!rec, inst })); }
+  flash(toast, undoTx) { clearTimeout(this.tt); this.setState({ toast, undoTx }); this.tt = setTimeout(() => this.setState({ toast: "", undoTx: null }), 4500); }
+  renderVals() {
+    const FR = window.FR;
+    if (!FR) return {};
+    const { R } = FR, s = this.state;
+    const bucket = Object.fromEntries(this.CATS);
+    const color = { renda: "var(--renda)", nec: "var(--nec)", des: "var(--des)", inv: "var(--inv)" };
+    const norm = (x) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const all = this.txs();
+    const filtering = !!(s.q || s.kind || s.cat || s.all);
+    const list = all.filter((t) => (s.all || t.date.startsWith("2026-10")) && (!s.q || norm(t.desc + " " + t.cat).includes(norm(s.q))) && (!s.kind || (s.kind === "in" ? t.v > 0 : t.v < 0)) && (!s.cat || t.cat === s.cat));
+    const sIn = list.filter((t) => t.v > 0).reduce((a, t) => a + t.v, 0), sOut = list.filter((t) => t.v < 0).reduce((a, t) => a - t.v, 0);
+    const WD = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+    const dayLabel = (d) => { const dt = new Date(d + "T12:00"); const n = +d.slice(8); return d === "2026-10-24" ? "Hoje" : d === "2026-10-23" ? "Ontem" : `${WD[dt.getDay()]}, ${n} de ${FR.MESF[+d.slice(5, 7) - 1]}`; };
+    const byDay = {};
+    list.forEach((t) => (byDay[t.date] ||= []).push(t));
+    const groups = Object.keys(byDay).sort().reverse().map((d) => {
+      const rows = byDay[d];
+      return {
+        label: dayLabel(d), total: R(rows.reduce((a, t) => a + t.v, 0), true),
+        rows: rows.map((t) => {
+          const b = bucket[t.cat] || "nec", c = color[b];
+          return { ...t, amt: R(t.v, true), icon: this.ICON[t.cat] || this.ICON[b] || this.ICON.renda,
+            iconBox: `display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:color-mix(in srgb,${c} 14%,transparent);color:${c}`,
+            tag: `display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:3px 9px;border-radius:99px;background:var(--surface-2);font-size:12px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap`,
+            dot: `width:6px;height:6px;border-radius:50%;flex:none;background:${c}`,
+            account: t.account ? (t.account === "Nubank" ? "Cartão Nubank" : "Conta " + t.account) : "—",
+            amtStyle: `text-align:right;font-weight:500;font-variant-numeric:tabular-nums;color:${t.v > 0 ? "var(--pos)" : "var(--text)"}`,
+            edit: () => this.setState({ form: { id: t.id, kind: t.v > 0 ? "in" : "out", amount: Math.abs(t.v).toLocaleString("pt-BR", { minimumFractionDigits: 2 }), desc: t.desc, cat: t.cat, date: t.date, account: t.account || "", parts: 1, repeat: t.rec }, errors: {} }),
+            del: (e) => { e.stopPropagation(); this.setState({ txs: all.filter((x) => x.id !== t.id) }); this.flash(`“${t.desc}” apagado.`, { tx: t, list: all }); },
+          };
+        }),
+      };
+    });
+    const kinds = [["", "Todos"], ["in", "Entradas"], ["out", "Saídas"]].map(([v, label]) => ({ label, on: String(s.kind === v), pick: () => this.setState({ kind: v }),
+      style: `height:32px;padding:0 12px;border:0;border-radius:7px;font:inherit;font-size:13px;cursor:pointer;${s.kind === v ? "background:var(--surface);color:var(--text);font-weight:600;box-shadow:0 0 0 1px var(--border-2)" : "background:transparent;color:var(--muted)"}` }));
+    const f = s.form || {};
+    const formCats = this.CATS.filter(([, b]) => (f.kind === "in") === (b === "renda")).map(([n]) => ({ value: n, label: n }));
+    const set = (k) => (e) => this.setState({ form: { ...this.state.form, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value }, errors: { ...this.state.errors, [k]: "" } });
+    const field = (err) => `height:44px;padding:0 12px;border:1px solid ${err ? "var(--neg)" : "var(--border-2)"};border-radius:10px;background:var(--inset);color:var(--text);font:inherit;outline:0;box-sizing:border-box`;
+    const tab = (on) => `height:38px;border:0;border-radius:9px;font:inherit;font-weight:${on ? 600 : 500};cursor:pointer;${on ? "background:var(--surface);color:var(--text);box-shadow:0 0 0 1px var(--border-2)" : "background:transparent;color:var(--muted)"}`;
+    const REC = [["Salário", "dia 5 · Salário", 7220], ["Aluguel", "dia 10 · Moradia", -1950], ["Netflix", "dia 20 · Assinaturas", -55.9], ["Spotify", "dia 3 · Assinaturas", -21.9]];
+    const recurring = REC.map(([desc, meta, v]) => { const p = !!s.paused[desc]; return { desc, meta: meta + (p ? " · pausado" : ""), amt: R(v, true), action: p ? "Retomar" : "Pausar",
+      rowStyle: `display:grid;grid-template-columns:minmax(0,1fr) auto 84px;gap:14px;align-items:center;padding:10px 0;border-top:1px solid var(--border);opacity:${p ? 0.55 : 1};transition:opacity .2s`,
+      amtStyle: `font-variant-numeric:tabular-nums;font-weight:500;color:${v > 0 ? "var(--pos)" : "var(--text)"}`,
+      toggle: () => { this.setState({ paused: { ...s.paused, [desc]: !p } }); this.flash(p ? `${desc}: recorrente retomado.` : `${desc}: recorrente pausado.`); } }; });
+    const submit = () => {
+      const ff = this.state.form, errors = {};
+      const cents = Number(String(ff.amount || "").replace(/\./g, "").replace(",", "."));
+      if (!ff.amount) errors.amount = "Informe o valor."; else if (!(cents > 0)) errors.amount = "Valor inválido. Use o formato 1.234,56.";
+      if (!ff.desc?.trim()) errors.desc = "Dê um nome ao lançamento.";
+      if (ff.repeat && Number(ff.parts) > 1) errors.both = true;
+      if (Object.keys(errors).length) return this.setState({ errors });
+      const tx = { id: ff.id || "n" + Date.now(), date: ff.date, desc: ff.desc.trim(), cat: ff.cat, v: ff.kind === "in" ? cents : -cents, account: ff.account, rec: ff.repeat, inst: Number(ff.parts) > 1 ? `1/${ff.parts}` : undefined };
+      const next = ff.id ? all.map((x) => (x.id === ff.id ? tx : x)) : [tx, ...all];
+      this.setState({ txs: next, form: null, errors: {} });
+      this.flash(ff.id ? "Lançamento atualizado." : ff.repeat ? `Recorrente salvo: entra todo dia ${+ff.date.slice(8)}.` : Number(ff.parts) > 1 ? `Compra parcelada em ${ff.parts}x salva.` : "Lançamento salvo.");
+    };
+    return {
+      ...FR.shell("Lançamentos"),
+      q: s.q, cat: s.cat, allMonths: s.all, filtering, kinds,
+      onSearch: (e) => this.setState({ q: e.target.value }), onCat: (e) => this.setState({ cat: e.target.value }), toggleAll: () => this.setState({ all: !s.all }),
+      clear: () => this.setState({ q: "", kind: "", cat: "", all: false }),
+      catOptions: [{ value: "", label: "Todas as categorias" }, ...this.CATS.map(([n]) => ({ value: n, label: n }))],
+      sumLabel: filtering ? "Encontrados" : "Lançamentos no mês", sumCount: String(list.length), sumIn: R(sIn), sumOut: R(sOut), sumBal: R(sIn - sOut, true),
+      sumBalStyle: `font-size:20px;font-weight:600;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;color:${sIn - sOut < 0 ? "var(--neg)" : "var(--pos)"}`,
+      groups, hasRows: list.length > 0, noRows: list.length === 0,
+      emptyTitle: filtering ? "Nada encontrado com esses filtros" : "Nenhum lançamento neste mês",
+      emptyText: filtering ? "A busca ignora acentos. Tente outro termo ou procure em todos os meses." : "Lance o primeiro gasto, importe o extrato do banco ou copie do mês anterior.",
+      recurring,
+      formOpen: !!s.form, editing: !!f.id, formTitle: f.id ? "Editar lançamento" : "Novo lançamento", submitLabel: f.id ? "Salvar alterações" : "Adicionar",
+      f, formCats, outTab: tab(f.kind !== "in"), inTab: tab(f.kind === "in"),
+      setOut: () => this.setState({ form: { ...f, kind: "out", cat: "Mercado" } }), setIn: () => this.setState({ form: { ...f, kind: "in", cat: "Salário" } }),
+      onAmount: set("amount"), onDesc: set("desc"), onFormCat: set("cat"), onDate: set("date"), onAccount: set("account"), onParts: set("parts"), onRepeat: set("repeat"),
+      errAmount: s.errors.amount || "", errDesc: s.errors.desc || "", errBoth: !!s.errors.both,
+      amountBox: `display:flex;align-items:center;gap:10px;height:60px;padding:0 14px;border:1px solid ${s.errors.amount ? "var(--neg)" : "var(--border-2)"};border-radius:12px;background:var(--inset)`,
+      descStyle: field(s.errors.desc),
+      openNew: () => this.setState({ form: { kind: "out", amount: "", desc: "", cat: "Mercado", date: "2026-10-24", account: "Nubank", parts: 1, repeat: false }, errors: {} }),
+      closeForm: () => this.setState({ form: null }), submit,
+      delEditing: () => { const t = all.find((x) => x.id === f.id); this.setState({ txs: all.filter((x) => x.id !== f.id), form: null }); this.flash(`“${t.desc}” apagado.`, { tx: t, list: all }); },
+      toast: s.toast, canUndo: !!s.undoTx, undo: () => { this.setState({ txs: s.undoTx.list, toast: "", undoTx: null }); },
+    };
+  }
+}
+</script>
+</body>
+</html>

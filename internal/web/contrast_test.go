@@ -21,17 +21,17 @@ func TestColorContrast(t *testing.T) {
 
 	text := [][2]string{
 		{"accent", "surface"}, {"accent", "bg"}, {"pos", "surface"}, {"neg", "surface"}, {"neg", "neg-soft"},
-		{"warn-text", "warn-soft"}, {"accent-text", "accent"}, {"accent-strong", "accent-soft"},
+		{"warn-text", "warn-soft"}, {"accent-ink", "accent"}, {"accent-hi", "accent-soft"}, {"text", "accent-soft"},
 		{"hero-text", "hero"}, {"hero-muted", "hero"}, {"hero-pos", "hero"}, {"hero-neg", "hero"},
 		{"neg-text", "neg"},
 	}
-	for _, fg := range []string{"text", "text-2", "muted"} {
+	for _, fg := range []string{"text", "text-2", "muted", "faint"} {
 		for _, bg := range []string{"bg", "surface", "surface-2"} {
 			text = append(text, [2]string{fg, bg})
 		}
 	}
 	graphics := [][2]string{{"border-input", "surface"}, {"border-input", "bg"}, {"border-input", "surface-2"}}
-	for _, c := range []string{"necessidades", "desejos", "investimentos", "renda", "in", "out", "warn", "neg", "pos"} {
+	for _, c := range []string{"necessidades", "desejos", "investimentos", "renda", "accent", "warn", "neg", "pos"} {
 		graphics = append(graphics, [2]string{c, "surface"}, [2]string{c, "surface-2"})
 	}
 	for _, c := range []string{"necessidades", "desejos", "investimentos", "renda"} {

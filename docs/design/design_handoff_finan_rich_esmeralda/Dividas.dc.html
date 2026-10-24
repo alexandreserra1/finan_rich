@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="finan-proto.js"></script>
+<style>
+body{margin:0;background:#0a0d0c;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-hi)}
+:focus-visible{outline:2px solid var(--accent,#34c08f);outline-offset:2px}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes pop{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes draw{from{stroke-dashoffset:1600}to{stroke-dashoffset:0}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</helmet>
+<div style="{{ rootStyle }}">
+  <aside style="position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:4px;padding:20px 14px;border-right:1px solid var(--border);background:var(--side);box-sizing:border-box">
+    <a href="Painel.dc.html" style="display:flex;align-items:center;gap:10px;padding:4px 8px 22px;color:var(--text);font-weight:600;font-size:16px;letter-spacing:-0.01em">
+      <img src="brand-mark.png" width="32" height="32" alt="" style="display:block;border-radius:8px;box-shadow:0 0 0 1px var(--border-2)">
+      <span>finan<span style="color:var(--accent)">_rich</span></span>
+    </a>
+    <sc-for list="{{ nav }}" as="n" hint-placeholder-count="7">
+      <a href="{{ n.href }}" style="{{ n.style }}" style-hover="background:var(--hover);color:var(--text)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+        <span>{{ n.label }}</span>
+      </a>
+    </sc-for>
+    <div style="margin-top:auto;display:flex;flex-direction:column;gap:4px">
+      <a href="Ajustes.dc.html" style="{{ settingsStyle }}" style-hover="background:var(--hover);color:var(--text)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ settingsIcon }}"></path></svg>
+        <span>Ajustes</span>
+      </a>
+      <button type="button" onClick="{{ toggleTheme }}" style="display:flex;align-items:center;gap:12px;padding:9px 10px;border:0;border-radius:9px;background:transparent;color:var(--muted);font:inherit;font-weight:500;cursor:pointer;text-align:left" style-hover="background:var(--hover);color:var(--text)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ themeIcon }}"></path></svg>
+        <span>{{ themeLabel }}</span>
+      </button>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--muted)">
+        <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)"></span>
+        <span>Sincronizado · 03:12</span>
+      </div>
+    </div>
+  </aside>
+
+  <main style="padding:28px 36px 56px;display:flex;flex-direction:column;gap:18px;max-width:1240px;width:100%;box-sizing:border-box;min-width:0">
+    <header style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span style="font-size:13px;color:var(--faint)">Plano para sair delas</span>
+        <h1 style="margin:0;font-size:28px;font-weight:600;letter-spacing:-0.025em">Dívidas</h1>
+      </div>
+      <button type="button" onClick="{{ openNew }}" style="display:flex;align-items:center;gap:8px;height:40px;padding:0 16px;border:0;border-radius:10px;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:600;cursor:pointer" style-hover="background:var(--accent-hi)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>Nova dívida
+      </button>
+    </header>
+
+    <sc-if value="{{ none }}" hint-placeholder-val="{{ false }}">
+      <section style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:72px 24px;border:1px solid var(--border);border-radius:16px;background:var(--surface);text-align:center">
+        <div aria-hidden="true" style="display:grid;place-items:center;width:72px;height:72px;border-radius:20px;background:var(--accent-soft);color:var(--accent)"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></div>
+        <strong style="font-size:18px;font-weight:600">Nenhuma dívida cadastrada. Ótimo sinal!</strong>
+        <span style="max-width:420px;font-size:13px;color:var(--muted)">Tem cartão no rotativo, empréstimo ou cheque especial? Cadastrando, o app mostra quanto de juros ela gera e qual pagar primeiro.</span>
+        <button type="button" onClick="{{ openNew }}" style="height:40px;padding:0 16px;border:1px solid var(--border-2);border-radius:10px;background:transparent;color:var(--text);font:inherit;font-weight:500;cursor:pointer" style-hover="background:var(--hover)">Cadastrar dívida</button>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{ some }}" hint-placeholder-val="{{ true }}">
+    <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:14px">
+      <div style="display:flex;flex-direction:column;gap:10px;padding:20px 22px;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)"><span style="font-size:13px;color:var(--muted)">Total devido</span><strong style="font-size:28px;font-weight:600;letter-spacing:-0.03em;font-variant-numeric:tabular-nums">{{ total }}</strong><span style="font-size:12px;color:var(--faint)">{{ count }} dívidas ativas</span></div>
+      <div style="display:flex;flex-direction:column;gap:10px;padding:20px 22px;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)"><span style="font-size:13px;color:var(--muted)">Parcelas mínimas / mês</span><strong style="font-size:28px;font-weight:600;letter-spacing:-0.03em;font-variant-numeric:tabular-nums">{{ minTotal }}</strong><span style="font-size:12px;color:var(--faint)">{{ minShare }} da sua renda</span></div>
+      <div style="display:flex;flex-direction:column;gap:10px;padding:20px 22px;border:1px solid color-mix(in srgb,var(--neg) 30%,var(--border));border-radius:16px;background:var(--surface);box-shadow:var(--shadow)"><span style="font-size:13px;color:var(--muted)">Juros gerados / mês</span><strong style="font-size:28px;font-weight:600;letter-spacing:-0.03em;font-variant-numeric:tabular-nums;color:var(--neg)">{{ interest }}</strong><span style="font-size:12px;color:var(--faint)">dinheiro que não abate nada</span></div>
+    </section>
+
+    <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:14px">
+      <div style="display:flex;flex-direction:column;gap:16px;padding:22px 24px;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow);min-width:0">
+        <h2 style="margin:0;font-size:15px;font-weight:600">Onde está o problema</h2>
+        <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;font-size:13px;color:var(--text-2)">
+          <li style="display:flex;gap:10px"><span style="flex:none;width:6px;height:6px;margin-top:7px;border-radius:50%;background:var(--neg)"></span><span><b style="color:var(--text);font-weight:600">Rotativo cartão C6</b> é a mais cara: R$ 396,90 de juros por mês (13,50% ao mês).</span></li>
+          <li style="display:flex;gap:10px"><span style="flex:none;width:6px;height:6px;margin-top:7px;border-radius:50%;background:var(--warn)"></span><span>O que mais pesou em outubro: <b style="color:var(--text);font-weight:600">Moradia</b>, R$ 1.950,00 (32% dos gastos).</span></li>
+        </ul>
+        <div style="display:flex;flex-direction:column;gap:4px;padding-top:6px;border-top:1px solid var(--border)">
+          <h3 style="margin:8px 0 0;font-size:14px;font-weight:600">Onde dá para guardar</h3>
+          <span style="font-size:12px;color:var(--faint)">Marque o que dá para fazer: o valor vai para as dívidas e o plano se refaz.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <sc-for list="{{ levers }}" as="l" hint-placeholder-count="3">
+            <label style="{{ l.style }}">
+              <input type="checkbox" checked="{{ l.on }}" onChange="{{ l.toggle }}" style="width:16px;height:16px;margin-top:2px;accent-color:var(--accent);flex:none">
+              <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                <span style="display:flex;justify-content:space-between;gap:10px"><strong style="font-weight:500">{{ l.title }}</strong><span style="font-variant-numeric:tabular-nums;font-weight:500">{{ l.amt }}/mês</span></span>
+                <span style="font-size:12px;color:var(--muted)">{{ l.text }}</span>
+                <span style="font-size:12px;color:var(--pos)">{{ l.effect }}</span>
+              </span>
+            </label>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="grid-column:span 2;display:flex;flex-direction:column;gap:18px;padding:22px 24px;border:1px solid var(--accent-line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow);min-width:0">
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:10px">
+          <h2 style="margin:0;font-size:15px;font-weight:600">Seu plano</h2>
+          <span style="font-size:12px;color:var(--faint)">Método avalanche: o extra vai para a de maior juros</span>
+        </div>
+        <p style="margin:0;font-size:20px;line-height:1.4;letter-spacing:-0.015em;text-wrap:pretty">Pague primeiro <b style="font-weight:600">Rotativo cartão C6</b>. Pagando <b style="font-weight:600;font-variant-numeric:tabular-nums">{{ monthly }}</b> por mês, você sai das dívidas em <b style="font-weight:600;color:var(--accent)">{{ planDur }}</b> ({{ planEnd }}) e paga {{ planInterest }} de juros.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:12px 14px;border-radius:12px;background:var(--accent-soft);font-size:13px">
+          <span>Só no mínimo seriam <b style="font-weight:600">{{ minDur }}</b> e {{ minInterest }} de juros.</span>
+          <span style="font-weight:600;color:var(--pos)">Você economiza {{ saved }}</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px">
+          <label style="flex:1 1 220px;display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--text-2)">Quanto dá para pagar <b style="font-weight:600;color:var(--text)">a mais</b> por mês
+            <span style="display:flex;align-items:center;gap:8px;height:44px;padding:0 12px;border:1px solid var(--border-2);border-radius:10px;background:var(--inset)"><span style="color:var(--faint)">R$</span><input value="{{ extraStr }}" onInput="{{ onExtra }}" inputmode="decimal" placeholder="0,00" style="flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:15px;font-variant-numeric:tabular-nums"></span>
+          </label>
+          <input type="range" min="0" max="1500" step="50" value="{{ extraTyped }}" onInput="{{ onExtra }}" aria-label="Valor a mais por mês" style="flex:1 1 220px;accent-color:var(--accent);height:44px">
+        </div>
+        <sc-if value="{{ cutsOn }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:var(--muted)">Mais {{ cuts }} dos cortes marcados.</span></sc-if>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;font-size:12px;color:var(--muted)">
+            <div style="display:flex;gap:16px">
+              <span style="display:flex;align-items:center;gap:6px"><i style="width:16px;height:3px;border-radius:2px;background:var(--accent)"></i>Seguindo o plano</span>
+              <span style="display:flex;align-items:center;gap:6px"><i style="width:16px;border-top:2px dashed var(--neg)"></i>Só o mínimo</span>
+            </div>
+            <span style="font-variant-numeric:tabular-nums"><b style="color:var(--text);font-weight:500">{{ tipLabel }}</b> · plano {{ tipPlan }} · mínimo {{ tipMin }}</span>
+          </div>
+          <div style="display:grid;grid-template-columns:44px minmax(0,1fr);gap:8px">
+            <div style="display:flex;flex-direction:column;justify-content:space-between;height:220px;font-size:11px;color:var(--faint);text-align:right;font-variant-numeric:tabular-nums"><span>{{ yTop }}</span><span>{{ yMid }}</span><span>0</span></div>
+            <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+              <div role="img" aria-label="{{ chartLabel }}" style="position:relative;height:220px;border-bottom:1px solid var(--border-2);background:linear-gradient(var(--grid),var(--grid)) 0 0 / 100% 1px no-repeat,linear-gradient(var(--grid),var(--grid)) 0 50% / 100% 1px no-repeat">
+                <svg viewBox="0 0 1000 220" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+                  <defs><linearGradient id="dg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34c08f" stop-opacity=".28"></stop><stop offset="1" stop-color="#34c08f" stop-opacity="0"></stop></linearGradient></defs>
+                  <path d="{{ planArea }}" fill="url(#dg)"></path>
+                  <path d="{{ minPath }}" fill="none" style="stroke:var(--neg)" stroke-width="2" stroke-dasharray="6 5" vector-effect="non-scaling-stroke"></path>
+                  <path d="{{ planPath }}" fill="none" style="stroke:var(--accent);stroke-dasharray:1600;animation:draw 1s cubic-bezier(.2,.8,.2,1) both" stroke-width="2.5" vector-effect="non-scaling-stroke"></path>
+                  <line x1="{{ cursorX }}" x2="{{ cursorX }}" y1="0" y2="220" style="stroke:var(--border-2)" stroke-width="1" vector-effect="non-scaling-stroke"></line>
+                </svg>
+                <div style="position:absolute;inset:0;display:flex">
+                  <sc-for list="{{ cols }}" as="c" hint-placeholder-count="30"><span onMouseEnter="{{ c.enter }}" style="flex:1;height:100%"></span></sc-for>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--faint)"><span>hoje</span><span>{{ xMid }}</span><span>{{ xEnd }}</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <h3 style="margin:0;font-size:13px;font-weight:600;color:var(--text-2)">Ordem para quitar</h3>
+          <ol style="list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:8px">
+            <sc-for list="{{ order }}" as="o" hint-placeholder-count="3">
+              <li style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:12px">
+                <span style="display:grid;place-items:center;width:24px;height:24px;border-radius:7px;background:var(--surface-2);font-size:12px;font-weight:600">{{ o.n }}</span>
+                <span style="display:flex;flex-direction:column;min-width:0"><strong style="font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ o.name }}</strong><span style="font-size:12px;color:var(--faint)">zera em {{ o.when }}</span></span>
+              </li>
+            </sc-for>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow);min-width:0;overflow:hidden">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;padding:20px 24px 10px">
+        <h2 style="margin:0;font-size:15px;font-weight:600">Suas dívidas</h2>
+        <span style="font-size:12px;color:var(--faint)">Toque numa dívida para editar</span>
+      </div>
+      <div role="table" style="display:flex;flex-direction:column;padding:0 12px 12px">
+        <div role="row" style="display:grid;grid-template-columns:minmax(0,1.6fr) repeat(3,minmax(0,.8fr)) minmax(0,1.4fr);gap:14px;padding:8px 12px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--faint)">
+          <span>Dívida</span><span style="text-align:right">Saldo</span><span style="text-align:right">Juros a.m.</span><span style="text-align:right">Mínimo</span><span>Só pagando o mínimo</span>
+        </div>
+        <sc-for list="{{ rows }}" as="d" hint-placeholder-count="3">
+          <div role="row" onClick="{{ d.edit }}" style="display:grid;grid-template-columns:minmax(0,1.6fr) repeat(3,minmax(0,.8fr)) minmax(0,1.4fr);gap:14px;align-items:center;padding:12px;border-top:1px solid var(--border);cursor:pointer;border-radius:10px;transition:background-color .12s" style-hover="background:var(--hover)">
+            <span style="display:flex;flex-direction:column;min-width:0"><strong style="font-weight:500">{{ d.name }}</strong><span style="font-size:12px;color:var(--faint)">{{ d.meta }}</span></span>
+            <span style="text-align:right;font-variant-numeric:tabular-nums;font-weight:500">{{ d.balance }}</span>
+            <span style="{{ d.rateStyle }}">{{ d.rate }}</span>
+            <span style="text-align:right;font-variant-numeric:tabular-nums">{{ d.min }}</span>
+            <span style="{{ d.payoffStyle }}">{{ d.payoff }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+    <a href="Consultor.dc.html" style="align-self:flex-start;display:flex;align-items:center;gap:8px;height:40px;padding:0 14px;border:1px solid var(--border-2);border-radius:10px;color:var(--text);font-weight:500" style-hover="background:var(--hover);color:var(--text)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>Tirar dúvidas com o consultor IA</a>
+    </sc-if>
+  </main>
+
+  <sc-if value="{{ formOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeForm }}" style="position:fixed;inset:0;z-index:40;background:var(--scrim);backdrop-filter:blur(2px);animation:fade .18s ease both"></div>
+    <div role="dialog" aria-modal="true" aria-labelledby="dv-title" style="position:fixed;z-index:41;top:50%;left:50%;transform:translate(-50%,-50%);width:min(540px,calc(100vw - 32px));border:1px solid var(--border-2);border-radius:18px;background:var(--surface);box-shadow:var(--shadow-pop)">
+      <div style="animation:pop .22s cubic-bezier(.2,.8,.2,1) both;display:flex;flex-direction:column;gap:16px;padding:24px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h2 id="dv-title" style="margin:0;font-size:18px;font-weight:600">{{ formTitle }}</h2>
+          <button type="button" onClick="{{ closeForm }}" aria-label="Fechar" style="display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer" style-hover="background:var(--hover)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <label style="grid-column:1 / -1;display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--text-2)">Nome<input value="{{ f.name }}" onInput="{{ onName }}" placeholder="Ex.: Cartão Nubank" style="{{ nameStyle }}"><sc-if value="{{ errName }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:var(--neg)">Dê um nome à dívida.</span></sc-if></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--text-2)">Credor<input value="{{ f.creditor }}" onInput="{{ onCreditor }}" placeholder="Banco ou loja" style="height:44px;padding:0 12px;border:1px solid var(--border-2);border-radius:10px;background:var(--inset);color:var(--text);font:inherit;box-sizing:border-box"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--text-2)">Saldo devedor (R$)<input value="{{ f.balance }}" onInput="{{ onBalance }}" inputmode="decimal" placeholder="0,00" style="{{ balStyle }}"><sc-if value="{{ errBal }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:var(--neg)">Informe quanto você deve.</span></sc-if></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--text-2)">Juros ao mês (%)<input value="{{ f.rate }}" onInput="{{ onRate }}" inputmode="decimal" placeholder="Ex.: 12,5" style="height:44px;padding:0 12px;border:1px solid var(--border-2);border-radius:10px;background:var(--inset);color:var(--text);font:inherit;box-sizing:border-box"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--text-2)">Parcela mínima (R$)<input value="{{ f.min }}" onInput="{{ onMin }}" inputmode="decimal" style="height:44px;padding:0 12px;border:1px solid var(--border-2);border-radius:10px;background:var(--inset);color:var(--text);font:inherit;box-sizing:border-box"></label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--text-2)">Dia do vencimento<input type="number" min="1" max="31" value="{{ f.due }}" onInput="{{ onDue }}" style="height:44px;padding:0 12px;border:1px solid var(--border-2);border-radius:10px;background:var(--inset);color:var(--text);font:inherit;box-sizing:border-box"></label>
+        </div>
+        <div style="display:flex;gap:10px;padding-top:4px">
+          <sc-if value="{{ editing }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ remove }}" style="height:44px;padding:0 14px;border:0;border-radius:10px;background:transparent;color:var(--neg);font:inherit;font-weight:500;cursor:pointer" style-hover="background:var(--neg-soft)">Apagar</button></sc-if>
+          <span style="flex:1"></span>
+          <button type="button" onClick="{{ closeForm }}" style="height:44px;padding:0 16px;border:1px solid var(--border-2);border-radius:10px;background:transparent;color:var(--text);font:inherit;cursor:pointer" style-hover="background:var(--hover)">Cancelar</button>
+          <button type="button" onClick="{{ save }}" style="height:44px;padding:0 20px;border:0;border-radius:10px;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:600;cursor:pointer" style-hover="background:var(--accent-hi)">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div role="status" style="position:fixed;z-index:50;left:50%;bottom:28px;transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid var(--border-2);border-radius:12px;background:var(--surface);box-shadow:var(--shadow-pop);font-size:13px;animation:pop .2s ease both"><span style="width:8px;height:8px;border-radius:50%;background:var(--accent)"></span>{{ toast }}</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;estado&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;com dívidas&quot;,&quot;sem dívidas&quot;],&quot;default&quot;:&quot;com dívidas&quot;,&quot;tsType&quot;:&quot;'com dívidas' | 'sem dívidas'&quot;}}">
+class Component extends DCLogic {
+  state = { extra: 300, levers: {}, debts: null, form: null, err: {}, hover: null, toast: "" };
+  LEVERS = [
+    { id: "delivery", title: "Restaurantes e delivery", amt: 260, text: "R$ 864,30 em outubro, 41% acima da média. Cortando 30%, sobram R$ 260." },
+    { id: "assin", title: "Assinaturas", amt: 77.8, text: "Netflix e Spotify: R$ 933,60 por ano." },
+    { id: "sobra", title: "Sobra dos últimos meses", amt: 500, text: "Você fechou agosto e setembro com mais de R$ 1.500 sobrando." },
+  ];
+  componentDidMount() {
+    this.h = () => this.forceUpdate();
+    window.addEventListener("fr-theme", this.h);
+    if (!window.FR) this.t = setInterval(() => { if (window.FR) { clearInterval(this.t); this.forceUpdate(); } }, 40);
+  }
+  componentWillUnmount() { window.removeEventListener("fr-theme", this.h); clearInterval(this.t); clearTimeout(this.tt); }
+  flash(toast) { clearTimeout(this.tt); this.setState({ toast }); this.tt = setTimeout(() => this.setState({ toast: "" }), 3500); }
+  renderVals() {
+    const FR = window.FR;
+    if (!FR) return {};
+    const { R } = FR, s = this.state;
+    const none = (this.props.estado ?? "com dívidas") === "sem dívidas";
+    const debts = none ? [] : (s.debts || FR.DEBTS);
+    const cuts = this.LEVERS.filter((l) => s.levers[l.id]).reduce((a, l) => a + l.amt, 0);
+    const extra = (Number(s.extra) || 0) + cuts;
+    const plan = FR.plan(debts, extra), minOnly = FR.plan(debts, 0, true);
+    const minTotal = debts.reduce((a, d) => a + d.min, 0);
+    const interest = debts.reduce((a, d) => a + (d.balance * d.rate) / 100, 0);
+    const total = debts.reduce((a, d) => a + d.balance, 0);
+    const levers = this.LEVERS.map((l) => {
+      const solo = FR.plan(debts, (Number(s.extra) || 0) + l.amt);
+      const base = FR.plan(debts, Number(s.extra) || 0);
+      const sooner = base.months - solo.months;
+      return { ...l, on: !!s.levers[l.id], amt: R(l.amt), toggle: () => this.setState({ levers: { ...s.levers, [l.id]: !s.levers[l.id] } }),
+        effect: sooner > 0 ? `Sozinho: sai ${FR.duration(sooner)} antes e paga ${R(base.interest - solo.interest)} a menos de juros.` : "",
+        style: `display:flex;gap:12px;padding:12px 14px;border:1px solid ${s.levers[l.id] ? "var(--accent)" : "var(--border)"};border-radius:12px;background:${s.levers[l.id] ? "var(--accent-soft)" : "transparent"};cursor:pointer;font-size:13px;transition:border-color .15s,background-color .15s` };
+    });
+    const H = Math.max(plan.series.length, Math.min(minOnly.series.length, plan.series.length * 2, 72));
+    const top = Math.ceil(Math.max(...minOnly.series.slice(0, H), ...plan.series) / 5000) * 5000;
+    const pt = (arr) => arr.slice(0, H).map((v, i) => `${(i / (H - 1)) * 1000},${220 - (v / top) * 210}`);
+    const planPts = pt(plan.series);
+    const hv = s.hover ?? Math.min(plan.months, H - 1);
+    const cols = Array.from({ length: H }, (_, i) => ({ enter: () => this.setState({ hover: i }) }));
+    const order = plan.paidOff.map((p, i) => ({ n: i + 1, name: p.name, when: FR.monthAfter(p.month) }));
+    const rows = debts.map((d) => {
+      const one = FR.plan([d], 0, true);
+      const payable = d.min > (d.balance * d.rate) / 100;
+      return { name: d.name, meta: `${d.creditor || "—"} · vence dia ${d.due}`, balance: R(d.balance), rate: d.rate.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) + "%", min: R(d.min),
+        rateStyle: `text-align:right;font-variant-numeric:tabular-nums;${d.rate > 8 ? "color:var(--neg);font-weight:600" : ""}`,
+        payoff: !payable ? "Não cobre os juros: a dívida cresce" : `${FR.duration(one.months)} · ${R(one.interest)} de juros`,
+        payoffStyle: `font-size:13px;${payable ? "color:var(--text-2)" : "color:var(--neg);font-weight:500"}`,
+        edit: () => this.setState({ form: { id: d.id, name: d.name, creditor: d.creditor, balance: d.balance.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), rate: String(d.rate).replace(".", ","), min: d.min.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), due: d.due }, err: {} }) };
+    });
+    const f = s.form || {};
+    const num = (x) => Number(String(x || "").replace(/\./g, "").replace(",", "."));
+    const set = (k) => (e) => this.setState({ form: { ...this.state.form, [k]: e.target.value }, err: {} });
+    const inp = (bad) => `height:44px;padding:0 12px;border:1px solid ${bad ? "var(--neg)" : "var(--border-2)"};border-radius:10px;background:var(--inset);color:var(--text);font:inherit;box-sizing:border-box;outline:0`;
+    return {
+      ...FR.shell("Dívidas"), none, some: !none,
+      total: R(total), count: debts.length, minTotal: R(minTotal), minShare: Math.round((minTotal / 8420) * 100) + "%", interest: R(interest),
+      levers, cuts: R(cuts), cutsOn: cuts > 0,
+      monthly: R(minTotal + extra), planDur: FR.duration(plan.months), planEnd: FR.monthAfter(plan.months, true), planInterest: R(plan.interest),
+      minDur: minOnly.ok ? FR.duration(minOnly.months) : "mais de 10 anos", minInterest: R(minOnly.interest), saved: R(minOnly.interest - plan.interest),
+      extraStr: s.extra ? String(s.extra) : "", extraTyped: Number(s.extra) || 0,
+      onExtra: (e) => this.setState({ extra: Math.max(0, num(e.target.value) || 0), hover: null }),
+      planPath: "M" + planPts.join(" L"), planArea: "M0,220 L" + planPts.join(" L") + ` L${((plan.series.length - 1) / (H - 1)) * 1000},220 Z`,
+      minPath: "M" + pt(minOnly.series).join(" L"), cursorX: String((hv / (H - 1)) * 1000), cols,
+      tipLabel: hv ? FR.monthAfter(hv) : "Hoje", tipPlan: R(plan.series[hv] ?? 0), tipMin: R(minOnly.series[hv] ?? minOnly.series[minOnly.series.length - 1]),
+      yTop: (top / 1000).toLocaleString("pt-BR") + " mil", yMid: (top / 2000).toLocaleString("pt-BR") + " mil", xMid: FR.monthAfter(Math.round((H - 1) / 2)), xEnd: FR.monthAfter(H - 1),
+      chartLabel: `Saldo das dívidas mês a mês: seguindo o plano zera em ${plan.months} meses.`,
+      order, rows,
+      formOpen: !!s.form, editing: !!f.id, formTitle: f.id ? "Editar dívida" : "Nova dívida", f,
+      onName: set("name"), onCreditor: set("creditor"), onBalance: set("balance"), onRate: set("rate"), onMin: set("min"), onDue: set("due"),
+      errName: !!s.err.name, errBal: !!s.err.bal, nameStyle: inp(s.err.name), balStyle: inp(s.err.bal),
+      openNew: () => this.setState({ form: { name: "", creditor: "", balance: "", rate: "", min: "", due: "" }, err: {} }),
+      closeForm: () => this.setState({ form: null }),
+      save: () => {
+        const err = {};
+        if (!f.name?.trim()) err.name = 1;
+        if (!(num(f.balance) > 0)) err.bal = 1;
+        if (Object.keys(err).length) return this.setState({ err });
+        const d = { id: f.id || "n" + Date.now(), name: f.name.trim(), creditor: f.creditor, balance: num(f.balance), rate: num(f.rate) || 0, min: num(f.min) || 0, due: Number(f.due) || 1 };
+        const list = s.debts || FR.DEBTS;
+        this.setState({ debts: f.id ? list.map((x) => (x.id === f.id ? d : x)) : [...list, d], form: null });
+        this.flash("Dívida salva. O plano foi refeito.");
+      },
+      remove: () => { const list = s.debts || FR.DEBTS; this.setState({ debts: list.filter((x) => x.id !== f.id), form: null }); this.flash(`${f.name} apagada.`); },
+      toast: s.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>

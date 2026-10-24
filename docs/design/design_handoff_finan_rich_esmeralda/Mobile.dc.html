@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="finan-proto.js"></script>
+<style>
+body{margin:0;background:#050706;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-hi)}
+</style>
+</helmet>
+<div style="{{ rootStyle }}">
+  <div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;padding:40px 48px 8px">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <h1 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-0.025em">finan_rich no celular</h1>
+      <span style="font-size:13px;color:var(--muted)">Abaixo de 720px: barra de abas flutuante no rodapé, listas em linhas curtas e formulários em folha que sobe de baixo.</span>
+    </div>
+    <button type="button" onClick="{{ toggleTheme }}" style="display:flex;align-items:center;gap:8px;height:38px;padding:0 14px;border:1px solid var(--border-2);border-radius:10px;background:transparent;color:var(--text);font:inherit;cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="{{ themeIcon }}"></path></svg>{{ themeLabel }}</button>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:40px;padding:32px 48px 64px;align-items:flex-start">
+
+    <figure style="margin:0;display:flex;flex-direction:column;gap:12px">
+      <figcaption style="font-size:12px;color:var(--muted)">Painel</figcaption>
+      <div style="position:relative;width:390px;height:844px;border-radius:44px;border:10px solid #000;background:var(--bg);overflow:hidden;box-shadow:0 30px 60px -30px rgba(0,0,0,.6),0 0 0 1px var(--border-2)">
+        <div style="display:flex;justify-content:space-between;padding:14px 26px 0;font-size:13px;font-weight:600"><span>9:41</span><span>●●● 5G</span></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px 10px">
+          <span style="display:flex;align-items:center;gap:8px;font-weight:600"><img src="brand-mark.png" width="28" height="28" alt="" style="border-radius:7px">finan<span style="color:var(--accent);margin-left:-8px">_rich</span></span>
+          <span style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;background:var(--accent-soft);font-size:11px;color:var(--accent)"><i style="width:6px;height:6px;border-radius:50%;background:var(--accent)"></i>Sincronizado</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;padding:4px 16px 120px;height:calc(100% - 90px);overflow:auto;box-sizing:border-box">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:4px;border:1px solid var(--border);border-radius:12px;background:var(--surface)"><span style="display:grid;place-items:center;width:44px;height:38px;font-size:18px;color:var(--text-2)">‹</span><strong style="font-size:14px;font-weight:500">outubro de 2026</strong><span style="display:grid;place-items:center;width:44px;height:38px;font-size:18px;color:var(--text-2)">›</span></div>
+          <div style="display:flex;flex-direction:column;gap:14px;padding:18px;border-radius:16px;border:1px solid var(--hero-border);background:var(--hero);color:#fff">
+            <span style="font-size:12px;color:var(--hero-muted)">Saldo do mês</span>
+            <strong style="font-size:36px;font-weight:600;letter-spacing:-0.035em;line-height:1;font-variant-numeric:tabular-nums">R$ 2.282,60</strong>
+            <div style="display:flex;height:5px;border-radius:99px;overflow:hidden;background:var(--hero-track)"><span style="width:73%;background:#f07163"></span><span style="flex:1;background:#34c08f"></span></div>
+            <span style="font-size:12px;color:var(--hero-muted)">Guardado: <b style="color:#7fe0b8;font-weight:600">27% da renda</b></span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="display:flex;flex-direction:column;gap:6px;padding:14px;border:1px solid var(--border);border-radius:14px;background:var(--surface)"><span style="font-size:12px;color:var(--muted)">↑ Entradas</span><strong style="font-size:18px;font-weight:600;font-variant-numeric:tabular-nums">R$ 8.420,00</strong></div>
+            <div style="display:flex;flex-direction:column;gap:6px;padding:14px;border:1px solid var(--border);border-radius:14px;background:var(--surface)"><span style="font-size:12px;color:var(--muted)">↓ Saídas</span><strong style="font-size:18px;font-weight:600;font-variant-numeric:tabular-nums">R$ 6.137,40</strong></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid color-mix(in srgb,var(--neg) 30%,var(--border));border-radius:14px;background:var(--neg-soft);font-size:13px"><i style="width:7px;height:7px;border-radius:50%;background:var(--neg);flex:none"></i><span style="flex:1"><b style="font-weight:600">Fatura Nubank</b> vence em 3 dias</span><span style="font-variant-numeric:tabular-nums">R$ 1.842,60</span></div>
+          <div style="display:flex;flex-direction:column;gap:12px;padding:16px;border:1px solid var(--border);border-radius:16px;background:var(--surface)">
+            <strong style="font-size:14px;font-weight:600">Divisão do salário</strong>
+            <sc-for list="{{ buckets }}" as="b" hint-placeholder-count="3">
+              <div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;font-size:13px"><span style="display:flex;align-items:center;gap:8px"><i style="{{ b.dot }}"></i>{{ b.name }}</span><span style="color:var(--muted)">{{ b.used }}</span></div><div style="height:6px;border-radius:99px;background:var(--track);overflow:hidden"><span style="{{ b.bar }}"></span></div></div>
+            </sc-for>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;padding:16px;border:1px solid var(--border);border-radius:16px;background:var(--surface)">
+            <strong style="font-size:14px;font-weight:600;margin-bottom:6px">Últimos lançamentos</strong>
+            <sc-for list="{{ txs }}" as="t" hint-placeholder-count="4"><div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--border);font-size:13px"><span style="display:flex;flex-direction:column"><span style="font-weight:500">{{ t.d }}</span><span style="font-size:11px;color:var(--faint)">{{ t.c }}</span></span><span style="{{ t.s }}">{{ t.v }}</span></div></sc-for>
+          </div>
+        </div>
+        <nav style="position:absolute;left:10px;right:10px;bottom:22px;display:flex;justify-content:space-around;padding:6px 4px;border:1px solid var(--border);border-radius:22px;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(14px);box-shadow:var(--shadow-pop)">
+          <sc-for list="{{ tabsPainel }}" as="t" hint-placeholder-count="6"><span style="{{ t.style }}"><span style="{{ t.pill }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{ t.d }}"></path></svg></span>{{ t.label }}</span></sc-for>
+        </nav>
+      </div>
+    </figure>
+
+    <figure style="margin:0;display:flex;flex-direction:column;gap:12px">
+      <figcaption style="font-size:12px;color:var(--muted)">Extrato (Lançamentos)</figcaption>
+      <div style="position:relative;width:390px;height:844px;border-radius:44px;border:10px solid #000;background:var(--bg);overflow:hidden;box-shadow:0 30px 60px -30px rgba(0,0,0,.6),0 0 0 1px var(--border-2)">
+        <div style="display:flex;justify-content:space-between;padding:14px 26px 0;font-size:13px;font-weight:600"><span>9:41</span><span>●●● 5G</span></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 8px"><h2 style="margin:0;font-size:22px;font-weight:600;letter-spacing:-0.02em">Extrato</h2><span style="font-size:13px;color:var(--muted)">out. 2026</span></div>
+        <div style="padding:0 16px 10px"><div style="display:flex;align-items:center;gap:10px;height:44px;padding:0 12px;border:1px solid var(--border-2);border-radius:12px;background:var(--surface);font-size:15px;color:var(--faint)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>Buscar</div></div>
+        <div style="display:flex;gap:8px;padding:0 16px 12px;overflow:hidden"><span style="padding:7px 12px;border-radius:99px;background:var(--text);color:var(--bg);font-size:12px;font-weight:600">Todos</span><span style="padding:7px 12px;border-radius:99px;border:1px solid var(--border-2);font-size:12px;color:var(--text-2)">Entradas</span><span style="padding:7px 12px;border-radius:99px;border:1px solid var(--border-2);font-size:12px;color:var(--text-2)">Saídas</span><span style="padding:7px 12px;border-radius:99px;border:1px solid var(--border-2);font-size:12px;color:var(--text-2)">Categoria ▾</span></div>
+        <div style="display:flex;flex-direction:column;padding:0 16px 140px;height:calc(100% - 210px);overflow:auto;box-sizing:border-box">
+          <sc-for list="{{ days }}" as="g" hint-placeholder-count="3">
+            <div style="display:flex;justify-content:space-between;padding:12px 2px 6px;font-size:12px;color:var(--muted)"><strong style="font-weight:600;color:var(--text-2)">{{ g.label }}</strong><span>{{ g.total }}</span></div>
+            <div style="display:flex;flex-direction:column;border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden">
+              <sc-for list="{{ g.rows }}" as="t" hint-placeholder-count="2">
+                <div style="display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 12px;border-top:1px solid var(--border);min-height:44px">
+                  <span style="{{ t.box }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{ t.i }}"></path></svg></span>
+                  <span style="display:flex;flex-direction:column;min-width:0"><span style="font-size:14px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ t.d }}</span><span style="font-size:12px;color:var(--faint)">{{ t.c }}</span></span>
+                  <span style="{{ t.s }}">{{ t.v }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+        <span style="position:absolute;right:18px;bottom:104px;display:grid;place-items:center;width:56px;height:56px;border-radius:18px;background:var(--accent);color:var(--accent-ink);box-shadow:0 12px 24px -10px rgba(52,192,143,.6)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></span>
+        <nav style="position:absolute;left:10px;right:10px;bottom:22px;display:flex;justify-content:space-around;padding:6px 4px;border:1px solid var(--border);border-radius:22px;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(14px);box-shadow:var(--shadow-pop)">
+          <sc-for list="{{ tabsExtrato }}" as="t" hint-placeholder-count="6"><span style="{{ t.style }}"><span style="{{ t.pill }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{ t.d }}"></path></svg></span>{{ t.label }}</span></sc-for>
+        </nav>
+      </div>
+    </figure>
+
+    <figure style="margin:0;display:flex;flex-direction:column;gap:12px">
+      <figcaption style="font-size:12px;color:var(--muted)">Novo lançamento (folha)</figcaption>
+      <div style="position:relative;width:390px;height:844px;border-radius:44px;border:10px solid #000;background:var(--bg);overflow:hidden;box-shadow:0 30px 60px -30px rgba(0,0,0,.6),0 0 0 1px var(--border-2)">
+        <div style="position:absolute;inset:0;background:var(--scrim)"></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;gap:16px;padding:12px 18px 34px;border-radius:26px 26px 0 0;border-top:1px solid var(--border-2);background:var(--surface)">
+          <span style="align-self:center;width:40px;height:5px;border-radius:9px;background:var(--border-2)"></span>
+          <div style="display:flex;justify-content:space-between;align-items:center"><strong style="font-size:18px;font-weight:600">Novo lançamento</strong><span style="font-size:14px;color:var(--muted)">Cancelar</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:12px;background:var(--inset)"><span style="display:grid;place-items:center;height:40px;border-radius:9px;background:var(--surface);box-shadow:0 0 0 1px var(--border-2);font-size:14px;font-weight:600">Saída</span><span style="display:grid;place-items:center;height:40px;font-size:14px;color:var(--muted)">Entrada</span></div>
+          <div style="display:flex;align-items:baseline;gap:8px;padding:18px 4px;border-bottom:1px solid var(--border-2)"><span style="font-size:22px;color:var(--faint)">R$</span><strong style="font-size:40px;font-weight:600;letter-spacing:-0.03em;font-variant-numeric:tabular-nums">58,90</strong></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;color:var(--text-2);font-weight:500">Descrição</span><span style="display:flex;align-items:center;height:48px;padding:0 14px;border:1px solid var(--border-2);border-radius:12px;background:var(--inset);font-size:16px">iFood</span></div>
+          <div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:13px;color:var(--text-2);font-weight:500">Categoria</span>
+            <div style="display:flex;flex-wrap:wrap;gap:8px"><span style="padding:9px 12px;border-radius:99px;border:1px solid var(--accent);background:var(--accent-soft);font-size:13px">Restaurantes e delivery</span><span style="padding:9px 12px;border-radius:99px;border:1px solid var(--border-2);font-size:13px;color:var(--text-2)">Mercado</span><span style="padding:9px 12px;border-radius:99px;border:1px solid var(--border-2);font-size:13px;color:var(--text-2)">Lazer</span><span style="padding:9px 12px;border-radius:99px;border:1px solid var(--border-2);font-size:13px;color:var(--text-2)">Transporte</span><span style="padding:9px 12px;border-radius:99px;border:1px solid var(--border-2);font-size:13px;color:var(--text-2)">+ 8</span></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><span style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;color:var(--text-2);font-weight:500">Data</span><span style="display:flex;align-items:center;height:48px;padding:0 14px;border:1px solid var(--border-2);border-radius:12px;background:var(--inset);font-size:15px">Hoje, 24/10</span></span><span style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;color:var(--text-2);font-weight:500">Conta</span><span style="display:flex;align-items:center;height:48px;padding:0 14px;border:1px solid var(--border-2);border-radius:12px;background:var(--inset);font-size:15px">Nubank</span></span></div>
+          <span style="display:grid;place-items:center;height:52px;border-radius:14px;background:var(--accent);color:var(--accent-ink);font-size:16px;font-weight:600">Adicionar</span>
+        </div>
+      </div>
+    </figure>
+
+    <figure style="margin:0;display:flex;flex-direction:column;gap:12px">
+      <figcaption style="font-size:12px;color:var(--muted)">Consultor</figcaption>
+      <div style="position:relative;width:390px;height:844px;border-radius:44px;border:10px solid #000;background:var(--bg);overflow:hidden;box-shadow:0 30px 60px -30px rgba(0,0,0,.6),0 0 0 1px var(--border-2)">
+        <div style="display:flex;justify-content:space-between;padding:14px 26px 0;font-size:13px;font-weight:600"><span>9:41</span><span>●●● 5G</span></div>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--border)"><img src="brand-mark.png" width="32" height="32" alt="" style="border-radius:9px"><span style="display:flex;flex-direction:column"><strong style="font-size:15px;font-weight:600">Consultor IA</strong><span style="font-size:11px;color:var(--muted)">qwen3.5:9b · no seu computador</span></span></div>
+        <div style="display:flex;flex-direction:column;gap:14px;padding:16px 16px 0;font-size:14px;line-height:1.55">
+          <span style="align-self:flex-end;max-width:80%;padding:10px 14px;border-radius:16px 16px 4px 16px;background:var(--accent);color:var(--accent-ink)">Qual dívida devo pagar primeiro?</span>
+          <div style="display:flex;gap:10px"><img src="brand-mark.png" width="24" height="24" alt="" style="flex:none;border-radius:7px"><div style="display:flex;flex-direction:column;gap:8px"><span>Pague primeiro o <b style="font-weight:600">Rotativo cartão C6</b>: 13,50% ao mês, R$ 396,90 de juros só em outubro.</span><span style="color:var(--text-2)">Com R$ 300 a mais por mês, ele zera em 6 meses.</span></div></div>
+          <span style="align-self:flex-end;max-width:80%;padding:10px 14px;border-radius:16px 16px 4px 16px;background:var(--accent);color:var(--accent-ink)">lança 30 reais do cinema</span>
+          <div style="display:flex;gap:10px"><img src="brand-mark.png" width="24" height="24" alt="" style="flex:none;border-radius:7px"><div style="display:flex;flex-direction:column;gap:8px;flex:1"><span>Vou lançar como saída em Lazer, hoje.</span><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px dashed var(--border-2);border-radius:12px;background:var(--surface)"><span style="font-size:13px">Cinema · R$ 30,00</span><span style="display:grid;place-items:center;height:36px;padding:0 12px;border-radius:9px;background:var(--accent);color:var(--accent-ink);font-size:13px;font-weight:600">Adicionar</span></div></div></div>
+        </div>
+        <div style="position:absolute;left:12px;right:12px;bottom:104px;display:flex;align-items:center;gap:8px;padding:6px 6px 6px 14px;border:1px solid var(--border-2);border-radius:16px;background:var(--surface);font-size:15px;color:var(--faint)"><span style="flex:1">Pergunte sobre seu dinheiro…</span><span style="display:grid;place-items:center;width:40px;height:40px;border-radius:11px;background:var(--surface-2)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></span></div>
+        <nav style="position:absolute;left:10px;right:10px;bottom:22px;display:flex;justify-content:space-around;padding:6px 4px;border:1px solid var(--border);border-radius:22px;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(14px);box-shadow:var(--shadow-pop)">
+          <sc-for list="{{ tabsChat }}" as="t" hint-placeholder-count="6"><span style="{{ t.style }}"><span style="{{ t.pill }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{ t.d }}"></path></svg></span>{{ t.label }}</span></sc-for>
+        </nav>
+      </div>
+    </figure>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  componentDidMount() {
+    this.h = () => this.forceUpdate();
+    window.addEventListener("fr-theme", this.h);
+    if (!window.FR) this.t = setInterval(() => { if (window.FR) { clearInterval(this.t); this.forceUpdate(); } }, 40);
+  }
+  componentWillUnmount() { window.removeEventListener("fr-theme", this.h); clearInterval(this.t); }
+  renderVals() {
+    const FR = window.FR;
+    if (!FR) return {};
+    const I = FR.ICON;
+    const T = [["Painel", I.painel], ["Extrato", I.lanc], ["Dívidas", I.dividas], ["Análise", I.analise], ["Consultor", I.chat], ["Ajustes", I.ajustes]];
+    const tabs = (active) => T.map(([label, d]) => { const on = label === active; return { label, d,
+      style: `flex:1 1 0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:52px;font-size:10.5px;font-weight:${on ? 600 : 500};color:${on ? "var(--text)" : "var(--muted)"}`,
+      pill: `display:grid;place-items:center;width:52px;height:28px;border-radius:99px;background:${on ? "var(--accent-soft)" : "transparent"};color:${on ? "var(--accent)" : "inherit"}` }; });
+    const R = FR.R;
+    const box = (c) => `display:grid;place-items:center;width:36px;height:36px;border-radius:11px;background:color-mix(in srgb,${c} 14%,transparent);color:${c}`;
+    const amt = (v) => `font-size:14px;font-weight:500;font-variant-numeric:tabular-nums;color:${v > 0 ? "var(--pos)" : "var(--text)"}`;
+    const food = "M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7", cart = "M8 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM19 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM2 2h3l2.7 12.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6", car = "M19 17h2v-4l-3-5H6l-3 5v4h2M7 17a2 2 0 1 0 4 0 2 2 0 1 0-4 0M13 17a2 2 0 1 0 4 0 2 2 0 1 0-4 0", up = "M12 19V5M5 12l7-7 7 7", play = "M5 3l14 9-14 9z";
+    const row = (d, c, v, i, col) => ({ d, c, v: R(v, true), s: amt(v), i, box: box(col) });
+    const days = [
+      { label: "Hoje", total: "−R$ 58,90", rows: [row("iFood", "Restaurantes e delivery", -58.9, food, "var(--des)")] },
+      { label: "Ontem", total: "−R$ 312,45", rows: [row("Pão de Açúcar", "Mercado", -312.45, cart, "var(--nec)")] },
+      { label: "quinta, 22 de outubro", total: "−R$ 96,20", rows: [row("Uber", "Transporte", -24.8, car, "var(--nec)"), row("iFood", "Restaurantes e delivery", -71.4, food, "var(--des)")] },
+      { label: "quarta, 21 de outubro", total: "+R$ 1.200,00", rows: [row("Freela — site", "Renda extra", 1200, up, "var(--inv)")] },
+      { label: "terça, 20 de outubro", total: "−R$ 55,90", rows: [row("Netflix", "Assinaturas · ↻ mensal", -55.9, play, "var(--des)")] },
+    ];
+    return {
+      ...FR.shell(""),
+      rootStyle: FR.shell("").rootStyle.replace("display:grid;grid-template-columns:240px minmax(0,1fr);", "display:block;"),
+      tabsPainel: tabs("Painel"), tabsExtrato: tabs("Extrato"), tabsChat: tabs("Consultor"),
+      buckets: [["Necessidades", "var(--nec)", 87], ["Desejos", "var(--des)", 73], ["Investimentos", "var(--inv)", 36]].map(([name, c, u]) => ({ name, used: u + "%", dot: `width:8px;height:8px;border-radius:2px;background:${c}`, bar: `display:block;height:100%;width:${u}%;border-radius:99px;background:${c}` })),
+      txs: [["iFood", "Restaurantes · hoje", -58.9], ["Pão de Açúcar", "Mercado · ontem", -312.45], ["Freela — site", "Renda extra · 21 out", 1200], ["Aluguel", "Moradia · 10 out", -1950]].map(([d, c, v]) => ({ d, c, v: R(v, true), s: amt(v) })),
+      days,
+    };
+  }
+}
+</script>
+</body>
+</html>

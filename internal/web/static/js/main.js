@@ -41,7 +41,8 @@ let rerenderPending = false;
 
 // ---------- status da sincronização ----------
 
-const pill = document.getElementById("sync-status");
+// O status aparece no topo (celular) e no fim do menu lateral (computador, com o horário).
+const pills = [...document.querySelectorAll("[data-sync-status]")];
 const LABELS = {
   ok: () => "Sincronizado",
   syncing: () => "Sincronizando…",
@@ -52,16 +53,20 @@ const LABELS = {
   error: () => "Erro ao sincronizar",
 };
 function showStatus(s) {
-  if (!pill) return;
-  pill.hidden = false;
-  pill.dataset.status = s.status;
-  pill.textContent = LABELS[s.status](s);
-  pill.title = s.status === "offline"
+  const hhmm = s.lastSync?.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const title = s.status === "offline"
     ? "Sem conexão com o computador. Tudo que você fizer fica salvo neste aparelho e é enviado quando a conexão voltar."
     : s.message || (s.lastSync ? `Última sincronização: ${s.lastSync.toLocaleTimeString("pt-BR")}` : "");
-  pill.onclick = null;
-  if (device.isApp && (s.status === "login" || s.status === "unpaired" || s.status === "google")) pill.onclick = () => navigate("/configuracoes");
-  else if (s.status === "login") pill.onclick = () => { location.href = "/entrar?volta=" + encodeURIComponent(location.pathname); };
+  const action = device.isApp && (s.status === "login" || s.status === "unpaired" || s.status === "google") ? () => navigate("/configuracoes")
+    : s.status === "login" ? () => { location.href = "/entrar?volta=" + encodeURIComponent(location.pathname); } : null;
+  for (const pill of pills) {
+    pill.hidden = false;
+    pill.dataset.status = s.status;
+    pill.textContent = LABELS[s.status](s) + (pill.classList.contains("side-only") && s.status === "ok" && hhmm ? ` · ${hhmm}` : "");
+    pill.title = title;
+    pill.onclick = action;
+    pill.style.cursor = action ? "pointer" : "";
+  }
 }
 window.addEventListener("finan-sync", async (e) => {
   showStatus(e.detail);
@@ -161,7 +166,7 @@ function render(message) {
   charts.mount(root);
   dirty = false;
   rerenderPending = false;
-  document.querySelectorAll("nav.tabs a").forEach((a) => {
+  document.querySelectorAll("nav.tabs a:not(.side-brand)").forEach((a) => {
     if (new URL(a.href).pathname === path) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
   });
