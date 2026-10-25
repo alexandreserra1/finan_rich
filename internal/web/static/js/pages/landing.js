@@ -258,7 +258,7 @@ export function render() {
 
     <section class="lp-splits"><div class="lp-wrap">${splits()}</div></section>
 
-    <section id="duvidas" class="lp-light lp-faq"><div class="lp-wrap lp-two top">
+    <section id="duvidas" class="lp-light lp-faq"><div class="lp-wrap lp-two lp-top">
       <div class="lp-head" data-reveal><h2>Dúvidas? A gente explica.</h2><p>O que mais perguntam sobre o finan_rich.</p></div>
       <div class="lp-faq-list">${FAQ.map(([q, a], i) => html`<details name="lp-faq" ${i ? "" : "open"}><summary>${q}<span aria-hidden="true">+</span></summary><p>${a}</p></details>`)}</div>
     </div></section>

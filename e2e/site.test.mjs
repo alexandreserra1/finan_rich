@@ -40,6 +40,9 @@ try {
   ok(await page.getAttribute(".lp-hero a.lp-cta", "href") === "/?entrar=1", "Começar agora leva ao login");
   ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), "landing cabe na largura do celular");
   ok(await page.locator(".lp-agent").count() === 5, "landing mostra o time");
+  ok(await page.evaluate(() => { const s = document.querySelector(".lp-faq"), w = s.querySelector(".lp-wrap"), q = s.querySelector("summary");
+    return getComputedStyle(w).position === "static" && getComputedStyle(w).backgroundColor === "rgba(0, 0, 0, 0)" && getComputedStyle(q).color === "rgb(21, 32, 27)"; }),
+    "estilos do app não vazam na landing (dúvidas com fundo claro e texto escuro)");
 
   // Login: as boas-vindas, sem "conecte ao computador".
   await page.goto(`${SITE}/?entrar=1`);

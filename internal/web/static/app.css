@@ -966,7 +966,7 @@ html:has(body.landing-mode) { scroll-behavior: smooth; }
 .lp-ico { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .lp-wrap { max-width: 1180px; margin: 0 auto; }
 .lp-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: clamp(32px, 5vw, 72px); align-items: center; }
-.lp-two.top { align-items: start; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); }
+.lp-two.lp-top { align-items: start; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); }
 .lp-col, .lp-head { display: flex; flex-direction: column; gap: 14px; }
 .lp-col { gap: 18px; }
 .landing h2 { font-size: clamp(36px, 4.6vw, 60px); letter-spacing: -.045em; line-height: 1; }
@@ -1259,9 +1259,9 @@ html:has(body.landing-mode) { scroll-behavior: smooth; }
 
 /* Dúvidas */
 .lp-faq-list { display: flex; flex-direction: column; gap: 10px; }
-.lp-faq details { border: 1px solid #e2e7e4; border-radius: 18px; background: #fff; transition: border-color .2s, box-shadow .2s; }
+.lp-faq details { margin: 0; border: 1px solid #e2e7e4; border-radius: 18px; background: #fff; transition: border-color .2s, box-shadow .2s; }
 .lp-faq details[open] { border-color: #bfe0d2; box-shadow: 0 14px 30px -18px rgb(16 24 20 / .3); }
-.lp-faq summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 22px; font-size: 17px; font-weight: 600; cursor: pointer; list-style: none; }
+.lp-faq summary { margin: 0; color: #15201b; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 22px; font-size: 17px; font-weight: 600; cursor: pointer; list-style: none; }
 .lp-faq summary::-webkit-details-marker { display: none; }
 .lp-faq summary span { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 50%; background: #e9eeeb; color: #15201b; font-size: 20px; font-weight: 400;
   transition: transform .25s, background-color .25s; }
