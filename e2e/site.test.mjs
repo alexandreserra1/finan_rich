@@ -33,9 +33,18 @@ try {
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("dialog", (d) => d.accept());
 
-  // Primeira visita: boas-vindas, sem "conecte ao computador".
+  // Primeira visita: a landing, sem menu, cabendo na tela do celular.
   await page.goto(`${SITE}/`);
+  await page.waitForSelector(".landing .lp-hero h1", { timeout: 20000 });
+  ok(await page.locator("body.landing-mode").count() === 1 && await page.locator(".tabs").isHidden(), "primeira visita mostra a landing, sem o menu");
+  ok(await page.getAttribute(".lp-hero a.lp-cta", "href") === "/?entrar=1", "Começar agora leva ao login");
+  ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), "landing cabe na largura do celular");
+  ok(await page.locator(".lp-agent").count() === 5, "landing mostra o time");
+
+  // Login: as boas-vindas, sem "conecte ao computador".
+  await page.goto(`${SITE}/?entrar=1`);
   await page.waitForSelector(".start button[data-action=solo]", { timeout: 20000 });
+  ok(await page.locator("body.landing-mode").count() === 0, "fora da landing, o modo tela cheia sai");
   const welcome = await page.innerText("main"); // só o que aparece (sem login com Google configurado, o botão fica escondido)
   ok(await page.locator(".start-google").isHidden() && /só neste navegador/.test(welcome) && !/computador/.test(welcome.replace(/programa do computador/, "")),
     "primeira visita mostra as boas-vindas do site");

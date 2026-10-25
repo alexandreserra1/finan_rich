@@ -25,6 +25,8 @@ import * as devicePage from "./pages/device.js";
 import * as advisor from "./pages/advisor.js";
 import * as accounts from "./pages/accounts.js";
 import * as start from "./pages/start.js";
+import * as landing from "./pages/landing.js";
+import * as google from "./google.js";
 import * as oauthPage from "./pages/oauth.js";
 
 const ROUTES = { "/": dashboard, "/lancamentos": transactions, "/dividas": debts, "/categorias": categories, "/notas": notes, "/exportar": exportPage, "/importar": importPage, "/metas": goals, "/analise": insights };
@@ -34,6 +36,7 @@ if (device.isApp) Object.assign(ROUTES, { "/configuracoes": devicePage, "/chat":
 const root = document.getElementById("app");
 let ledger = null;
 let server = null; // computador pareado (só no app do celular)
+let signedIn = false; // site: conta Google ligada (quem tem conta não vê a landing)
 let booted = false; // as regras (WebAssembly) já carregaram e a primeira tela foi desenhada
 let changedDuringBoot = false; // chegaram dados novos enquanto o app iniciava
 let dirty = false; // há um formulário sendo preenchido: não redesenhar por baixo
@@ -145,11 +148,13 @@ function render(message) {
   const path = location.pathname;
   const page = ROUTES[path];
   if (!page || !ledger) return;
+  document.body.classList.remove("landing-mode");
   if (!ledger.categories.length && page.needsData !== false && device.isSite) {
-    // Site na primeira visita: boas-vindas em vez de "conecte ao computador".
+    // Site sem dados: a landing (sem conta) ou as boas-vindas com o login (?entrar=1).
     const ctx = context(path, new URLSearchParams(location.search));
-    root.innerHTML = `<p id="flash" hidden></p>` + toString(start.render(ctx));
-    start.bind(root, ctx);
+    const view = landing.show(ctx, signedIn) ? landing : start;
+    root.innerHTML = `<p id="flash" hidden></p>` + toString(view.render(ctx));
+    view.bind(root, ctx);
     return;
   }
   if (!ledger.categories.length && page.needsData !== false) {
@@ -175,6 +180,7 @@ function render(message) {
 
 async function load() {
   [ledger, server] = await Promise.all([db.loadLedger(), device.server()]);
+  if (device.isSite) signedIn = !!(await google.account());
   await applyRecurring();
   scheduleDebtReminders(ledger).catch(() => {}); // no app: avisos de vencimento
 }
@@ -213,6 +219,7 @@ function navigate(url, replace = false) {
 document.addEventListener("click", (e) => {
   const a = e.target.closest("a[href]");
   if (!a || !root || e.metaKey || e.ctrlKey || e.shiftKey || a.target) return;
+  if (a.getAttribute("href").startsWith("#")) return; // âncora na mesma página (landing): o navegador rola
   const u = new URL(a.href, location.href);
   if (u.origin !== location.origin || !ROUTES[u.pathname]) return;
   e.preventDefault();

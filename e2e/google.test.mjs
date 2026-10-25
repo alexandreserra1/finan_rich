@@ -113,7 +113,7 @@ async function until(cond, msg, ms = 15000) {
 }
 
 async function login(page) {
-  await page.goto(`${SITE}/`);
+  await page.goto(`${SITE}/?entrar=1`); // "Começar agora" da landing
   await page.waitForSelector(".start-google:not([hidden]) [data-action=google]", { timeout: 20000 });
   await page.click("[data-action=google]");
   await page.waitForURL(`${SITE}/`, { timeout: 20000 });

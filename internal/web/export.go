@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Arquivos de static/ que só servem ao app no navegador (PWA).
@@ -61,6 +62,9 @@ func ExportApp(dir string, site bool) error {
 	return fs.WalkDir(staticFS, "static", func(path string, d fs.DirEntry, err error) error {
 		if err != nil || browserOnly[d.Name()] {
 			return err
+		}
+		if !site && strings.HasPrefix(d.Name(), "team-") {
+			return nil // retratos do time: só a landing do site usa (o APK fica menor)
 		}
 		target := filepath.Join(dir, filepath.FromSlash(path))
 		if d.IsDir() {
