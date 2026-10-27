@@ -23,7 +23,7 @@ func TestAnswerAsPersona(t *testing.T) {
 	for _, tl := range req.Tools {
 		names = append(names, tl.Name)
 	}
-	if got := strings.Join(names, ","); got != "buscar_lancamentos,criar_divida,registrar_pagamento" {
+	if got := strings.Join(names, ","); got != "buscar_lancamentos,criar_divida,registrar_pagamento,simular_dividas" {
 		t.Errorf("ferramentas do Bento = %s", got)
 	}
 

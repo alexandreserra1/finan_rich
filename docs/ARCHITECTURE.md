@@ -373,6 +373,7 @@ Tabelas atuais:
 | `advisor.go` | System prompt, `BuildRequest` (histórico das últimas 12 mensagens + pergunta com o retrato) e `Ask`. |
 | `snapshot.go` | `BuildFacts` (calcula tudo com o `finance`) e `Snapshot` (texto com as contas prontas e os pontos de atenção). |
 | `personas.go` | O jeito de cada personagem do time aconselhar (a voz que vai nas instruções) e as ferramentas de cada um. |
+| `persona_tools.go` | As ferramentas próprias do time, todas só de leitura e com as contas do `finance`: `simular_dividas` (Bento: valor a mais por mês, ordem, mês em que fica livre, comparado com o mínimo e com a outra ordem), `simular_meta` (Tito: quanto por mês até um prazo, ou quando chega guardando X), `achados` e `comparar_meses` (Otávio) e `proximos_vencimentos` (Luna: parcelas, faturas, contas fixas e orçamentos perto do teto). A IA escolhe a ferramenta e os valores; o número sai sempre do Go. |
 
 ### `internal/auth/` — senha e sessões
 

@@ -286,7 +286,7 @@ try {
   await page.click("[data-handoff]");
   await page.waitForSelector(".msg.assistant >> nth=-1 >> text=Bento · Dívidas", { timeout: 30000 });
   const toBento = cloudBodies.at(-1);
-  ok(toBento.messages[0].content.includes("Você é o Bento") && toBento.tools.join() === "buscar_lancamentos,criar_divida,registrar_pagamento" &&
+  ok(toBento.messages[0].content.includes("Você é o Bento") && toBento.tools.join() === "buscar_lancamentos,criar_divida,registrar_pagamento,simular_dividas" &&
     await page.getAttribute(".team-member[data-agent=bento]", "aria-pressed") === "true" && await page.locator(".handoff").count() === 0,
     `trocar para o Bento muda a voz e as ferramentas (${toBento.tools})`);
   await page.reload();

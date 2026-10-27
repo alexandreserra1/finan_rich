@@ -27,6 +27,7 @@ const toolsPrompt = `
 Ferramentas:
 - buscar_lancamentos: use quando a pergunta precisar de lançamentos que não estão no bloco de dados (outro mês, um período, um estabelecimento, uma categoria). Responda com os totais que ela devolver. Cada lançamento vem com o [id], que serve para alterar ou apagar.
 - propor_lancamento, alterar_lancamento, apagar_lancamento, criar_meta, criar_divida, registrar_aporte (guardou dinheiro numa meta), registrar_pagamento (pagou uma dívida): use quando o usuário pedir para registrar, corrigir ou apagar algo. Para alterar ou apagar, busque antes para achar o id. Cada pedido vira um cartão com um botão para ele confirmar; nada é gravado sozinho. Nunca diga que já fez: diga que deixou pronto para ele confirmar.
+- simular_dividas, simular_meta, achados, comparar_meses e proximos_vencimentos fazem as contas: para qualquer número que não esteja no bloco de dados (simulação, comparação, prazo), chame a ferramenta em vez de calcular de cabeça.
 - Você só tem as ferramentas da sua área. Se pedirem algo que nenhuma delas faz, diga quem do time cuida disso.`
 
 // Ações de uma proposta.
@@ -80,6 +81,10 @@ func (t *Tools) Defs() []llm.Tool {
 }
 
 func allTools() []llm.Tool {
+	return append(baseTools(), teamTools()...)
+}
+
+func baseTools() []llm.Tool {
 	return []llm.Tool{
 		tool("buscar_lancamentos", "Busca lançamentos do usuário e devolve os totais e os mais recentes, cada um com seu [id]. Todos os filtros são opcionais.",
 			`{"type":"object","properties":{
@@ -159,6 +164,16 @@ func (t *Tools) Run(c llm.ToolCall) string {
 	switch c.Name {
 	case "buscar_lancamentos":
 		return t.search(str("texto"), str("categoria"), str("tipo"), str("de"), str("ate"))
+	case "simular_dividas":
+		return t.simulateDebts(str("valor_extra"), str("ordem"))
+	case "simular_meta":
+		return t.simulateGoal(str("meta"), str("prazo"), str("valor_mes"))
+	case "achados":
+		return t.findings()
+	case "comparar_meses":
+		return t.compareMonths(str("de"), str("ate"))
+	case "proximos_vencimentos":
+		return t.upcoming(str("dias"))
 	case "propor_lancamento":
 		p, err = t.newTransaction(str("descricao"), str("valor"), str("tipo"), str("categoria"), str("data"))
 	case "alterar_lancamento":

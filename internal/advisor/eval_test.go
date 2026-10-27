@@ -20,7 +20,8 @@ import (
 //
 //	FINAN_EVAL_PRESET=gemini FINAN_EVAL_KEY=... [FINAN_EVAL_MODEL=...] go test ./internal/advisor -run TestEval -v
 //
-// FINAN_EVAL_LOCAL=1 manda sem apelidos (como uma IA local).
+// FINAN_EVAL_LOCAL=1 manda sem apelidos (como uma IA local); FINAN_EVAL_TEAM=1
+// roda só as perguntas de cada personagem do time.
 
 func evalLedger() domain.Ledger {
 	m := func(id string) domain.Meta { return domain.Meta{ID: id, UpdatedAt: 1} }
@@ -71,6 +72,22 @@ var evalCases = []evalCase{
 	{"quero financiar um carro de R$ 60 mil, o que acha?", []string{`CET`, `entrada|SAC`, `d[ií]vida|cart[aã]o`, `seguro|IPVA|manuten`}, nil},
 }
 
+// teamEvalCases: uma pergunta por personagem do time, que só fecha com a
+// ferramenta dele (as contas abaixo foram feitas à mão com evalLedger).
+var teamEvalCases = []struct {
+	agent string
+	evalCase
+}{
+	// R$ 3.200 a 14% pagando 320 + 500 por mês: zera no 7º mês.
+	{"bento", evalCase{"e se eu pagar R$ 500 a mais por mês no cartão?", []string{`7 meses|maio de 2027`, `820|500`, `juros`}, nil}},
+	// Faltam R$ 6.000; R$ 400 por mês = 15 meses contando outubro (dezembro de 2027), 5 depois de julho.
+	{"tito", evalCase{"se eu guardar R$ 400 por mês, quando chego na viagem?", []string{`15 meses|dezembro de 2027`, `prazo|julho`}, nil}},
+	// iFood: 4 pedidos de R$ 55 em setembro, 12 em outubro.
+	{"otavio", evalCase{"o que mudou do mês passado para este?", []string{`ifood|delivery|restaurante`, `220|440|660`}, nil}},
+	// De 22/10 a 11/11: aluguel no dia 5 e o cartão no dia 10.
+	{"luna", evalCase{"o que vence nos próximos 20 dias?", []string{`aluguel`, `cart[aã]o`, `10/11|dia 10`}, []string{`\n\s*3\.`}}},
+}
+
 // personal: formato pedido nas instruções (conclusão primeiro, próximo passo no app).
 var personal = []string{`^\s*\*\*`, `no app|app:|registr|crie|cadastr`}
 
@@ -90,10 +107,23 @@ func TestEval(t *testing.T) {
 	}
 	today := time.Date(2026, 10, 22, 12, 0, 0, 0, time.Local)
 	passed, total := 0, 0
-	for _, c := range evalCases {
+	type agentCase struct {
+		agent string
+		evalCase
+	}
+	all := []agentCase{}
+	if os.Getenv("FINAN_EVAL_TEAM") == "" { // FINAN_EVAL_TEAM=1: só as perguntas do time (gasta menos cota)
+		for _, c := range evalCases {
+			all = append(all, agentCase{"", c})
+		}
+	}
+	for _, c := range teamEvalCases {
+		all = append(all, agentCase{c.agent, c.evalCase})
+	}
+	for _, c := range all {
 		var answer string
 		for try := 0; try < 3; try++ { // cota grátis: espera e tenta de novo
-			answer, _, err = Answer(context.Background(), p, Question{Text: c.q, Ledger: evalLedger(), Today: today, Anonymize: os.Getenv("FINAN_EVAL_LOCAL") == ""},
+			answer, _, err = Answer(context.Background(), p, Question{Text: c.q, Ledger: evalLedger(), Today: today, Anonymize: os.Getenv("FINAN_EVAL_LOCAL") == "", Agent: c.agent},
 				func(string) {}, func(Proposal) {})
 			if err == nil || !strings.Contains(err.Error(), "limite") && !strings.Contains(err.Error(), "ocupada") {
 				break
@@ -107,7 +137,7 @@ func TestEval(t *testing.T) {
 		}
 		var fails []string
 		must := c.must
-		if !strings.Contains(c.q, "piada") {
+		if !strings.Contains(c.q, "piada") && c.agent != "luna" { // a Luna responde em 3 frases, sem plano
 			must = append(append([]string{}, must...), personal...)
 		}
 		for _, re := range must {
@@ -130,7 +160,7 @@ func TestEval(t *testing.T) {
 		if len(fails) > 0 {
 			status = "FALHA"
 		}
-		t.Logf("%s %q %v\n%s\n", status, c.q, fails, answer)
+		t.Logf("%s %s%q %v\n%s\n", status, c.agent+" ", c.q, fails, answer)
 	}
 	t.Logf("NOTA: %d de %d critérios (%d%%)", passed, total, passed*100/max(total, 1))
 }
