@@ -579,10 +579,45 @@ label.file-button.primary-file:hover { background: var(--accent-strong); }
 .alert:hover { border-color: var(--border-2); background: var(--hover); color: var(--text); }
 
 /* Metas e recorrentes */
+/* Metas: anel de progresso (cor pela situação), cartões e o guardar rápido. */
+@keyframes goal-ring { from { stroke-dasharray: 0 264; } }
+.goal-ring .track, .goal-ring .arc { fill: none; stroke-width: 8; }
+.goal-ring .track { stroke: var(--track); }
+.goal-ring .arc { stroke: var(--c, var(--accent)); stroke-linecap: round; stroke-dasharray: var(--dash) 264; animation: goal-ring .9s cubic-bezier(.2, .8, .2, 1) both; }
+.goal-ring-wrap { position: relative; display: grid; place-items: center; flex: none; }
+.goal-ring-wrap > strong { position: absolute; font-size: 20px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.goal-chip { flex: none; font-size: 12px; font-weight: 500; padding: 2px 9px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.goal-chip.pos { color: var(--pos); }
+.goal-chip.neg { background: var(--neg-soft); color: var(--neg); }
+.goal-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
 .goals { list-style: none; margin: 0; padding: 0; display: grid; gap: .9rem; }
-.goal { --c: var(--accent); display: grid; gap: .35rem; }
-.goal.done { --c: var(--pos); }
-.goal.late { --c: var(--neg); }
+.goal { --c: var(--accent); display: flex; align-items: center; gap: 12px; }
+.goal-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.goal.done, .goal-card.done { --c: var(--pos); }
+.goal.late, .goal-card.late { --c: var(--neg); }
+.goal-strip strong.accent { color: var(--accent); }
+.goal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 14px; margin-bottom: 18px; }
+.goal-card { --c: var(--accent); display: flex; flex-direction: column; gap: 14px; padding: 20px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+.goal-card.done { border-color: var(--accent-line); }
+.goal-main { display: flex; align-items: flex-start; gap: 18px; }
+.goal-info { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
+.goal-info h2 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -.01em; }
+.goal-amount { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.goal-amount b { color: var(--text); font-weight: 600; }
+.goal-advice { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--inset); font-size: 13px; color: var(--text-2); }
+.goal-card.late .goal-advice { background: var(--neg-soft); color: var(--neg); }
+.goal-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.goal-quick { flex: 1 1 100%; height: 40px; padding: 0 4px 0 12px; }
+.goal-actions > [data-edit] { margin-left: auto; }
+.goal-quick input { flex: 1; min-width: 0; }
+.goal-quick button { min-height: 32px; height: 32px; }
+.goal-empty { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 14px; }
+.goal-empty .panel { display: flex; flex-direction: column; justify-content: center; gap: 14px; margin: 0; padding: 32px; }
+.goal-empty strong { font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
+.goal-empty-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.goal-empty-art { display: grid; place-items: center; min-height: 240px; border: 1px dashed var(--border-2); border-radius: 16px; }
+.goal-preview { margin: 0; }
+@media (max-width: 480px) { .goal-actions > [data-edit] { flex: 1; } }
 .recurring { list-style: none; margin: 0; padding: 0; }
 .recurring li { display: grid; grid-template-columns: 1fr auto auto; gap: .5rem 1rem; align-items: center; padding: .55rem 0; border-top: 1px solid var(--border); }
 .recurring li.paused { opacity: .6; }

@@ -127,14 +127,37 @@ try {
 
   // Meta com categoria de aportes.
   await page.goto(`${B}/metas`);
-  await page.waitForSelector("form[data-form=goal]");
+  await page.click("[data-action=new-goal] >> nth=0");
+  await page.waitForSelector("#goal-modal .modal-panel");
   await page.fill("input[name=name]", "Reserva");
   await page.fill("input[name=target]", "6.000");
   await page.fill("input[name=saved]", "1.000");
   await page.fill("input[name=deadline]", `${now.getFullYear() + 1}-${pad(now.getMonth() + 1)}`);
   await page.selectOption("select[name=category]", { label: "Reserva de emergência · Investimentos" });
+  ok((await page.textContent("[data-preview]")).includes("durante 13 meses") && (await page.textContent("[data-preview]")).includes("R$ 384,62"),
+    `a janela mostra quanto guardar por mês, com a mesma conta da meta (${await page.textContent("[data-preview]")})`);
   await page.click("form[data-form=goal] button[type=submit]");
-  await page.waitForSelector(".goal:has-text('Reserva')");
+  await page.waitForSelector(".goal-card:has-text('Reserva')");
+  // Guardar rápido: com categoria, vira uma saída nela (como o consultor faz).
+  await page.fill(".goal-card:has-text('Reserva') [data-quick] input", "250");
+  await page.press(".goal-card:has-text('Reserva') [data-quick] input", "Enter");
+  await page.waitForSelector(".goal-card:has-text('Reserva') .goal-amount:has-text('R$ 1.250,00')");
+  await page.evaluate(() => window.finanSync());
+  ok((await records("transaction")).some((t) => t.description === "Aporte: Reserva" && t.amountCents === 25000) && (await records("goal"))[0].savedCents === 100000,
+    "guardar numa meta com categoria lança o aporte na categoria");
+  // Sem categoria, soma no que já está guardado.
+  await page.click("[data-action=new-goal] >> nth=0");
+  await page.fill("input[name=name]", "Viagem");
+  await page.fill("input[name=target]", "2.000");
+  await page.click("form[data-form=goal] button[type=submit]");
+  await page.waitForSelector(".goal-card:has-text('Viagem')");
+  await page.fill(".goal-card:has-text('Viagem') [data-quick] input", "100");
+  await page.click(".goal-card:has-text('Viagem') [data-quick] button");
+  await page.waitForSelector(".goal-card:has-text('Viagem') .goal-amount:has-text('R$ 100,00')");
+  ok((await page.textContent(".goal-strip")).includes("Guardado nas metas") && await page.locator(".goal-card").count() === 2, "faixa do topo e um cartão por meta");
+  await page.click(".goal-card:has-text('Viagem') [data-edit]");
+  await page.click("#goal-modal [data-action=delete-editing]");
+  await page.waitForSelector(".goal-card:has-text('Viagem')", { state: "detached" });
   // Um aporte lançado na categoria conta para a meta.
   await page.goto(`${B}/lancamentos`);
   await page.waitForSelector(".tx-card");
@@ -146,7 +169,7 @@ try {
   await page.waitForSelector("td:has-text('Poupança')");
   await page.goto(`${B}/`);
   await page.waitForSelector(".goal:has-text('Reserva')");
-  ok((await page.textContent(".goal")).includes("R$ 1.500,00 de R$ 6.000,00 (25%)"), "meta no painel soma o já guardado e o aporte");
+  ok((await page.textContent(".goal")).includes("R$ 1.750,00 de R$ 6.000,00 · 29%"), `meta no painel soma o já guardado e os aportes (${await page.textContent(".goal")})`);
   await page.evaluate(() => window.finanSync());
   ok((await records("goal")).length === 1, "meta sincronizou");
 

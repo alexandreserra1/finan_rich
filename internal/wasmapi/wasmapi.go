@@ -8,6 +8,7 @@ package wasmapi
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/domain"
@@ -172,6 +173,38 @@ func Goals(ledgerJSON, today string) string {
 		return reply(nil, err)
 	}
 	return reply(finance.Goals(l, day), nil)
+}
+
+// GoalsPage devolve a tela Metas: as metas e as somas do topo.
+func GoalsPage(ledgerJSON, today string) string {
+	l, day, err := planInput(ledgerJSON, today)
+	if err != nil {
+		return reply(nil, err)
+	}
+	return reply(finance.GoalsPage(l, day), nil)
+}
+
+// GoalPlan é a prévia da janela de meta: meses até o prazo e quanto guardar por mês.
+func GoalPlan(remainingCents int64, deadline, today string) string {
+	day, err := time.Parse(domain.DateLayout, today)
+	if err != nil {
+		return reply(nil, err)
+	}
+	months, per, late := finance.GoalPlan(remainingCents, deadline, day)
+	return reply(map[string]any{"months": months, "perMonthCents": per, "late": late}, nil)
+}
+
+// Contribution diz o que gravar ao guardar dinheiro numa meta: {type, record}.
+func Contribution(goalJSON string, cents int64, date string) string {
+	var g domain.Goal
+	if err := json.Unmarshal([]byte(goalJSON), &g); err != nil {
+		return reply(nil, err)
+	}
+	if cents <= 0 {
+		return reply(nil, errors.New("informe quanto guardou"))
+	}
+	typ, rec := finance.Contribution(g, cents, date)
+	return reply(map[string]any{"type": typ, "record": rec}, nil)
 }
 
 // RecurringDue devolve os lançamentos que as recorrências devem gerar.

@@ -32,8 +32,13 @@ func main() {
 		"export": js.FuncOf(func(_ js.Value, a []js.Value) any {
 			return wasmapi.Export(str(a, 0), str(a, 1), int64(a[2].Float()))
 		}),
-		"readBackup":   js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.ReadBackup(str(a, 0)) }),
-		"goals":        js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Goals(str(a, 0), str(a, 1)) }),
+		"readBackup": js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.ReadBackup(str(a, 0)) }),
+		"goals":      js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Goals(str(a, 0), str(a, 1)) }),
+		"goalsPage":  js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.GoalsPage(str(a, 0), str(a, 1)) }),
+		"goalPlan":   js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.GoalPlan(int64(a[0].Float()), str(a, 1), str(a, 2)) }),
+		"contribution": js.FuncOf(func(_ js.Value, a []js.Value) any {
+			return wasmapi.Contribution(str(a, 0), int64(a[1].Float()), str(a, 2))
+		}),
 		"recurringDue": js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.RecurringDue(str(a, 0), str(a, 1)) }),
 		"alerts":       js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Alerts(str(a, 0), str(a, 1)) }),
 		"insights":     js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Insights(str(a, 0), str(a, 1)) }),

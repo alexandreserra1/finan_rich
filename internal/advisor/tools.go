@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/domain"
+	"github.com/alexandreserra1/finan_rich/internal/finance"
 	"github.com/alexandreserra1/finan_rich/internal/llm"
 	"github.com/alexandreserra1/finan_rich/internal/money"
 )
@@ -464,15 +465,16 @@ func (t *Tools) contribute(goalName, value, date string) (Proposal, error) {
 	if err != nil {
 		return Proposal{}, err
 	}
-	if g.CategoryID != "" {
-		if date == "" {
-			date = t.today.Format(domain.DateLayout)
-		}
-		tx := domain.Transaction{Meta: t.meta(), Kind: domain.KindSaida, Description: "Aporte: " + g.Name, AmountCents: v, CategoryID: g.CategoryID, Date: date}
-		return proposal(ActionCreate, domain.TypeTransaction, tx, "Aporte na meta "+g.Name+": "+t.txLabel(tx))
+	if date == "" {
+		date = t.today.Format(domain.DateLayout)
 	}
-	saved := g
-	saved.SavedCents += v
+	// A mesma regra do botão "Guardar" da tela Metas (finance.Contribution).
+	typ, rec := finance.Contribution(g, v, date)
+	if tx, ok := rec.(domain.Transaction); ok {
+		tx.Meta = t.meta()
+		return proposal(ActionCreate, typ, tx, "Aporte na meta "+g.Name+": "+t.txLabel(tx))
+	}
+	saved := rec.(domain.Goal)
 	saved.UpdatedAt = max(t.today.UnixMilli(), g.UpdatedAt+1)
 	return proposal(ActionEdit, domain.TypeGoal, saved, fmt.Sprintf("Aporte na meta %s: guardado %s → %s (de %s)",
 		g.Name, money.Format(g.SavedCents), money.Format(saved.SavedCents), money.Format(g.TargetCents)))

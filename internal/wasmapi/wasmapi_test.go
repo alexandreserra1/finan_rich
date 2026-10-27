@@ -227,3 +227,20 @@ func TestTeamAndRoute(t *testing.T) {
 		t.Errorf("Route = %s", got)
 	}
 }
+
+func TestGoalsPageAndContribution(t *testing.T) {
+	var page struct{ OK map[string]any }
+	json.Unmarshal([]byte(GoalsPage(ledger, "2026-10-10")), &page)
+	if _, ok := page.OK["goals"].([]any); !ok || page.OK["perMonthCents"] == nil {
+		t.Errorf("tela Metas: %+v", page)
+	}
+	if got := GoalPlan(600000, "2027-03", "2026-10-10"); got != `{"ok":{"late":false,"months":6,"perMonthCents":100000}}` {
+		t.Errorf("GoalPlan = %s", got)
+	}
+	if got := Contribution(`{"id":"g","name":"Viagem","targetCents":100,"savedCents":10}`, 5, "2026-10-10"); !strings.Contains(got, `"type":"goal"`) || !strings.Contains(got, `"savedCents":15`) {
+		t.Errorf("Contribution = %s", got)
+	}
+	if got := Contribution(`{"id":"g"}`, 0, "2026-10-10"); !strings.Contains(got, "informe quanto guardou") {
+		t.Errorf("valor zero = %s", got)
+	}
+}
