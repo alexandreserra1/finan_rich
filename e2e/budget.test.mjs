@@ -110,6 +110,8 @@ try {
   await page.waitForSelector("#orcamentos");
   ok((await page.textContent("#orcamentos")).includes("R$ 80,00 de R$ 100,00"), "Painel mostra quanto já foi usado do orçamento");
   ok(await page.isVisible(".alert.warn:has-text('Orçamento de Restaurantes e delivery em 80%')"), "aviso ao chegar a 80%");
+  ok(await page.locator(".alert.warn:has-text('em 80%') .who").textContent() === "Luna" &&
+    await page.locator(".alert.warn:has-text('em 80%') img.face").evaluate((i) => i.complete && i.naturalWidth > 0), "o aviso vem da Luna, com o rosto dela");
   await page.goto(`${B}/lancamentos`);
   await page.waitForSelector(".tx-card");
   await add("iFood lanche", "30", "Restaurantes e delivery · Desejos");

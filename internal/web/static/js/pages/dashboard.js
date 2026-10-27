@@ -158,7 +158,7 @@ export function render(ctx) {
     ${pageHead("Painel", month, { kicker: "Visão do mês", actions: html`<a class="btn" href="/lancamentos">${PLUS}Novo lançamento</a>` })}
 
     ${alerts.length ? html`<section class="alerts" aria-label="Avisos">
-      ${alerts.map((a) => html`<a class="alert ${a.level}" href="${a.link}"><i class="dot" aria-hidden="true"></i><strong>${a.title}</strong><span>${a.text}</span></a>`)}
+      ${alerts.map((a) => html`<a class="alert ${a.level}" href="${a.link}"><img class="face" src="/static/img/avatar-${a.agent.animal}.png" alt="" width="24" height="24"><b class="who">${a.agent.name}</b><strong>${a.title}</strong><span>${a.text}</span></a>`)}
     </section>` : ""}
 
     <section class="cards has-hero dash-kpis">
