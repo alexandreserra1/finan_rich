@@ -1,5 +1,5 @@
-// Recursos do celular no app (Capacitor): leitor de QR code e lembretes de
-// vencimento das dívidas. No navegador, os lembretes não existem.
+// Recursos do celular no app (Capacitor): leitor de QR code e os lembretes do
+// time (vencimentos, achados da semana, balanço das metas). No navegador, os lembretes não existem.
 import { getMeta, setMeta } from "./db.js";
 import { isApp, pairingLink } from "./device.js";
 import { cameraAvailable, scanQR } from "./qrscan.js";
@@ -32,52 +32,74 @@ export function parsePairingQR(text) {
   return null;
 }
 
-// ---- lembretes de vencimento ----
+// ---- lembretes do time ----
 
-const REMINDER = "debt-due";
+const KINDS = ["debt-due", "team"]; // os nossos (os de vencimento antigos eram "debt-due")
+const ours = async (notif) => (await notif.getPending()).notifications.filter((n) => KINDS.includes(n.extra?.kind));
 
-// scheduleDebtReminders agenda, para cada dívida com dia de vencimento, um
-// aviso todo mês dois dias antes, às 9h. Funciona com o celular offline (é o
-// próprio Android que avisa). Só reagenda quando as dívidas mudam.
-export async function scheduleDebtReminders(ledger) {
+// teamReminders monta os lembretes, todos às 9h e repetindo sozinhos (o
+// próprio Android avisa, mesmo offline):
+// - Luna: cada dívida com vencimento, dois dias antes, todo mês;
+// - Otávio: toda segunda, os achados da semana (se há lançamentos);
+// - Tito: no dia do salário, o balanço das metas (se há metas).
+// O texto é fixo: a conta de verdade aparece ao abrir (cartão "O que o time viu").
+function teamReminders(ledger) {
+  const live = (list) => list.filter((r) => !r.deleted);
+  const out = live(ledger.debts).filter((d) => d.dueDay > 0 && d.balanceCents > 0).map((d, i) => ({
+    id: 7100 + i,
+    title: `Luna: ${d.name} vence dia ${d.dueDay}`,
+    body: "Abra o finan_rich para ver a parcela e o plano para quitar.",
+    schedule: { on: { day: Math.max(1, d.dueDay - 2), hour: 9, minute: 0 }, allowWhileIdle: true },
+    extra: { kind: "team", link: "/dividas" },
+  }));
+  if (live(ledger.transactions).length) {
+    out.push({ id: 7300, title: "Otávio: os achados da semana", body: "Veja para onde foi o dinheiro e onde dá para guardar.",
+      schedule: { on: { weekday: 2, hour: 9, minute: 0 }, allowWhileIdle: true }, extra: { kind: "team", link: "/analise" } }); // weekday 2 = segunda
+  }
+  if (live(ledger.goals).length) {
+    const salary = live(ledger.recurring || []).find((r) => r.kind === "entrada" && r.day > 0);
+    out.push({ id: 7301, title: "Tito: balanço das metas", body: "Veja quanto guardar este mês para chegar no prazo de cada meta.",
+      schedule: { on: { day: Math.min(salary?.day || 1, 28), hour: 9, minute: 0 }, allowWhileIdle: true }, extra: { kind: "team", link: "/metas" } });
+  }
+  return out;
+}
+
+// scheduleReminders reagenda os lembretes do time quando o que eles dizem muda.
+export async function scheduleReminders(ledger) {
   const notif = plugins().LocalNotifications;
   if (!isApp || !notif) return;
   if ((await getMeta("reminders", "on")) !== "on") return;
-  const debts = ledger.debts.filter((d) => !d.deleted && d.dueDay > 0 && d.balanceCents > 0);
-  const signature = JSON.stringify(debts.map((d) => [d.id, d.name, d.dueDay]));
+  const list = teamReminders(ledger);
+  const signature = JSON.stringify(list.map((n) => [n.id, n.title, n.schedule.on]));
   if (signature === (await getMeta("reminders-sig", ""))) return;
 
-  if (debts.length) {
+  if (list.length) {
     let perm = await notif.checkPermissions();
     if (perm.display === "prompt" || perm.display === "prompt-with-rationale") perm = await notif.requestPermissions();
     if (perm.display !== "granted") return;
   }
-  const pending = await notif.getPending();
-  const ours = pending.notifications.filter((n) => n.extra?.kind === REMINDER);
-  if (ours.length) await notif.cancel({ notifications: ours.map((n) => ({ id: n.id })) });
-  if (debts.length) {
-    await notif.schedule({
-      notifications: debts.map((d, i) => ({
-        id: 7100 + i,
-        title: `Luna: ${d.name} vence dia ${d.dueDay}`, // a Luna cuida dos vencimentos (finance.Team)
-        body: "Abra o finan_rich para ver a parcela e o plano para quitar.",
-        schedule: { on: { day: Math.max(1, d.dueDay - 2), hour: 9, minute: 0 }, allowWhileIdle: true },
-        extra: { kind: REMINDER, debtId: d.id },
-      })),
-    });
-  }
+  const old = await ours(notif);
+  if (old.length) await notif.cancel({ notifications: old.map((n) => ({ id: n.id })) });
+  if (list.length) await notif.schedule({ notifications: list });
   await setMeta("reminders-sig", signature);
+}
+
+// onReminderTap: tocar num lembrete abre a tela dele.
+export function onReminderTap(open) {
+  plugins().LocalNotifications?.addListener?.("localNotificationActionPerformed", (e) => {
+    const link = e?.notification?.extra?.link;
+    if (link) open(link);
+  });
 }
 
 export async function setRemindersEnabled(on, ledger) {
   await setMeta("reminders", on ? "on" : "off");
   await setMeta("reminders-sig", "");
-  if (on) return scheduleDebtReminders(ledger);
+  if (on) return scheduleReminders(ledger);
   const notif = plugins().LocalNotifications;
   if (!notif) return;
-  const pending = await notif.getPending();
-  const ours = pending.notifications.filter((n) => n.extra?.kind === REMINDER);
-  if (ours.length) await notif.cancel({ notifications: ours.map((n) => ({ id: n.id })) });
+  const old = await ours(notif);
+  if (old.length) await notif.cancel({ notifications: old.map((n) => ({ id: n.id })) });
 }
 
 export const remindersEnabled = async () => isApp && !!plugins().LocalNotifications && (await getMeta("reminders", "on")) === "on";

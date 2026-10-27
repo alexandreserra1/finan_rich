@@ -6,9 +6,12 @@ números reais. Seus dados ficam num arquivo no seu PC, sem conta e sem nuvem.
 
 - **Painel do mês**: entradas, saídas, saldo, quanto você guardou, divisão do salário
   (planejado x realizado), gastos por categoria e visão anual.
-- **Avisos no painel**: dívida vencendo, dívida que cresce, grupo acima da meta do mês,
-  gasto fora do padrão e meta atrasada ou atingida. No app do celular, lembrete de
-  vencimento das dívidas mesmo sem internet.
+- **O time**: cinco personagens cuidam cada um de um assunto. Jade (consultora), Bento
+  (dívidas), Luna (alertas), Tito (metas) e Otávio (análise) assinam os avisos do painel,
+  contam no cartão "O que o time viu" o que acharam e conversam no Consultor, cada um do
+  seu jeito. Avisos: dívida vencendo, dívida que cresce, grupo acima da meta do mês, gasto
+  fora do padrão e meta atrasada ou atingida. No app do celular, lembretes mesmo sem
+  internet: Luna antes de cada vencimento, Otávio toda segunda e Tito no dia do salário.
 - **Lançamentos** por categoria, com *Repetir todo mês* (salário, aluguel, assinaturas entram
   sozinhos), *Copiar do mês anterior* e busca com filtros (texto sem ligar para acento,
   categoria, tipo, faixa de valor, um mês ou todos) que soma o que achou.

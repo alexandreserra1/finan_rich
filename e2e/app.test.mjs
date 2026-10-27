@@ -600,6 +600,54 @@ try {
   ok(!meta.token && meta.vault && inVault?.length > 20, "token antigo em texto passa para o cofre e a sincronização continua");
   await ofCtx.close();
 
+  // Lembretes do time no celular (plugin de notificações falso): Luna avisa
+  // o vencimento, Otávio toda segunda e Tito no dia do salário; o toque abre a tela.
+  const remCtx = await browser.newContext({ ...devices["Pixel 7"] });
+  await remCtx.addInitScript(() => {
+    const load = () => JSON.parse(localStorage.getItem("notif-falsas") || "[]");
+    const put = (n) => localStorage.setItem("notif-falsas", JSON.stringify(n));
+    window.__notifs = load;
+    window.__tap = null;
+    window.Capacitor = { Plugins: { LocalNotifications: {
+      checkPermissions: async () => ({ display: "granted" }),
+      requestPermissions: async () => ({ display: "granted" }),
+      getPending: async () => ({ notifications: load() }),
+      cancel: async ({ notifications }) => put(load().filter((n) => !notifications.some((c) => c.id === n.id))),
+      schedule: async ({ notifications }) => put([...load(), ...notifications]),
+      addListener: (name, fn) => { if (name === "localNotificationActionPerformed") window.__tap = fn; },
+    } } };
+  });
+  const rem = await remCtx.newPage();
+  rem.on("pageerror", (e) => errors.push(e.message));
+  rem.on("dialog", (d) => d.accept());
+  await rem.goto(`${APP}/configuracoes`);
+  await rem.click("[data-action=solo]");
+  await rem.waitForSelector("main h1", { timeout: 20000 });
+  await rem.evaluate(async () => {
+    const db = await import("/static/js/db.js");
+    const f = await import("/static/js/finance.js");
+    const now = Date.now();
+    const renda = (await db.loadLedger()).categories.find((c) => c.bucket === "renda");
+    await db.saveLocal("debt", f.validate("debt", { id: "d-lembrete", updatedAt: now, name: "Cartão", balanceCents: 100000, monthlyRateBp: 1000, minPaymentCents: 20000, dueDay: 12 }));
+    await db.saveLocal("goal", f.validate("goal", { id: "g-lembrete", updatedAt: now, name: "Viagem", targetCents: 500000, savedCents: 0, startDate: "2026-01-01" }));
+    await db.saveLocal("recurring", f.validate("recurring", { id: "r-lembrete", updatedAt: now, kind: "entrada", description: "Salário", amountCents: 400000, categoryId: renda.id, day: 5, start: "2026-01" }));
+  });
+  await rem.reload();
+  await rem.waitForFunction(() => window.__notifs().length >= 3, null, { timeout: 20000 });
+  const notifs = await rem.evaluate(() => window.__notifs());
+  const by = (who) => notifs.find((n) => n.title.startsWith(who + ":"));
+  ok(by("Luna")?.title === "Luna: Cartão vence dia 12" && by("Luna").schedule.on.day === 10 && by("Luna").extra.link === "/dividas",
+    "Luna avisa o vencimento dois dias antes");
+  ok(by("Otávio")?.schedule.on.weekday === 2 && by("Otávio").schedule.on.hour === 9 && by("Otávio").extra.link === "/analise",
+    "Otávio avisa toda segunda, às 9h, e leva à Análise");
+  ok(by("Tito")?.schedule.on.day === 5 && by("Tito").extra.link === "/metas", "Tito faz o balanço das metas no dia do salário");
+  await rem.evaluate(() => window.__tap({ notification: { extra: { link: "/metas" } } }));
+  await rem.waitForFunction(() => location.pathname === "/metas");
+  ok(true, "tocar na notificação abre a tela certa");
+  await rem.evaluate(async () => (await import("/static/js/native.js")).setRemindersEnabled(false));
+  ok((await rem.evaluate(() => window.__notifs())).length === 0, "desligar os lembretes cancela os do time também");
+  await remCtx.close();
+
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);
 } catch (err) {
   ok(false, err.message);

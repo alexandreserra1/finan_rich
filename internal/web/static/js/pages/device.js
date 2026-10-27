@@ -193,8 +193,13 @@ export function render({ server, params, ledger }) {
 
     ${hasReminders() ? html`<section class="panel">
       <h2>Lembretes</h2>
-      <label class="check"><input type="checkbox" data-action="reminders" ${remindersOn ? "checked" : ""}> Avisar 2 dias antes do vencimento das dívidas (às 9h)</label>
-      <p class="small muted">O aviso é do próprio celular: funciona sem internet. Cadastre o dia do vencimento em Dívidas.</p>
+      <label class="check"><input type="checkbox" data-action="reminders" ${remindersOn ? "checked" : ""}> Lembretes do time (às 9h)</label>
+      <ul class="small muted">
+        <li>Luna: 2 dias antes do vencimento de cada dívida (cadastre o dia em Dívidas).</li>
+        <li>Otávio: toda segunda, os achados da semana.</li>
+        <li>Tito: no dia do salário, o balanço das metas.</li>
+      </ul>
+      <p class="small muted">O aviso é do próprio celular: funciona sem internet.</p>
     </section>` : ""}
 
     <section class="panel" id="tema">

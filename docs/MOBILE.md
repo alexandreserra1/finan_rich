@@ -80,7 +80,7 @@ no navegador do celular (pede a senha de acesso na primeira vez).
 | `static/js/device.js` | Onde sincronizar: no navegador, o mesmo endereço (cookie); no app, o computador pareado (token). Pareamento, nome do aparelho, leitura do link `finanrich://`. |
 | `static/js/pages/device.js` | Tela de Ajustes do app (parear, sincronizar, desconectar, apagar dados). |
 | `static/js/pages/advisor.js` | Aba Consultor no app: conversa com a IA do computador (`/api/chat`, com o token). |
-| `static/js/native.js` | Leitor de QR code e lembretes de vencimento (plugins do Capacitor). |
+| `static/js/native.js` | Leitor de QR code e lembretes do time (plugins do Capacitor). |
 | `mobile/package.json`, `capacitor.config.json` | Projeto Capacitor (Android). `CapacitorHttp` faz as chamadas pela rede nativa do celular, sem as travas de `http://` do navegador. Os plugins `Filesystem` e `Share` salvam os arquivos exportados (Excel, PDF, CSV, backup) e abrem o menu de compartilhar do Android. |
 | `mobile/android/` | Projeto Android (gerado pelo `cap add android`, versionado). Mudanças nossas: `AndroidManifest.xml` (link `finanrich://` e `usesCleartextTraffic` para o `http://` do Wi-Fi), `app/build.gradle` (versão e assinatura pelo ambiente), ícones e tela de abertura. |
 | `mobile/scripts/icons.py` | Gera os ícones e as telas de abertura (Pillow). |
@@ -199,9 +199,11 @@ A versão do app fica em `mobile/android/app/version.properties`: o workflow de 
   [jsQR](https://github.com/cozmo/jsQR) (Apache-2.0), em `js/qrscan.js`. Lê o QR dos Ajustes
   do computador (`http://…/parear?codigo=…`) e conecta. Sem bibliotecas fechadas (veja
   [LICENSES.md](LICENSES.md)).
-- **Lembretes de vencimento**: `@capacitor/local-notifications` agenda, para cada dívida com dia
-  de vencimento, um aviso mensal 2 dias antes, às 9h. É o próprio Android/iOS que avisa,
-  então funciona sem internet. Liga e desliga em Ajustes do app (`js/native.js`).
+- **Lembretes do time**: `@capacitor/local-notifications` agenda, às 9h, a Luna 2 dias antes
+  do vencimento de cada dívida (todo mês), o Otávio toda segunda (se há lançamentos) e o Tito
+  no dia do salário (se há metas). É o próprio Android/iOS que avisa, então funciona sem
+  internet; o texto é fixo e a conta aparece ao abrir. Tocar no lembrete abre a tela dele.
+  Liga e desliga em Ajustes do app (`js/native.js`).
 - **Open Finance** (Ajustes do app → *Open Finance*): lançamentos direto do banco pelo Meu
   Pluggy, com as credenciais da própria pessoa. O Client ID e os Item IDs ficam no banco do
   app (meta `pluggy`); o Client Secret, no cofre do sistema (`pluggy-secret`, o mesmo plugin

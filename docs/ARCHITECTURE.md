@@ -443,7 +443,7 @@ Arquivos do navegador (`static/`):
 | `vendor/pdfjs/` | pdf.js 6.3 (Mozilla, Apache-2.0), build legacy, embutido para funcionar offline. |
 | `js/pages/goals.js` | Metas: criar, editar, apagar; cartões de progresso (também usados no painel). |
 | `js/notes-save.js` | Salva uma resposta do consultor como nota (usado pelo chat do navegador e do app). |
-| `js/native.js` | Só no app do celular: leitor de QR e lembretes de vencimento. |
+| `js/native.js` | Só no app do celular: leitor de QR e lembretes do time (vencimentos, achados da semana, balanço das metas). |
 | `js/exporter.js` | Entrega o arquivo gerado: download no navegador; no app do celular, salva e abre o menu de compartilhar (plugins Filesystem e Share do Capacitor). |
 | `js/pages/device.js`, `js/pages/advisor.js` | Só no app do celular: Ajustes (pareamento, QR, lembretes) e Consultor (conversa pela `/api/chat`). |
 

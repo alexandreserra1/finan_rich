@@ -7,7 +7,7 @@ import * as db from "./db.js";
 import * as device from "./device.js";
 import "./lock.js"; // app do celular: pede digital/rosto ou senha para abrir
 import { applyProposal, proposalButton, saveNote } from "./notes-save.js";
-import { scheduleDebtReminders } from "./native.js";
+import { onReminderTap, scheduleReminders } from "./native.js";
 import * as finance from "./finance.js";
 import * as charts from "./charts.js";
 import * as sync from "./sync.js";
@@ -115,7 +115,7 @@ function context(path, params) {
       await db.saveLocal(type, normalized);
       upsert(list, normalized);
       if (type === "recurring") await applyRecurring();
-      if (type === "debt") scheduleDebtReminders(ledger).catch(() => {});
+      if (["debt", "goal", "recurring", "transaction"].includes(type)) scheduleReminders(ledger).catch(() => {}); // só reagenda se o texto mudar
       sync.soon();
       if (rerender) render(message);
     },
@@ -185,7 +185,7 @@ async function load() {
   [ledger, server] = await Promise.all([db.loadLedger(), device.server()]);
   if (device.isSite) signedIn = !!(await google.account());
   await applyRecurring();
-  scheduleDebtReminders(ledger).catch(() => {}); // no app: avisos de vencimento
+  scheduleReminders(ledger).catch(() => {}); // no app: os lembretes do time
 }
 
 // applyRecurring grava os lançamentos recorrentes que já venceram e ainda não
@@ -253,6 +253,9 @@ if (root) {
 
 // App do celular: links finanrich://parear?url=...&codigo=... (QR code do
 // computador) abrem a tela de Ajustes já preenchida, para a pessoa confirmar.
+// Tocar num lembrete do time abre a tela dele.
+if (device.isApp) onReminderTap((link) => ROUTES[link] && navigate(link));
+
 const capApp = window.Capacitor?.Plugins?.App;
 if (device.isApp && capApp) {
   const openLink = (link) => {
