@@ -15,4 +15,5 @@ type ChatMessage struct {
 	Content string
 	// Proposals: mudanças propostas pelo consultor nesta resposta (JSON, ou vazio).
 	Proposals json.RawMessage
+	Agent     string // quem do time respondeu (vazio: Jade)
 }

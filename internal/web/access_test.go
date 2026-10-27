@@ -355,7 +355,7 @@ func TestAISettingsKeyAndChatSafety(t *testing.T) {
 		}
 	}
 	save(url.Values{"preset": {"ollama"}, "model": {"qwen3.5:9b"}})
-	if err := a.srv.store.AppendChatTurn(ctx, "minha nota diz consulta com Dr. X", "ok", nil); err != nil {
+	if err := a.srv.store.AppendChatTurn(ctx, "minha nota diz consulta com Dr. X", "ok", "", nil); err != nil {
 		t.Fatal(err)
 	}
 	groq := llm.PresetByID("groq")

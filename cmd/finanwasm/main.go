@@ -53,6 +53,8 @@ func main() {
 		}),
 		"driveNeedsUpload":  js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.DriveNeedsUpload(str(a, 0), str(a, 1)) }),
 		"canDeleteCategory": js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.CanDeleteCategory(str(a, 0), str(a, 1)) }),
+		"team":              js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Team() }),
+		"route":             js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Route(str(a, 0)) }),
 		"searchTransactions": js.FuncOf(func(_ js.Value, a []js.Value) any {
 			return wasmapi.SearchTransactions(str(a, 0), str(a, 1))
 		}),

@@ -194,7 +194,7 @@ func TestAskWithTools(t *testing.T) {
 		{Text: "Você gastou **R$ 82,30** com iFood."},
 	}}
 	tools := NewTools(toolsLedger(), time.Now(), nil)
-	answer, err := Ask(context.Background(), fake, nil, "quanto gastei com ifood?", "resumo", tools, func(string) {})
+	answer, err := Ask(context.Background(), fake, "", nil, "quanto gastei com ifood?", "resumo", tools, func(string) {})
 	if err != nil || answer != "Você gastou **R$ 82,30** com iFood." {
 		t.Fatalf("answer=%q err=%v", answer, err)
 	}
@@ -211,8 +211,8 @@ func TestAskFallsBackWithoutTools(t *testing.T) {
 		errs:    []error{&llm.APIError{Status: 400, Message: "model does not support tools"}},
 		replies: []llm.Reply{{}, {Text: "Resposta sem ferramentas."}},
 	}
-	answer, err := Ask(context.Background(), fake, nil, "oi", "resumo", NewTools(toolsLedger(), time.Now(), nil), func(string) {})
-	if err != nil || answer != "Resposta sem ferramentas." || fake.asked[1].Tools != nil || fake.asked[1].System != SystemPrompt {
+	answer, err := Ask(context.Background(), fake, "", nil, "oi", "resumo", NewTools(toolsLedger(), time.Now(), nil), func(string) {})
+	if err != nil || answer != "Resposta sem ferramentas." || fake.asked[1].Tools != nil || fake.asked[1].System != systemFor("") {
 		t.Fatalf("answer=%q err=%v", answer, err)
 	}
 }
@@ -220,7 +220,7 @@ func TestAskFallsBackWithoutTools(t *testing.T) {
 func TestAskStopsCallingTools(t *testing.T) {
 	loop := llm.Reply{ToolCalls: []llm.ToolCall{call("buscar_lancamentos", `{}`)}}
 	fake := &scriptedLLM{replies: []llm.Reply{loop, loop, loop, loop, {Text: "Fim."}}}
-	answer, err := Ask(context.Background(), fake, nil, "oi", "resumo", NewTools(toolsLedger(), time.Now(), nil), func(string) {})
+	answer, err := Ask(context.Background(), fake, "", nil, "oi", "resumo", NewTools(toolsLedger(), time.Now(), nil), func(string) {})
 	if err != nil || answer != "Fim." || len(fake.asked) != maxToolRounds+1 || fake.asked[maxToolRounds].Tools != nil {
 		t.Fatalf("answer=%q err=%v rodadas=%d", answer, err, len(fake.asked))
 	}

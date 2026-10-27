@@ -1,5 +1,13 @@
 package finance
 
+import (
+	"slices"
+	"strings"
+	"unicode"
+
+	"github.com/alexandreserra1/finan_rich/internal/importer"
+)
+
 // Agent é um personagem do time do finan_rich. Cada um cuida de um assunto e
 // assina os avisos dele; a imagem fica em static/img/avatar-<Animal>.png.
 type Agent struct {
@@ -37,4 +45,35 @@ func agentFor(kind string) Agent {
 		}
 	}
 	return Team[0]
+}
+
+// routes: palavras que indicam o assunto de cada personagem, na ordem de
+// prioridade (dívida antes de tudo). "x*" vale para palavras que começam com x.
+var routes = []struct {
+	agent string
+	words []string
+}{
+	{"bento", []string{"divida*", "juros", "rotativo", "cheque especial", "emprestimo*", "financiamento*", "quitar", "devendo", "negociar"}},
+	{"tito", []string{"meta", "metas", "reserva", "guardar", "juntar", "poupar", "poupanca", "aposentadoria", "investir"}},
+	{"luna", []string{"vence", "vencimento*", "fatura*", "lembra*", "lembrete*", "orcamento*", "teto", "boleto*", "atrasad*"}},
+	{"otavio", []string{"gastei", "gasto*", "gastando", "assinatura*", "categoria*", "mes passado", "relatorio", "comparar", "analise"}},
+}
+
+// Route diz quem do time cuida do assunto da pergunta ("" se nenhum em
+// especial). A tela usa para sugerir trocar de personagem.
+func Route(question string) string {
+	words := strings.FieldsFunc(importer.Normalize(question), func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) })
+	text := " " + strings.Join(words, " ") + " "
+	for _, r := range routes {
+		for _, w := range r.words {
+			if stem, ok := strings.CutSuffix(w, "*"); ok {
+				if slices.ContainsFunc(words, func(x string) bool { return strings.HasPrefix(x, stem) }) {
+					return r.agent
+				}
+			} else if strings.Contains(text, " "+w+" ") {
+				return r.agent
+			}
+		}
+	}
+	return ""
 }

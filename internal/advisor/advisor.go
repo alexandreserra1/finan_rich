@@ -77,9 +77,11 @@ const maxToolRounds = 4
 // Ask envia a pergunta ao provedor e devolve a resposta completa; onText recebe
 // os pedaços conforme chegam. Com tools, a IA pode buscar lançamentos e propor
 // lançamentos; se o modelo não aceitar ferramentas, pergunta sem elas.
-func Ask(ctx context.Context, p llm.Provider, history []llm.Message, question, snapshot string, tools *Tools, onText func(string)) (string, error) {
+func Ask(ctx context.Context, p llm.Provider, agent string, history []llm.Message, question, snapshot string, tools *Tools, onText func(string)) (string, error) {
 	req := BuildRequest(history, question, snapshot)
+	req.System = systemFor(agent)
 	if tools != nil {
+		tools.only = persona(agent).Tools
 		req.System += toolsPrompt
 		req.Tools = tools.Defs()
 	}
@@ -90,7 +92,7 @@ func Ask(ctx context.Context, p llm.Provider, history []llm.Message, question, s
 		}
 		reply, err := p.Chat(ctx, req, onText)
 		if err != nil && req.Tools != nil && llm.ToolsUnsupported(err) {
-			req.System, req.Tools, req.Messages = SystemPrompt, nil, withoutTools(req.Messages)
+			req.System, req.Tools, req.Messages = systemFor(agent), nil, withoutTools(req.Messages)
 			continue
 		}
 		if err != nil {
@@ -146,7 +148,8 @@ type Question struct {
 	Text      string
 	Ledger    domain.Ledger
 	Today     time.Time
-	Anonymize bool // IA de fora do aparelho: nomes viram apelidos (ver anon.go)
+	Anonymize bool   // IA de fora do aparelho: nomes viram apelidos (ver anon.go)
+	Agent     string // quem do time responde (personas.go); vazio = Jade
 }
 
 // Answer responde à pergunta com as ferramentas ligadas. Com Anonymize, a IA
@@ -172,7 +175,7 @@ func Answer(ctx context.Context, p llm.Provider, q Question, onText func(string)
 		proposals = append(proposals, pr)
 		onProposal(pr)
 	})
-	answer, err := Ask(ctx, p, history, text, Snapshot(BuildFacts(ledger, q.Today)), tools, emit)
+	answer, err := Ask(ctx, p, q.Agent, history, text, Snapshot(BuildFacts(ledger, q.Today)), tools, emit)
 	if err != nil {
 		return "", nil, err
 	}
@@ -203,5 +206,7 @@ func LocalRequest(q Question) llm.Request {
 	if len(f.Merchants) > maxLocalMerchants {
 		f.Merchants = f.Merchants[:maxLocalMerchants]
 	}
-	return BuildRequest(history, q.Text, Snapshot(f))
+	r := BuildRequest(history, q.Text, Snapshot(f))
+	r.System = systemFor(q.Agent)
+	return r
 }

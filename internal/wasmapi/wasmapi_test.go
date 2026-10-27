@@ -211,3 +211,14 @@ func TestDriveNeedsUpload(t *testing.T) {
 		t.Errorf("aparelho sem nada novo = %v", got)
 	}
 }
+
+func TestTeamAndRoute(t *testing.T) {
+	var team struct{ OK []map[string]string }
+	json.Unmarshal([]byte(Team()), &team)
+	if len(team.OK) != 5 || team.OK[1]["name"] != "Bento" || team.OK[1]["animal"] != "urso" {
+		t.Errorf("time: %+v", team)
+	}
+	if got := Route("quanto pago de juros na dívida?"); got != `{"ok":"bento"}` {
+		t.Errorf("Route = %s", got)
+	}
+}

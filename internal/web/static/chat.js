@@ -4,16 +4,49 @@
   const form = document.getElementById("chat-form");
   const input = form.elements.message;
   const button = form.querySelector("button");
+  const team = [...document.querySelectorAll("[data-agent]")];
+  let agent = "jade"; // com quem a pessoa está falando (lembrado neste navegador)
+  try { agent = localStorage.getItem("consultor-agente") || agent; } catch {}
+
+  function pick(id) {
+    if (!team.some((b) => b.dataset.agent === id)) id = "jade";
+    agent = id;
+    try { localStorage.setItem("consultor-agente", id); } catch {}
+    let name = "";
+    team.forEach((b) => {
+      b.setAttribute("aria-pressed", String(b.dataset.agent === id));
+      if (b.dataset.agent === id) name = b.dataset.name;
+    });
+    input.placeholder = "Mensagem para " + name + "…";
+    input.setAttribute("aria-label", input.placeholder);
+    document.querySelector(".handoff")?.remove();
+  }
+
+  // whoTag: rosto e nome de quem respondeu, no alto da resposta.
+  function whoTag(id) {
+    const b = team.find((x) => x.dataset.agent === id) || team[0];
+    const tag = document.createElement("span");
+    tag.className = "msg-who";
+    const img = document.createElement("img");
+    Object.assign(img, { className: "face", src: "/static/img/avatar-" + b.dataset.animal + ".png", alt: "", width: 22, height: 22 });
+    tag.append(img, b.dataset.name + " · " + b.dataset.role);
+    return tag;
+  }
 
   function render(el, text) {
     el.dataset.raw = text;
-    el.innerHTML = Finan.markdown(text);
+    (el.querySelector(".md") || el).innerHTML = Finan.markdown(text);
   }
 
-  function add(role, text) {
+  function add(role, text, who) {
     document.querySelector(".suggestions")?.remove();
     const el = document.createElement("div");
     el.className = "msg " + role;
+    if (who) {
+      const md = document.createElement("div");
+      md.className = "md";
+      el.append(whoTag(who), md);
+    }
     render(el, text);
     messages.appendChild(el);
     el.scrollIntoView({ block: "end" });
@@ -69,7 +102,26 @@
     return card;
   }
 
-  document.querySelectorAll("[data-md]").forEach((el) => render(el, el.textContent));
+  document.querySelectorAll("[data-md]").forEach((md) => render(md.parentElement, md.textContent));
+  team.forEach((b) => b.addEventListener("click", () => pick(b.dataset.agent)));
+  pick(agent);
+
+  // O assunto é de outro do time: oferece perguntar para ele a mesma coisa.
+  function addHandoff(who, question) {
+    const box = document.createElement("div");
+    box.className = "handoff";
+    const img = document.createElement("img");
+    Object.assign(img, { className: "face", src: "/static/img/avatar-" + who.animal + ".png", alt: "", width: 28, height: 28 });
+    const text = document.createElement("span");
+    text.textContent = "Isso é com " + who.name + " (" + who.role + ").";
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "small-btn secondary";
+    b.textContent = "Perguntar para " + who.name;
+    b.addEventListener("click", () => { pick(who.id); input.value = question; form.requestSubmit(); });
+    box.append(img, text, b);
+    messages.appendChild(box);
+  }
   // Cartões salvos na conversa (main.js carrega depois: espera para os botões).
   window.addEventListener("load", () => document.querySelectorAll("[data-proposals]").forEach((list) =>
     JSON.parse(list.dataset.proposals).forEach((p) => addProposal(list, p))));
@@ -89,13 +141,16 @@
     if (!text) return;
     button.disabled = true;
     input.value = "";
+    document.querySelector(".handoff")?.remove();
     add("user", text);
-    const reply = add("assistant pending", "Pensando… Na primeira pergunta o modelo é carregado na memória, o que pode levar alguns minutos em computadores mais lentos.");
+    const reply = add("assistant pending", "Pensando… Na primeira pergunta o modelo é carregado na memória, o que pode levar alguns minutos em computadores mais lentos.", agent);
+    let suggest = null;
     let answer = "";
     let proposals = null;
     try {
       await window.finanSync?.();
-      await Finan.postSSE("/chat/enviar", new URLSearchParams({ message: text }), (ev) => {
+      await Finan.postSSE("/chat/enviar", new URLSearchParams({ message: text, agent }), (ev) => {
+        if (ev.suggest) { suggest = ev.suggest; return; }
         if (ev.proposal) {
           if (!proposals) {
             proposals = document.createElement("div");
@@ -112,8 +167,10 @@
         reply.scrollIntoView({ block: "end" });
       });
       addSave(reply);
+      if (suggest) addHandoff(suggest, text);
     } catch (err) {
       reply.className = "msg error";
+      reply.querySelector(".msg-who")?.remove();
       render(reply, "Erro: " + err.message + "\n\nSua pergunta não foi salva. Tente de novo.");
       input.value = text;
     } finally {

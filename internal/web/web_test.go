@@ -109,7 +109,7 @@ func TestPagesRender(t *testing.T) {
 	}
 	check("vazio")
 	seed(t, a.st)
-	a.st.AppendChatTurn(context.Background(), "oi", "**olá**", nil)
+	a.st.AppendChatTurn(context.Background(), "oi", "**olá**", "", nil)
 	check("com dados")
 
 	// O casco das telas de dados diz qual tela o JavaScript deve montar.
@@ -202,8 +202,22 @@ func TestChatStreamsAndSaves(t *testing.T) {
 		t.Fatalf("SSE = %d %s", code, body)
 	}
 	msgs, _ := a.st.ListChat(context.Background())
-	if len(msgs) != 2 || msgs[0].Content != "Qual dívida pago primeiro?" || msgs[1].Content != "Pague o cartão." {
+	if len(msgs) != 2 || msgs[0].Content != "Qual dívida pago primeiro?" || msgs[1].Content != "Pague o cartão." || msgs[1].Agent != "jade" {
 		t.Errorf("histórico = %+v", msgs)
+	}
+	if !strings.Contains(body, `"suggest":{"id":"bento"`) {
+		t.Errorf("assunto de dívida com a Jade: deveria sugerir o Bento: %s", body)
+	}
+
+	// Com a Luna escolhida, a resposta fica dela; personagem desconhecido vira Jade.
+	_, body = a.post("/chat/enviar", url.Values{"message": {"Qual dívida pago primeiro?"}, "agent": {"luna"}})
+	a.post("/chat/enviar", url.Values{"message": {"oi"}, "agent": {"<script>"}})
+	msgs, _ = a.st.ListChat(context.Background())
+	if msgs[3].Agent != "luna" || msgs[5].Agent != "jade" {
+		t.Errorf("quem respondeu = %q, %q", msgs[3].Agent, msgs[5].Agent)
+	}
+	if _, page := a.get("/chat"); !strings.Contains(page, "Luna · Alertas") || !strings.Contains(page, `data-agent="otavio"`) {
+		t.Error("a página do chat deveria mostrar quem respondeu e o time para escolher")
 	}
 }
 
@@ -306,7 +320,7 @@ func TestChatAPI(t *testing.T) {
 	if !strings.Contains(string(body), `"text":"Pague o cartão."`) {
 		t.Fatalf("resposta = %s", body)
 	}
-	if h := getInfo()["history"].([]any); len(h) != 2 {
+	if h := getInfo()["history"].([]any); len(h) != 2 || h[1].(map[string]any)["agent"] != "jade" {
 		t.Errorf("histórico = %v", h)
 	}
 	if code, _ := a.postJSON("/api/chat/limpar", map[string]any{}); code != http.StatusOK || len(getInfo()["history"].([]any)) != 0 {

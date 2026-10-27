@@ -25,7 +25,8 @@ const toolsPrompt = `
 
 Ferramentas:
 - buscar_lancamentos: use quando a pergunta precisar de lançamentos que não estão no bloco de dados (outro mês, um período, um estabelecimento, uma categoria). Responda com os totais que ela devolver. Cada lançamento vem com o [id], que serve para alterar ou apagar.
-- propor_lancamento, alterar_lancamento, apagar_lancamento, criar_meta, criar_divida, registrar_aporte (guardou dinheiro numa meta), registrar_pagamento (pagou uma dívida): use quando o usuário pedir para registrar, corrigir ou apagar algo. Para alterar ou apagar, busque antes para achar o id. Cada pedido vira um cartão com um botão para ele confirmar; nada é gravado sozinho. Nunca diga que já fez: diga que deixou pronto para ele confirmar.`
+- propor_lancamento, alterar_lancamento, apagar_lancamento, criar_meta, criar_divida, registrar_aporte (guardou dinheiro numa meta), registrar_pagamento (pagou uma dívida): use quando o usuário pedir para registrar, corrigir ou apagar algo. Para alterar ou apagar, busque antes para achar o id. Cada pedido vira um cartão com um botão para ele confirmar; nada é gravado sozinho. Nunca diga que já fez: diga que deixou pronto para ele confirmar.
+- Você só tem as ferramentas da sua área. Se pedirem algo que nenhuma delas faz, diga quem do time cuida disso.`
 
 // Ações de uma proposta.
 const (
@@ -53,6 +54,7 @@ type Tools struct {
 	ledger    domain.Ledger
 	today     time.Time
 	onPropose func(Proposal)
+	only      []string // ferramentas do personagem que responde; nil = todas
 }
 
 func NewTools(l domain.Ledger, today time.Time, onPropose func(Proposal)) *Tools {
@@ -68,7 +70,15 @@ func tool(name, desc, params string) llm.Tool {
 	return llm.Tool{Name: name, Description: desc, Parameters: json.RawMessage(params)}
 }
 
+// Defs são as ferramentas que a IA pode chamar: só as do personagem que responde.
 func (t *Tools) Defs() []llm.Tool {
+	if t.only == nil {
+		return allTools()
+	}
+	return slices.DeleteFunc(allTools(), func(d llm.Tool) bool { return !slices.Contains(t.only, d.Name) })
+}
+
+func allTools() []llm.Tool {
 	return []llm.Tool{
 		tool("buscar_lancamentos", "Busca lançamentos do usuário e devolve os totais e os mais recentes, cada um com seu [id]. Todos os filtros são opcionais.",
 			`{"type":"object","properties":{
@@ -126,6 +136,9 @@ func (t *Tools) Defs() []llm.Tool {
 // Run executa um pedido e devolve o texto que volta para a IA. Erros também
 // voltam como texto, para ela corrigir o pedido.
 func (t *Tools) Run(c llm.ToolCall) string {
+	if t.only != nil && !slices.Contains(t.only, c.Name) {
+		return "essa ferramenta não é com você: diga ao usuário quem do time cuida disso."
+	}
 	var a map[string]json.RawMessage
 	if err := json.Unmarshal(c.Args, &a); err != nil {
 		return "argumentos inválidos: " + err.Error()

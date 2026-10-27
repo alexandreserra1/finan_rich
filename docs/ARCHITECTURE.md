@@ -135,6 +135,13 @@ aparelho                                      servidor
      **não gravam**: viram uma `advisor.Proposal` (ação, tipo, registro, texto do cartão) que vai
      para a tela (evento SSE `proposal`) com um botão. O botão grava pelo cliente offline
      (`notes-save.js`, mesma validação em WebAssembly) e sincroniza.
+   **O time**: a pessoa escolhe com quem fala (Jade, Bento, Luna, Tito ou Otávio; vai como
+   `agent` na pergunta). Cada personagem (`advisor/personas.go`) acrescenta às instruções o
+   próprio jeito de aconselhar e recebe só as ferramentas da área dele (o Bento, por exemplo,
+   só busca lançamentos, cadastra dívidas e registra pagamentos). Sem personagem, fala a Jade,
+   com todas. Depois da resposta, `finance.Route` olha o assunto da pergunta e, se for de outro
+   do time, a tela oferece perguntar para ele (evento SSE `suggest` no computador; no app,
+   pelo `finance.wasm`). A resposta guarda quem respondeu (coluna `agent` em `chat_messages`).
    O laço pede ferramentas até 4 vezes por pergunta. Ferramentas usam o formato nativo de cada
    provedor (Ollama, OpenAI-compatível, Anthropic); se o modelo não aceitar ferramentas, o
    consultor pergunta de novo sem elas.
@@ -253,6 +260,7 @@ aparelho                                      servidor
 | `budgets.go` | `Budgets`: quanto já foi usado do teto mensal de cada categoria (`budgetCents`). |
 | `search.go` | `SearchTransactions`: busca da tela Lançamentos (texto sem acento nem maiúscula, categoria, tipo, faixa de valor, mês) e os totais do que achou. |
 | `merchants.go` | `TopMerchants`: gastos por estabelecimento nos últimos 12 meses (para o consultor). |
+| `agents.go` | `Team`: os personagens do time (nome, papel, imagem). Cada tipo de aviso de `Alerts` tem um dono (Luna avisa vencimentos e orçamentos, Bento a dívida que cresce, Tito as metas, Otávio o gasto fora do padrão). `Route` diz de quem é o assunto de uma pergunta. |
 | `monthplan.go` | `PlanMonth`: parcelas mínimas pendentes, sobra livre, quanto pagar na dívida de maior juros. |
 | `view.go` | `Dashboard` e `Debts`: o que cada tela mostra, já calculado, em structs com tags JSON (o que o navegador recebe). |
 | `finance_test.go` | Testes de todas as regras com casos de valores conhecidos. |
@@ -363,6 +371,7 @@ Tabelas atuais:
 |---|---|
 | `advisor.go` | System prompt, `BuildRequest` (histórico das últimas 12 mensagens + pergunta com o retrato) e `Ask`. |
 | `snapshot.go` | `BuildFacts` (calcula tudo com o `finance`) e `Snapshot` (texto com as contas prontas e os pontos de atenção). |
+| `personas.go` | O jeito de cada personagem do time aconselhar (a voz que vai nas instruções) e as ferramentas de cada um. |
 
 ### `internal/auth/` — senha e sessões
 

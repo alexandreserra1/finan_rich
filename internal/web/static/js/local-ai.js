@@ -84,9 +84,9 @@ async function load() {
 
 // ask responde à pergunta dentro do celular. onText recebe a resposta até
 // ali, a cada pedaço gerado. Devolve { answer, proposals: [] }.
-export async function ask(ledger, history, question, onText) {
+export async function ask(ledger, history, question, onText, agent = "jade") {
   await loadAdvisor();
-  const req = { ledger, question, today: today(), history: history.map(({ role, content }) => ({ role, content })) };
+  const req = { ledger, question, today: today(), agent, history: history.map(({ role, content }) => ({ role, content })) };
   const r = JSON.parse(window.finanAdvisor.localPrompt(JSON.stringify(req)));
   if (r.error) throw new Error(r.error);
   const w = await load();

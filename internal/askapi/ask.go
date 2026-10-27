@@ -37,6 +37,7 @@ type AskRequest struct {
 	Today     string        `json:"today"` // AAAA-MM-DD
 	AI        AIConfig      `json:"ai"`
 	Anonymize bool          `json:"anonymize"`
+	Agent     string        `json:"agent"` // quem do time responde; vazio = Jade
 }
 
 type ChatTurn struct {
@@ -76,7 +77,7 @@ func Ask(ctx context.Context, reqJSON string) string {
 		history[i] = llm.Message{Role: llm.Role(h.Role), Content: h.Content}
 	}
 	answer, proposals, err := advisor.Answer(ctx, p, advisor.Question{
-		History: history, Text: req.Question, Ledger: req.Ledger, Today: today, Anonymize: req.Anonymize,
+		History: history, Text: req.Question, Ledger: req.Ledger, Today: today, Anonymize: req.Anonymize, Agent: req.Agent,
 	}, func(string) {}, func(advisor.Proposal) {})
 	if err == nil && answer == "" {
 		err = errors.New("a IA não devolveu resposta; tente de novo")
@@ -104,7 +105,7 @@ func LocalPrompt(reqJSON string) string {
 	for i, h := range req.History {
 		history[i] = llm.Message{Role: llm.Role(h.Role), Content: h.Content}
 	}
-	r := advisor.LocalRequest(advisor.Question{History: history, Text: req.Question, Ledger: req.Ledger, Today: today})
+	r := advisor.LocalRequest(advisor.Question{History: history, Text: req.Question, Ledger: req.Ledger, Today: today, Agent: req.Agent})
 	msgs := []ChatTurn{{Role: "system", Content: r.System}}
 	for _, m := range r.Messages {
 		msgs = append(msgs, ChatTurn{Role: string(m.Role), Content: m.Content})

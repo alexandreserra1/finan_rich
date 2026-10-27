@@ -11,7 +11,9 @@ import (
 
 	"github.com/alexandreserra1/finan_rich/internal/advisor"
 	"github.com/alexandreserra1/finan_rich/internal/domain"
+	"github.com/alexandreserra1/finan_rich/internal/finance"
 	"github.com/alexandreserra1/finan_rich/internal/llm"
+	"github.com/alexandreserra1/finan_rich/internal/store"
 )
 
 // chatEntry é uma mensagem da conversa com as propostas (e se já valem).
@@ -19,6 +21,18 @@ type chatEntry struct {
 	Role      string             `json:"role"`
 	Content   string             `json:"content"`
 	Proposals []advisor.Proposal `json:"proposals,omitempty"`
+	Agent     string             `json:"agent,omitempty"` // quem do time respondeu
+	Who       finance.Agent      `json:"-"`               // o mesmo, com nome e imagem (página do computador)
+}
+
+// member devolve o personagem pelo id; vazio ou desconhecido é a Jade.
+func member(id string) finance.Agent {
+	for _, a := range finance.Team {
+		if a.ID == id {
+			return a
+		}
+	}
+	return finance.Team[0]
 }
 
 // chatHistory lê a conversa e marca as propostas que a pessoa já confirmou.
@@ -31,6 +45,10 @@ func (s *Server) chatHistory(ctx context.Context) ([]chatEntry, error) {
 	out := make([]chatEntry, len(history))
 	for i, m := range history {
 		out[i] = chatEntry{Role: m.Role, Content: m.Content}
+		if m.Role == store.RoleAssistant {
+			out[i].Who = member(m.Agent)
+			out[i].Agent = out[i].Who.ID
+		}
 		if len(m.Proposals) == 0 || json.Unmarshal(m.Proposals, &out[i].Proposals) != nil {
 			continue
 		}
@@ -60,7 +78,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) {
 		serverError(w, err)
 		return
 	}
-	s.render(w, r, "chat", map[string]any{"History": history, "AI": ai, "Status": s.aiStatus(ctx, ai)})
+	s.render(w, r, "chat", map[string]any{"History": history, "AI": ai, "Status": s.aiStatus(ctx, ai), "Team": finance.Team})
 }
 
 func (s *Server) chatClear(w http.ResponseWriter, r *http.Request) {
@@ -72,12 +90,13 @@ func (s *Server) chatClear(w http.ResponseWriter, r *http.Request) {
 // a cada lançamento que a IA propõe (a tela mostra com um botão para aprovar),
 // {"error": "..."} em caso de falha e {"done": true} ao final.
 func (s *Server) chatSend(w http.ResponseWriter, r *http.Request) {
-	s.answer(w, r, r.FormValue("message"))
+	s.answer(w, r, r.FormValue("message"), r.FormValue("agent"))
 }
 
 // answer responde à pergunta em SSE e grava a conversa (tela do navegador e
 // app do celular usam o mesmo caminho).
-func (s *Server) answer(w http.ResponseWriter, r *http.Request, question string) {
+func (s *Server) answer(w http.ResponseWriter, r *http.Request, question, agent string) {
+	agent = member(agent).ID // só ids do time chegam à IA e ao banco
 	question = strings.TrimSpace(question)
 	if question == "" {
 		http.Error(w, "mensagem vazia", http.StatusBadRequest)
@@ -113,7 +132,7 @@ func (s *Server) answer(w http.ResponseWriter, r *http.Request, question string)
 	for i, m := range history {
 		past[i] = llm.Message{Role: llm.Role(m.Role), Content: m.Content}
 	}
-	q := advisor.Question{History: past, Text: question, Ledger: ledger, Today: time.Now(), Anonymize: !llm.IsLocal(ai.Config)}
+	q := advisor.Question{History: past, Text: question, Ledger: ledger, Today: time.Now(), Anonymize: !llm.IsLocal(ai.Config), Agent: agent}
 	answer, proposals, err := advisor.Answer(ctx, provider, q,
 		func(text string) { sse.Send(map[string]string{"text": text}) },
 		func(p advisor.Proposal) { sse.Send(map[string]any{"proposal": p}) })
@@ -132,9 +151,13 @@ func (s *Server) answer(w http.ResponseWriter, r *http.Request, question string)
 	if len(proposals) > 0 {
 		saved, _ = json.Marshal(proposals)
 	}
-	if err := s.store.AppendChatTurn(context.WithoutCancel(ctx), question, answer, saved); err != nil {
+	if err := s.store.AppendChatTurn(context.WithoutCancel(ctx), question, answer, agent, saved); err != nil {
 		fail(err)
 		return
+	}
+	// O assunto é de outro do time: a tela oferece perguntar para ele.
+	if other := finance.Route(question); other != "" && other != agent {
+		sse.Send(map[string]any{"suggest": member(other)})
 	}
 	sse.Done()
 }
@@ -170,12 +193,13 @@ func (s *Server) apiChatHistory(w http.ResponseWriter, r *http.Request) {
 func (s *Server) apiChatSend(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Message string `json:"message"`
+		Agent   string `json:"agent"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&req); err != nil {
 		writeJSONError(w, http.StatusBadRequest, "pedido inválido")
 		return
 	}
-	s.answer(w, r, req.Message)
+	s.answer(w, r, req.Message, req.Agent)
 }
 
 func (s *Server) apiChatClear(w http.ResponseWriter, r *http.Request) {

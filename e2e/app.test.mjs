@@ -130,9 +130,9 @@ const cloudAI = createServer((req, res) => {
   let body = "";
   req.on("data", (c) => (body += c));
   req.on("end", () => {
-    const { messages } = JSON.parse(body);
+    const { messages, tools } = JSON.parse(body);
     if (req.headers.authorization === "Bearer errada") return res.writeHead(401).end('{"error":{"message":"Invalid API Key"}}');
-    cloudBodies.push({ auth: req.headers.authorization, messages });
+    cloudBodies.push({ auth: req.headers.authorization, messages, tools: (tools || []).map((t) => t.function.name) });
     const last = messages.at(-1);
     const question = messages.findLast((m) => m.role === "user").content.split("</dados_financeiros>").at(-1);
     // A internet cai no meio da resposta: manda um pedaço e corta a conexão.
@@ -275,6 +275,26 @@ try {
   await page.click("form[data-form=ask] button");
   await page.waitForSelector(".msg.assistant:has-text('Oi!')", { timeout: 30000 });
   ok(await page.locator(".msg.error").count() === 0, "depois da queda, a próxima pergunta funciona");
+
+  // O time: a Jade responde e, como o assunto é dívida, oferece passar para o
+  // Bento; com ele, a IA recebe a voz e só as ferramentas de dívida.
+  ok((await page.textContent(".msg.assistant >> nth=-1")).includes("Jade · Consultora") && await page.getAttribute(".team-member[data-agent=jade]", "aria-pressed") === "true",
+    "sem escolher ninguém, quem responde é a Jade");
+  await page.fill("textarea[name=message]", "Qual dívida devo pagar primeiro?");
+  await page.click("form[data-form=ask] button");
+  await page.waitForSelector(".handoff:has-text('Isso é com Bento (Dívidas)')", { timeout: 30000 });
+  await page.click("[data-handoff]");
+  await page.waitForSelector(".msg.assistant >> nth=-1 >> text=Bento · Dívidas", { timeout: 30000 });
+  const toBento = cloudBodies.at(-1);
+  ok(toBento.messages[0].content.includes("Você é o Bento") && toBento.tools.join() === "buscar_lancamentos,criar_divida,registrar_pagamento" &&
+    await page.getAttribute(".team-member[data-agent=bento]", "aria-pressed") === "true" && await page.locator(".handoff").count() === 0,
+    `trocar para o Bento muda a voz e as ferramentas (${toBento.tools})`);
+  await page.reload();
+  await page.waitForSelector(".team-member[data-agent=bento][aria-pressed=true]", { timeout: 20000 });
+  ok((await page.getAttribute("textarea[name=message]", "placeholder")).includes("Bento") && (await page.textContent(".messages")).includes("Jade · Consultora"),
+    "a escolha fica guardada e cada resposta antiga mostra quem respondeu");
+  await page.click(".team-member[data-agent=jade]");
+  await page.waitForSelector(".team-member[data-agent=jade][aria-pressed=true]");
 
   // IA dentro do celular, com um wllama falso no lugar do de verdade (o de
   // verdade só entra no app pelo cap sync, e o modelo tem 470 MB).
@@ -489,6 +509,16 @@ try {
   await fresh.locator("button:has-text('Adicionado')").waitFor({ timeout: 10000 });
   await desk.evaluate(() => window.finanSync());
   ok((await serverRecords()).filter((r) => r.description === "Cinema" && !r.deleted).length === 1, "no computador, o Adicionar da proposta também lança");
+  ok(await desk.locator(".msg.assistant >> nth=-1 >> .msg-who").textContent() === "Jade · Consultora" && await desk.locator(".team-member").count() === 5,
+    "no computador, o chat mostra o time e quem respondeu");
+  await desk.click(".team-member[data-agent=bento]");
+  await desk.fill("textarea[name=message]", "Qual dívida devo pagar primeiro?");
+  await desk.click("#chat-form button");
+  await desk.waitForFunction(() => { const m = [...document.querySelectorAll(".msg.assistant")].at(-1); return m && !m.classList.contains("pending") && m.querySelector(".msg-who")?.textContent.includes("Bento"); }, null, { timeout: 20000 });
+  await desk.reload();
+  await desk.waitForSelector(".team-member[data-agent=bento][aria-pressed=true]");
+  ok((await desk.locator(".msg.assistant >> nth=-1 >> .msg-who").textContent()) === "Bento · Dívidas" && (await desk.getAttribute("textarea[name=message]", "placeholder")).includes("Bento"),
+    "no computador, a resposta fica do Bento e a escolha é lembrada");
 
   // Open Finance no app sem computador: o Client Secret vai para o cofre do
   // sistema (falso aqui) e a busca sai do próprio celular direto para a Pluggy.

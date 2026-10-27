@@ -61,3 +61,6 @@ export const searchTransactions = (ledger, filter) => unwrap(window.finan.search
 export const accounts = (ledger, day) => unwrap(window.finan.accounts(JSON.stringify(ledger), day));
 export const netWorth = (ledger, day) => unwrap(window.finan.netWorth(JSON.stringify(ledger), day));
 export const installments = (tx, n) => unwrap(window.finan.installments(JSON.stringify(tx), n));
+// O time do finan_rich e quem dele cuida do assunto de uma pergunta ("" se ninguém em especial).
+export const team = () => unwrap(window.finan.team());
+export const route = (question) => unwrap(window.finan.route(question));

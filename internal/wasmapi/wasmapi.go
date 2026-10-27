@@ -307,3 +307,9 @@ func DriveNeedsUpload(localJSON, remoteJSON string) string {
 	}
 	return reply(map[string]bool{"upload": drivesync.NeedsUpload(local, remote)}, nil)
 }
+
+// Team é o time do finan_rich (nomes, papéis e imagens) para as telas.
+func Team() string { return reply(finance.Team, nil) }
+
+// Route diz quem do time cuida do assunto da pergunta ("" se ninguém em especial).
+func Route(question string) string { return reply(finance.Route(question), nil) }

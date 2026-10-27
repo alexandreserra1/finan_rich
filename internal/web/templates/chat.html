@@ -10,8 +10,11 @@
 <section class="panel chat">
   {{template "aistatus" .}}
   <p class="small muted">Usando <strong>{{.AI.Preset.Name}}</strong> · <code>{{.AI.Model}}</code> (<a href="/configuracoes">trocar</a>). O consultor vê seus números atuais (mês, divisão do salário, dívidas) a cada pergunta.</p>
+  <div class="team-pick" role="group" aria-label="Com quem do time falar">
+    {{range .Team}}<button type="button" class="team-member" data-agent="{{.ID}}" data-name="{{.Name}}" data-role="{{.Role}}" data-animal="{{.Animal}}" aria-pressed="false"><img class="face" src="/static/img/avatar-{{.Animal}}.png" alt="" width="40" height="40"><span><strong>{{.Name}}</strong><small>{{.Role}}</small></span></button>{{end}}
+  </div>
   <div id="messages" class="messages">
-    {{range .History}}<div class="msg {{.Role}}" data-md>{{.Content}}</div>
+    {{range .History}}<div class="msg {{.Role}}">{{if eq .Role "assistant"}}<span class="msg-who"><img class="face" src="/static/img/avatar-{{.Who.Animal}}.png" alt="" width="22" height="22">{{.Who.Name}} · {{.Who.Role}}</span>{{end}}<div class="md" data-md>{{.Content}}</div></div>
       {{with .Proposals}}<div class="proposals" data-proposals="{{jsonText .}}"></div>{{end}}{{end}}
     {{if not .History}}
     <div class="suggestions">

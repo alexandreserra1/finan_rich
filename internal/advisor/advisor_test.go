@@ -63,7 +63,7 @@ func (f *fakeProvider) Chat(_ context.Context, req llm.Request, onText func(stri
 func TestAsk(t *testing.T) {
 	p := &fakeProvider{}
 	var streamed string
-	answer, err := Ask(context.Background(), p, nil, "oi", "dados", nil, func(s string) { streamed += s })
+	answer, err := Ask(context.Background(), p, "", nil, "oi", "dados", nil, func(s string) { streamed += s })
 	if err != nil || answer != "ok" || streamed != "ok" || len(p.got.Messages) != 1 || p.got.Tools != nil {
 		t.Errorf("answer=%q streamed=%q err=%v req=%+v", answer, streamed, err, p.got)
 	}
@@ -169,7 +169,7 @@ func TestLocalRequest(t *testing.T) {
 		{Role: llm.RoleUser, Content: "p2"}, {Role: llm.RoleAssistant, Content: "r2"},
 	}
 	req := LocalRequest(Question{History: history, Text: "e o cartão?", Ledger: l, Today: time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC)})
-	if req.System != SystemPrompt || req.Tools != nil {
+	if req.System != systemFor("") || req.Tools != nil {
 		t.Errorf("deve ir sem ferramentas: tools=%v", req.Tools)
 	}
 	if len(req.Messages) != 3 || req.Messages[0].Content != "p2" || req.Messages[1].Content != "r2" {

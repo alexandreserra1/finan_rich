@@ -154,7 +154,7 @@ export async function presets() {
 }
 
 // ask pergunta à IA na nuvem: { answer, proposals }. Sempre anonimizado.
-export async function ask(ledger, history, question) {
+export async function ask(ledger, history, question, agent = "jade") {
   const cfg = await config();
   if (!ready(cfg)) throw new Error("configure a IA na nuvem em Ajustes do app");
   await loadAdvisor();
@@ -163,6 +163,7 @@ export async function ask(ledger, history, question) {
     history: history.map(({ role, content }) => ({ role, content })),
     ai: await aiConfig(cfg),
     anonymize: true,
+    agent,
   };
   return unwrap(await window.finanAdvisor.ask(JSON.stringify(req)));
 }
