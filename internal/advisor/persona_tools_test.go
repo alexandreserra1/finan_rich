@@ -132,3 +132,35 @@ func TestPersonaToolSets(t *testing.T) {
 		}
 	}
 }
+
+func TestQuestionMoney(t *testing.T) {
+	for q, want := range map[string]string{
+		"e se eu pagar R$ 500 a mais por mês?":   "500",
+		"pagar 1.200,50 a mais":                  "1.200,50",
+		"se eu guardar 400 reais, quando chego?": "400",
+		"o que vence nos próximos 20 dias?":      "",
+		"juros de 14% ao mês":                    "",
+		"oi":                                     "",
+	} {
+		if got := questionMoney(q); got != want {
+			t.Errorf("questionMoney(%q) = %q, quer %q", q, got, want)
+		}
+	}
+}
+
+func TestPrefetch(t *testing.T) {
+	tools := NewTools(teamLedger(), teamDay, nil)
+	for agent, c := range map[string]struct{ q, want string }{
+		"bento":  {"e se eu pagar R$ 200 a mais?", "Com R$ 200,00 a mais: livre em 4 meses"},
+		"tito":   {"se eu guardar 500 por mês, quando chego na viagem?", "Guardando R$ 500,00 por mês, chega em 12 meses"},
+		"otavio": {"o que mudou?", "setembro de 2026 → outubro de 2026"},
+		"luna":   {"o que vence esta semana?", "Próximos 7 dias"},
+	} {
+		if got := prefetch(agent, tools, c.q); !strings.Contains(got, c.want) {
+			t.Errorf("%s: sem %q:\n%s", agent, c.want, got)
+		}
+	}
+	if got := prefetch("jade", tools, "oi"); got != "" {
+		t.Errorf("a Jade não pré-calcula: %q", got)
+	}
+}

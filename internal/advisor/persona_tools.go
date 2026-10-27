@@ -2,6 +2,7 @@ package advisor
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -337,4 +338,85 @@ func (t *Tools) upcoming(days string) string {
 		return fmt.Sprintf("Nada vence nos próximos %d dias, e nenhum orçamento passou de 80%%.", n)
 	}
 	return strings.Join(lines, "\n")
+}
+
+// ---- contas prontas antes de perguntar ----
+//
+// Modelo pequeno ou grátis às vezes pula a ferramenta e chuta o número. Por
+// isso, antes de perguntar, o Go já roda a conta principal do personagem com
+// o que dá para tirar da pergunta, e o resultado vai junto dos dados. A
+// ferramenta continua lá para outras contas.
+
+var moneyRe = regexp.MustCompile(`\d[\d.]*(?:,\d{1,2})?`)
+
+// questionMoney devolve o primeiro valor em reais da pergunta ("R$ 500",
+// "400 reais", "1.200,50"); números de dias, meses, anos ou % ficam de fora.
+// shortcut: lê só o primeiro valor; com dois valores na pergunta, a IA ainda pode chamar a ferramenta com o outro.
+func questionMoney(q string) string {
+	for _, loc := range moneyRe.FindAllStringIndex(q, -1) {
+		rest := strings.TrimSpace(fold(q[loc[1]:]))
+		if strings.HasPrefix(rest, "%") || strings.HasPrefix(rest, "dia") || strings.HasPrefix(rest, "mes") ||
+			strings.HasPrefix(rest, "ano") || strings.HasPrefix(rest, "x ") || strings.HasPrefix(rest, "vez") {
+			continue
+		}
+		return strings.TrimRight(q[loc[0]:loc[1]], ".")
+	}
+	return ""
+}
+
+var daysRe = regexp.MustCompile(`(\d+)\s*dias`)
+
+// prefetch é a conta principal do personagem para esta pergunta ("" para a Jade).
+func prefetch(agent string, t *Tools, question string) string {
+	q := fold(question)
+	switch persona(agent).ID {
+	case "bento":
+		order := ""
+		if strings.Contains(q, "menor") || strings.Contains(q, "bola") {
+			order = "menor saldo"
+		}
+		return t.simulateDebts(questionMoney(question), order)
+	case "tito":
+		var goals, named []string
+		for _, g := range finance.Goals(t.ledger, t.today) {
+			if g.Done {
+				continue
+			}
+			goals = append(goals, g.Name)
+			if strings.Contains(q, fold(g.Name)) {
+				named = append(named, g.Name)
+			}
+		}
+		if len(named) > 0 {
+			goals = named
+		}
+		var out []string
+		for _, g := range goals {
+			out = append(out, t.simulateGoal(g, "", questionMoney(question)))
+		}
+		return strings.Join(out, "\n\n")
+	case "otavio":
+		return t.findings() + "\n\n" + t.compareMonths("", "")
+	case "luna":
+		days := ""
+		switch m := daysRe.FindStringSubmatch(q); {
+		case m != nil:
+			days = m[1]
+		case strings.Contains(q, "semana"):
+			days = "7"
+		case strings.Contains(q, "mes"):
+			days = "31"
+		}
+		return t.upcoming(days)
+	}
+	return ""
+}
+
+// withPrefetch junta a conta pronta ao retrato financeiro.
+func withPrefetch(snapshot, agent string, t *Tools, question string) string {
+	pre := prefetch(agent, t, question)
+	if pre == "" {
+		return snapshot
+	}
+	return snapshot + "\n\nContas prontas para esta pergunta (feitas pelo app; use estes números):\n" + pre
 }

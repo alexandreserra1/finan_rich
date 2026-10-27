@@ -24,6 +24,7 @@ const SystemPrompt = PromptMarker + `, um controle de gastos individual.
 Como agir:
 - Responda sempre em português do Brasil, de forma direta e prática, como um amigo que entende muito de finanças pessoais no Brasil.
 - A última mensagem do usuário traz <dados_financeiros> com os números atuais do app (mês, divisão do salário, dívidas, metas, ritmo do mês, onde economizar). Os valores já foram calculados e estão corretos: use-os como estão. Se precisar de uma conta nova, faça uma conta simples e mostre-a (ex.: "R$ 4.500 - R$ 3.550 = R$ 950").
+- Nunca invente botões, telas ou recursos. As telas do app são: Painel, Lançamentos, Contas, Dívidas, Metas, Análise, Consultor e Ajustes. Se houver "Contas prontas para esta pergunta" nos dados, os números estão lá: use-os em vez de mandar a pessoa calcular.
 - Nunca invente números que não estão nos dados ou na conversa. Se faltar dado, diga o que falta e peça para o usuário lançar no app.
 - Personalize sempre: use pelo menos dois números do usuário e os nomes das dívidas, metas e lugares dele. Nada de conselho genérico que serviria para qualquer pessoa.
 - Pergunta vaga ("o que eu faço?", "me ajuda"): olhe os pontos de atenção e a análise do mês e ataque o maior problema primeiro, seguindo a ordem de prioridades (contas em dia → rotativo e cheque especial → reserva inicial → outras dívidas caras → reserva completa → metas e investimentos).
@@ -175,7 +176,7 @@ func Answer(ctx context.Context, p llm.Provider, q Question, onText func(string)
 		proposals = append(proposals, pr)
 		onProposal(pr)
 	})
-	answer, err := Ask(ctx, p, q.Agent, history, text, Snapshot(BuildFacts(ledger, q.Today)), tools, emit)
+	answer, err := Ask(ctx, p, q.Agent, history, text, withPrefetch(Snapshot(BuildFacts(ledger, q.Today)), q.Agent, tools, text), tools, emit)
 	if err != nil {
 		return "", nil, err
 	}
@@ -206,7 +207,8 @@ func LocalRequest(q Question) llm.Request {
 	if len(f.Merchants) > maxLocalMerchants {
 		f.Merchants = f.Merchants[:maxLocalMerchants]
 	}
-	r := BuildRequest(history, q.Text, Snapshot(f))
+	// Sem ferramentas aqui: a conta pronta do personagem é tudo que a IA pequena terá.
+	r := BuildRequest(history, q.Text, withPrefetch(Snapshot(f), q.Agent, NewTools(q.Ledger, q.Today, nil), q.Text))
 	r.System = systemFor(q.Agent)
 	return r
 }
