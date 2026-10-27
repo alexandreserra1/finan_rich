@@ -31,8 +31,10 @@ navegador / app ──login (código + PKCE)──▶ Google ──volta──�
   rotas `/oauth/*` não guardam nada, não registram tokens e têm limite por IP. A volta para o
   computador só aceita `127.0.0.1` com porta numérica. Escopos: `openid email` e
   `drive.appdata` (não sensíveis para o Google).
-- **Sair** (Ajustes → Conta Google) revoga o acesso no Google e apaga o token do aparelho; os
-  dados continuam no aparelho e no Drive.
+- **Sair** (Ajustes → Conta Google) revoga o acesso no Google e apaga o token do aparelho.
+  No site, como o computador pode ser de outra pessoa, sair também tira os dados do
+  navegador: antes ele salva tudo no Drive e, se não conseguir, não sai nem apaga nada.
+  Entrar de novo traz os dados de volta do Drive. No celular, os dados ficam no aparelho.
 
 Por enquanto o login funciona no site. O app Android e o programa do computador entram nas
 próximas versões (o caminho de volta `app.*` e `pc.*` da página `/oauth` já existe).

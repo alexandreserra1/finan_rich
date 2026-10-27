@@ -958,6 +958,8 @@ input[type="date"] { color-scheme: inherit; }
 
 /* ---------- Landing (página pública do site, antes do login) ---------- */
 /* Fica em tela cheia: sem menu nem barra do topo, com o próprio visual escuro. */
+/* Site: até a primeira tela ser escolhida (main.js marca data-ready), nada da moldura aparece. */
+html[data-site="web"]:not([data-ready]) body > :is(.top, .tabs, main) { visibility: hidden; }
 body.landing-mode { display: block !important; padding-bottom: 0 !important; background: #040605; }
 body.landing-mode > .top, body.landing-mode > .tabs { display: none !important; }
 body.landing-mode > main { max-width: none; margin: 0; padding: 0 !important; }

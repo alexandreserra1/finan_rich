@@ -79,6 +79,17 @@ function bindGoogle(root, ctx) {
     ctx.flash("Sincronizado com o Google Drive.");
   });
   on("google-out", async () => {
+    if (device.isSite) {
+      // O site pode estar num computador de outra pessoa: sair leva os dados
+      // embora deste navegador (ficam no Drive). Antes, garante que o Drive
+      // tem tudo; sem isso, não apaga nada.
+      if (!confirm("Sair da conta Google? Seus dados saem deste navegador e continuam no seu Google Drive.")) return;
+      await sync.sync();
+      if (sync.state.status !== "ok") throw new Error("não consegui salvar no Google Drive agora. Confira a internet e tente sair de novo; nada foi apagado.");
+      await forgetHere();
+      location.assign("/"); // recarrega do zero: nada dos dados fica na memória da página
+      return;
+    }
     if (!confirm("Sair da conta Google? Seus dados continuam neste aparelho e no seu Drive.")) return;
     await google.signOut();
     gState = { on: true, account: null };
@@ -272,18 +283,23 @@ export function bind(root, ctx) {
   });
   on("wipe", async () => {
     if (!confirm(device.isSite ? "Apagar todos os dados deste navegador? Não dá para desfazer." : "Apagar todos os dados deste celular? Os que já estão no computador continuam lá.")) return;
-    await google.signOut(); // a conta Google sai antes do banco (o token está nele)
-    gState = undefined;
-    await cloud.forget(); // a chave da IA no cofre do sistema também
-    await device.unpair(); // o token do computador sai do cofre também
-    await db.wipe();
-    lockState = null; // o bloqueio também sai
-    localState = null; // e a escolha da IA dentro do celular (o modelo baixado continua)
-    await openFinance.forget();
-    ofState = undefined;
+    await forgetHere();
 
     await ctx.refresh(`Dados ${device.here} apagados.`);
   });
+}
+
+// forgetHere apaga tudo deste aparelho: conta Google, chaves, pareamento e o banco.
+async function forgetHere() {
+  await google.signOut(); // a conta Google sai antes do banco (o token está nele)
+  gState = undefined;
+  await cloud.forget(); // a chave da IA no cofre do sistema também
+  await device.unpair(); // o token do computador sai do cofre também
+  await db.wipe();
+  lockState = null; // o bloqueio também sai
+  localState = null; // e a escolha da IA dentro do celular (o modelo baixado continua)
+  await openFinance.forget();
+  ofState = undefined;
 }
 
 // A seção da IA na nuvem se redesenha sozinha (carrega depois, do advisor.wasm):

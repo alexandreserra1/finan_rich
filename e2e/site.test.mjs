@@ -33,6 +33,10 @@ try {
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("dialog", (d) => d.accept());
 
+  // Antes de escolher a tela (landing ou Painel), a moldura do app não aparece.
+  await page.addInitScript(() => document.addEventListener("DOMContentLoaded", () => {
+    window.__shellBefore = getComputedStyle(document.querySelector("nav.tabs")).visibility;
+  }));
   // Primeira visita: a landing, sem menu, cabendo na tela do celular.
   await page.goto(`${SITE}/`);
   await page.waitForSelector(".landing .lp-hero h1", { timeout: 20000 });
@@ -40,6 +44,7 @@ try {
   ok(await page.getAttribute(".lp-hero a.lp-cta", "href") === "/?entrar=1", "Começar agora leva ao login");
   ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), "landing cabe na largura do celular");
   ok(await page.locator(".lp-agent").count() === 5, "landing mostra o time");
+  ok(await page.evaluate(() => window.__shellBefore) === "hidden", "o menu do app não pisca antes da landing");
   ok(await page.evaluate(() => { const s = document.querySelector(".lp-faq"), w = s.querySelector(".lp-wrap"), q = s.querySelector("summary");
     return getComputedStyle(w).position === "static" && getComputedStyle(w).backgroundColor === "rgba(0, 0, 0, 0)" && getComputedStyle(q).color === "rgb(21, 32, 27)"; }),
     "estilos do app não vazam na landing (dúvidas com fundo claro e texto escuro)");

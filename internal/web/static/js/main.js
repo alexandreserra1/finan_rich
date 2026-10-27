@@ -147,6 +147,9 @@ function upsert(list, record) {
 function render(message) {
   const path = location.pathname;
   const page = ROUTES[path];
+  // Site: a moldura do app fica escondida até aqui (app.css), para não piscar o
+  // menu antes de decidir entre a landing e o Painel.
+  if (ledger || !page) document.documentElement.dataset.ready = "";
   if (!page || !ledger) return;
   document.body.classList.remove("landing-mode");
   if (!ledger.categories.length && page.needsData !== false && device.isSite) {

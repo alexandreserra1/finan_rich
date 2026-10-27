@@ -57,7 +57,7 @@ for (let i = 0; i < 100; i++) {
 }
 
 // ---- Drive falso (um arquivo por conta; aqui, uma conta só) ----
-const drive = { id: null, version: 0, content: null, revoked: [], spaces: new Set() };
+const drive = { id: null, version: 0, content: null, revoked: [], spaces: new Set(), down: false };
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS" };
 const json = (route, status, data) => route.fulfill({ status, headers: { ...cors, "Content-Type": "application/json" }, body: JSON.stringify(data) });
 async function fakeGoogle(context) {
@@ -78,6 +78,7 @@ async function fakeGoogle(context) {
     const req = route.request();
     if (req.method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
     if (!/^Bearer acesso-\d$/.test(req.headers().authorization || "")) return json(route, 401, { error: "sem token" });
+    if (drive.down) return json(route, 503, { error: "Drive fora do ar" });
     const u = new URL(req.url());
     if (req.method() === "GET" && u.pathname === "/drive/v3/files") {
       drive.spaces.add(u.searchParams.get("spaces"));
@@ -191,15 +192,31 @@ try {
   await syncNow(b);
   ok(exchanges.some((f) => f.grant_type === "refresh_token" && f.refresh_token === "renova-1"), "token vencido é renovado sozinho");
 
-  // Sair: revoga no Google e apaga o token deste navegador; os dados ficam.
+  // Sair no site (computador que pode ser de outra pessoa): os dados vão
+  // para o Drive antes e saem do navegador. Sem conseguir salvar, não sai.
+  drive.down = true;
+  await addTransaction(b, "Último do B", "9");
   await b.goto(`${SITE}/configuracoes`);
   await b.click("#google [data-action=google-out]");
-  await b.waitForSelector("#google [data-action=google-in]", { timeout: 20000 });
-  const after = await b.evaluate(async () => (await import("/static/js/db.js")).getMeta("google", null));
-  ok(after === null && drive.revoked.some((p) => p.includes("renova-1")), "sair revoga o acesso e apaga o token");
+  await b.waitForSelector(".flash.err:has-text('Drive')", { timeout: 20000 });
+  ok(await b.evaluate(async () => !!(await (await import("/static/js/db.js")).getMeta("google", null))) && !inDrive("Último do B"),
+    "sem conseguir salvar no Drive, não sai nem apaga nada");
+  drive.down = false;
+  await b.click("#google [data-action=google-out]");
+  await b.waitForSelector(".lp-hero h1", { timeout: 20000 });
+  const after = await b.evaluate(async () => {
+    const db = await import("/static/js/db.js");
+    return { google: await db.getMeta("google", null), txs: (await db.loadLedger()).transactions.length };
+  });
+  ok(after.google === null && after.txs === 0 && drive.revoked.some((p) => p.includes("renova-1")) && !!inDrive("Último do B"),
+    `sair salva no Drive, revoga o acesso e tira os dados do navegador (${after.txs} lançamentos ficaram)`);
+  await b.reload();
+  await b.waitForSelector(".lp-hero h1", { timeout: 20000 });
+  ok(await b.locator("nav.tabs").isHidden(), "depois de sair, recarregar mostra a landing, não o Painel");
+  await login(b);
   await b.goto(`${SITE}/lancamentos`);
-  await b.waitForSelector("td:has-text('Mercado do Google')", { timeout: 20000 });
-  ok(true, "depois de sair, os dados continuam no navegador");
+  await b.waitForSelector("td:has-text('Último do B')", { timeout: 20000 });
+  ok(true, "entrar de novo traz os dados de volta do Drive");
   ok(drive.spaces.size === 1 && drive.spaces.has("appDataFolder"), "o Drive só é consultado na pasta de dados do app");
 
   // A página /oauth só repassa para 127.0.0.1 (programa do computador) com porta numérica.
