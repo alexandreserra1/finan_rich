@@ -71,6 +71,9 @@ try {
   await page.click(".welcome button[type=submit]");
   await page.waitForSelector(".cards.has-hero");
   ok(await page.isVisible(".flash:has-text('Pronto!')"), "ao terminar, mostra o Painel montado");
+  const brief = (name) => page.locator(`#time .brief:has(strong:text-is('${name}'))`);
+  ok((await brief("Bento").textContent()).includes("Cartão: 10,00% ao mês") && (await brief("Tito").textContent()).includes("Reserva de emergência") &&
+    await brief("Bento").getAttribute("href") === "/dividas", "o time conta no Painel o que viu (Bento na dívida, Tito na meta)");
   await page.evaluate(() => window.finanSync());
   const [rec, prefs, debts, goals] = await Promise.all(["recurring", "pref", "debt", "goal"].map(records));
   const split = prefs.find((p) => p.id === "split")?.value;

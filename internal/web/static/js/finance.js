@@ -64,3 +64,5 @@ export const installments = (tx, n) => unwrap(window.finan.installments(JSON.str
 // O time do finan_rich e quem dele cuida do assunto de uma pergunta ("" se ninguém em especial).
 export const team = () => unwrap(window.finan.team());
 export const route = (question) => unwrap(window.finan.route(question));
+// O que Bento (dívidas), Tito (metas) e Otávio (gastos) têm a dizer hoje.
+export const briefings = (ledger, day) => unwrap(window.finan.briefings(JSON.stringify(ledger), day));

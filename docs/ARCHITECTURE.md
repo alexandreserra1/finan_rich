@@ -261,6 +261,7 @@ aparelho                                      servidor
 | `search.go` | `SearchTransactions`: busca da tela Lançamentos (texto sem acento nem maiúscula, categoria, tipo, faixa de valor, mês) e os totais do que achou. |
 | `merchants.go` | `TopMerchants`: gastos por estabelecimento nos últimos 12 meses (para o consultor). |
 | `agents.go` | `Team`: os personagens do time (nome, papel, imagem). Cada tipo de aviso de `Alerts` tem um dono (Luna avisa vencimentos e orçamentos, Bento a dívida que cresce, Tito as metas, Otávio o gasto fora do padrão). `Route` diz de quem é o assunto de uma pergunta. |
+| `briefings.go` | `Briefings`: o cartão "O que o time viu" do Painel, sem IA. Bento diz a dívida a atacar e quando tudo acaba pagando o mínimo, Tito quanto guardar por mês em cada meta, Otávio a categoria mais acima da média, as assinaturas de desejos por ano e a maior economia possível (até 3 linhas cada). |
 | `monthplan.go` | `PlanMonth`: parcelas mínimas pendentes, sobra livre, quanto pagar na dívida de maior juros. |
 | `view.go` | `Dashboard` e `Debts`: o que cada tela mostra, já calculado, em structs com tags JSON (o que o navegador recebe). |
 | `finance_test.go` | Testes de todas as regras com casos de valores conhecidos. |

@@ -129,6 +129,7 @@ export function render(ctx) {
   painted = true;
 
   const alerts = month === day.slice(0, 7) ? finance.alerts(ledger, day) : [];
+  const briefs = month === day.slice(0, 7) ? finance.briefings(ledger, day) : [];
   const goalViews = finance.goals(ledger, day).filter((g) => !g.done || g.deadline >= month);
   const inMonth = ledger.transactions.filter((t) => !t.deleted && t.date.startsWith(month));
   const count = (kind) => inMonth.filter((t) => t.kind === kind).length;
@@ -280,6 +281,13 @@ export function render(ctx) {
         </a>
       </div>
     </section>
+
+    ${briefs.length ? html`<section class="panel" id="time" aria-labelledby="time-h">
+      <div class="panel-head"><h2 id="time-h">O que o time viu</h2><a class="small" href="/chat">Conversar</a></div>
+      <div class="briefs">${briefs.map((b) => html`<a class="brief" href="${b.link}">
+        <span class="brief-who"><img class="face" src="/static/img/avatar-${b.agent.animal}.png" alt="" width="36" height="36"><span><strong>${b.agent.name}</strong><small>${b.title}</small></span></span>
+        <ul>${b.lines.map((l) => html`<li>${l}</li>`)}</ul></a>`)}</div>
+    </section>` : ""}
 
     ${v.budgets.length ? html`<section class="panel" id="orcamentos">
       <div class="panel-head"><h2>Orçamentos do mês</h2><a class="small" href="/categorias">Ajustar tetos</a></div>

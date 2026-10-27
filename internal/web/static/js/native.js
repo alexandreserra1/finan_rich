@@ -59,7 +59,7 @@ export async function scheduleDebtReminders(ledger) {
     await notif.schedule({
       notifications: debts.map((d, i) => ({
         id: 7100 + i,
-        title: `${d.name} vence dia ${d.dueDay}`,
+        title: `Luna: ${d.name} vence dia ${d.dueDay}`, // a Luna cuida dos vencimentos (finance.Team)
         body: "Abra o finan_rich para ver a parcela e o plano para quitar.",
         schedule: { on: { day: Math.max(1, d.dueDay - 2), hour: 9, minute: 0 }, allowWhileIdle: true },
         extra: { kind: REMINDER, debtId: d.id },
