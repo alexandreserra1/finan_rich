@@ -47,14 +47,19 @@ try {
 
   // Conta corrente e cartão.
   await page.goto(`${B}/contas`);
-  await page.waitForSelector("form[data-form=account]", { timeout: 20000 });
+  await page.click("[data-action=new-account] >> nth=0", { timeout: 20000 });
+  await page.waitForSelector("#account-modal .modal-panel");
   ok(await page.locator("[data-card]").first().isHidden(), "fechamento e vencimento só aparecem no cartão");
   await page.fill("input[name=name]", "Itaú");
   await page.fill("input[name=initial]", "1.000");
   await page.click("form[data-form=account] button[type=submit]");
   await page.waitForSelector(".account:has-text('Itaú')");
+  await page.click("[data-action=new-account] >> nth=0");
+  await page.click(".kinds label:has-text('Cartão')");
+  ok((await page.textContent("[data-initial-label]")).includes("Em aberto hoje") && await page.locator("[data-card]").isVisible(), "no cartão, o valor vira \"em aberto\" e pede os dias");
+  await page.click("form[data-form=account] button[type=submit]");
+  ok(await page.isVisible("[data-error=name]:not([hidden])") && await page.isVisible("[data-error=closing_day]:not([hidden])"), "sem nome e sem dias, a janela avisa e não salva");
   await page.fill("input[name=name]", "Cartão Nubank");
-  await page.selectOption("select[name=kind]", "cartao");
   await page.fill("input[name=closing_day]", "10");
   await page.fill("input[name=due_day]", "20");
   await page.click("form[data-form=account] button[type=submit]");
@@ -97,7 +102,10 @@ try {
   ok(/R\$ 333,34/.test(invText) && invText.includes(`vence 20/${pad(inv.getMonth() + 1)}`), `fatura de ${invLabel} tem a 1ª parcela e vence dia 20: ${invText.replace(/\s+/g, " ")}`);
   ok(await page.locator(".invoice").count() === 2, "mostra a fatura atual e a próxima");
   ok((await page.textContent(".account:has-text('Itaú')")).includes("R$ 1.500,00"), "saldo da conta: inicial + entrada");
-  ok((await page.textContent(".account:has-text('Cartão Nubank') > .row")).includes("R$ 333,34 em aberto"), "cartão: só a parcela de hoje está em aberto");
+  ok((await page.textContent(".account:has-text('Cartão Nubank') .card-tile")).includes("R$ 333,34 em aberto"), "cartão: só a parcela de hoje está em aberto");
+  // Patrimônio: o botão troca o gráfico pela tabela.
+  await page.click("[data-nw-toggle]");
+  ok(await page.isVisible("[data-nw-table] tbody tr >> nth=0") && await page.isHidden("[data-nw-chart]"), "patrimônio em tabela");
 
   // Patrimônio na Análise: 1.500 − 333,34.
   await page.goto(`${B}/analise`);

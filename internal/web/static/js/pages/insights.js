@@ -5,7 +5,7 @@ import * as finance from "../finance.js";
 import { barPct, html, today } from "../ui.js";
 import { chart } from "../charts.js";
 import { budgetBars } from "./dashboard.js";
-import { netWorthPanel } from "./accounts.js";
+import { bindNetWorth, netWorthPanel } from "./accounts.js";
 
 // paceChart desenha o gasto variável acumulado: este mês (área cheia), o mês
 // passado (tracejada) e a projeção até o fim do mês (pontilhada).
@@ -135,4 +135,8 @@ export function render({ ledger }) {
     </section>` : ""}
     </div>
     ${netWorthPanel(ledger)}`;
+}
+
+export function bind(root) {
+  bindNetWorth(root);
 }
