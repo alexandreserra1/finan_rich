@@ -40,7 +40,8 @@ func ListModels(ctx context.Context, baseURL, apiKey string) ([]string, error) {
 	}
 	var out struct {
 		Data []struct {
-			ID string `json:"id"`
+			ID            string `json:"id"`
+			ContextWindow int    `json:"context_window"` // o Groq informa; outros provedores não
 		} `json:"data"`
 	}
 	if err := json.NewDecoder(io.LimitReader(resp.Body, 4<<20)).Decode(&out); err != nil {
@@ -48,10 +49,18 @@ func ListModels(ctx context.Context, baseURL, apiKey string) ([]string, error) {
 	}
 	ids := make([]string, 0, len(out.Data))
 	for _, m := range out.Data {
+		if m.ContextWindow > 0 && m.ContextWindow < minContext {
+			continue
+		}
 		ids = append(ids, m.ID)
 	}
 	return ids, nil
 }
+
+// minContext: o pedido do consultor (instruções, dados, ferramentas e a
+// conversa) passa de 4 mil tokens; modelo com contexto menor responde
+// "reduce the length of the messages" e não serve nem de reserva.
+const minContext = 16384
 
 // notChat marca modelos que não conversam (áudio, imagem, filtros, vetores).
 var notChat = []string{"whisper", "guard", "orpheus", "tts", "embed", "image", "imagen", "veo", "transcribe",
