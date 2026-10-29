@@ -18,7 +18,7 @@ import (
 // Usa o livro-caixa original (nomes reais), porque este texto não sai do aparelho.
 
 // OfflineNotice abre a resposta sem IA quando a IA falhou.
-const OfflineNotice = "_A IA não respondeu agora. Estes são os números do app:_"
+const OfflineNotice = "**A IA não respondeu agora.** Estes são os números do app:"
 
 // Reply é a resposta do consultor. App: o texto é do app, sem IA (pergunta
 // pronta ou a IA falhou); AIError diz por que a IA falhou (nil se não falhou).
@@ -124,7 +124,7 @@ func titoOffline(t *Tools, q Question) string {
 	if e := BuildFacts(q.Ledger, q.Today).Emergency; e.AvgMonthlyOutCents > 0 && (goals == "" || strings.Contains(fold(q.Text), "reserva")) {
 		lines := []string{fmt.Sprintf("- Mínima: %s (3 meses de gastos); ideal: %s (6 meses).", money.Format(e.MinCents), money.Format(e.IdealCents))}
 		if e.MonthsToMin > 0 {
-			lines = append(lines, fmt.Sprintf("- Guardando a sobra livre (%s por mês), chega na mínima em %d meses e na ideal em %d.", money.Format(e.MonthlySavingCents), e.MonthsToMin, e.MonthsToIdeal))
+			lines = append(lines, fmt.Sprintf("- Guardando a sobra livre (%s por mês), chega na mínima em %s e na ideal em %s.", money.Format(e.MonthlySavingCents), finance.Meses(e.MonthsToMin), finance.Meses(e.MonthsToIdeal)))
 		} else {
 			lines = append(lines, "- Hoje não sobra dinheiro no mês: sem cortar gastos, não dá para formar a reserva.")
 		}

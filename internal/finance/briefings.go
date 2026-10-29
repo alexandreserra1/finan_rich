@@ -71,7 +71,7 @@ func debtLines(l domain.Ledger, today time.Time) []string {
 		for range s.Months {
 			end = end.Next()
 		}
-		lines = append(lines, fmt.Sprintf("Só no mínimo, fica livre de todas em %d meses (%s), com %s de juros.", s.Months, end.Label(), money.Format(s.InterestCents)))
+		lines = append(lines, fmt.Sprintf("Só no mínimo, fica livre de todas em %s (%s), com %s de juros.", Meses(s.Months), end.Label(), money.Format(s.InterestCents)))
 	} else {
 		lines = append(lines, "Só no mínimo, as dívidas não acabam: a parcela não cobre os juros.")
 	}
@@ -131,4 +131,12 @@ func spendingLines(l domain.Ledger, today time.Time) []string {
 		lines = append(lines, fmt.Sprintf("%s: dá para guardar %s por mês.", s.Title, money.Format(s.MonthlyCents)))
 	}
 	return lines
+}
+
+// Meses escreve uma quantidade de meses no singular ou no plural ("1 mês", "7 meses").
+func Meses(n int) string {
+	if n == 1 {
+		return "1 mês"
+	}
+	return fmt.Sprintf("%d meses", n)
 }

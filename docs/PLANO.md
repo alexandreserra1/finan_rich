@@ -40,10 +40,10 @@ sem conta e a sessão que expira.
 A IA só escreve o texto: toda conta é do Go. A meta é que a falta de token
 nunca deixe a pessoa sem resposta.
 
-- [ ] B1. Resposta sem IA dos personagens: se nenhuma IA responder (cota,
+- [x] B1. Resposta sem IA dos personagens: se nenhuma IA responder (cota,
   erro, sem internet), o personagem responde com a conta pronta do Go num
   texto fixo, do jeito dele. Computador, site e celular.
-- [ ] B2. Respostas prontas para as sugestões ("Qual dívida pagar primeiro?",
+- [x] B2. Respostas prontas para as sugestões ("Qual dívida pagar primeiro?",
   "O que vence esta semana?"…): o Go responde direto, sem gastar token.
 - [x] B3. Registro de tokens por pedido no intermediário (sem guardar texto da
   pessoa): tokens de entrada, de saída, modelo e personagem, para medir o
@@ -56,7 +56,7 @@ nunca deixe a pessoa sem resposta.
 - [ ] B6. Menos token por pergunta: cada personagem recebe só a parte do
   resumo que usa; resposta guardada para a mesma pergunta com os mesmos dados
   no mesmo dia; histórico mais curto.
-- [ ] B7. Aviso claro quando o grátis acaba: "use sua chave grátis do Gemini"
+- [x] B7. Aviso claro quando o grátis acaba: "use sua chave grátis do Gemini"
   com o passo a passo (a opção já existe em Ajustes).
 - [ ] B8. Teto de gasto com alarme (se um dia houver reserva paga): ao bater
   no teto, volta para a resposta sem IA. Só com os números do B3 na mão.
@@ -66,6 +66,14 @@ nunca deixe a pessoa sem resposta.
   provedores na ordem de `FINAN_PROVIDERS`, com no máximo 12 tentativas por pergunta, e repete
   sem `stream_options` quando o provedor recusa o campo. Nenhum provedor foi chamado de verdade
   ainda: depende das chaves na Vercel (passo a passo em `docs/IA-GRATIS.md`).
+- B1, B2 e B7 entraram em 28/10/2026 (feitos por um agente e revisados aqui): `advisor.Offline`
+  responde com as contas do Go quando a IA falha, as sugestões de cada personagem que só precisam
+  de contas são respondidas sem IA (`advisor.Suggestions`), e o limite do grátis (429) mostra o
+  caminho para a chave da própria pessoa. A resposta sem IA tem o aviso em negrito no topo.
+- Verificado com as APIs de verdade em 28/10/2026: o Groq pelo intermediário publicado (com e sem
+  streaming, tokens lidos de respostas reais); os endereços de Gemini, Cerebras, OpenRouter e
+  Cloudflare existem e recusam chave inválida (o Gemini com 400, tratado). Falta só uma resposta
+  real de cada um deles, que depende das chaves na Vercel.
 - Celular: B1, B2, B5 e B6 valem no app (nuvem e IA dentro do celular); a IA
   dentro do celular já recebe as contas prontas.
 

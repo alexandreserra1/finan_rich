@@ -87,7 +87,7 @@ func (t *Tools) simulateDebts(extra, order string) string {
 		if !s.OK {
 			return "não acaba: o pagamento não cobre os juros"
 		}
-		return fmt.Sprintf("livre em %d meses (%s), com %s de juros", s.Months, t.monthAfter(s.Months).Label(), money.Format(s.InterestCents))
+		return fmt.Sprintf("livre em %s (%s), com %s de juros", finance.Meses(s.Months), t.monthAfter(s.Months).Label(), money.Format(s.InterestCents))
 	}
 	plan := finance.PayoffSchedule(debts, x, avalanche)
 	base := finance.PayoffSchedule(debts, 0, avalanche)
@@ -103,7 +103,7 @@ func (t *Tools) simulateDebts(extra, order string) string {
 		case plan.OK && !base.OK:
 			b.WriteString("Com o valor a mais, as dívidas passam a ter fim.\n")
 		case plan.OK && base.OK:
-			fmt.Fprintf(&b, "Diferença: sai %d meses antes e paga %s a menos de juros.\n", base.Months-plan.Months, money.Format(base.InterestCents-plan.InterestCents))
+			fmt.Fprintf(&b, "Diferença: sai %s antes e paga %s a menos de juros.\n", finance.Meses(base.Months-plan.Months), money.Format(base.InterestCents-plan.InterestCents))
 		}
 	}
 	fmt.Fprintf(&b, "Na outra ordem (%s), com o mesmo valor: %s.\n", name[!avalanche], describe(other))
@@ -143,7 +143,7 @@ func (t *Tools) simulateGoal(name, deadline, perMonth string) string {
 		if late {
 			lines = append(lines, "Até "+domain.ParseMonth(deadline).Label()+": esse prazo já passou. Escolha um mês a partir de agora.")
 		} else {
-			lines = append(lines, fmt.Sprintf("Para chegar até %s: guarde %s por mês durante %d meses.", domain.ParseMonth(deadline).Label(), money.Format(per), months))
+			lines = append(lines, fmt.Sprintf("Para chegar até %s: guarde %s por mês durante %s.", domain.ParseMonth(deadline).Label(), money.Format(per), finance.Meses(months)))
 		}
 	}
 	if perMonth != "" {
@@ -152,10 +152,10 @@ func (t *Tools) simulateGoal(name, deadline, perMonth string) string {
 			return "não deu para calcular: informe quanto guardar por mês"
 		}
 		months := int((v.RemainingCents + per - 1) / per)
-		line := fmt.Sprintf("Guardando %s por mês, chega em %d meses (%s)", money.Format(per), months, t.monthAfter(months-1).Label()) // o mês atual conta, como no GoalPlan
+		line := fmt.Sprintf("Guardando %s por mês, chega em %s (%s)", money.Format(per), finance.Meses(months), t.monthAfter(months-1).Label()) // o mês atual conta, como no GoalPlan
 		if g.Deadline != "" {
 			if left, _, _ := finance.GoalPlan(v.RemainingCents, g.Deadline, t.today); left > 0 && months > left {
-				line += fmt.Sprintf(", %d meses depois do prazo (%s)", months-left, domain.ParseMonth(g.Deadline).Label())
+				line += fmt.Sprintf(", %s depois do prazo (%s)", finance.Meses(months-left), domain.ParseMonth(g.Deadline).Label())
 			}
 		}
 		lines = append(lines, line+".")

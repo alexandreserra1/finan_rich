@@ -30,3 +30,11 @@ func TestRoute(t *testing.T) {
 		}
 	}
 }
+
+func TestMeses(t *testing.T) {
+	for n, want := range map[int]string{0: "0 meses", 1: "1 mês", 2: "2 meses", 13: "13 meses"} {
+		if got := Meses(n); got != want {
+			t.Errorf("Meses(%d) = %q, quer %q", n, got, want)
+		}
+	}
+}
