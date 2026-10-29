@@ -31,6 +31,15 @@ navegador / app ──login (código + PKCE)──▶ Google ──volta──�
   rotas `/oauth/*` não guardam nada, não registram tokens e têm limite por IP. A volta para o
   computador só aceita `127.0.0.1` com porta numérica. Escopos: `openid email` e
   `drive.appdata` (não sensíveis para o Google).
+- **O site só funciona com conta.** O computador de quem abre o site pode ser de outra pessoa:
+  sem login, nenhuma tela do app aparece (nem digitando o endereço, nem com dados antigos no
+  navegador); o endereço de dentro do app vira o login, e `/` mostra a landing. O ícone da
+  pantera leva à landing sem login e ao Painel com login. A sessão do site vence após 30
+  minutos sem usar (clique ou tecla; `google.IDLE_MS`): a tela vira o login com um aviso, e os
+  dados e a conta continuam ligados até a pessoa tocar em Sair. O login pede para escolher a
+  conta (`prompt=select_account`), para o Google não entrar sozinho na conta de quem estava
+  antes no computador. O app do celular e o programa do computador seguem como antes (o
+  aparelho é da pessoa; o app tem o bloqueio com digital ou senha).
 - **Sair** (Ajustes → Conta Google) revoga o acesso no Google e apaga o token do aparelho.
   No site, como o computador pode ser de outra pessoa, sair também tira os dados do
   navegador: antes ele salva tudo no Drive e, se não conseguir, não sai nem apaga nada.

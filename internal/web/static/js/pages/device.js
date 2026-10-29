@@ -182,7 +182,7 @@ export function render({ server, params, ledger }) {
 
     ${device.isSite ? html`<section class="panel" id="sozinho">
       <h2>Seus dados</h2>
-      <p class="small muted">Ficam só neste navegador: nada vai para servidor do finan_rich. Faça um backup de vez em quando em <a href="/exportar">Exportar</a>; se limpar os dados do navegador, eles se perdem.</p>
+      <p class="small muted">Ficam neste navegador e no seu Google Drive (nada vai para servidor do finan_rich). Ao sair da conta, eles saem deste navegador e continuam no Drive. Sem usar por 30 minutos, o site pede para entrar de novo.</p>
     </section>` : !server ? html`<section class="panel" id="sozinho">
       <h2>Sem computador?</h2>
       ${ledger.categories.length

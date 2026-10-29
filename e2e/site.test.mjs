@@ -49,35 +49,39 @@ try {
     return getComputedStyle(w).position === "static" && getComputedStyle(w).backgroundColor === "rgba(0, 0, 0, 0)" && getComputedStyle(q).color === "rgb(21, 32, 27)"; }),
     "estilos do app não vazam na landing (dúvidas com fundo claro e texto escuro)");
 
-  // Login: as boas-vindas, sem "conecte ao computador".
+  ok(await page.locator('[data-action="solo"]').count() === 0 && !/Usar sem conta/.test(await page.innerText("main")), "a landing não oferece uso sem conta");
+  await page.click(".lp-brand");
+  ok(new URL(page.url()).pathname === "/" && await page.locator(".lp-hero h1").isVisible(), "o ícone da pantera, sem login, fica na página inicial");
+
+  // Login: sem "Usar sem conta"; com o Google ainda não ligado no servidor, avisa.
   await page.goto(`${SITE}/?entrar=1`);
-  await page.waitForSelector(".start button[data-action=solo]", { timeout: 20000 });
+  await page.waitForSelector(".start [data-unavailable]:not([hidden])", { timeout: 20000 });
   ok(await page.locator("body.landing-mode").count() === 0, "fora da landing, o modo tela cheia sai");
-  const welcome = await page.innerText("main"); // só o que aparece (sem login com Google configurado, o botão fica escondido)
-  ok(await page.locator(".start-google").isHidden() && /só neste navegador/.test(welcome) && !/computador/.test(welcome.replace(/programa do computador/, "")),
-    "primeira visita mostra as boas-vindas do site");
-  ok((await page.textContent("#sync-status")) === "Só neste navegador", "status: só neste navegador");
+  const welcome = await page.innerText("main");
+  ok(await page.locator(".start-google").isHidden() && /abre em breve/.test(welcome) && !/Usar sem conta|Começar a usar/.test(welcome),
+    "o login sem Google ligado avisa e não deixa usar sem conta");
+  await page.click(".start .brand");
+  await page.waitForSelector(".lp-hero h1");
+  ok(new URL(page.url()).search === "", "o ícone da pantera na tela de login volta para a landing");
 
-  // Começar: categorias criadas no navegador; lançar e recarregar mantém.
-  await page.click(".start button[data-action=solo]");
-  await page.waitForSelector(".welcome, .cards", { timeout: 20000 });
-  await page.goto(`${SITE}/lancamentos`);
-  await openTx(page);
-  await openTx(page);
-  await page.fill("input[name=description]", "Padaria do site");
-  await page.fill("input[name=amount]", "12,50");
-  await page.click("form[data-form=transaction] button[type=submit]");
-  await page.waitForSelector("td:has-text('Padaria do site')");
-  await page.reload();
-  await page.waitForSelector("td:has-text('Padaria do site')", { timeout: 20000 });
-  ok(true, "lançamento fica salvo no navegador depois de recarregar");
+  // Barreira: nenhum endereço do app abre sem login, nem digitado, nem com dados antigos no navegador.
+  await page.evaluate(async () => {
+    const db = await import("/static/js/db.js");
+    const f = await import("/static/js/finance.js");
+    await f.load();
+    await db.saveManyLocal(f.defaultCategories(Date.now()).map((record) => ({ type: "category", record })));
+  });
+  let leaked = [];
+  for (const path of ["/", "/dividas", "/lancamentos", "/metas", "/analise", "/contas", "/chat", "/configuracoes", "/exportar"]) {
+    await page.goto(`${SITE}${path}`);
+    await page.waitForSelector(".landing, .start", { timeout: 20000 });
+    const url = new URL(page.url());
+    const visible = await page.evaluate(() => ["nav.tabs", "header.top", "#sync-status"].filter((q) => document.querySelector(q)?.checkVisibility({ visibilityProperty: true })));
+    if (visible.length || !/^\/(\?entrar=1)?$/.test(url.pathname + url.search) || await page.locator(".cards, .tx-card, table").count()) leaked.push(path);
+  }
+  ok(leaked.length === 0, `sem login, nenhum endereço do app abre, mesmo com dados no navegador (vazou: ${leaked})`);
 
-  // Ajustes do site: sem pareamento com o computador nem Open Finance.
-  await page.goto(`${SITE}/configuracoes`);
-  await page.waitForSelector("#sozinho");
-  ok(await page.locator("#parear, form[data-form=pair], #open-finance").count() === 0, "Ajustes do site sem pareamento e sem Open Finance");
-  ok(/Ficam só neste navegador/.test(await page.textContent("#sozinho")), "Ajustes explicam onde ficam os dados");
-
+  // Ajustes do site (conferidos com login em google.test): aqui só a política de privacidade.
   // Política de privacidade (o Google exige o link).
   const privacy = await page.request.get(`${SITE}/privacidade.html`);
   ok(privacy.ok() && /drive\.appdata/.test(await privacy.text()), "política de privacidade publicada");

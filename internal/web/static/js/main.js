@@ -36,7 +36,8 @@ if (device.isApp) Object.assign(ROUTES, { "/configuracoes": devicePage, "/chat":
 const root = document.getElementById("app");
 let ledger = null;
 let server = null; // computador pareado (só no app do celular)
-let signedIn = false; // site: conta Google ligada (quem tem conta não vê a landing)
+let signedIn = false; // site: conta Google ligada e sessão ativa (sem isso, nenhuma tela do app aparece)
+let expired = false; // site: a sessão venceu por falta de uso
 let booted = false; // as regras (WebAssembly) já carregaram e a primeira tela foi desenhada
 let changedDuringBoot = false; // chegaram dados novos enquanto o app iniciava
 let dirty = false; // há um formulário sendo preenchido: não redesenhar por baixo
@@ -151,13 +152,20 @@ function render(message) {
   // menu antes de decidir entre a landing e o Painel.
   if (ledger || !page) document.documentElement.dataset.ready = "";
   if (!page || !ledger) return;
-  document.body.classList.remove("landing-mode");
-  if (!ledger.categories.length && page.needsData !== false && device.isSite) {
-    // Site sem dados: a landing (sem conta) ou as boas-vindas com o login (?entrar=1).
-    const ctx = context(path, new URLSearchParams(location.search));
-    const view = landing.show(ctx, signedIn) ? landing : start;
+  document.body.classList.remove("landing-mode", "login-mode");
+  if (device.isSite && !signedIn && path !== "/oauth") {
+    // Site sem login: nenhuma tela do app, nem por endereço digitado. Endereço
+    // de dentro do app (/dividas…) vira o login; "/" mostra a landing.
+    if (path !== "/") history.replaceState(null, "", "/?entrar=1");
+    const ctx = { ...context("/", new URLSearchParams(location.search)), expired };
+    const view = landing.show(ctx, false) ? landing : start;
+    if (view === start) document.body.classList.add("login-mode"); // login sem o menu do app
     root.innerHTML = `<p id="flash" hidden></p>` + toString(view.render(ctx));
     view.bind(root, ctx);
+    return;
+  }
+  if (!ledger.categories.length && page.needsData !== false && device.isSite) {
+    root.innerHTML = `<p class="muted loading">Trazendo seus dados do Google Drive…</p>`;
     return;
   }
   if (!ledger.categories.length && page.needsData !== false) {
@@ -183,7 +191,10 @@ function render(message) {
 
 async function load() {
   [ledger, server] = await Promise.all([db.loadLedger(), device.server()]);
-  if (device.isSite) signedIn = !!(await google.account());
+  if (device.isSite) {
+    ({ signedIn, expired } = await google.session());
+    if (signedIn) google.markActive(true).catch(() => {}); // abrir o site também conta como uso
+  }
   await applyRecurring();
   scheduleReminders(ledger).catch(() => {}); // no app: os lembretes do time
 }
@@ -218,6 +229,21 @@ function navigate(url, replace = false) {
   render();
   window.scrollTo(0, 0);
 }
+
+// Site: com a página aberta e parada, a sessão vence sozinha e a tela vira o login.
+if (device.isSite) setInterval(async () => {
+  if (!signedIn) return;
+  const s = await google.session();
+  if (!s.signedIn) {
+    signedIn = false;
+    expired = s.expired;
+    history.replaceState(null, "", "/?entrar=1"); // o login com o aviso; o ícone da pantera ainda leva à landing
+    render();
+  }
+}, 15_000);
+
+// Site: clique ou tecla conta como uso (a sessão vence após google.IDLE_MS parado).
+if (device.isSite) ["click", "keydown"].forEach((ev) => document.addEventListener(ev, () => { if (signedIn) google.markActive().catch(() => {}); }, { passive: true }));
 
 document.addEventListener("click", (e) => {
   const a = e.target.closest("a[href]");

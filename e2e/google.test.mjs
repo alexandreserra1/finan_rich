@@ -115,6 +115,7 @@ async function until(cond, msg, ms = 15000) {
 
 async function login(page) {
   await page.goto(`${SITE}/?entrar=1`); // "Começar agora" da landing
+  ok(!(await page.locator('[data-action="solo"]').count()), "no login do site não existe \"usar sem conta\"");
   await page.waitForSelector(".start-google:not([hidden]) [data-action=google]", { timeout: 20000 });
   await page.click("[data-action=google]");
   await page.waitForURL(`${SITE}/`, { timeout: 20000 });
@@ -186,6 +187,35 @@ try {
   await b.goto(`${SITE}/lancamentos`);
   await b.waitForSelector("td:has-text('Mercado do Google')");
   ok(await b.locator("td:has-text('Farmácia do B')").count() === 0, "o que A apagou some em B");
+
+  // Logado: o ícone da pantera leva ao Painel, e endereço direto de dentro do app abre.
+  await b.goto(`${SITE}/lancamentos`);
+  await b.waitForSelector("td:has-text('Mercado do Google')", { timeout: 20000 });
+  await b.click("nav.tabs .side-brand, header.top .brand >> visible=true");
+  await b.waitForSelector(".dash-kpis", { timeout: 20000 });
+  ok(new URL(b.url()).pathname === "/", "logado, o ícone da pantera volta ao Painel");
+
+  // Sessão do site: parado por mais de 30 minutos, o site pede para entrar de novo (e nenhuma tela do app aparece).
+  await b.evaluate(async () => (await import("/static/js/db.js")).setMeta("site-active", Date.now() - 31 * 60_000));
+  await b.goto(`${SITE}/dividas`);
+  await b.waitForSelector(".start .login-note:has-text('sem usar')", { timeout: 20000 });
+  ok(await b.locator("nav.tabs").isHidden() && new URL(b.url()).search === "?entrar=1", "sessão parada vence: volta ao login com o aviso, sem menu");
+  ok(await b.evaluate(async () => !!(await (await import("/static/js/db.js")).getMeta("google", null))), "a sessão vencida não apaga os dados nem a conta; só pede o login de novo");
+  // Com o relógio de uso dentro do prazo, abrir o site entra direto e renova a contagem.
+  await b.evaluate(async () => (await import("/static/js/db.js")).setMeta("site-active", Date.now() - 20 * 60_000));
+  await b.goto(`${SITE}/dividas`);
+  await b.waitForSelector("h1:has-text('Dívidas')", { timeout: 20000 });
+  ok(await b.evaluate(async () => Date.now() - (await (await import("/static/js/db.js")).getMeta("site-active", 0)) < 60_000), "abrir o site dentro do prazo renova a contagem de uso");
+
+  // Com a página aberta e parada, a sessão vence sozinha e o Painel some.
+  await b.goto(`${SITE}/`);
+  await b.waitForSelector(".dash-kpis", { timeout: 20000 });
+  await b.evaluate(async () => (await import("/static/js/db.js")).setMeta("site-active", Date.now() - 31 * 60_000));
+  await b.waitForSelector(".start .login-note:has-text('sem usar')", { timeout: 30000 });
+  ok(await b.locator(".dash-kpis").count() === 0, "página aberta e parada: a sessão vence sozinha e o Painel some");
+  await b.evaluate(async () => (await import("/static/js/db.js")).setMeta("site-active", Date.now()));
+  await b.goto(`${SITE}/`);
+  await b.waitForSelector(".dash-kpis", { timeout: 20000 });
 
   // Token de acesso vencido: renova pelo intermediário, sem pedir login de novo.
   await b.evaluate(async () => { (await import("/static/js/google.js")).expire(); });

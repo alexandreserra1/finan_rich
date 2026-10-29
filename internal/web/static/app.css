@@ -1142,7 +1142,7 @@ html:has(body.landing-mode) { scroll-behavior: smooth; }
 .lp-cta > span:not(.lp-shine), .lp-cta .lp-ico { position: relative; }
 .lp-shine { position: absolute; top: 0; bottom: 0; left: 0; width: 40%; background: linear-gradient(90deg, transparent, rgb(255 255 255 / .5), transparent); animation: lp-shine 3.6s ease-in-out infinite; pointer-events: none; }
 .lp-shine.wide { width: 30%; background: linear-gradient(90deg, transparent, rgb(255 255 255 / .18), transparent); animation-duration: 5s; }
-.landing .lp-ghost { height: 54px; min-height: 54px; padding: 0 22px; border: 1px solid rgb(255 255 255 / .12); border-radius: 14px; background: rgb(255 255 255 / .03);
+.landing .lp-ghost { display: flex; align-items: center; justify-content: center; height: 54px; min-height: 54px; padding: 0 22px; border: 1px solid rgb(255 255 255 / .12); border-radius: 14px; background: rgb(255 255 255 / .03);
   backdrop-filter: blur(8px); color: #e8eeeb; font-size: 16px; font-weight: 500; }
 .landing .lp-ghost:hover { background: rgb(255 255 255 / .08); color: #fff; }
 
@@ -1433,3 +1433,11 @@ html:has(body.landing-mode) { scroll-behavior: smooth; }
   .lp-reveal { opacity: 1; transform: none; }
   html:has(body.landing-mode) { scroll-behavior: auto; }
 }
+
+/* Login do site: sem o menu do app (nada de dentro aparece antes de entrar). */
+body.login-mode { display: block !important; padding-bottom: 0 !important; }
+body.login-mode > .top, body.login-mode > .tabs { display: none !important; }
+body.login-mode > main { max-width: 640px; margin: 0 auto; padding: clamp(40px, 12vh, 120px) 20px 40px !important; }
+/* Tela de login do site: sem uso sem conta; o aviso muda se o Google ainda não está ligado. */
+.start .brand.big { display: inline-block; color: var(--text); text-decoration: none; }
+.start .login-note { margin-top: 1rem; }

@@ -35,6 +35,28 @@ export async function available() {
   return !!clientId;
 }
 
+// ---- sessão do site ----
+// O site pode estar num computador de outra pessoa: sem uso por IDLE_MS, ele
+// pede para entrar de novo (main.js mostra o login no lugar das telas).
+export const IDLE_MS = 30 * 60_000;
+let touched = 0;
+
+// markActive guarda a hora do último uso (no máximo uma gravação por minuto).
+export async function markActive(force = false) {
+  const now = Date.now();
+  if (!force && now - touched < 60_000) return;
+  touched = now;
+  await setMeta("site-active", now);
+}
+
+// session diz se há conta ligada e se ela ainda vale: { signedIn, expired }.
+export async function session() {
+  if (!(await getMeta("google", null))) return { signedIn: false, expired: false };
+  const last = await getMeta("site-active", 0);
+  const expired = !last || Date.now() - last > IDLE_MS;
+  return { signedIn: !expired, expired };
+}
+
 // account devolve { email } da conta ligada, ou null.
 export async function account() {
   const a = await getMeta("google", null);
@@ -56,7 +78,7 @@ export async function signIn(kind) {
   const url = "https://accounts.google.com/o/oauth2/v2/auth?" + new URLSearchParams({
     client_id: clientId, redirect_uri: base() + "/oauth", response_type: "code", scope: SCOPE,
     code_challenge: challenge, code_challenge_method: "S256", state,
-    access_type: "offline", prompt: "consent", // garante o token de renovação
+    access_type: "offline", prompt: "select_account consent", // consent garante o token de renovação; select_account faz escolher a conta (num computador compartilhado, o Google não entra sozinho na conta de quem estava lá)
   });
   if (kind === "app") window.open(url, "_system");
   else location.assign(url);
@@ -90,6 +112,7 @@ export async function finish(code, state) {
   access = { token: data.access_token, exp: Date.now() + (data.expires_in || 3600) * 1000 };
   await saveRefresh(data.refresh_token);
   await setMeta("google", { email: email(data.id_token || ""), refresh: vault() ? null : data.refresh_token });
+  await markActive(true); // a sessão do site começa agora
 }
 
 async function saveRefresh(token) {

@@ -2,12 +2,11 @@
 // docs/design_handoff_finan_rich_esmeralda 3/Landing.dc.html). Aparece só no
 // site, para quem chega sem dados e sem conta Google ligada; quem já usa vai
 // para o Painel, e o app do computador e o do Android nunca a mostram.
-// "Começar agora" leva ao login (/?entrar=1, as boas-vindas com o Google) e
-// "Usar sem conta" segue o fluxo de sempre. Os números daqui são ilustrativos.
+// "Começar agora" leva ao login (/?entrar=1, as boas-vindas com o Google).
+// No site não há uso sem conta: sem login, nenhuma tela do app aparece. Os números daqui são ilustrativos.
 import * as device from "../device.js";
 import * as finance from "../finance.js";
 import { html, raw, shiftMonth, today } from "../ui.js";
-import { startSolo } from "./device.js";
 
 export const needsData = false;
 
@@ -179,7 +178,7 @@ export function render() {
   const motes = Array.from({ length: 20 }, () => html`<span class="lp-mote" style="--x: ${(rnd() * 100).toFixed(1)}%; --y: ${(20 + rnd() * 75).toFixed(1)}%; --s: ${rnd() > 0.7 ? 6 : 4}px; --t: ${(3 + rnd() * 4).toFixed(1)}s; --dl: ${(rnd() * 4).toFixed(1)}s" aria-hidden="true"></span>`);
   return html`<div class="landing" data-landing>
     <header class="lp-bar">
-      <a class="lp-brand" href="#topo"><img class="lp-pix" src="${IMG}brand-mark.png" alt="" width="30" height="30"><span>finan<span>_rich</span></span></a>
+      <a class="lp-brand" href="/" aria-label="finan_rich, voltar ao início"><img class="lp-pix" src="${IMG}brand-mark.png" alt="" width="30" height="30"><span>finan<span>_rich</span></span></a>
       <nav aria-label="Seções">
         <a class="lp-link lp-section-link" href="#recursos">Recursos</a>
         <a class="lp-link lp-section-link" href="#time">O time</a>
@@ -198,7 +197,7 @@ export function render() {
         <p>Tudo o que entra e sai, as dívidas com data para acabar e as metas andando. Com um consultor de IA que conversa sobre os seus números.</p>
         <div class="lp-ctas">
           <a class="lp-cta" href="${LOGIN}"><span class="lp-shine" aria-hidden="true"></span><span>Começar agora</span>${svg(ICON.arrow)}</a>
-          <button type="button" class="lp-ghost" data-action="solo">Usar sem conta</button>
+          <a class="lp-ghost" href="#recursos">Ver como funciona</a>
         </div>
       </div>
       <div class="lp-stage">${phone()}${floats()}<div class="lp-fade" aria-hidden="true"></div></div>
@@ -266,7 +265,7 @@ export function render() {
     <section class="lp-final-wrap"><div class="lp-final">
       <img class="lp-pix lp-final-art" src="${IMG}brand-mark.png" alt="" aria-hidden="true"><span class="lp-final-fade" aria-hidden="true"></span><span class="lp-final-eyes" aria-hidden="true"></span>
       <div class="lp-final-copy" data-reveal><h2>Menos susto no fim do mês. Mais calma para decidir.</h2>
-        <div class="lp-ctas left"><a class="lp-cta" href="${LOGIN}"><span>Começar agora</span></a><button type="button" class="lp-ghost" data-action="solo">Usar sem conta</button></div></div>
+        <div class="lp-ctas left"><a class="lp-cta" href="${LOGIN}"><span>Começar agora</span></a></div></div>
     </div></section>
 
     <footer class="lp-foot"><div class="lp-wrap">
@@ -279,7 +278,6 @@ export function render() {
 export function bind(root, ctx) {
   const page = root.querySelector("[data-landing]");
   document.body.classList.add("landing-mode");
-  root.querySelectorAll('[data-action="solo"]').forEach((b) => b.addEventListener("click", () => startSolo(ctx, "/")));
   const still = () => page.isConnected; // saiu da landing: os observadores se desligam sozinhos
   const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
