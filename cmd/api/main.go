@@ -38,7 +38,7 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       15 * time.Second, // corpo mandado devagar não segura uma vaga (a resposta em streaming não é afetada)
 	}
-	log.Printf("finanproxy ouvindo em %s (modelos: %s)", srv.Addr, strings.Join(cfg.Models, ", "))
+	log.Printf("finanproxy ouvindo em %s (provedores: %s)", srv.Addr, strings.Join(names(cfg.Providers), ", "))
 	log.Fatal(srv.ListenAndServe())
 }
 
@@ -47,4 +47,13 @@ func port() string {
 		return p
 	}
 	return "8080"
+}
+
+// names lista os provedores ligados (só os nomes: a chave nunca vai para o log).
+func names(ps []proxy.Provider) []string {
+	var out []string
+	for _, p := range ps {
+		out = append(out, p.Name)
+	}
+	return out
 }

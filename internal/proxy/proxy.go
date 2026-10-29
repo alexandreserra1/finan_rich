@@ -1,13 +1,17 @@
 // Package proxy é o intermediário do "finan_rich grátis": recebe as perguntas
-// do consultor (já anonimizadas no aparelho) e repassa ao Groq com a chave que
-// fica só no servidor. Assim nenhuma chave vai dentro do app.
+// do consultor (já anonimizadas no aparelho) e repassa a provedores de IA
+// grátis (Groq, Gemini, Cerebras, OpenRouter, Cloudflare) com as chaves que
+// ficam só no servidor. Assim nenhuma chave vai dentro do app.
 //
 // Como o app é de código aberto, qualquer um acha o endereço. Por isso:
 //   - só passa pedido com o formato do consultor (o prompt do finan_rich);
 //   - limite de chamadas por aparelho e por IP, por hora e por dia;
 //   - o modelo e o tamanho da resposta são escolhidos aqui, não por quem chama;
-//   - quando um modelo esgota a cota grátis (429), cai ou foi desligado pelo
-//     Groq, tenta o próximo da lista (no Groq cada modelo tem a sua cota).
+//   - quando um modelo esgota a cota grátis (429), cai ou foi desligado,
+//     tenta o próximo da lista (no Groq cada modelo tem a sua cota); acabados
+//     os modelos de um provedor, passa para o próximo provedor;
+//   - cada resposta vira uma linha no log com tokens, modelo e personagem,
+//     sem nada do texto da pessoa (usage.go).
 package proxy
 
 import (
@@ -15,11 +19,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -30,6 +36,9 @@ import (
 
 // Config do intermediário.
 type Config struct {
+	Providers []Provider // em ordem de tentativa
+
+	// Um provedor só, sem nome (o jeito antigo; vira "groq" se Providers está vazio).
 	Upstream string   // ex.: https://api.groq.com/openai/v1
 	APIKey   string   // chave do Groq (Secret Manager)
 	Models   []string // em ordem de preferência
@@ -41,33 +50,90 @@ type Config struct {
 	GoogleTokenURL                     string // padrão: https://oauth2.googleapis.com/token (troca nos testes)
 }
 
+// Provider é uma API no formato OpenAI (/models e /chat/completions).
+type Provider struct {
+	Name        string   // aparece no log (groq, gemini...)
+	Upstream    string   // endereço base, sem /chat/completions
+	APIKey      string   // nunca vai para o log
+	Models      []string // preferidos, em ordem
+	OnlyFree    bool     // OpenRouter: só modelos ":free" (os outros cobram)
+	StreamUsage bool     // aceita stream_options.include_usage (tokens no fim do streaming)
+}
+
 // Modelos abertos do Groq com ferramentas; cada um tem a sua cota grátis.
 // O Groq desliga modelos com aviso de poucas semanas (console.groq.com/docs/deprecations):
 // troque aqui ou em FINAN_PROXY_MODELS, sem publicar o app.
 const defaultModels = "openai/gpt-oss-120b,qwen/qwen3.8-27b,openai/gpt-oss-20b"
 
-// ConfigFromEnv lê a configuração das variáveis de ambiente (Cloud Run e Vercel):
+// defaultProviders é a ordem padrão de FINAN_PROVIDERS.
+const defaultProviders = "groq,gemini,cerebras,openrouter,cloudflare"
+
+// presets: os provedores grátis no formato OpenAI. Os modelos preferidos vêm
+// primeiro; depois, os outros de conversa que o /models do provedor listar.
+var presets = map[string]Provider{
+	"groq":   {Upstream: "https://api.groq.com/openai/v1", StreamUsage: true},
+	"gemini": {Upstream: "https://generativelanguage.googleapis.com/v1beta/openai", StreamUsage: true, Models: []string{"gemini-3.8-flash", "gemini-flash-latest", "gemini-3.5-flash-lite"}},
+	// Cerebras e Cloudflare: a documentação não fala de stream_options; o usage
+	// é lido se vier, sem pedir (um campo desconhecido pode dar 400).
+	"cerebras": {Upstream: "https://api.cerebras.ai/v1", Models: []string{"gpt-oss-120b", "qwen-3.8-27b"}},
+	// O OpenRouter manda o usage no fim do streaming sozinho.
+	"openrouter": {Upstream: "https://openrouter.ai/api/v1", OnlyFree: true, Models: []string{"openai/gpt-oss-120b:free", "openrouter/free"}},
+	// Cloudflare não tem /models no formato OpenAI: fica a lista daqui (modelos
+	// com ferramentas em developers.cloudflare.com/workers-ai/models).
+	"cloudflare": {Upstream: "https://api.cloudflare.com/client/v4/accounts/%s/ai/v1", Models: []string{"@cf/zai-org/glm-4.7-flash"}},
+}
+
+// ConfigFromEnv lê a configuração das variáveis de ambiente (Cloud Run e Vercel).
+// Cada provedor só entra se a chave dele existir; precisa de pelo menos um.
 //
-//	GROQ_API_KEY         chave do Groq (obrigatória)
-//	FINAN_PROXY_MODELS   modelos em ordem, separados por vírgula
-//	FINAN_PROXY_UPSTREAM API no formato OpenAI (padrão: Groq)
+//	GROQ_API_KEY         chave do Groq
+//	GEMINI_API_KEY       chave do Gemini (Google AI Studio)
+//	CEREBRAS_API_KEY     chave da Cerebras
+//	OPENROUTER_API_KEY   chave do OpenRouter (só modelos grátis)
+//	CLOUDFLARE_API_TOKEN e CLOUDFLARE_ACCOUNT_ID: Workers AI
+//	FINAN_PROVIDERS      ordem de tentativa (padrão: groq,gemini,cerebras,openrouter,cloudflare)
+//	FINAN_PROXY_MODELS   modelos do Groq em ordem, separados por vírgula
+//	FINAN_PROXY_UPSTREAM API do Groq (padrão: https://api.groq.com/openai/v1)
 //	GOOGLE_CLIENT_ID     login com Google (ID do cliente "Aplicativo da Web")
 //	GOOGLE_CLIENT_SECRET chave secreta desse cliente (só no servidor)
 func ConfigFromEnv() (Config, error) {
-	key := os.Getenv("GROQ_API_KEY")
-	if key == "" {
-		return Config{}, errors.New("falta GROQ_API_KEY")
-	}
 	env := func(name, fallback string) string {
 		if v := os.Getenv(name); v != "" {
 			return v
 		}
 		return fallback
 	}
+	keys := map[string]string{
+		"groq":       os.Getenv("GROQ_API_KEY"),
+		"gemini":     os.Getenv("GEMINI_API_KEY"),
+		"cerebras":   os.Getenv("CEREBRAS_API_KEY"),
+		"openrouter": os.Getenv("OPENROUTER_API_KEY"),
+		"cloudflare": os.Getenv("CLOUDFLARE_API_TOKEN"),
+	}
+	account := os.Getenv("CLOUDFLARE_ACCOUNT_ID")
+	var providers []Provider
+	for _, name := range strings.Split(env("FINAN_PROVIDERS", defaultProviders), ",") {
+		name = strings.TrimSpace(name)
+		p, ok := presets[name]
+		if !ok || keys[name] == "" || name == "cloudflare" && account == "" ||
+			slices.ContainsFunc(providers, func(q Provider) bool { return q.Name == name }) {
+			continue
+		}
+		p.Name, p.APIKey = name, keys[name]
+		switch name {
+		case "groq":
+			p.Upstream = env("FINAN_PROXY_UPSTREAM", p.Upstream)
+			p.Models = strings.Split(env("FINAN_PROXY_MODELS", defaultModels), ",")
+		case "cloudflare":
+			p.Upstream = fmt.Sprintf(p.Upstream, url.PathEscape(account))
+		}
+		providers = append(providers, p)
+	}
+	if len(providers) == 0 {
+		return Config{}, errors.New("falta a chave de algum provedor de IA (GROQ_API_KEY, GEMINI_API_KEY, CEREBRAS_API_KEY, OPENROUTER_API_KEY ou CLOUDFLARE_API_TOKEN com CLOUDFLARE_ACCOUNT_ID)")
+	}
 	return Config{
-		Upstream:           env("FINAN_PROXY_UPSTREAM", "https://api.groq.com/openai/v1"),
-		APIKey:             key,
-		Models:             strings.Split(env("FINAN_PROXY_MODELS", defaultModels), ","),
+		Providers:          providers,
 		Limits:             DefaultLimits,
 		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
@@ -98,7 +164,10 @@ func New(cfg Config) http.Handler {
 	if cfg.Client == nil {
 		cfg.Client = &http.Client{Timeout: 3 * time.Minute}
 	}
-	h := &handler{cfg: cfg, limiter: newLimiter(time.Now), oauthLimiter: newLimiter(time.Now)}
+	if len(cfg.Providers) == 0 && cfg.Upstream != "" {
+		cfg.Providers = []Provider{{Name: "groq", Upstream: cfg.Upstream, APIKey: cfg.APIKey, Models: cfg.Models, StreamUsage: true}}
+	}
+	h := &handler{cfg: cfg, limiter: newLimiter(time.Now), oauthLimiter: newLimiter(time.Now), models: map[string]cachedModels{}}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "ok") })
 	mux.HandleFunc("POST /chat/completions", h.chat)
@@ -114,35 +183,47 @@ type handler struct {
 	limiter      *limiter
 	oauthLimiter *limiter // separado: entrar com Google não gasta a cota do consultor
 
-	mu       sync.Mutex
-	models   []string // modelos preferidos que o Groq ainda tem
-	modelsAt time.Time
+	mu     sync.Mutex
+	models map[string]cachedModels // por provedor: os modelos que ele ainda tem
+}
+
+type cachedModels struct {
+	ids []string
+	at  time.Time
 }
 
 // modelsTTL é quanto tempo vale a lista de modelos que o Groq diz ter.
 const modelsTTL = time.Hour
 
-// available devolve os modelos a tentar, na ordem: os da configuração que o
-// Groq ainda tem e, depois, os outros de conversa dele (cada modelo tem a sua
-// cota grátis). Se a lista falhar, usa a configuração como está.
-func (h *handler) available() []string {
+// available devolve os modelos a tentar no provedor, na ordem: os preferidos
+// que ele ainda tem e, depois, os outros de conversa dele (cada modelo tem a
+// sua cota grátis). Se a lista falhar, usa os preferidos como estão.
+func (h *handler) available(p Provider) []string {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if h.models != nil && time.Since(h.modelsAt) < modelsTTL {
-		return h.models
+	if c, ok := h.models[p.Name]; ok && time.Since(c.at) < modelsTTL {
+		return c.ids
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) // a trava segura as outras perguntas
 	defer cancel()
-	ids, err := llm.ListModels(ctx, h.cfg.Upstream, h.cfg.APIKey)
-	picked := llm.PickModels(ids, h.cfg.Models)
+	ids, err := llm.ListModels(ctx, p.Upstream, p.APIKey)
+	picked := llm.PickModels(ids, p.Models)
+	if p.OnlyFree {
+		picked = slices.DeleteFunc(picked, func(id string) bool { return !free(id) })
+	}
 	if err != nil || len(picked) == 0 {
 		// Tenta a lista de novo em 5 minutos, sem uma chamada a mais em cada pergunta.
-		h.models, h.modelsAt = h.cfg.Models, time.Now().Add(5*time.Minute-modelsTTL)
-		return h.models
+		h.models[p.Name] = cachedModels{p.Models, time.Now().Add(5*time.Minute - modelsTTL)}
+		return p.Models
 	}
-	h.models, h.modelsAt = picked[:min(len(picked), maxModels)], time.Now()
-	return h.models
+	picked = picked[:min(len(picked), maxModels)]
+	h.models[p.Name] = cachedModels{picked, time.Now()}
+	return picked
 }
+
+// free: no OpenRouter, os modelos grátis terminam em ":free"; openrouter/free
+// escolhe um deles sozinho.
+func free(id string) bool { return strings.HasSuffix(id, ":free") || id == "openrouter/free" }
 
 func (h *handler) chat(w http.ResponseWriter, r *http.Request) {
 	raw, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBody))
@@ -151,7 +232,8 @@ func (h *handler) chat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body map[string]json.RawMessage
-	if json.Unmarshal(raw, &body) != nil || !fromApp(body) {
+	var msgs []chatMessage
+	if json.Unmarshal(raw, &body) != nil || json.Unmarshal(body["messages"], &msgs) != nil || !fromApp(body, msgs) {
 		fail(w, http.StatusForbidden, "este endereço só atende o consultor do app finan_rich")
 		return
 	}
@@ -165,51 +247,71 @@ func (h *handler) chat(w http.ResponseWriter, r *http.Request) {
 	}
 	body["max_tokens"] = json.RawMessage(capTokens(body["max_tokens"]))
 	delete(body, "max_completion_tokens")
-	models := h.available()
-	for i, model := range models {
-		body["model"], _ = json.Marshal(model)
-		delete(body, "reasoning_effort")
-		if strings.HasPrefix(model, "openai/gpt-oss") {
-			body["reasoning_effort"] = json.RawMessage(`"low"`) // menos tokens de raciocínio: sobra cota grátis
-		}
-		payload, _ := json.Marshal(body)
-		req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, strings.TrimRight(h.cfg.Upstream, "/")+"/chat/completions", bytes.NewReader(payload))
-		if err != nil {
-			fail(w, http.StatusInternalServerError, err.Error())
+	var stream bool
+	json.Unmarshal(body["stream"], &stream)
+	rec := usageRecord{Persona: personaOf(msgs), Device: hashDevice(device)}
+	for pi, p := range h.cfg.Providers {
+		models := h.available(p)
+		for i, model := range models {
+			last := pi == len(h.cfg.Providers)-1 && i == len(models)-1
+			body["model"], _ = json.Marshal(model)
+			delete(body, "reasoning_effort")
+			if strings.Contains(model, "gpt-oss") {
+				body["reasoning_effort"] = json.RawMessage(`"low"`) // menos tokens de raciocínio: sobra cota grátis
+			}
+			delete(body, "stream_options")
+			if stream && p.StreamUsage {
+				body["stream_options"] = json.RawMessage(`{"include_usage":true}`) // tokens no último evento
+			}
+			payload, _ := json.Marshal(body)
+			req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, strings.TrimRight(p.Upstream, "/")+"/chat/completions", bytes.NewReader(payload))
+			if err != nil {
+				fail(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Authorization", "Bearer "+p.APIKey)
+			rec.Provider, rec.Model, rec.start = p.Name, model, time.Now()
+			resp, err := h.cfg.Client.Do(req)
+			if err != nil {
+				rec.log(0, -1, -1)
+				if last || r.Context().Err() != nil {
+					fail(w, http.StatusBadGateway, "o provedor de IA não respondeu")
+					return
+				}
+				break // provedor fora do ar: o próximo
+			}
+			if !last && (retryable(resp.StatusCode) || badKey(resp.StatusCode)) {
+				resp.Body.Close()
+				rec.log(resp.StatusCode, -1, -1)
+				if badKey(resp.StatusCode) {
+					break // chave errada ou sem permissão: os outros modelos dele também falham
+				}
+				// Cota grátis deste modelo acabou, ele está fora ou foi desligado
+				// (400/404 de modelo aposentado): tenta o próximo.
+				continue
+			}
+			in, out := relay(w, resp)
+			rec.log(resp.StatusCode, in, out)
 			return
 		}
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", "Bearer "+h.cfg.APIKey)
-		resp, err := h.cfg.Client.Do(req)
-		if err != nil {
-			fail(w, http.StatusBadGateway, "o provedor de IA não respondeu")
-			return
-		}
-		// Cota grátis deste modelo acabou, ele está fora ou o Groq o desligou
-		// (400/404 de modelo aposentado): tenta o próximo.
-		if retryable(resp.StatusCode) && i < len(models)-1 {
-			resp.Body.Close()
-			log.Printf("modelo %s respondeu %d; tentando o próximo", model, resp.StatusCode)
-			continue
-		}
-		relay(w, resp)
-		return
 	}
+	fail(w, http.StatusBadGateway, "nenhum provedor de IA respondeu")
 }
 
 func retryable(status int) bool {
 	return status == http.StatusBadRequest || status == http.StatusNotFound || status == http.StatusTooManyRequests || status >= 500
 }
 
+func badKey(status int) bool {
+	return status == http.StatusUnauthorized || status == http.StatusForbidden
+}
+
 // fromApp aceita só o que o app manda: o consultor e a categorização de
 // extrato (pelas frases fixas das instruções) ou o teste de conexão. Quem copiar o prompt passa, mas cai nos
 // limites; a ideia é não virar uma IA grátis genérica.
-func fromApp(body map[string]json.RawMessage) bool {
-	var msgs []struct {
-		Role    string `json:"role"`
-		Content string `json:"content"`
-	}
-	if json.Unmarshal(body["messages"], &msgs) != nil || len(msgs) == 0 {
+func fromApp(body map[string]json.RawMessage, msgs []chatMessage) bool {
+	if len(msgs) == 0 {
 		return false
 	}
 	if msgs[0].Role == "system" && (strings.HasPrefix(msgs[0].Content, advisor.PromptMarker) || strings.HasPrefix(msgs[0].Content, advisor.CategorizeMarker)) {
@@ -227,9 +329,12 @@ func capTokens(raw json.RawMessage) string {
 	return string(b)
 }
 
-// relay copia a resposta (streaming SSE) pedaço por pedaço.
-func relay(w http.ResponseWriter, resp *http.Response) {
+// relay copia a resposta (streaming SSE) pedaço por pedaço e devolve os
+// tokens de entrada e de saída do "usage" (-1 se o provedor não mandou).
+func relay(w http.ResponseWriter, resp *http.Response) (in, out int) {
 	defer resp.Body.Close()
+	var tail tailBuffer
+	defer func() { in, out = tail.usage() }()
 	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
 	w.WriteHeader(resp.StatusCode)
 	flusher, _ := w.(http.Flusher)
@@ -238,6 +343,7 @@ func relay(w http.ResponseWriter, resp *http.Response) {
 		n, err := resp.Body.Read(buf)
 		if n > 0 {
 			w.Write(buf[:n])
+			tail.Write(buf[:n])
 			if flusher != nil {
 				flusher.Flush()
 			}
