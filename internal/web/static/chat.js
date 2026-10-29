@@ -194,6 +194,9 @@
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
   });
+  // Safari não tem field-sizing (app.css): aqui a caixa cresce com o texto.
+  const grow = !CSS.supports("field-sizing", "content");
+  if (grow) input.addEventListener("input", () => { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 160) + "px"; });
 
   // setState: o estado da IA no cabeçalho (pronta, sem IA, sem conexão).
   function setState(state, text) {
@@ -209,6 +212,7 @@
     if (!text) return;
     button.disabled = true;
     input.value = "";
+    if (grow) input.style.height = "";
     document.querySelector(".handoff")?.remove();
     add("user", text);
     const reply = add("assistant pending", "", agent);

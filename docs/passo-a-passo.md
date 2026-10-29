@@ -36,9 +36,9 @@ faltam está em [PLANO.md](PLANO.md).
 | Edição antiga chegando depois de apagar | feito: não ressuscita (teste acrescentado em 29/10) | `internal/store/store_test.go` |
 | Lote interrompido no meio | feito: a fila só é limpa depois que o computador confirma o lote | `sync.js` (`round`, `clearSent` após 200) |
 | Dois aparelhos gravando o Drive juntos | feito: quem perdeu regrava na próxima sincronização | `internal/drivesync`, `gdrive.js`; `e2e/google.test.mjs` |
-| Relógios diferentes, edição simultânea offline | feito com o computador; falta no Drive | ver 1.3 |
+| Relógios diferentes, edição simultânea offline | correção no computador e no Drive; conferência em aparelhos reais pendente | ver 1.3 |
 
-### 1.3 Relógio do aparelho em edições simultâneas · feito (com o computador)
+### 1.3 Relógio do aparelho em edições simultâneas · implementado no computador e no Drive
 
 - **O problema, no tamanho certo:** o `updatedAt` vem do relógio de quem editou, mas o carimbo é
   `máximo(relógio, versão anterior + 1)`: com a versão mais nova recebida, a edição sempre vence.
@@ -48,8 +48,11 @@ faltam está em [PLANO.md](PLANO.md).
   diferença (descontando metade da ida e volta; até 2 s é ruído) e soma no carimbo de toda
   edição, com `sync.stamp` (`main.js`, `notes-save.js`, restaurar backup). Testes em
   `internal/web/web_test.go` e `e2e/offline.test.mjs` (aparelho com o relógio 1 hora atrasado).
-- **Falta:** o mesmo no Drive (site): lá não há resposta com a hora do servidor ainda; dá para
-  usar o `modifiedTime` que o Drive devolve ao gravar o arquivo.
+- **Drive (site):** `gdrive.js` pede `modifiedTime` ao criar ou atualizar o arquivo e passa a
+  hora para `sync.learnClock`. O carimbo usa a mesma correção do computador. O teste em
+  `e2e/google.test.mjs` simula um navegador uma hora atrasado; passou na execução do Claude
+  em 29/10/2026. O ajuste é aprendido após uma gravação bem-sucedida, não antes da primeira
+  sincronização. Não resolve a ordem real de duas edições feitas sem referência de hora.
 
 ## 2. Segurança
 
@@ -110,16 +113,75 @@ A lista da auditoria, conferida nos e2e:
 | Estados vazios, carregamento, erro padronizados | feito em todas as telas redesenhadas |
 | Acessibilidade e contraste | feito: teste de contraste dos temas; gráficos com tabela |
 
-## 5. Medir antes de otimizar · a fazer (média)
+## 5. Medir antes de otimizar · medição local concluída
 
 A auditoria não mediu desempenho. Passos: medir o tempo até o Painel aparecer (com o
 `finance.wasm`), com 5 mil lançamentos, e o tamanho do que o site baixa; só então decidir se
 vale otimizar. Já medido: consultor no computador local, de 13 a 35 s por pergunta (ver
 [IA-GRATIS.md](IA-GRATIS.md)).
 
+Em 29/10/2026, o levantamento local dos 55 arquivos estáticos do precache deu
+**8.414.189 bytes sem compressão** e **2.553.917 bytes com gzip estimado**. O `finance.wasm`
+responde por 5.502.497 bytes (1.507.092 com gzip). Não inclui HTML, dados nem cabeçalhos;
+não é uma medição da transferência da Vercel. O precache também baixa bibliotecas de PDF
+que não são necessárias para desenhar o Painel.
+
+Medição reproduzível, a partir da raiz, após instalar as dependências de `e2e/` e o Chromium:
+
+```bash
+make wasm
+go build -o dist/finanrich ./cmd/finanrich
+cd e2e && npm run performance
+```
+
+O script cria um banco temporário, confere 5 mil lançamentos e mede cinco aberturas e cinco
+recargas do Painel, com as regras em WebAssembly. Mostra as amostras, a mediana e o ambiente.
+Usa o computador local, sem limitar CPU/rede e com service worker bloqueado; a recarga mantém
+IndexedDB e cache HTTP. Não mede login/Drive, acesso à Vercel nem aparelho real. Os tamanhos
+são calculados antes de abrir o navegador, a partir do precache em `sw.js`.
+
+Após autorizar a execução fora do sandbox, a medição terminou em 29/10/2026 no Apple M1 Pro
+(macOS arm64, Chromium 141.0.7390.37), sem outras suítes rodando em paralelo:
+
+| Amostra | Primeira abertura | Recarga |
+|---|---:|---:|
+| 1 | 5.391 ms | 2.617 ms |
+| 2 | 2.729 ms | 2.045 ms |
+| 3 | 2.761 ms | 2.346 ms |
+| 4 | 2.768 ms | 2.533 ms |
+| 5 | 2.761 ms | 2.330 ms |
+| **Mediana** | **2.761 ms** | **2.346 ms** |
+
+Cada primeira abertura usa um contexto novo, com IndexedDB vazio; a recarga mantém os
+dados e o cache HTTP. A medição espera os 5 mil registros, o Painel visível e dois quadros
+de animação. Não é LCP nem INP. O navegador registrou 2.792.392 bytes de recursos na primeira
+abertura e 13.262 bytes na recarga; essa soma não inclui o documento principal nem o
+precache do service worker, que fica bloqueado nesse cenário. A primeira amostra inclui
+aquecimento do processo; por isso foram preservadas todas as amostras e usada a mediana.
+Não houve otimização nesta etapa. Rede móvel, Vercel, login/Drive e aparelhos reais ainda
+precisam de medição própria antes de definir uma meta de desempenho.
+
+## Conferência da retomada (29/10/2026)
+
+- **Safari:** alternativa de crescimento da caixa de mensagem em `chat.js` e
+  `js/pages/advisor.js`. O teste de `/chat` no Chromium, simulando ausência de `field-sizing`,
+  passou também na execução do Codex (38 → 100 px). Safari real e o fluxo do app continuam pendentes.
+- **Validação no Codex:** formatação, `go vet` e os seis pacotes de regras em WebAssembly
+  passaram. Fora do sandbox, as dez suítes de `make e2e` passaram, incluindo o relógio do
+  Drive e a alternativa para `field-sizing`. `make test` também passou após corrigir
+  `TestPairingNeedsAddress`: o teste consultava o Tailscale real do Mac, embora esperasse um
+  cenário sem endereço. A detecção agora é substituída por servidor nos testes de acesso,
+  com cobertura separada para Tailscale indisponível e conectado sem acesso pelo Wi-Fi.
+  No programa, a detecção continua automática e o comportamento de pareamento é o mesmo.
+- **Consultor:** continuam pendentes a persistência do cartão de números ao recarregar no
+  computador e a manutenção do estado aberto do cartão quando o app redesenha a tela.
+- **Configuração externa:** Tailscale/Funnel, `FINAN_LOCAL_*` e `GOOGLE_*` na Vercel dependem
+  da configuração das contas; não foram ativados nesta retomada. A correção da identidade dos
+  commits já foi publicada, conforme o registro da sessão anterior; não repetir o force push.
+
 ## Ordem de execução
 
-1. **1.3** O acerto do relógio também no Drive (site).
-2. Conferir as telas novas (Consultor, Ajustes, Boas-vindas) num celular e num Safari de verdade (a caixa de mensagem do Consultor não cresce sozinha no Safari).
-3. **5** Medir o desempenho e só então otimizar.
-4. Conferir o Sair do acesso pela rede num aparelho de verdade (1.1).
+1. Manter `make test` e `make e2e` como verificação das próximas alterações.
+2. Conferir as telas novas (Consultor, Ajustes, Boas-vindas) num celular e num Safari de verdade.
+2. **5** Medir também em rede móvel e no site publicado antes de decidir se vale otimizar.
+3. Conferir o Sair do acesso pela rede num aparelho de verdade (1.1).

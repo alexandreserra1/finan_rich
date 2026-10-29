@@ -709,6 +709,19 @@ try {
   ok((await rem.evaluate(() => window.__notifs())).length === 0, "desligar os lembretes cancela os do time também");
   await remCtx.close();
 
+  // Safari (sem field-sizing): a caixa de mensagem do Consultor cresce com o texto mesmo assim.
+  const safariCtx = await browser.newContext({ viewport: { width: 1200, height: 900 } });
+  await safariCtx.addInitScript(() => { const real = CSS.supports.bind(CSS); CSS.supports = (p, v) => (p === "field-sizing" ? false : real(p, v)); });
+  const saf = await safariCtx.newPage();
+  saf.on("pageerror", (e) => errors.push("safari: " + e.message));
+  await saf.goto(`${B}/chat`);
+  const box = saf.locator("textarea[name=message]");
+  const h0 = (await box.boundingBox()).height;
+  await box.fill("linha 1\nlinha 2\nlinha 3\nlinha 4");
+  await box.dispatchEvent("input");
+  ok((await box.boundingBox()).height > h0 + 20, `sem field-sizing (Safari), a caixa do Consultor cresce com o texto (${h0} → ${(await box.boundingBox()).height})`);
+  await safariCtx.close();
+
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);
 } catch (err) {
   ok(false, err.message);

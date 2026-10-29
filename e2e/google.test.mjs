@@ -94,12 +94,12 @@ async function fakeGoogle(context) {
       drive.id = "arquivo-1";
       drive.content = JSON.parse(parts[1].slice(parts[1].indexOf("{")));
       drive.version++;
-      return json(route, 200, { id: drive.id, version: String(drive.version) });
+      return json(route, 200, { id: drive.id, version: String(drive.version), modifiedTime: new Date().toISOString() });
     }
     if (req.method() === "PATCH" && u.pathname === `/upload/drive/v3/files/${drive.id}`) {
       drive.content = JSON.parse(req.postData());
       drive.version++;
-      return json(route, 200, { id: drive.id, version: String(drive.version) });
+      return json(route, 200, { id: drive.id, version: String(drive.version), modifiedTime: new Date().toISOString() });
     }
     return json(route, 404, { error: "rota do Drive falso não existe: " + u.pathname });
   });
@@ -220,6 +220,22 @@ try {
   await b.evaluate(async () => (await import("/static/js/db.js")).setMeta("site-active", Date.now()));
   await b.goto(`${SITE}/`);
   await b.waitForSelector(".dash-kpis", { timeout: 20000 });
+
+  // Navegador com o relógio 1 hora atrasado: ao gravar no Drive, ele aprende a
+  // hora do Google e as edições saem com a hora certa (docs/passo-a-passo.md 1.3).
+  const lateCtx = await browser.newContext({ viewport: { width: 1000, height: 800 } });
+  await fakeGoogle(lateCtx);
+  const late = await lateCtx.newPage();
+  await late.clock.setFixedTime(new Date(Date.now() - 3600_000));
+  late.on("dialog", (d) => d.accept());
+  await login(late);
+  await addTransaction(late, "Feira do relógio atrasado", "5");
+  await until(() => !!inDrive("Feira do relógio atrasado"), "lançamento do navegador atrasado chegou ao Drive");
+  await syncNow(late);
+  const [stamped, lateNow] = await late.evaluate(async () => [(await import("/static/js/sync.js")).stamp(0), Date.now()]);
+  ok(Math.abs(stamped - Date.now()) < 30_000 && Date.now() - lateNow > 3_000_000,
+    `relógio atrasado no site: o carimbo segue a hora do Drive (diferença ${Math.round((Date.now() - stamped) / 1000)} s)`);
+  await lateCtx.close();
 
   // Token de acesso vencido: renova pelo intermediário, sem pedir login de novo.
   await b.evaluate(async () => { (await import("/static/js/google.js")).expire(); });

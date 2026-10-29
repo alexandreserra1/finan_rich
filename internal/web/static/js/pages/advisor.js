@@ -292,6 +292,11 @@ export function bind(root, ctx) {
   form.elements.message.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
   });
+  // Safari não tem field-sizing (app.css): aqui a caixa cresce com o texto.
+  if (!CSS.supports("field-sizing", "content")) {
+    const box = form.elements.message;
+    box.addEventListener("input", () => { box.style.height = "auto"; box.style.height = `${Math.min(box.scrollHeight, 160)}px`; });
+  }
   root.querySelectorAll("[data-agent]").forEach((b) => b.addEventListener("click", () => !chat.busy && pick(ctx, b.dataset.agent)));
   root.querySelector("[data-handoff]")?.addEventListener("click", async () => {
     const { agent, question } = chat.suggest;

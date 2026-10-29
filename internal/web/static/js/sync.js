@@ -48,7 +48,7 @@ async function round() {
     const touched = localChanged;
     localChanged = false;
     try {
-      changed = await syncDrive(touched);
+      changed = await syncDrive(touched, learnClock);
     } catch (err) {
       localChanged ||= touched; // tenta de novo na próxima rodada
       throw err;
@@ -94,7 +94,7 @@ async function round() {
 // sync roda uma sincronização (ou agenda outra, se já houver uma rodando).
 // ---- relógio ----
 // Diferença entre o relógio do computador e o deste aparelho (ms), aprendida a
-// cada sincronização. Entra no carimbo das edições: com o relógio do aparelho
+// cada sincronização (com o computador ou pelo Drive). Entra no carimbo das edições: com o relógio do aparelho
 // errado, uma edição feita depois, sem conexão, perderia para uma mais antiga
 // de outro aparelho (docs/passo-a-passo.md, 1.3).
 let clockOffset = 0;
