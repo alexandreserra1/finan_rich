@@ -80,5 +80,5 @@ nunca deixe a pessoa sem resposta.
 ## C. Redesign Esmeralda (telas que faltam)
 
 - [ ] Consultor IA
-- [ ] Ajustes
-- [ ] Boas-vindas (login)
+- [x] Ajustes (com a escolha "IA do finan_rich" ou "minha própria chave")
+- [x] Boas-vindas (login)
