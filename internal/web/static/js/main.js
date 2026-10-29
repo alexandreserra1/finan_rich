@@ -117,7 +117,7 @@ function context(path, params) {
       const list = listOf(type);
       const previous = list.find((r) => r.id === partial.id);
       const record = { ...(previous || {}), ...partial, id: partial.id || newId(), deleted: false };
-      record.updatedAt = Math.max(Date.now(), (previous?.updatedAt || 0) + 1);
+      record.updatedAt = sync.stamp(previous?.updatedAt || 0);
       delete record.deleted;
       const normalized = finance.validate(type, record);
       await db.saveLocal(type, normalized);
@@ -128,7 +128,7 @@ function context(path, params) {
       if (rerender) render(message);
     },
     async remove(type, record, message) {
-      const gone = { ...record, deleted: true, updatedAt: Math.max(Date.now(), record.updatedAt + 1) };
+      const gone = { ...record, deleted: true, updatedAt: sync.stamp(record.updatedAt) };
       await db.saveLocal(type, gone);
       upsert(listOf(type), gone);
       sync.soon();
@@ -212,7 +212,7 @@ async function load() {
 async function applyRecurring() {
   const due = finance.recurringDue(ledger, today());
   if (!due.length) return;
-  const stamp = Date.now();
+  const stamp = sync.stamp(0);
   const items = due.map((t) => ({ type: "transaction", record: finance.validate("transaction", { ...t, updatedAt: stamp }) }));
   await db.saveManyLocal(items);
   for (const { record } of items) upsert(ledger.transactions, record);

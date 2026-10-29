@@ -146,6 +146,20 @@ try {
   await page.waitForSelector("td:has-text('Uber (do celular)')", { timeout: 15000 });
   ok(true, "o primeiro aparelho recebeu o lançamento do segundo sem recarregar");
 
+  // Aparelho com o relógio 1 hora atrasado: depois de sincronizar, as edições
+  // dele saem com a hora do computador (senão uma edição feita depois, sem
+  // conexão, perderia para uma mais antiga de outro aparelho).
+  const lateCtx = await browser.newContext({ viewport: { width: 1000, height: 800 } });
+  const late = await lateCtx.newPage();
+  await late.clock.setFixedTime(new Date(Date.now() - 3600_000));
+  await late.goto(`${B}/lancamentos`);
+  await late.waitForSelector("td:has-text('Uber (do celular)')", { timeout: 20000 });
+  await late.evaluate(() => window.finanSync());
+  const [stamped, pageNow] = await late.evaluate(async () => [(await import("/static/js/sync.js")).stamp(0), Date.now()]);
+  ok(Math.abs(stamped - Date.now()) < 30_000 && Date.now() - pageNow > 3_000_000,
+    `relógio atrasado: o carimbo da edição segue a hora do computador (diferença ${Math.round((Date.now() - stamped) / 1000)} s)`);
+  await lateCtx.close();
+
   // Apagar também sincroniza.
   page.once("dialog", (d) => d.accept());
   await page.click("tr:has-text('Uber (do celular)') [data-delete]");

@@ -103,7 +103,7 @@ export function bind(root, ctx) {
       // Cada registro volta como uma alteração nova (hora de agora), para
       // valer sobre o que mudou depois do backup, aqui e nos outros aparelhos.
       const current = new Map([...listAll(ctx.ledger)].map(([type, r]) => [`${type}:${r.id}`, r]));
-      const stamp = Date.now();
+      const stamp = sync.stamp(0);
       const items = records.map(({ type, record }) => {
         const existing = current.get(`${type}:${record.id}`);
         const updatedAt = Math.max(stamp, (existing?.updatedAt || 0) + 1);

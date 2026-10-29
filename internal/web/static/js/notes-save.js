@@ -8,7 +8,7 @@ export async function saveNote(question, answer) {
   await finance.load();
   const title = "Consultor: " + (question || "resposta").replace(/\s+/g, " ").trim();
   const record = finance.validate("note", {
-    id: newId(), updatedAt: Date.now(),
+    id: newId(), updatedAt: sync.stamp(0),
     title: title.length > 110 ? title.slice(0, 109) + "…" : title,
     body: answer,
   });
@@ -32,7 +32,7 @@ export async function applyProposal(p) {
       throw new Error("este cartão ficou velho: o registro mudou depois. Peça de novo ao consultor");
     }
   }
-  const record = finance.validate(p.type, { ...p.record, updatedAt: Math.max(Date.now(), p.record.updatedAt + 1) });
+  const record = finance.validate(p.type, { ...p.record, updatedAt: sync.stamp(p.record.updatedAt) });
   await db.saveLocal(p.type, record);
   sync.soon();
 }

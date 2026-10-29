@@ -36,24 +36,20 @@ faltam está em [PLANO.md](PLANO.md).
 | Edição antiga chegando depois de apagar | feito: não ressuscita (teste acrescentado em 29/10) | `internal/store/store_test.go` |
 | Lote interrompido no meio | feito: a fila só é limpa depois que o computador confirma o lote | `sync.js` (`round`, `clearSent` após 200) |
 | Dois aparelhos gravando o Drive juntos | feito: quem perdeu regrava na próxima sincronização | `internal/drivesync`, `gdrive.js`; `e2e/google.test.mjs` |
-| **Relógios diferentes, edição simultânea offline** | **a fazer** (caso raro) | ver 1.3 |
+| Relógios diferentes, edição simultânea offline | feito com o computador; falta no Drive | ver 1.3 |
 
-### 1.3 Relógio do aparelho em edições simultâneas · a fazer (média)
+### 1.3 Relógio do aparelho em edições simultâneas · feito (com o computador)
 
-- **O problema, no tamanho certo:** o `updatedAt` vem do relógio de quem editou, mas o `save`
-  usa `máximo(relógio, versão anterior + 1)` (`main.js`). Então, quando o aparelho já recebeu a
-  versão mais nova, a edição dele sempre vence, com relógio certo ou errado. O relógio só decide
-  quando dois aparelhos sem conexão mudam o **mesmo** registro antes de sincronizar: aí vence o
-  relógio maior, não quem editou por último de verdade. Caso raro (e o resultado é uma das duas
-  versões, nunca dado corrompido), mas real.
-- **Passos:**
-  1. Teste primeiro: dois aparelhos offline, um com o relógio 1 hora atrasado
-     (`page.clock.setFixedTime` do Playwright), editando o mesmo lançamento; o que editou por
-     último deve vencer.
-  2. Correção mínima: a resposta do `/api/sync` passa a trazer a hora do computador; o aparelho
-     guarda a diferença para o relógio dele e soma no `updatedAt` das edições (no Drive, a
-     hora do servidor vem no `modifiedTime` da gravação).
-  3. Se não bastar: relógio lógico híbrido (HLC) em `internal/domain`.
+- **O problema, no tamanho certo:** o `updatedAt` vem do relógio de quem editou, mas o carimbo é
+  `máximo(relógio, versão anterior + 1)`: com a versão mais nova recebida, a edição sempre vence.
+  O relógio só decidia quando dois aparelhos sem conexão mudavam o **mesmo** registro antes de
+  sincronizar (vencia o relógio maior, não quem editou por último).
+- **Corrigido:** a resposta do `/api/sync` traz a hora do computador (`now`); o aparelho guarda a
+  diferença (descontando metade da ida e volta; até 2 s é ruído) e soma no carimbo de toda
+  edição, com `sync.stamp` (`main.js`, `notes-save.js`, restaurar backup). Testes em
+  `internal/web/web_test.go` e `e2e/offline.test.mjs` (aparelho com o relógio 1 hora atrasado).
+- **Falta:** o mesmo no Drive (site): lá não há resposta com a hora do servidor ainda; dá para
+  usar o `modifiedTime` que o Drive devolve ao gravar o arquivo.
 
 ## 2. Segurança
 
@@ -100,7 +96,7 @@ A lista da auditoria, conferida nos e2e:
 | Trocar de aparelho e recuperar os dados | feito: `google.test` (segundo navegador pelo Drive) e pareamento em `offline.test` |
 | Exportar e restaurar o backup | feito: `export.test` (apaga tudo e restaura) |
 | IA, Drive ou computador fora do ar | feito: `app.test` (IA no limite, internet caindo, resposta sem IA), `google.test`, `offline.test` |
-| **Relógio errado com edição simultânea offline** | **a fazer** (1.3) |
+| Relógio errado com edição simultânea offline | feito: `offline.test` (relógio 1 hora atrasado) |
 
 ## 4. Produto e telas
 
@@ -123,7 +119,7 @@ vale otimizar. Já medido: consultor no computador local, de 13 a 35 s por pergu
 
 ## Ordem de execução
 
-1. **1.3** Relógio do aparelho em edições simultâneas (teste e correção mínima).
+1. **1.3** O acerto do relógio também no Drive (site).
 2. Terminar as telas em andamento (Consultor, Ajustes, Boas-vindas) e conferir em navegador real.
 3. **5** Medir o desempenho e só então otimizar.
 4. Conferir o Sair do acesso pela rede num aparelho de verdade (1.1).

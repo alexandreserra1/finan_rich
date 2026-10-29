@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -159,6 +160,10 @@ func TestSyncAPI(t *testing.T) {
 		t.Fatalf("primeira sincronização: %d %v", code, first)
 	}
 	cursor := first["cursor"].(float64)
+	// A hora do computador vai junto: o aparelho acerta o carimbo das edições por ela.
+	if now, _ := first["now"].(float64); math.Abs(now-float64(time.Now().UnixMilli())) > 5000 {
+		t.Errorf("hora do computador na sincronização = %v", first["now"])
+	}
 
 	// Envia um lançamento feito offline e recebe de volta só o que mudou.
 	tx := domain.Transaction{Meta: domain.Meta{ID: "uuid-1", UpdatedAt: 1000}, Kind: domain.KindSaida,

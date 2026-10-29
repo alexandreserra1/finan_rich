@@ -58,6 +58,7 @@ async function round() {
   if (!api && linked) return changed;
   if (!api) throw Object.assign(new Error("unpaired"), { kind: "unpaired" });
   for (;;) {
+    const sentAt = Date.now();
     const res = await fetch(api.url, {
       ...api.init,
       method: "POST",
@@ -73,6 +74,7 @@ async function round() {
       continue;
     }
     if (!res.ok) throw Object.assign(new Error(body.error || res.statusText), { kind: "error" });
+    if (body.now) learnClock(body.now, sentAt);
     notices.push(...(body.notices || []));
     if (toSend.length) {
       await clearSent(toSend.slice(0, BATCH));
@@ -90,6 +92,24 @@ async function round() {
 }
 
 // sync roda uma sincronização (ou agenda outra, se já houver uma rodando).
+// ---- relógio ----
+// Diferença entre o relógio do computador e o deste aparelho (ms), aprendida a
+// cada sincronização. Entra no carimbo das edições: com o relógio do aparelho
+// errado, uma edição feita depois, sem conexão, perderia para uma mais antiga
+// de outro aparelho (docs/passo-a-passo.md, 1.3).
+let clockOffset = 0;
+getMeta("clock-offset", 0).then((v) => { clockOffset = v || 0; }).catch(() => {});
+
+function learnClock(serverNow, sentAt) {
+  const off = serverNow - (sentAt + Date.now()) / 2; // metade da ida e volta
+  clockOffset = Math.abs(off) > 2000 ? Math.round(off) : 0; // até 2 s é ruído da rede
+  setMeta("clock-offset", clockOffset).catch(() => {});
+}
+
+// stamp é o updatedAt de uma edição: a hora certa (pelo computador) e sempre
+// depois da versão anterior.
+export const stamp = (previous = 0) => Math.max(Date.now() + clockOffset, previous + 1);
+
 export async function sync() {
   if (running) {
     again = true;

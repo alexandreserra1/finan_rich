@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/store"
 )
@@ -23,6 +24,7 @@ type syncResponse struct {
 	Changes []store.Change `json:"changes"`
 	More    bool           `json:"more"`
 	Notices []string       `json:"notices,omitempty"` // avisos (ex.: categoria em uso que não foi apagada)
+	Now     int64          `json:"now"`               // hora deste computador (ms): o aparelho acerta o carimbo das edições por ela
 }
 
 // apiSync recebe as alterações do aparelho e devolve as que ele ainda não tem.
@@ -58,7 +60,7 @@ func (s *Server) apiSync(w http.ResponseWriter, r *http.Request) {
 	if changes == nil {
 		changes = []store.Change{}
 	}
-	writeJSON(w, http.StatusOK, syncResponse{Cursor: cursor, Changes: changes, More: len(changes) == syncPageSize, Notices: notices})
+	writeJSON(w, http.StatusOK, syncResponse{Cursor: cursor, Changes: changes, More: len(changes) == syncPageSize, Notices: notices, Now: time.Now().UnixMilli()})
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
