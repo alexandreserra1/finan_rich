@@ -39,3 +39,9 @@ export async function applyProposal(p) {
 
 // Texto do botão: o que ele faz e como fica depois de feito.
 export const proposalButton = (p) => ({ criar: ["Adicionar", "Adicionado ✓"], alterar: ["Alterar", "Alterado ✓"], apagar: ["Apagar", "Apagado ✓"] })[p.action] || ["Confirmar", "Feito ✓"];
+
+// Rótulo pequeno do cartão: o que muda ("Novo lançamento", "Apagar meta"…).
+export const proposalKind = (p) => {
+  const [what, novo] = { transaction: ["lançamento", "Novo"], goal: ["meta", "Nova"], debt: ["dívida", "Nova"] }[p.type] || ["registro", "Novo"];
+  return { criar: novo + " " + what, alterar: "Alterar " + what, apagar: "Apagar " + what }[p.action] || "Mudança";
+};

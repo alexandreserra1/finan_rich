@@ -371,36 +371,6 @@ body:not(.has-nav) > main { width: 100%; padding: 1.5rem 1.25rem; }
 .login form { display: grid; gap: 1rem; margin-top: 1.25rem; }
 .login ul { padding-left: 1.2rem; }
 
-/* ---------- Consultor IA ---------- */
-.chat { display: flex; flex-direction: column; }
-.chat .messages { display: flex; flex-direction: column; gap: .8rem; margin: 1.25rem 0; }
-.msg { padding: .75rem 1rem; border-radius: 16px; max-width: 80%; overflow-wrap: anywhere; line-height: 1.55; }
-.msg p, .msg ul, .msg ol, .msg h4 { margin: .25rem 0; }
-.msg ul, .msg ol { padding-left: 1.2rem; }
-.msg.user { align-self: flex-end; background: var(--accent); color: var(--accent-text); border-bottom-right-radius: 6px; }
-.msg.user code { background: rgb(255 255 255 / .18); border-color: transparent; color: inherit; }
-.msg.assistant { align-self: flex-start; background: var(--surface-2); border: 1px solid var(--border); border-bottom-left-radius: 6px; }
-.msg.pending { color: var(--muted); font-style: italic; }
-.msg.error { align-self: flex-start; background: var(--neg-soft); color: var(--neg); }
-.suggestions { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .6rem; }
-.suggestions button { background: var(--surface); color: var(--text); border: 1px solid var(--border-input); font-weight: 400; text-align: left; padding: .8rem 1rem; }
-.suggestions button:hover { background: var(--accent-soft); border-color: var(--accent); }
-.chat-form { display: flex; gap: .6rem; align-items: flex-end; background: var(--surface); }
-/* O time no Consultor: escolher com quem falar, quem respondeu e a sugestão de trocar. */
-.team-pick { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px; margin-top: .75rem; }
-.team-pick::-webkit-scrollbar { display: none; }
-.team-member { flex: none; display: flex; align-items: center; gap: 10px; padding: 6px 14px 6px 6px; border: 1px solid var(--border); border-radius: 99px;
-  background: var(--surface); color: var(--text); font-weight: 400; text-align: left; min-height: 0; }
-.team-member:hover { background: var(--hover); color: var(--text); }
-.team-member[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
-.team-member .face, .msg-who .face, .handoff .face { border-radius: 50%; object-fit: cover; flex: none; }
-.team-member span { display: flex; flex-direction: column; line-height: 1.2; }
-.team-member strong { font-size: 14px; font-weight: 600; }
-.team-member small { font-size: 12px; color: var(--muted); }
-.msg-who { display: flex; align-items: center; gap: 8px; margin-bottom: .35rem; font-size: 12px; font-weight: 600; color: var(--muted); }
-.handoff { align-self: flex-start; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 10px; border: 1px dashed var(--border-2); border-radius: 14px; font-size: 14px; }
-.chat-form textarea { resize: vertical; }
-
 /* ---------- Indicador de sincronização ---------- */
 /* No topo (celular), a pílula é colorida; no menu do computador, neutra com a bolinha colorida. */
 .top .sync-pill[data-status="ok"] { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
@@ -457,7 +427,6 @@ body:not(.has-nav) > main { width: 100%; padding: 1.5rem 1.25rem; }
   .card.hero strong { font-size: 1.85rem; }
   .yearchart { height: 150px; gap: .1rem; }
   .yearchart small { font-size: .6rem; }
-  .msg { max-width: 92%; }
 
   /* Evita o zoom automático do iPhone ao tocar em campos com fonte < 16px. */
   input, select, textarea { font-size: 16px; }
@@ -482,10 +451,7 @@ body:not(.has-nav) > main { width: 100%; padding: 1.5rem 1.25rem; }
   .cards-mobile td.actions:empty { display: none; }
   .panel:has(> table) { overflow-x: visible; }
 
-  .chat-form { position: sticky; bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); padding: .6rem 0 .25rem; margin-top: auto; }
-  .chat-form button { min-height: 48px; }
   .sync-pill { font-size: .72rem; }
-  .suggestions { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 380px) {
@@ -646,7 +612,6 @@ label.file-button.primary-file:hover { background: var(--accent-strong); }
 .recurring .actions { display: flex; gap: .25rem; }
 label.check.repeat { align-self: center; }
 @media (max-width: 720px) { .recurring li { grid-template-columns: 1fr auto; } .recurring .actions { grid-column: 1 / -1; justify-content: flex-end; } }
-.msg .save-note { display: block; margin-top: .4rem; font-size: .82rem; padding: .15rem .3rem; }
 
 /* Leitor de QR code */
 .qr-overlay { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 1rem; }
@@ -657,12 +622,6 @@ label.check.repeat { align-self: center; }
 
 /* Aviso de versão nova: o comando inteiro seleciona com um clique. */
 .update .cmd { display: block; margin-top: .3rem; padding: .5rem .65rem; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); font-size: .82rem; overflow-wrap: anywhere; user-select: all; }
-
-/* Lançamento proposto pelo consultor: só entra com o "Adicionar". */
-.proposals { display: grid; gap: .4rem; margin: -.2rem 0 .6rem; }
-.proposal { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .55rem .75rem; border: 1px dashed var(--border); border-radius: 10px; background: var(--surface-2); font-size: .9rem; }
-.proposal button { flex: none; }
-.proposal button.danger { background: var(--neg); border-color: var(--neg); color: var(--neg-text); }
 
 /* Busca nos lançamentos, orçamentos por categoria e primeiro uso */
 .filters { margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
@@ -1580,3 +1539,129 @@ button.danger:hover { background: var(--neg-soft); border-color: transparent; co
   .start-body { align-self: center; }
 }
 @media (max-width: 480px) { .start h1 { font-size: 34px; } }
+
+/* ---------- Consultor IA (chat.html no computador, pages/advisor.js no app e no site) ---------- */
+/* Cabeçalho: rosto de quem conversa, título e o estado da IA (pronta, sem IA, sem conexão). */
+.consultor-head { align-items: center; }
+.consultor-id { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.consultor-id > div { display: flex; flex-direction: column; min-width: 0; }
+.consultor-id .face { border-radius: 10px; object-fit: cover; flex: none; box-shadow: 0 0 0 1px var(--accent-line); }
+.consultor-head h1 { font-size: 20px; letter-spacing: -.015em; }
+.ai-state { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.ai-state i { width: 6px; height: 6px; border-radius: 50%; flex: none; background: var(--accent); }
+.ai-state[data-state="none"] i { background: var(--warn); }
+.ai-state[data-state="off"] i { background: var(--neg); }
+
+.chat { display: flex; flex-direction: column; gap: 14px; }
+.chat > .notice { margin: 0; }
+.chat-where { margin: 0; }
+.ai-setup { display: flex; flex-direction: column; gap: 10px; padding: 20px 22px; font-size: 14px; }
+.ai-setup strong { font-size: 16px; font-weight: 600; }
+
+/* O time: escolher com quem falar. */
+.team-pick { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+.team-pick::-webkit-scrollbar { display: none; }
+.team-member { flex: none; display: flex; align-items: center; gap: 10px; padding: 6px 14px 6px 6px; border: 1px solid var(--border); border-radius: 99px;
+  background: var(--surface); color: var(--text); font-weight: 400; text-align: left; min-height: 0; }
+.team-member:hover { background: var(--hover); color: var(--text); }
+.team-member[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.team-member .face, .msg-who .face, .handoff .face { border-radius: 50%; object-fit: cover; flex: none; }
+.team-member span { display: flex; flex-direction: column; line-height: 1.2; }
+.team-member strong { font-size: 14px; font-weight: 600; }
+.team-member small { font-size: 12px; color: var(--muted); }
+
+/* Conversa: coluna de até 720px no meio. */
+.chat .messages { display: flex; flex-direction: column; gap: 22px; width: 100%; max-width: 720px; margin: 10px auto; }
+.chat-empty { display: flex; flex-direction: column; gap: 10px; padding-top: 4vh; }
+.chat-empty h2 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -.03em; line-height: 1.15; }
+.chat-empty p { margin: 0 0 10px; font-size: 15px; color: var(--text-2); max-width: 560px; }
+.suggestions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 10px; }
+.suggestions button { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 8px; min-height: 0; padding: 16px; border: 1px solid var(--border); border-radius: 14px;
+  background: var(--surface); color: var(--text); font-size: 14px; font-weight: 500; text-align: left; transition: border-color .15s, background-color .15s, transform .15s; }
+.suggestions button svg { color: var(--accent); flex: none; }
+.suggestions button:hover { border-color: var(--accent-line); background: var(--hover); color: var(--text); transform: translateY(-1px); }
+
+.msg { overflow-wrap: anywhere; line-height: 1.6; font-size: 14px; }
+.msg p, .msg ul, .msg ol, .msg h4 { margin: 0 0 8px; }
+.msg .md > :last-child { margin-bottom: 0; }
+.msg ul, .msg ol { padding-left: 20px; }
+.msg li + li { margin-top: 4px; }
+.msg h4 { font-size: 14px; font-weight: 600; }
+/* Pessoa: bolha de destaque à direita. */
+.msg.user { align-self: flex-end; max-width: 78%; padding: 12px 16px; border-radius: 16px 16px 4px 16px; background: var(--accent); color: var(--accent-ink); }
+.msg.user code { background: rgb(255 255 255 / .18); border-color: transparent; color: inherit; }
+/* Personagem: rosto e nome em cima, texto sem caixa alinhado ao nome. */
+.msg.assistant { display: flex; flex-direction: column; gap: 10px; padding-left: 42px; color: var(--text); }
+.msg-who { display: flex; align-items: center; gap: 14px; margin-left: -42px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.msg-who .face { box-shadow: 0 0 0 1px var(--border-2); }
+.msg.error { padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--neg) 35%, transparent); border-radius: 12px; background: var(--neg-soft); color: var(--text); font-size: 13px; }
+.app-answer, .msg .notice { margin: 0; }
+.msg .save-note { align-self: flex-start; display: inline-flex; align-items: center; min-height: 28px; padding: 0 8px; margin-left: -8px; border-radius: 7px; font-size: 12px; color: var(--muted); text-decoration: none; }
+.msg .save-note:hover { background: var(--hover); color: var(--text); }
+
+/* Tabelas do markdown: compactas, com borda; a primeira linha tingida e números à direita. */
+.md-table { margin: 0 0 8px; border: 1px solid var(--border); border-radius: 12px; overflow-x: auto; }
+.md-table table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.md-table th, .md-table td { padding: 8px 12px; border-top: 1px solid var(--border); text-align: left; font-size: 13px; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--text); }
+.md-table thead th { border-top: 0; background: var(--surface-2); font-weight: 600; }
+.md-table :is(th, td):not(:first-child) { text-align: right; }
+.md-table .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.md-table tbody tr:hover td { background: transparent; }
+
+/* Os números do app: chegam na hora, antes da IA; depois da resposta, ficam recolhidos. */
+.numbers { margin: 0; border: 1px solid var(--accent-line); border-radius: 12px; background: var(--surface); }
+.numbers summary { margin: 0; display: flex; align-items: center; gap: 8px; padding: 10px 14px; cursor: pointer; list-style: none; font-size: 11px; font-weight: 600; color: var(--accent); letter-spacing: .05em; text-transform: uppercase; }
+.numbers summary::-webkit-details-marker { display: none; }
+.numbers summary::after { content: ""; width: 7px; height: 7px; margin-left: auto; border: solid var(--muted); border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); transition: transform .15s; }
+.numbers[open] summary::after { transform: rotate(-135deg); }
+.numbers .md { padding: 0 14px 12px; font-size: 13px; }
+
+/* Pensando: três pontinhos que pulam. */
+.thinking { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.dots { display: flex; gap: 4px; }
+.dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); animation: chat-dot 1.2s infinite; }
+.dots i:nth-child(2) { animation-delay: .15s; }
+.dots i:nth-child(3) { animation-delay: .3s; }
+.slow-note { margin: 4px 0 0; font-size: 12px; }
+.partial:empty { display: none; }
+@keyframes chat-dot { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+
+/* Mudança proposta pela IA: só entra com o toque no botão. */
+.proposals { display: grid; gap: 8px; }
+.proposal { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px dashed var(--border-2); border-radius: 12px; background: var(--surface); font-weight: 500; }
+.proposal > span { display: flex; flex-direction: column; min-width: 0; }
+.proposal small { font-size: 11px; font-weight: 400; color: var(--faint); letter-spacing: .04em; text-transform: uppercase; }
+.proposal button { flex: none; }
+.proposal button:disabled { background: var(--accent-soft); color: var(--accent); border-color: transparent; opacity: 1; cursor: default; }
+.proposal button.danger:not(:disabled) { background: var(--neg); border-color: var(--neg); color: var(--neg-text); }
+.handoff { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 10px; border: 1px dashed var(--border-2); border-radius: 14px; font-size: 14px; align-self: flex-start; margin-left: 42px; }
+
+/* Caixa de mensagem: cresce com o texto; o botão fica cheio quando há o que enviar. */
+.chat-form { position: sticky; bottom: 0; width: 100%; max-width: 720px; margin: 0 auto; padding: 10px 0 16px; display: flex; flex-direction: column; gap: 8px; background: var(--bg); }
+/* Ao rolar até a resposta, ela para acima da caixa de mensagem fixa. */
+.chat .messages > * { scroll-margin-bottom: 120px; }
+.composer { display: flex; align-items: flex-end; gap: 10px; padding: 8px 8px 8px 16px; border: 1px solid var(--border-2); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow); transition: border-color .15s; }
+.composer:focus-within { border-color: var(--accent); }
+.composer textarea { flex: 1; min-height: 38px; max-height: 160px; field-sizing: content; resize: none; padding: 8px 0; border: 0; border-radius: 0; outline: 0; box-shadow: none; background: transparent; color: var(--text); font: inherit; line-height: 1.5; }
+.composer textarea:focus, .composer textarea:focus-visible { outline: 0; box-shadow: none; }
+.composer .send { display: grid; place-items: center; flex: none; width: 38px; height: 38px; min-height: 0; padding: 0; border-radius: 11px; }
+.composer:has(textarea:placeholder-shown) .send { background: var(--surface-2); border-color: transparent; color: var(--faint); }
+.composer-hint { margin: 0; font-size: 11px; color: var(--faint); text-align: center; }
+
+@media (max-width: 720px) {
+  .consultor-head { flex-wrap: nowrap; }
+  .consultor-head h1 { font-size: 18px; }
+  .chat-empty { padding-top: 0; }
+  .chat-empty h2 { font-size: 22px; }
+  .suggestions { grid-template-columns: 1fr; }
+  .suggestions button { flex-direction: row; align-items: center; padding: 12px 14px; }
+  .msg.user { max-width: 88%; }
+  .msg.assistant { padding-left: 0; }
+  .msg-who { margin-left: 0; gap: 10px; }
+  .handoff { margin-left: 0; }
+  .chat-form { bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); padding: 8px 0 12px; margin-top: auto; }
+  .chat .messages > * { scroll-margin-bottom: calc(var(--tabbar-h) + 150px); }
+  .composer textarea { font-size: 16px; }
+  .composer .send { width: 44px; height: 44px; }
+  .desk-only { display: none; }
+}

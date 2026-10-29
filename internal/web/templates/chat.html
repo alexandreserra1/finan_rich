@@ -1,30 +1,40 @@
 {{define "content"}}
-<div class="page-head">
-  <h1>Consultor IA</h1>
+<div class="page-head consultor-head">
+  <div class="consultor-id"><img class="face" data-agent-face src="/static/img/avatar-{{(index .Team 0).Animal}}.png" alt="" width="36" height="36"><div><h1>Consultor IA</h1>
+    {{if .Status.Ready}}<span class="ai-state" data-state="ok"><i></i>{{.AI.Preset.Name}} · {{.AI.Model}}{{if not .Local}} · na nuvem{{end}}</span>
+    {{- else}}<span class="ai-state" data-state="none"><i></i>Sem IA agora</span>{{end}}</div></div>
   {{if .History}}
   <form method="post" action="/chat/limpar" data-confirm="Apagar toda a conversa?">
     <button class="secondary small-btn" type="submit">Nova conversa</button>
   </form>
   {{end}}
 </div>
-<section class="panel chat">
+<section class="chat">
   {{template "aistatus" .}}
-  <p class="small muted">Usando <strong>{{.AI.Preset.Name}}</strong> · <code>{{.AI.Model}}</code> (<a href="/configuracoes">trocar</a>). O consultor vê seus números atuais (mês, divisão do salário, dívidas) a cada pergunta.</p>
+  <p class="small muted chat-where">{{if .Local}}A IA roda neste computador: nada sai daqui.{{else}}Na nuvem, nomes de lojas, dívidas e metas vão com apelidos.{{end}} O consultor vê seus números atuais a cada pergunta. <a href="/configuracoes">Trocar o modelo</a></p>
   <div class="team-pick" role="group" aria-label="Com quem do time falar">
     {{range .Team}}<button type="button" class="team-member" data-agent="{{.ID}}" data-name="{{.Name}}" data-role="{{.Role}}" data-animal="{{.Animal}}" aria-pressed="false"><img class="face" src="/static/img/avatar-{{.Animal}}.png" alt="" width="40" height="40"><span><strong>{{.Name}}</strong><small>{{.Role}}</small></span></button>{{end}}
   </div>
   <div id="messages" class="messages">
-    {{range .History}}<div class="msg {{.Role}}">{{if eq .Role "assistant"}}<span class="msg-who"><img class="face" src="/static/img/avatar-{{.Who.Animal}}.png" alt="" width="22" height="22">{{.Who.Name}} · {{.Who.Role}}</span>{{end}}<div class="md" data-md>{{.Content}}</div></div>
-      {{with .Proposals}}<div class="proposals" data-proposals="{{jsonText .}}"></div>{{end}}{{end}}
+    {{range .History}}{{if eq .Role "assistant"}}<div class="msg assistant"><span class="msg-who"><img class="face" src="/static/img/avatar-{{.Who.Animal}}.png" alt="" width="28" height="28">{{.Who.Name}} · {{.Who.Role}}</span><div class="md" data-md>{{.Content}}</div>{{with .Proposals}}<div class="proposals" data-proposals="{{jsonText .}}"></div>{{end}}</div>
+    {{else}}<div class="msg {{.Role}}"><div class="md" data-md>{{.Content}}</div></div>
+    {{end}}{{end}}
     {{if not .History}}
-    <div class="suggestions">
-      {{range .Team}}{{$id := .ID}}{{range index $.Suggestions .ID}}<button type="button" data-for="{{$id}}" hidden>{{.}}</button>{{end}}{{end}}
+    <div class="chat-empty">
+      <h2>Pergunte sobre o seu dinheiro.</h2>
+      <p>O time vê seus lançamentos, dívidas, metas e notas. As contas são feitas pelo app; a IA interpreta e aconselha. Para lançar algo, vem um cartão e você confirma.</p>
+      <div class="suggestions">
+        {{range .Team}}{{$id := .ID}}{{range index $.Suggestions .ID}}<button type="button" data-for="{{$id}}" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>{{.}}</span></button>{{end}}{{end}}
+      </div>
     </div>
     {{end}}
   </div>
   <form id="chat-form" class="chat-form">
-    <textarea name="message" rows="2" placeholder="Pergunte sobre dívidas, divisão de gastos, metas..." required></textarea>
-    <button type="submit">Enviar</button>
+    <div class="composer">
+      <textarea name="message" rows="1" placeholder="Pergunte sobre dívidas, gastos, metas…" required></textarea>
+      <button type="submit" class="send" aria-label="Enviar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+    </div>
+    <p class="composer-hint"><span class="desk-only">Enter envia · Shift+Enter quebra a linha · </span>Confira os números antes de seguir um plano.</p>
   </form>
 </section>
 {{end}}

@@ -30,8 +30,24 @@ window.Finan = (function () {
     const inline = (s) => s
       .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
       .replace(/`([^`]+)`/g, "<code>$1</code>");
-    let html = "", list = null;
+    let html = "", list = null, table = null;
+    // Tabela (| a | b |): a primeira linha é o cabeçalho; números ficam à direita.
+    const cell = (tag, c) => `<${tag}${/^[-+−]?\s*(R\$\s*)?[\d.,]+\s*%?$/.test(c) ? ' class="num"' : ""}>${inline(c)}</${tag}>`;
+    const flushTable = () => {
+      if (!table) return;
+      const [head, ...rows] = table;
+      html += `<div class="md-table"><table><thead><tr>${head.map((c) => cell("th", c)).join("")}</tr></thead><tbody>` +
+        rows.map((r) => `<tr>${r.map((c) => cell("td", c)).join("")}</tr>`).join("") + "</tbody></table></div>";
+      table = null;
+    };
     for (const line of esc.split("\n")) {
+      const row = line.match(/^\s*\|(.*)\|\s*$/);
+      if (row) {
+        if (list) { html += `</${list}>`; list = null; }
+        if (!/^[\s|:-]+$/.test(row[1])) (table ||= []).push(row[1].split("|").map((c) => c.trim()));
+        continue;
+      }
+      flushTable();
       const ul = line.match(/^\s*[-*]\s+(.*)/), ol = line.match(/^\s*\d+[.)]\s+(.*)/);
       const kind = ul ? "ul" : ol ? "ol" : null;
       if (list && kind !== list) { html += `</${list}>`; list = null; }
@@ -45,6 +61,7 @@ window.Finan = (function () {
       }
     }
     if (list) html += `</${list}>`;
+    flushTable();
     return html;
   }
 

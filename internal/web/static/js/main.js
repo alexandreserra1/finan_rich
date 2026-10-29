@@ -6,7 +6,7 @@
 import * as db from "./db.js";
 import * as device from "./device.js";
 import "./lock.js"; // app do celular: pede digital/rosto ou senha para abrir
-import { applyProposal, proposalButton, saveNote } from "./notes-save.js";
+import { applyProposal, proposalButton, proposalKind, saveNote } from "./notes-save.js";
 import { onReminderTap, scheduleReminders } from "./native.js";
 import * as finance from "./finance.js";
 import * as charts from "./charts.js";
@@ -86,7 +86,7 @@ window.finanSync = () => sync.sync();
 // E isto para guardar uma resposta em Notas.
 window.finanSaveNote = saveNote;
 // E isto para aplicar o que o consultor propôs (depois do toque no botão).
-window.finanProposal = { apply: applyProposal, button: proposalButton };
+window.finanProposal = { apply: applyProposal, button: proposalButton, kind: proposalKind };
 
 // Ao sair da conta (acesso ao computador pela rede), apaga os dados deste
 // aparelho, mas só depois de tudo o que foi feito aqui chegar ao computador:

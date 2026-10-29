@@ -89,6 +89,9 @@ const appServer = createServer((req, res) => {
 });
 await new Promise((r) => appServer.listen(APP_PORT, "127.0.0.1", r));
 
+// Resposta lenta das IAs falsas ("demora" na pergunta): os números do app aparecem antes dela.
+const SLOW = "Resposta demorada.\n\n| Item | Valor |\n|---|---|\n| Mercado | R$ 250,00 |";
+
 // Ollama falso: responde como o modelo, para testar o consultor no app.
 const ollama = createServer((req, res) => {
   if (req.url === "/api/tags") return res.end(JSON.stringify({ models: [{ name: "qwen3.5:9b" }] }));
@@ -108,6 +111,7 @@ const ollama = createServer((req, res) => {
         if (last.tool_name === "buscar_lancamentos" && /apaga/i.test(question)) return ask("apagar_lancamento", { id: last.content.match(/\[([^\]]+)\]/)[1] });
         return reply({ content: last.tool_name === "buscar_lancamentos" ? "Pela busca: " + last.content.split("\n")[0] : "Deixei pronto para você confirmar." });
       }
+      if (/demora/i.test(question)) return setTimeout(() => reply({ content: SLOW }), 2500);
       if (tools && /padaria/i.test(question)) return ask("buscar_lancamentos", { texto: "padaria" });
       if (tools && /apaga/i.test(question)) return ask("buscar_lancamentos", { texto: "cinema" });
       if (tools && /meta/i.test(question)) return ask("criar_meta", { nome: "Viagem", valor: "6000", prazo: "2027-06" });
@@ -145,6 +149,7 @@ const cloudAI = createServer((req, res) => {
     const send = (delta) => res.end(`data: ${JSON.stringify({ choices: [{ delta }] })}\n\ndata: [DONE]\n\n`);
     const call = (name, args) => send({ tool_calls: [{ index: 0, id: "c" + messages.length, type: "function", function: { name, arguments: JSON.stringify(args) } }] });
     if (last.role === "tool") return send({ content: last.content.startsWith("Pronto") ? "Deixei pronto para você confirmar." : "Na " + question.match(/Loja [A-Z]{2,}/)?.[0] + " você gastou " + last.content.match(/Saídas: (R\$ [\d.,]+)/)?.[1] + "." });
+    if (/demora/i.test(question)) return setTimeout(() => send({ content: SLOW }), 2500);
     const shop = question.match(/Loja [A-Z]{2,}/)?.[0];
     if (shop) return call("buscar_lancamentos", { texto: shop });
     if (/pão/i.test(question)) return call("propor_lancamento", { descricao: "Pão", valor: "8,50", categoria: "Mercado" });
@@ -300,6 +305,16 @@ try {
   await page.click("form[data-form=ask] button");
   await page.waitForSelector(".msg.assistant:has-text('Oi!')", { timeout: 30000 });
   ok(await page.locator(".msg.error").count() === 0, "depois da queda, a próxima pergunta funciona");
+
+  // Resposta imediata: os números do app aparecem na hora e a resposta da IA chega embaixo.
+  await page.fill("textarea[name=message]", "Por que demora tanto?");
+  await page.click("form[data-form=ask] button");
+  await page.waitForSelector(".msg.pending .numbers:has-text('Os números do app'):has-text('Resumo de')", { timeout: 10000 });
+  ok(!(await page.textContent(".messages")).includes("Resposta demorada") && await page.locator(".msg.pending .thinking").count() === 1,
+    "pela nuvem, os números do app aparecem antes da resposta da IA, com o pensando embaixo");
+  await page.waitForSelector(".msg.assistant:not(.pending):has-text('Resposta demorada')", { timeout: 30000 });
+  ok(await page.locator(".msg.assistant >> nth=-1 >> .numbers").count() === 1 && await page.locator(".msg.assistant >> nth=-1 >> table td.num:has-text('R$ 250,00')").count() === 1,
+    "a resposta da IA chega embaixo do cartão, que continua; a tabela do markdown vira tabela");
 
   // O time: a Jade responde e, como o assunto é dívida, oferece passar para o
   // Bento; com ele, a IA recebe a voz e só as ferramentas de dívida.
@@ -548,6 +563,14 @@ try {
   ok((await serverRecords()).filter((r) => r.description === "Cinema" && !r.deleted).length === 1, "no computador, o Adicionar da proposta também lança");
   ok(await desk.locator(".msg.assistant >> nth=-1 >> .msg-who").textContent() === "Jade · Consultora" && await desk.locator(".team-member").count() === 5,
     "no computador, o chat mostra o time e quem respondeu");
+  await desk.fill("textarea[name=message]", "Por que demora tanto?");
+  await desk.click("#chat-form button");
+  await desk.waitForSelector(".msg.pending .numbers:has-text('Os números do app'):has-text('Resumo de')", { timeout: 10000 });
+  ok(!(await desk.textContent(".messages")).includes("Resposta demorada") && await desk.locator(".msg.pending .thinking").count() === 1,
+    "no computador, os números do app chegam antes da resposta da IA");
+  await desk.waitForSelector(".msg.assistant:not(.pending):has-text('Resposta demorada')", { timeout: 20000 });
+  ok(await desk.locator(".msg.assistant >> nth=-1 >> .numbers").count() === 1 && await desk.locator(".msg.assistant >> nth=-1 >> table").count() === 1,
+    "no computador, a resposta da IA chega embaixo do cartão dos números");
   await desk.click(".team-member[data-agent=bento]");
   await desk.fill("textarea[name=message]", "Qual dívida devo pagar primeiro?");
   await desk.click("#chat-form button");

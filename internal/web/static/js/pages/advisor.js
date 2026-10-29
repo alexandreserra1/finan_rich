@@ -7,7 +7,7 @@ import * as db from "../db.js";
 import * as finance from "../finance.js";
 import * as local from "../local-ai.js";
 import { endpoint } from "../device.js";
-import { applyProposal, proposalButton, saveNote } from "../notes-save.js";
+import { applyProposal, proposalButton, proposalKind, saveNote } from "../notes-save.js";
 import { html, raw } from "../ui.js";
 
 export const needsData = false;
@@ -30,42 +30,85 @@ const face = (a, size) => html`<img class="face" src="/static/img/avatar-${a.ani
 
 const md = (text) => raw(window.Finan?.markdown ? window.Finan.markdown(text) : text.replace(/</g, "&lt;"));
 
+// Ícone dos cartões de sugestão (balão de conversa, traço do resto do app).
+const ASK_ICON = "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z";
+const SEND_ICON = "M12 19V5M5 12l7-7 7 7";
+const icon = (d, size = 18) => html`<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"></path></svg>`;
+
+// numbersCard: as contas do app, que chegam na hora; depois da resposta da IA, ficam recolhidas.
+const numbersCard = (text, open) => html`<details class="numbers"${open ? " open" : ""}><summary>Os números do app</summary><div class="md">${md(text)}</div></details>`;
+
+// answerBody: a resposta com o cartão dos números em cima. Se a IA falhou, o
+// texto termina com os mesmos números: o cartão é a resposta (sem repetir).
+function answerBody(m) {
+  const n = m.numbers;
+  if (n && m.app && m.content.endsWith(n)) return html`${md(m.content.slice(0, -n.length))}${numbersCard(n, true)}`;
+  return html`${n ? numbersCard(n, false) : ""}${md(m.content)}`;
+}
+
+// aiState: o estado da IA no cabeçalho (pronta, sem IA ou sem conexão).
+function aiState() {
+  if (chat.offline) return ["off", "Sem conexão com o computador"];
+  if (chat.problem) return ["none", "Sem IA agora"];
+  return ["ok", chat.model + (chat.local ? " · dentro do celular" : chat.cloud ? " · na nuvem" : " · no computador")];
+}
+
+function head(me) {
+  const [state, text] = chat.setup ? ["none", "Nenhuma IA configurada"] : aiState();
+  return html`<div class="page-head consultor-head">
+    <div class="consultor-id">${face(me, 36)}<div><h1>Consultor IA</h1><span class="ai-state" data-state="${state}"><i></i>${text}</span></div></div>
+    ${chat.history?.length ? html`<button type="button" class="secondary small-btn" data-action="clear">Nova conversa</button>` : ""}</div>`;
+}
+
 export function render() {
   if (!chat) return html`<section class="panel"><h2>Consultor IA</h2><p class="muted loading">Abrindo o consultor…</p></section>`;
-  if (chat.setup) {
-    return html`<section class="panel"><h2>Consultor IA</h2>
-      <p class="notice warn">Para usar o consultor sem computador, escolha uma IA na nuvem (há opções grátis) em
-      <a href="/configuracoes#ia-nuvem">Ajustes → Consultor sem computador</a>. Ou conecte este celular a um computador com o finan_rich.</p></section>`;
-  }
   const me = member(agentId);
+  if (chat.setup) {
+    return html`${head(me)}<section class="chat">
+      <div class="notice warn ai-setup"><strong>O consultor precisa de uma IA para funcionar.</strong>
+      Para usar sem computador, escolha uma IA na nuvem (há opções grátis) em
+      <a href="/configuracoes#ia-nuvem">Ajustes → Consultor sem computador</a>. Ou conecte este celular a um computador com o finan_rich.
+      <span class="small muted">O resto do app funciona normalmente sem IA.</span></div></section>`;
+  }
   return html`
-    <div class="page-head"><h1>Consultor IA</h1>
-      ${chat.history.length ? html`<button type="button" class="secondary small-btn" data-action="clear">Nova conversa</button>` : ""}</div>
-    <section class="panel chat">
+    ${head(me)}
+    <section class="chat">
       ${chat.problem ? html`<p class="notice warn">${chat.problem}</p>` : chat.local
-        ? html`<p class="small muted">Usando ${chat.model} dentro deste celular: nada sai do aparelho, nem precisa de internet. É uma IA pequena: responde mais devagar, erra mais e não lança nada por você.</p>`
+        ? html`<p class="small muted chat-where">Usando ${chat.model} dentro deste celular: nada sai do aparelho, nem precisa de internet. É uma IA pequena: responde mais devagar, erra mais e não lança nada por você.</p>`
         : chat.cloud
-        ? html`<p class="small muted">Usando ${chat.model} na nuvem, direto deste celular. Nomes de lojas, dívidas e metas vão com apelidos, e as notas não vão; a IA vê só valores, datas e categorias.</p>`
-        : html`<p class="small muted">Usando ${chat.model} no computador. O consultor vê seus números, metas e notas a cada pergunta.</p>`}
+        ? html`<p class="small muted chat-where">Usando ${chat.model} na nuvem, direto deste celular. Nomes de lojas, dívidas e metas vão com apelidos, e as notas não vão; a IA vê só valores, datas e categorias.</p>`
+        : html`<p class="small muted chat-where">Usando ${chat.model} no computador. O consultor vê seus números, metas e notas a cada pergunta.</p>`}
       <div class="team-pick" role="group" aria-label="Com quem do time falar">
         ${team.map((a) => html`<button type="button" class="team-member" data-agent="${a.id}" aria-pressed="${a.id === me.id}">${face(a, 40)}<span><strong>${a.name}</strong><small>${a.role}</small></span></button>`)}
       </div>
       <div class="messages">
-        ${chat.history.map((m, i) => html`<div class="msg ${m.role}">${m.role === "assistant" ? html`<span class="msg-who">${face(member(m.agent), 22)}${member(m.agent).name} · ${member(m.agent).role}</span>` : ""}${md(m.content)}
+        ${!chat.history.length && !chat.busy ? html`<div class="chat-empty">
+          <h2>Pergunte sobre o seu dinheiro.</h2>
+          <p>${me.name} vê seus lançamentos, dívidas, metas e notas. As contas são feitas pelo app; a IA interpreta e aconselha. Para lançar algo, vem um cartão e você confirma.</p>
+          <div class="suggestions">${(SUGGESTIONS[me.id] || SUGGESTIONS.jade).map((s) => html`<button type="button" data-suggest="${s}">${icon(ASK_ICON)}<span>${s}</span></button>`)}</div>
+        </div>` : ""}
+        ${chat.history.map((m, i) => m.role === "user" ? html`<div class="msg user">${md(m.content)}</div>` : html`<div class="msg assistant">
+          <span class="msg-who">${face(member(m.agent), 28)}${member(m.agent).name} · ${member(m.agent).role}</span>${answerBody(m)}
           ${m.app ? html`<p class="small muted app-answer">${m.aiError ? `Resposta do app, sem IA. A IA falhou: ${m.aiError}` : "Resposta do app, sem IA."}</p>` : ""}
           ${m.limit ? limitNotice() : ""}
-          ${m.role === "assistant" ? html`<button type="button" class="link plain save-note" data-save="${i}">Salvar como nota</button>` : ""}</div>
-          ${m.proposals?.length ? html`<div class="proposals">${m.proposals.map((p, j) => html`<div class="proposal"><span>${p.label}</span>
-            <button type="button" class="small-btn${p.action === "apagar" ? " danger" : ""}" data-propose="${i}:${j}" ${p.applied ? "disabled" : ""}>${proposalButton(p)[p.applied ? 1 : 0]}</button></div>`)}</div>` : ""}`)}
-        ${chat.busy ? html`<div class="msg assistant pending">${chat.partial ? md(chat.partial) : chat.local ? "Pensando… (dentro do celular, a primeira resposta pode levar um minuto)" : "Pensando… (no computador, a primeira resposta pode demorar enquanto o modelo carrega)"}</div>` : ""}
-        ${chat.error ? html`<div class="msg error">Erro: ${chat.error}</div>` : ""}
+          ${m.proposals?.length ? html`<div class="proposals">${m.proposals.map((p, j) => html`<div class="proposal"><span><small>${proposalKind(p)}</small>${p.label}</span>
+            <button type="button" class="small-btn${p.action === "apagar" ? " danger" : ""}" data-propose="${i}:${j}" ${p.applied ? "disabled" : ""}>${proposalButton(p)[p.applied ? 1 : 0]}</button></div>`)}</div>` : ""}
+          <button type="button" class="link plain save-note" data-save="${i}">Salvar como nota</button></div>`)}
+        ${chat.busy ? html`<div class="msg assistant pending"><span class="msg-who">${face(me, 28)}${me.name} · ${me.role}</span>
+          ${chat.numbers ? numbersCard(chat.numbers, true) : ""}
+          <div class="partial">${chat.partial ? md(chat.partial) : ""}</div>
+          ${chat.partial ? "" : html`<div class="thinking"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>${chat.numbers ? "Os números já estão aí. A IA está escrevendo a explicação…" : "Lendo seus lançamentos e fazendo as contas…"}</div>
+          <p class="small faint slow-note">${chat.local ? "Dentro do celular, a resposta pode levar até um minuto." : chat.cloud ? "Na nuvem, a resposta leva alguns segundos." : "No computador, a primeira resposta pode demorar enquanto o modelo carrega."}</p>`}</div>` : ""}
+        ${chat.error ? html`<div class="msg error" role="alert">Erro: ${chat.error}</div>` : ""}
         ${chat.suggest && !chat.busy ? html`<div class="handoff">${face(member(chat.suggest.agent), 28)}<span>Isso é com ${member(chat.suggest.agent).name} (${member(chat.suggest.agent).role}).</span>
           <button type="button" class="small-btn secondary" data-handoff>Perguntar para ${member(chat.suggest.agent).name}</button></div>` : ""}
-        ${!chat.history.length && !chat.busy ? html`<div class="suggestions">${(SUGGESTIONS[me.id] || SUGGESTIONS.jade).map((s) => html`<button type="button" data-suggest>${s}</button>`)}</div>` : ""}
       </div>
       <form data-form="ask" class="chat-form">
-        <textarea name="message" rows="2" placeholder="Mensagem para ${me.name}…" aria-label="Mensagem para ${me.name}" required ${chat.busy ? "disabled" : ""}></textarea>
-        <button type="submit" ${chat.busy ? "disabled" : ""}>Enviar</button>
+        <div class="composer">
+          <textarea name="message" rows="1" placeholder="Mensagem para ${me.name}…" aria-label="Mensagem para ${me.name}" required ${chat.busy ? "disabled" : ""}></textarea>
+          <button type="submit" class="send" aria-label="Enviar" ${chat.busy ? "disabled" : ""}>${icon(SEND_ICON, 16)}</button>
+        </div>
+        <p class="composer-hint"><span class="desk-only">Enter envia · Shift+Enter quebra a linha · </span>Confira os números antes de seguir um plano.</p>
       </form>
     </section>`;
 }
@@ -118,16 +161,19 @@ async function openChat(ctx) {
     if (!res.ok) throw new Error(body.error || res.statusText);
     chat = { history: body.history, model: body.model, ready: body.ready, problem: body.problem || "", busy: false, error: "" };
   } catch (err) {
-    chat = { history: [], model: "", ready: false, problem: err instanceof TypeError ? "Sem conexão com o computador. O consultor funciona quando o celular estiver no mesmo Wi-Fi e o finan_rich aberto lá." : err.message, busy: false, error: "" };
+    const offline = err instanceof TypeError;
+    chat = { history: [], model: "", ready: false, offline, problem: offline ? "Sem conexão com o computador. O consultor funciona quando o celular estiver no mesmo Wi-Fi e o finan_rich aberto lá." : err.message, busy: false, error: "" };
   }
   ctx.rerender();
 }
 
 // showPartial mostra a resposta enquanto ela é gerada, sem redesenhar a tela toda.
 function showPartial(text) {
+  const first = !chat.partial;
   chat.partial = text;
-  const el = document.querySelector(".msg.pending");
+  const el = document.querySelector(".msg.pending .partial");
   if (el) el.innerHTML = window.Finan?.markdown ? window.Finan.markdown(text) : text.replace(/</g, "&lt;");
+  if (first) document.querySelectorAll(".msg.pending .thinking, .msg.pending .slow-note").forEach((x) => x.remove());
 }
 
 async function ask(ctx, question) {
@@ -136,7 +182,13 @@ async function ask(ctx, question) {
   chat.busy = true;
   chat.error = "";
   chat.suggest = null;
+  chat.offline = false;
+  chat.numbers = "";
+  chat.scroll = true; // cada redesenho desta pergunta mostra o fim da conversa
   ctx.rerender();
+  // Os números do app aparecem na hora; a resposta da IA chega embaixo deles.
+  chat.numbers = await cloud.numbers(ctx.ledger, question, agent).catch(() => "");
+  if (chat.numbers) ctx.rerender();
   try {
     if (chat.cloud) {
       let reply;
@@ -154,7 +206,7 @@ async function ask(ctx, question) {
         reply = await cloud.ask(ctx.ledger, chat.history.slice(0, -1), question, agent);
       }
       chat.partial = "";
-      chat.history.push(assistantMessage(reply, agent));
+      chat.history.push(assistantMessage(reply, agent, chat.numbers));
       suggestHandoff(question, agent);
       await cloud.saveChat(chat.history);
       chat.busy = false;
@@ -176,10 +228,9 @@ async function ask(ctx, question) {
       if (ev.text) answer += ev.text;
       if (ev.proposal) proposals.push(ev.proposal);
       if (ev.app) app = ev.app;
+      if (ev.numbers && !chat.numbers) chat.numbers = ev.numbers;
     }
-    chat.history.push(app
-      ? assistantMessage({ answer: app.text, proposals, app: true, aiError: app.reason, limit: app.limit }, agent)
-      : { role: "assistant", content: answer, proposals, agent });
+    chat.history.push(assistantMessage(app ? { answer: app.text, proposals, app: true, aiError: app.reason, limit: app.limit } : { answer, proposals }, agent, chat.numbers));
     suggestHandoff(question, agent);
   } catch (err) {
     chat.partial = "";
@@ -187,8 +238,9 @@ async function ask(ctx, question) {
     const reason = err instanceof TypeError || /network error/.test(err.message) ? (chat.cloud ? "sem internet" : "sem conexão com o computador") : err.message;
     // Sem IA, o personagem responde com as contas do app (só onde há o advisor.wasm: app e site).
     const reply = await cloud.offline(ctx.ledger, question, agent).catch(() => null);
+    if (!chat.cloud && err instanceof TypeError) chat.offline = true;
     if (reply) {
-      chat.history.push(assistantMessage({ ...reply, aiError: reason }, agent));
+      chat.history.push(assistantMessage({ ...reply, aiError: reason }, agent, chat.numbers));
       if (chat.cloud) await cloud.saveChat(chat.history).catch(() => {});
     } else {
       chat.history.pop();
@@ -199,9 +251,11 @@ async function ask(ctx, question) {
   ctx.rerender();
 }
 
-// assistantMessage: a resposta para a conversa; app/aiError/limit marcam a resposta sem IA.
-function assistantMessage({ answer, proposals = [], app, aiError, limit }, agent) {
+// assistantMessage: a resposta para a conversa; app/aiError/limit marcam a resposta sem IA;
+// numbers são as contas do app mostradas antes da resposta (ficam no cartão recolhível).
+function assistantMessage({ answer, proposals = [], app, aiError, limit }, agent, numbers) {
   const m = { role: "assistant", content: answer, proposals, agent };
+  if (numbers) m.numbers = numbers;
   if (app) Object.assign(m, { app: true, aiError: aiError || "", limit: !!limit });
   return m;
 }
@@ -226,6 +280,10 @@ export function bind(root, ctx) {
   }
   const form = root.querySelector('[data-form="ask"]');
   if (!form) return; // só o aviso de configurar a IA
+  if (chat.scroll) {
+    root.querySelector(".messages > :last-child")?.scrollIntoView({ block: "end" });
+    chat.scroll = chat.busy;
+  }
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     const q = form.elements.message.value.trim();
@@ -240,7 +298,7 @@ export function bind(root, ctx) {
     await pick(ctx, agent);
     ask(ctx, question);
   });
-  root.querySelectorAll("[data-suggest]").forEach((b) => b.addEventListener("click", () => ask(ctx, b.textContent)));
+  root.querySelectorAll("[data-suggest]").forEach((b) => b.addEventListener("click", () => ask(ctx, b.dataset.suggest)));
   root.querySelector('[data-action="clear"]')?.addEventListener("click", async () => {
     if (!confirm("Apagar toda a conversa?")) return;
     if (chat.cloud) await cloud.saveChat([]);
