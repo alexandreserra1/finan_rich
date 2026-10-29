@@ -105,9 +105,9 @@ A lista da auditoria, conferida nos e2e:
 | Painel como centro de decisão (situação, atenção, ação, evolução) | feito no redesign: avisos assinados pelo time, "O que o time viu", números do mês no topo |
 | Lançamento rápido, com desfazer | feito: janela curta, Desfazer depois de apagar |
 | Dívidas com cenários (mínimo, valor a mais, ordem) | feito: tela Dívidas e o Bento (`simular_dividas`) |
-| Consultor que separa conta do Go e texto da IA | feito em parte: contas prontas do Go (`prefetch`) e resposta sem IA; **em andamento:** cartão "Os números do app" na hora, antes da IA |
-| Ajustes mostrando onde ficam os dados e o que vai para a IA | **em andamento:** redesign de Ajustes com a escolha "IA do finan_rich" ou "minha chave" |
-| Estados vazios, carregamento, erro padronizados | feito nas telas redesenhadas; faltam Ajustes, Consultor e Boas-vindas (em andamento) |
+| Consultor que separa conta do Go e texto da IA | feito: cartão "Os números do app" (Go) na hora, a IA explica embaixo; sem IA, o cartão é a resposta |
+| Ajustes mostrando onde ficam os dados e o que vai para a IA | feito: Ajustes redesenhado, com a escolha "IA do finan_rich" (apelidos, limite por dia) ou "minha própria chave" |
+| Estados vazios, carregamento, erro padronizados | feito em todas as telas redesenhadas |
 | Acessibilidade e contraste | feito: teste de contraste dos temas; gráficos com tabela |
 
 ## 5. Medir antes de otimizar · a fazer (média)
@@ -120,6 +120,6 @@ vale otimizar. Já medido: consultor no computador local, de 13 a 35 s por pergu
 ## Ordem de execução
 
 1. **1.3** O acerto do relógio também no Drive (site).
-2. Terminar as telas em andamento (Consultor, Ajustes, Boas-vindas) e conferir em navegador real.
+2. Conferir as telas novas (Consultor, Ajustes, Boas-vindas) num celular e num Safari de verdade (a caixa de mensagem do Consultor não cresce sozinha no Safari).
 3. **5** Medir o desempenho e só então otimizar.
 4. Conferir o Sair do acesso pela rede num aparelho de verdade (1.1).

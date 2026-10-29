@@ -203,7 +203,7 @@ e rode o script de novo. Ver uso e erros: *Cloud Run → finanproxy → Registro
 Um computador com o Ollama pode emprestar a IA ao intermediário: entra por último na ordem
 padrão (`local` em `FINAN_PROVIDERS`), sem cota de tokens, uma pergunta por vez. Medido num Mac
 M1 Pro com o `qwen2.5:7b-instruct`: de 13 a 35 s por pergunta (com o resumo só das seções de cada
-personagem; o Painel e o Consultor mostram as contas do app na hora, antes da IA). Ele vai **sem as ferramentas**
+personagem; o Consultor mostra "Os números do app" na hora, e a IA escreve a explicação embaixo). Ele vai **sem as ferramentas**
 (modelo pequeno escrevia o pedido como texto); as contas prontas do Go já vão nos dados.
 
 **Jeito rápido:** instale o Tailscale (App Store ou versão standalone) e entre com a sua conta;
