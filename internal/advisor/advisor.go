@@ -5,6 +5,7 @@ package advisor
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -156,7 +157,15 @@ type Question struct {
 // Answer responde à pergunta com as ferramentas ligadas. Com Anonymize, a IA
 // só vê apelidos e a resposta chega inteira no fim (já com os nomes de volta),
 // porque um apelido pode vir partido entre dois pedaços do streaming.
-func Answer(ctx context.Context, p llm.Provider, q Question, onText func(string), onProposal func(Proposal)) (string, []Proposal, error) {
+//
+// Pergunta pronta (Prepared) é respondida pelo app, sem chamar a IA. Se a IA
+// falhar por qualquer motivo, a resposta é a do app (Fallback) com o erro em
+// AIError. Nesses dois casos (App), onText não recebe o texto: quem chama
+// mostra Reply.Text. O erro só volta quando a pessoa cancelou.
+func Answer(ctx context.Context, p llm.Provider, q Question, onText func(string), onProposal func(Proposal)) (Reply, error) {
+	if Prepared(q) {
+		return Reply{Text: Offline(q), App: true}, nil
+	}
 	ledger, history, text, emit := q.Ledger, q.History, q.Text, onText
 	var anon *Anonymizer
 	if q.Anonymize {
@@ -177,14 +186,17 @@ func Answer(ctx context.Context, p llm.Provider, q Question, onText func(string)
 		onProposal(pr)
 	})
 	answer, err := Ask(ctx, p, q.Agent, history, text, withPrefetch(Snapshot(BuildFacts(ledger, q.Today)), q.Agent, tools, text), tools, emit)
+	if err == nil && answer == "" {
+		err = errors.New("a IA não devolveu resposta")
+	}
 	if err != nil {
-		return "", nil, err
+		return answerOrFallback(ctx, q, err)
 	}
 	if anon != nil {
 		answer = anon.Reveal(answer)
 		onText(answer)
 	}
-	return answer, proposals, nil
+	return Reply{Text: answer, Proposals: proposals}, nil
 }
 
 // Na IA dentro do celular (llama.cpp em WebAssembly, 1 thread), cada palavra

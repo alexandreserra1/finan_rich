@@ -135,6 +135,8 @@ const cloudAI = createServer((req, res) => {
     cloudBodies.push({ auth: req.headers.authorization, messages, tools: (tools || []).map((t) => t.function.name) });
     const last = messages.at(-1);
     const question = messages.findLast((m) => m.role === "user").content.split("</dados_financeiros>").at(-1);
+    // O grátis do finan_rich chegou ao limite (o intermediário responde 429).
+    if (/limite do grátis/i.test(question)) return res.writeHead(429).end('{"error":{"message":"o consultor grátis chegou ao limite deste aparelho por hoje"}}');
     // A internet cai no meio da resposta: manda um pedaço e corta a conexão.
     if (/internet caiu/i.test(question)) {
       res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: "Metade da resp" } }] })}\n\n`);
@@ -263,14 +265,31 @@ try {
   await page.waitForSelector(".proposal:has-text('Pão') button:has-text('Adicionado')", { timeout: 10000 });
   ok(true, "pela nuvem, a proposta também vira cartão e grava neste celular");
 
-  // A internet cai no meio da resposta: mostra o erro, não fica em "Pensando…"
-  // e não guarda a resposta pela metade.
+  // A internet cai no meio da resposta: a Jade responde com as contas do app
+  // (sem IA), não fica em "Pensando…" e não guarda a resposta pela metade.
   await page.fill("textarea[name=message]", "E se a internet caiu?");
   await page.click("form[data-form=ask] button");
-  await page.waitForSelector(".msg.error:has-text('sem internet')", { timeout: 30000 });
+  await page.waitForSelector(".msg.assistant:has-text('A IA não respondeu agora') .app-answer", { timeout: 30000 });
   const savedChat = JSON.stringify(await page.evaluate(async () => (await import("/static/js/cloud-ai.js")).loadChat()));
-  ok(await page.locator(".msg.pending").count() === 0 && !(await page.textContent(".messages")).includes("Metade da resp") && !savedChat.includes("Metade da resp"),
-    `internet caindo no meio do chat: erro, sem "Pensando…" e sem resposta pela metade (${await page.textContent(".msg.error")})`);
+  ok(await page.locator(".msg.pending").count() === 0 && !(await page.textContent(".messages")).includes("Metade da resp") && !savedChat.includes("Metade da resp") &&
+    (await page.textContent(".msg.assistant >> nth=-1")).includes("Resumo de"),
+    `internet caindo no meio do chat: resposta sem IA, sem "Pensando…" e sem resposta pela metade`);
+
+  // O grátis do finan_rich no limite: resposta sem IA e o caminho para a chave grátis da pessoa.
+  await page.evaluate(async () => { // a configuração com a chave fica guardada no próprio app (a chave cifrada não passa bem pelo teste)
+    const db = await import("/static/js/db.js");
+    await db.setMeta("cloud-ai-antes", await db.getMeta("cloud-ai"));
+    await db.setMeta("cloud-ai", { preset: "finan", model: "auto", baseUrl: "http://127.0.0.1:18082" });
+  });
+  await page.goto(`${APP}/chat`);
+  await page.waitForSelector("form[data-form=ask]", { timeout: 20000 });
+  await page.fill("textarea[name=message]", "Acabou o limite do grátis?");
+  await page.click("form[data-form=ask] button");
+  await page.waitForSelector(".msg.assistant .notice:has-text('chave grátis') a[href='/configuracoes#ia-nuvem']", { timeout: 30000 });
+  ok((await page.textContent(".msg.assistant >> nth=-1")).includes("A IA não respondeu agora"), "grátis no limite: resposta sem IA e aviso com o caminho para a própria chave");
+  await page.evaluate(async () => { const db = await import("/static/js/db.js"); await db.setMeta("cloud-ai", await db.getMeta("cloud-ai-antes")); });
+  await page.goto(`${APP}/chat`);
+  await page.waitForSelector("form[data-form=ask]", { timeout: 20000 });
   await page.fill("textarea[name=message]", "Oi");
   await page.click("form[data-form=ask] button");
   await page.waitForSelector(".msg.assistant:has-text('Oi!')", { timeout: 30000 });
@@ -280,7 +299,7 @@ try {
   // Bento; com ele, a IA recebe a voz e só as ferramentas de dívida.
   ok((await page.textContent(".msg.assistant >> nth=-1")).includes("Jade · Consultora") && await page.getAttribute(".team-member[data-agent=jade]", "aria-pressed") === "true",
     "sem escolher ninguém, quem responde é a Jade");
-  await page.fill("textarea[name=message]", "Qual dívida devo pagar primeiro?");
+  await page.fill("textarea[name=message]", "Qual dívida pago primeiro?");
   await page.click("form[data-form=ask] button");
   await page.waitForSelector(".handoff:has-text('Isso é com Bento (Dívidas)')", { timeout: 30000 });
   await page.click("[data-handoff]");
@@ -289,6 +308,12 @@ try {
   ok(toBento.messages[0].content.includes("Você é o Bento") && toBento.tools.join() === "buscar_lancamentos,criar_divida,registrar_pagamento,simular_dividas" &&
     await page.getAttribute(".team-member[data-agent=bento]", "aria-pressed") === "true" && await page.locator(".handoff").count() === 0,
     `trocar para o Bento muda a voz e as ferramentas (${toBento.tools})`);
+  // Sugestão com resposta pronta: o app responde sem chamar a IA.
+  const calls = cloudBodies.length;
+  await page.fill("textarea[name=message]", "Quando eu fico livre das dívidas?");
+  await page.click("form[data-form=ask] button");
+  await page.waitForSelector(".msg.assistant >> nth=-1 >> .app-answer:has-text('Resposta do app, sem IA.')", { timeout: 30000 });
+  ok(cloudBodies.length === calls, "sugestão pronta do Bento: resposta do app, sem chamar a IA");
   await page.reload();
   await page.waitForSelector(".team-member[data-agent=bento][aria-pressed=true]", { timeout: 20000 });
   ok((await page.getAttribute("textarea[name=message]", "placeholder")).includes("Bento") && (await page.textContent(".messages")).includes("Jade · Consultora"),
@@ -311,6 +336,7 @@ try {
       async exit() {}
       async createChatCompletion({ messages, stream }) {
         window.localMessages = messages;
+        if (JSON.stringify(messages.at(-1)).includes("IA em pane")) throw new Error("modelo travou");
         return (async function* () {
           for (const piece of ["Guarde ", "**10%** ", "do salário."]) { await new Promise((r) => setTimeout(r, 30)); yield { choices: [{ delta: { content: piece } }] }; }
         })();
@@ -331,6 +357,11 @@ try {
   await page.reload();
   await page.waitForSelector(".msg.assistant:has-text('do salário.')", { timeout: 20000 });
   ok(true, "a conversa com a IA dentro do celular fica salva");
+  await page.fill("textarea[name=message]", "E se a IA em pane?");
+  await page.click("form[data-form=ask] button");
+  await page.waitForSelector(".msg.assistant >> nth=-1 >> .app-answer:has-text('modelo travou')", { timeout: 20000 });
+  ok((await page.textContent(".msg.assistant >> nth=-1")).includes("A IA não respondeu agora") && cloudBodies.length === cloudCalls,
+    "IA dentro do celular com erro: resposta sem IA, feita no aparelho");
   await page.goto(`${APP}/configuracoes`);
   await page.uncheck("[data-action=local-ai]", { timeout: 20000 });
   await page.waitForSelector(".flash:has-text('volta a usar')");
@@ -515,6 +546,7 @@ try {
   await desk.fill("textarea[name=message]", "Qual dívida devo pagar primeiro?");
   await desk.click("#chat-form button");
   await desk.waitForFunction(() => { const m = [...document.querySelectorAll(".msg.assistant")].at(-1); return m && !m.classList.contains("pending") && m.querySelector(".msg-who")?.textContent.includes("Bento"); }, null, { timeout: 20000 });
+  ok(await desk.locator(".msg.assistant >> nth=-1 >> .app-answer").count() === 1, "no computador, a sugestão pronta vem marcada como resposta do app");
   await desk.reload();
   await desk.waitForSelector(".team-member[data-agent=bento][aria-pressed=true]");
   ok((await desk.locator(".msg.assistant >> nth=-1 >> .msg-who").textContent()) === "Bento · Dívidas" && (await desk.getAttribute("textarea[name=message]", "placeholder")).includes("Bento"),

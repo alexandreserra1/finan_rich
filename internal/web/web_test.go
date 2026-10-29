@@ -9,10 +9,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/alexandreserra1/finan_rich/internal/advisor"
 	"github.com/alexandreserra1/finan_rich/internal/domain"
 	"github.com/alexandreserra1/finan_rich/internal/llm"
 	"github.com/alexandreserra1/finan_rich/internal/store"
@@ -228,12 +230,71 @@ func TestChatWhenOllamaOffline(t *testing.T) {
 	if _, body := a.get("/chat"); !strings.Contains(body, "O Ollama não está rodando") {
 		t.Error("página do chat deveria explicar como instalar o Ollama")
 	}
+	// Sem IA, o personagem responde com as contas do app e diz por que a IA falhou.
 	_, body := a.post("/chat/enviar", url.Values{"message": {"oi"}})
-	if !strings.Contains(body, `"error"`) || !strings.Contains(body, "ollama.com") {
+	if !strings.Contains(body, `"app":{`) || !strings.Contains(body, "A IA não respondeu agora") || !strings.Contains(body, "ollama.com") || strings.Contains(body, `"limit":true`) {
 		t.Errorf("SSE = %s", body)
 	}
-	if msgs, _ := a.st.ListChat(context.Background()); len(msgs) != 0 {
-		t.Error("pergunta com erro não deve ser salva")
+	if msgs, _ := a.st.ListChat(context.Background()); len(msgs) != 2 || !strings.HasPrefix(msgs[1].Content, advisor.OfflineNotice) {
+		t.Errorf("a resposta sem IA fica na conversa: %+v", msgs)
+	}
+}
+
+// Sugestão com resposta pronta: o Go responde sem chamar a IA.
+func TestChatPreparedSkipsAI(t *testing.T) {
+	ollama := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/chat" {
+			t.Error("não devia chamar a IA")
+		}
+		fmt.Fprint(w, `{"models":[{"name":"qwen3:4b"}]}`)
+	}))
+	t.Cleanup(ollama.Close)
+	a := newApp(t, ollama.URL)
+	if _, page := a.get("/chat"); !strings.Contains(page, `data-for="bento"`) || !strings.Contains(page, "Quando eu fico livre das dívidas?") {
+		t.Error("a página deveria ter as sugestões de cada personagem")
+	}
+	_, body := a.post("/chat/enviar", url.Values{"message": {"Qual dívida devo pagar primeiro?"}, "agent": {"bento"}})
+	if !strings.Contains(body, `"app":{`) || strings.Contains(body, "A IA não respondeu") || !strings.Contains(body, "Nenhuma dívida") {
+		t.Errorf("SSE = %s", body)
+	}
+}
+
+// As sugestões do app (js/pages/advisor.js) são as mesmas do Go: as prontas precisam bater.
+func TestSuggestionsMatchApp(t *testing.T) {
+	js, err := os.ReadFile("static/js/pages/advisor.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for agent, list := range advisor.Suggestions {
+		for _, q := range list {
+			if !strings.Contains(string(js), `"`+q+`"`) {
+				t.Errorf("%s: %q não está em advisor.js", agent, q)
+			}
+		}
+	}
+}
+
+// Grátis do finan_rich no limite: além da resposta sem IA, o aviso para usar a própria chave.
+func TestChatFreeLimit(t *testing.T) {
+	free := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+		fmt.Fprint(w, `{"error":{"message":"o consultor grátis chegou ao limite deste aparelho por hoje"}}`)
+	}))
+	t.Cleanup(free.Close)
+	st, err := store.Open(context.Background(), ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	s, err := New(st, Options{AIPreset: llm.FreeID, AIDefaults: llm.Config{Kind: llm.KindOpenAI, BaseURL: free.URL, Model: "auto", APIKey: "aparelho"}, Port: "8080"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(s.Routes())
+	t.Cleanup(srv.Close)
+	a := &app{t: t, srv: srv, st: st}
+	if _, body := a.post("/chat/enviar", url.Values{"message": {"e a moto?"}}); !strings.Contains(body, `"limit":true`) || !strings.Contains(body, "A IA não respondeu agora") {
+		t.Errorf("SSE = %s", body)
 	}
 }
 

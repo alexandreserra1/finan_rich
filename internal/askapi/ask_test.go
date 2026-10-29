@@ -257,3 +257,68 @@ func TestFreePresetThroughProxy(t *testing.T) {
 		t.Errorf("chamadas ao Groq = %d (teste, busca, resposta, categorização)", len(models))
 	}
 }
+
+const offlineLedger = `{"debts":[{"id":"d","updatedAt":1,"name":"Cartão Nubank","balanceCents":320000,"monthlyRateBp":1400,"minPaymentCents":50000}]}`
+
+func askOut(t *testing.T, got string) AskReply {
+	t.Helper()
+	var out struct {
+		OK    AskReply
+		Error string
+	}
+	if err := json.Unmarshal([]byte(got), &out); err != nil || out.Error != "" {
+		t.Fatalf("%v %s", err, got)
+	}
+	return out.OK
+}
+
+// IA fora (limite, erro): o personagem responde com as contas do app, com os nomes reais.
+// No grátis do finan_rich, o limite (429) avisa para usar a própria chave.
+func TestAskFallsBackWhenAIFails(t *testing.T) {
+	status := http.StatusTooManyRequests
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(status)
+		fmt.Fprint(w, `{"error":{"message":"o consultor grátis chegou ao limite deste aparelho por hoje"}}`)
+	}))
+	defer srv.Close()
+	old := llm.FreeProxyURL
+	t.Cleanup(func() { llm.FreeProxyURL = old })
+	llm.FreeProxyURL = srv.URL
+	ask := func(ai AIConfig) AskReply {
+		raw, _ := json.Marshal(map[string]any{"ledger": json.RawMessage(offlineLedger), "question": "e a moto?", "today": "2026-10-20", "ai": ai, "anonymize": true, "agent": "bento"})
+		return askOut(t, Ask(context.Background(), string(raw)))
+	}
+	r := ask(AIConfig{Preset: "finan", APIKey: "aparelho"})
+	if !r.App || !r.Limit || r.AIError == "" || !strings.HasPrefix(r.Answer, advisor.OfflineNotice) || !strings.Contains(r.Answer, "Cartão Nubank") {
+		t.Errorf("grátis no limite: %+v", r)
+	}
+	r = ask(AIConfig{Preset: "groq", APIKey: "x", BaseURL: srv.URL})
+	if !r.App || r.Limit {
+		t.Errorf("limite da chave própria não é o do grátis: %+v", r)
+	}
+	status = http.StatusInternalServerError
+	if r = ask(AIConfig{Preset: "finan", APIKey: "aparelho"}); !r.App || r.Limit {
+		t.Errorf("erro do provedor: %+v", r)
+	}
+}
+
+// Sugestão com resposta pronta: o Go responde, sem chamar a IA.
+func TestAskPreparedSkipsAI(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("não devia chamar a IA") }))
+	defer srv.Close()
+	req := `{"ledger":` + offlineLedger + `,"question":"Qual dívida devo pagar primeiro?","today":"2026-10-20","agent":"bento","anonymize":true,"ai":{"preset":"groq","apiKey":"x","baseUrl":"` + srv.URL + `"}}`
+	if r := askOut(t, Ask(context.Background(), req)); !r.App || r.AIError != "" || strings.Contains(r.Answer, advisor.OfflineNotice) || !strings.Contains(r.Answer, "Cartão Nubank") {
+		t.Errorf("pronta: %+v", r)
+	}
+	// Para a IA dentro do celular: a tela pergunta antes se há resposta pronta.
+	if r := askOut(t, Prepared(req)); !r.App || !strings.Contains(r.Answer, "Cartão Nubank") {
+		t.Errorf("Prepared: %+v", r)
+	}
+	if got := Prepared(`{"question":"e a moto?","agent":"bento"}`); got != `{}` {
+		t.Errorf("pergunta livre não tem resposta pronta: %s", got)
+	}
+	// Sem internet ou IA do celular com erro: a tela pede a resposta sem IA.
+	if r := askOut(t, Offline(`{"ledger":`+offlineLedger+`,"question":"e a moto?","agent":"bento","today":"2026-10-20"}`)); !r.App || !strings.HasPrefix(r.Answer, advisor.OfflineNotice) {
+		t.Errorf("Offline: %+v", r)
+	}
+}

@@ -17,6 +17,7 @@
       b.setAttribute("aria-pressed", String(b.dataset.agent === id));
       if (b.dataset.agent === id) name = b.dataset.name;
     });
+    document.querySelectorAll(".suggestions [data-for]").forEach((b) => { b.hidden = b.dataset.for !== id; });
     input.placeholder = "Mensagem para " + name + "…";
     input.setAttribute("aria-label", input.placeholder);
     document.querySelector(".handoff")?.remove();
@@ -102,6 +103,24 @@
     return card;
   }
 
+  // Resposta do app, sem IA (pergunta pronta ou a IA falhou): marca de onde veio e,
+  // se acabou o grátis do finan_rich, mostra como usar a própria chave grátis.
+  function markApp(el, ev) {
+    const tag = document.createElement("p");
+    tag.className = "small muted app-answer";
+    tag.textContent = ev.reason ? "Resposta do app, sem IA. A IA falhou: " + ev.reason : "Resposta do app, sem IA.";
+    el.appendChild(tag);
+    if (!ev.limit) return;
+    const box = document.createElement("p");
+    box.className = "notice warn";
+    box.append("O grátis do finan_rich chegou ao limite por agora. Para seguir com IA, use sua própria chave grátis (o Gemini dá uma de graça) em ");
+    const a = document.createElement("a");
+    a.href = "/configuracoes";
+    a.textContent = "Ajustes";
+    box.append(a, ".");
+    el.appendChild(box);
+  }
+
   document.querySelectorAll("[data-md]").forEach((md) => render(md.parentElement, md.textContent));
   team.forEach((b) => b.addEventListener("click", () => pick(b.dataset.agent)));
   pick(agent);
@@ -151,6 +170,14 @@
       await window.finanSync?.();
       await Finan.postSSE("/chat/enviar", new URLSearchParams({ message: text, agent }), (ev) => {
         if (ev.suggest) { suggest = ev.suggest; return; }
+        if (ev.app) {
+          answer = ev.app.text;
+          reply.classList.remove("pending");
+          render(reply, answer);
+          markApp(reply, ev.app);
+          reply.scrollIntoView({ block: "end" });
+          return;
+        }
         if (ev.proposal) {
           if (!proposals) {
             proposals = document.createElement("div");

@@ -52,13 +52,45 @@ type AIConfig struct {
 	BaseURL string `json:"baseUrl,omitempty"` // outro endereço do mesmo provedor (testes, proxy próprio)
 }
 
+// AskReply é a resposta. App: texto do app, sem IA (pergunta pronta ou a IA
+// falhou); AIError: por que a IA falhou; Limit: acabou o grátis do finan_rich
+// (a tela mostra como usar a própria chave grátis).
 type AskReply struct {
 	Answer    string             `json:"answer"`
 	Proposals []advisor.Proposal `json:"proposals"`
+	App       bool               `json:"app,omitempty"`
+	AIError   string             `json:"aiError,omitempty"`
+	Limit     bool               `json:"limit,omitempty"`
+}
+
+// question monta a pergunta do consultor a partir do pedido do app.
+func (req AskRequest) question() advisor.Question {
+	today, err := time.ParseInLocation(domain.DateLayout, req.Today, time.Local)
+	if err != nil {
+		today = time.Now()
+	}
+	history := make([]llm.Message, len(req.History))
+	for i, h := range req.History {
+		history[i] = llm.Message{Role: llm.Role(h.Role), Content: h.Content}
+	}
+	return advisor.Question{History: history, Text: req.Question, Ledger: req.Ledger, Today: today, Anonymize: req.Anonymize, Agent: req.Agent}
+}
+
+func askReply(r advisor.Reply, preset string) AskReply {
+	out := AskReply{Answer: r.Text, Proposals: r.Proposals, App: r.App}
+	if out.Proposals == nil {
+		out.Proposals = []advisor.Proposal{}
+	}
+	if r.AIError != nil {
+		out.AIError = r.AIError.Error()
+		out.Limit = preset == llm.FreeID && advisor.OverLimit(r.AIError)
+	}
+	return out
 }
 
 // Ask responde à pergunta. Bloqueia até a resposta: quem chama no navegador
-// roda numa goroutine e devolve uma Promise (cmd/finanwasm).
+// roda numa goroutine e devolve uma Promise (cmd/finanwasm). Se a IA falhar,
+// a resposta é a do app, sem IA (advisor.Fallback).
 func Ask(ctx context.Context, reqJSON string) string {
 	var req AskRequest
 	if err := json.Unmarshal([]byte(reqJSON), &req); err != nil {
@@ -68,24 +100,35 @@ func Ask(ctx context.Context, reqJSON string) string {
 	if err != nil {
 		return reply(nil, err)
 	}
-	today, err := time.ParseInLocation(domain.DateLayout, req.Today, time.Local)
+	r, err := advisor.Answer(ctx, p, req.question(), func(string) {}, func(advisor.Proposal) {})
 	if err != nil {
-		today = time.Now()
+		return reply(nil, err)
 	}
-	history := make([]llm.Message, len(req.History))
-	for i, h := range req.History {
-		history[i] = llm.Message{Role: llm.Role(h.Role), Content: h.Content}
+	return reply(askReply(r, req.AI.Preset), nil)
+}
+
+// Prepared devolve a resposta pronta do app para a pergunta, ou {} se ela
+// precisa da IA. A IA dentro do celular pergunta aqui antes de gerar.
+func Prepared(reqJSON string) string {
+	var req AskRequest
+	if err := json.Unmarshal([]byte(reqJSON), &req); err != nil {
+		return reply(nil, err)
 	}
-	answer, proposals, err := advisor.Answer(ctx, p, advisor.Question{
-		History: history, Text: req.Question, Ledger: req.Ledger, Today: today, Anonymize: req.Anonymize, Agent: req.Agent,
-	}, func(string) {}, func(advisor.Proposal) {})
-	if err == nil && answer == "" {
-		err = errors.New("a IA não devolveu resposta; tente de novo")
+	q := req.question()
+	if !advisor.Prepared(q) {
+		return reply(nil, nil)
 	}
-	if proposals == nil {
-		proposals = []advisor.Proposal{}
+	return reply(askReply(advisor.Reply{Text: advisor.Offline(q), App: true}, ""), nil)
+}
+
+// Offline é a resposta sem IA, para quando a IA nem pôde ser chamada (sem
+// internet, IA do celular com erro, computador fora do alcance).
+func Offline(reqJSON string) string {
+	var req AskRequest
+	if err := json.Unmarshal([]byte(reqJSON), &req); err != nil {
+		return reply(nil, err)
 	}
-	return reply(AskReply{answer, proposals}, err)
+	return reply(askReply(advisor.Fallback(req.question(), errors.New("a IA não respondeu")), ""), nil)
 }
 
 // LocalPrompt monta as mensagens (formato OpenAI: system, user, assistant)
@@ -97,15 +140,7 @@ func LocalPrompt(reqJSON string) string {
 	if err := json.Unmarshal([]byte(reqJSON), &req); err != nil {
 		return reply(nil, err)
 	}
-	today, err := time.ParseInLocation(domain.DateLayout, req.Today, time.Local)
-	if err != nil {
-		today = time.Now()
-	}
-	history := make([]llm.Message, len(req.History))
-	for i, h := range req.History {
-		history[i] = llm.Message{Role: llm.Role(h.Role), Content: h.Content}
-	}
-	r := advisor.LocalRequest(advisor.Question{History: history, Text: req.Question, Ledger: req.Ledger, Today: today, Agent: req.Agent})
+	r := advisor.LocalRequest(req.question())
 	msgs := []ChatTurn{{Role: "system", Content: r.System}}
 	for _, m := range r.Messages {
 		msgs = append(msgs, ChatTurn{Role: string(m.Role), Content: m.Content})

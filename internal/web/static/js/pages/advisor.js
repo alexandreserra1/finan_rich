@@ -52,6 +52,8 @@ export function render() {
       </div>
       <div class="messages">
         ${chat.history.map((m, i) => html`<div class="msg ${m.role}">${m.role === "assistant" ? html`<span class="msg-who">${face(member(m.agent), 22)}${member(m.agent).name} · ${member(m.agent).role}</span>` : ""}${md(m.content)}
+          ${m.app ? html`<p class="small muted app-answer">${m.aiError ? `Resposta do app, sem IA. A IA falhou: ${m.aiError}` : "Resposta do app, sem IA."}</p>` : ""}
+          ${m.limit ? limitNotice() : ""}
           ${m.role === "assistant" ? html`<button type="button" class="link plain save-note" data-save="${i}">Salvar como nota</button>` : ""}</div>
           ${m.proposals?.length ? html`<div class="proposals">${m.proposals.map((p, j) => html`<div class="proposal"><span>${p.label}</span>
             <button type="button" class="small-btn${p.action === "apagar" ? " danger" : ""}" data-propose="${i}:${j}" ${p.applied ? "disabled" : ""}>${proposalButton(p)[p.applied ? 1 : 0]}</button></div>`)}</div>` : ""}`)}
@@ -66,6 +68,14 @@ export function render() {
         <button type="submit" ${chat.busy ? "disabled" : ""}>Enviar</button>
       </form>
     </section>`;
+}
+
+// limitNotice: acabou o grátis do finan_rich; o caminho para a chave grátis da própria pessoa.
+function limitNotice() {
+  return chat.cloud
+    ? html`<p class="notice warn">O grátis do finan_rich chegou ao limite por agora. Para seguir com IA, use sua própria chave grátis (o Gemini dá uma de graça) em
+      <a href="/configuracoes#ia-nuvem">Ajustes → Consultor sem computador</a>.</p>`
+    : html`<p class="notice warn">O grátis do finan_rich chegou ao limite por agora. Para seguir com IA, use sua própria chave grátis nos Ajustes do computador.</p>`;
 }
 
 async function call(path, init = {}) {
@@ -129,11 +139,22 @@ async function ask(ctx, question) {
   ctx.rerender();
   try {
     if (chat.cloud) {
-      const { answer, proposals } = chat.local
-        ? await local.ask(ctx.ledger, chat.history.slice(0, -1), question, (text) => showPartial(text), agent)
-        : await cloud.ask(ctx.ledger, chat.history.slice(0, -1), question, agent);
+      let reply;
+      if (chat.local) {
+        // A IA do celular não passa pelo Go: a resposta pronta e a sem IA vêm daqui.
+        reply = await cloud.prepared(ctx.ledger, question, agent);
+        if (!reply) {
+          try {
+            reply = await local.ask(ctx.ledger, chat.history.slice(0, -1), question, (text) => showPartial(text), agent);
+          } catch (err) {
+            reply = { ...(await cloud.offline(ctx.ledger, question, agent)), aiError: err.message };
+          }
+        }
+      } else {
+        reply = await cloud.ask(ctx.ledger, chat.history.slice(0, -1), question, agent);
+      }
       chat.partial = "";
-      chat.history.push({ role: "assistant", content: answer, proposals, agent });
+      chat.history.push(assistantMessage(reply, agent));
       suggestHandoff(question, agent);
       await cloud.saveChat(chat.history);
       chat.busy = false;
@@ -146,6 +167,7 @@ async function ask(ctx, question) {
     const text = await res.text();
     if (!res.ok) throw new Error(JSON.parse(text || "{}").error || res.statusText);
     let answer = "";
+    let app = null; // resposta do app, sem IA: { text, reason, limit }
     const proposals = []; // lançamentos que a IA propôs: entram só com o "Adicionar"
     for (const line of text.split("\n")) {
       if (!line.startsWith("data: ")) continue;
@@ -153,17 +175,35 @@ async function ask(ctx, question) {
       if (ev.error) throw new Error(ev.error);
       if (ev.text) answer += ev.text;
       if (ev.proposal) proposals.push(ev.proposal);
+      if (ev.app) app = ev.app;
     }
-    chat.history.push({ role: "assistant", content: answer, proposals, agent });
+    chat.history.push(app
+      ? assistantMessage({ answer: app.text, proposals, app: true, aiError: app.reason, limit: app.limit }, agent)
+      : { role: "assistant", content: answer, proposals, agent });
     suggestHandoff(question, agent);
   } catch (err) {
     chat.partial = "";
-    chat.history.pop();
     // TypeError: fetch daqui; "network error": fetch do Go (IA na nuvem) que caiu no meio.
-    chat.error = err instanceof TypeError || /network error/.test(err.message) ? (chat.cloud ? "sem internet" : "sem conexão com o computador") : err.message;
+    const reason = err instanceof TypeError || /network error/.test(err.message) ? (chat.cloud ? "sem internet" : "sem conexão com o computador") : err.message;
+    // Sem IA, o personagem responde com as contas do app (só onde há o advisor.wasm: app e site).
+    const reply = await cloud.offline(ctx.ledger, question, agent).catch(() => null);
+    if (reply) {
+      chat.history.push(assistantMessage({ ...reply, aiError: reason }, agent));
+      if (chat.cloud) await cloud.saveChat(chat.history).catch(() => {});
+    } else {
+      chat.history.pop();
+      chat.error = reason;
+    }
   }
   chat.busy = false;
   ctx.rerender();
+}
+
+// assistantMessage: a resposta para a conversa; app/aiError/limit marcam a resposta sem IA.
+function assistantMessage({ answer, proposals = [], app, aiError, limit }, agent) {
+  const m = { role: "assistant", content: answer, proposals, agent };
+  if (app) Object.assign(m, { app: true, aiError: aiError || "", limit: !!limit });
+  return m;
 }
 
 // suggestHandoff: se o assunto é de outro do time, oferece perguntar para ele.

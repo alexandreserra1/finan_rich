@@ -3,7 +3,6 @@ package web
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
 	"strings"
@@ -78,7 +77,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) {
 		serverError(w, err)
 		return
 	}
-	s.render(w, r, "chat", map[string]any{"History": history, "AI": ai, "Status": s.aiStatus(ctx, ai), "Team": finance.Team})
+	s.render(w, r, "chat", map[string]any{"History": history, "AI": ai, "Status": s.aiStatus(ctx, ai), "Team": finance.Team, "Suggestions": advisor.Suggestions})
 }
 
 func (s *Server) chatClear(w http.ResponseWriter, r *http.Request) {
@@ -112,11 +111,6 @@ func (s *Server) answer(w http.ResponseWriter, r *http.Request, question, agent 
 		sse.Error(err)
 	}
 
-	provider, ai, err := s.provider(ctx)
-	if err != nil {
-		fail(err)
-		return
-	}
 	ledger, err := s.store.Ledger(ctx)
 	if err != nil {
 		fail(err)
@@ -132,19 +126,30 @@ func (s *Server) answer(w http.ResponseWriter, r *http.Request, question, agent 
 	for i, m := range history {
 		past[i] = llm.Message{Role: llm.Role(m.Role), Content: m.Content}
 	}
-	q := advisor.Question{History: past, Text: question, Ledger: ledger, Today: time.Now(), Anonymize: !llm.IsLocal(ai.Config), Agent: agent}
-	answer, proposals, err := advisor.Answer(ctx, provider, q,
-		func(text string) { sse.Send(map[string]string{"text": text}) },
-		func(p advisor.Proposal) { sse.Send(map[string]any{"proposal": p}) })
-	if errors.Is(err, context.Canceled) {
-		return
+	q := advisor.Question{History: past, Text: question, Ledger: ledger, Today: time.Now(), Agent: agent}
+	var reply advisor.Reply
+	provider, ai, err := s.provider(ctx)
+	if err != nil { // IA mal configurada: responde sem IA, com o motivo
+		reply = advisor.Fallback(q, err)
+	} else {
+		q.Anonymize = !llm.IsLocal(ai.Config)
+		reply, err = advisor.Answer(ctx, provider, q,
+			func(text string) { sse.Send(map[string]string{"text": text}) },
+			func(p advisor.Proposal) { sse.Send(map[string]any{"proposal": p}) })
+		if err != nil { // a pessoa saiu da tela
+			return
+		}
 	}
-	if err == nil && answer == "" {
-		err = errors.New("o modelo não devolveu resposta; tente de novo")
-	}
-	if err != nil {
-		fail(err)
-		return
+	answer, proposals := reply.Text, reply.Proposals
+	// Resposta do app (sem IA): a tela troca o texto e marca de onde veio.
+	if reply.App {
+		ev := map[string]any{"text": answer}
+		if reply.AIError != nil {
+			log.Printf("chat: IA falhou, resposta sem IA: %v", reply.AIError)
+			ev["reason"] = reply.AIError.Error()
+			ev["limit"] = ai.Preset.ID == llm.FreeID && advisor.OverLimit(reply.AIError)
+		}
+		sse.Send(map[string]any{"app": ev})
 	}
 	// Contexto sem cancelamento: se a conexão cair agora, a resposta não se perde.
 	var saved json.RawMessage

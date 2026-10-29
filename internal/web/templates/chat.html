@@ -18,10 +18,7 @@
       {{with .Proposals}}<div class="proposals" data-proposals="{{jsonText .}}"></div>{{end}}{{end}}
     {{if not .History}}
     <div class="suggestions">
-      <button type="button">Como posso dividir melhor meu salário?</button>
-      <button type="button">Qual dívida devo pagar primeiro?</button>
-      <button type="button">Onde estou gastando demais este mês?</button>
-      <button type="button">Quanto devo ter de reserva de emergência?</button>
+      {{range .Team}}{{$id := .ID}}{{range index $.Suggestions .ID}}<button type="button" data-for="{{$id}}" hidden>{{.}}</button>{{end}}{{end}}
     </div>
     {{end}}
   </div>

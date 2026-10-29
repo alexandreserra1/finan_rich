@@ -123,8 +123,13 @@ func TestEval(t *testing.T) {
 	for _, c := range all {
 		var answer string
 		for try := 0; try < 3; try++ { // cota grátis: espera e tenta de novo
-			answer, _, err = Answer(context.Background(), p, Question{Text: c.q, Ledger: evalLedger(), Today: today, Anonymize: os.Getenv("FINAN_EVAL_LOCAL") == "", Agent: c.agent},
+			var r Reply
+			r, err = Answer(context.Background(), p, Question{Text: c.q, Ledger: evalLedger(), Today: today, Anonymize: os.Getenv("FINAN_EVAL_LOCAL") == "", Agent: c.agent},
 				func(string) {}, func(Proposal) {})
+			answer = r.Text
+			if r.AIError != nil { // a avaliação mede a IA: resposta sem IA conta como erro
+				err = r.AIError
+			}
 			if err == nil || !strings.Contains(err.Error(), "limite") && !strings.Contains(err.Error(), "ocupada") {
 				break
 			}

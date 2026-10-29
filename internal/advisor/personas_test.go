@@ -12,7 +12,7 @@ import (
 func TestAnswerAsPersona(t *testing.T) {
 	fake := &scriptedLLM{replies: []llm.Reply{{Text: "Ataque o cartão."}}}
 	q := Question{Text: "e agora?", Ledger: toolsLedger(), Today: time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC), Agent: "bento"}
-	if _, _, err := Answer(context.Background(), fake, q, func(string) {}, func(Proposal) {}); err != nil {
+	if _, err := Answer(context.Background(), fake, q, func(string) {}, func(Proposal) {}); err != nil {
 		t.Fatal(err)
 	}
 	req := fake.asked[0]
