@@ -572,3 +572,20 @@ func TestProxyRestsOnlyTheTiredModel(t *testing.T) {
 		t.Errorf("groq tentou %v, local %v; quer g1 e depois g2, sem o local", seen, local.models_())
 	}
 }
+
+// Sem as ferramentas, o trecho das instruções que as descreve também sai (o
+// modelo local mandava a pessoa "usar a ferramenta simular_meta").
+func TestProxyLocalDropsToolsPrompt(t *testing.T) {
+	captureLog(t)
+	local := &fakeProvider{key: "k", models: []string{"qwen"}}
+	h := New(Config{Providers: []Provider{{Name: "local", Upstream: local.start(t).URL, APIKey: "k", Models: []string{"qwen"}, NoTools: true}}, Limits: DefaultLimits})
+	system := advisor.SystemPrompt + "\n\nQuem fala:\nVocê é o Tito.\n\nFerramentas:\n- simular_meta: calcula a meta."
+	b, _ := json.Marshal(map[string]any{"stream": false, "tools": []any{map[string]any{"type": "function"}},
+		"messages": []map[string]string{{"role": "system", "content": system}, {"role": "user", "content": "oi"}}})
+	ask(h, "a", string(b))
+	msgs := local.seen[0]["messages"].([]any)
+	got := msgs[0].(map[string]any)["content"].(string)
+	if strings.Contains(got, "Ferramentas:") || strings.Contains(got, "simular_meta") || !strings.Contains(got, "Você é o Tito.") {
+		t.Errorf("instruções para o local:\n%s", got)
+	}
+}

@@ -366,18 +366,22 @@ func (h *handler) chat(w http.ResponseWriter, r *http.Request) {
 			if strings.Contains(model, "gpt-oss") {
 				body["reasoning_effort"] = json.RawMessage(`"low"`) // menos tokens de raciocínio: sobra cota grátis
 			}
-			tools, choice := body["tools"], body["tool_choice"]
+			tools, choice, msgsRaw := body["tools"], body["tool_choice"], body["messages"]
 			if p.NoTools {
 				delete(body, "tools")
 				delete(body, "tool_choice")
+				body["messages"] = withoutToolsPrompt(msgsRaw)
 			}
 			delete(body, "stream_options")
 			if withUsage {
 				body["stream_options"] = json.RawMessage(`{"include_usage":true}`) // tokens no último evento
 			}
 			payload, _ := json.Marshal(body)
-			if p.NoTools && tools != nil { // o próximo provedor recebe o pedido inteiro
-				body["tools"] = tools
+			if p.NoTools { // o próximo provedor recebe o pedido inteiro
+				body["messages"] = msgsRaw
+				if tools != nil {
+					body["tools"] = tools
+				}
 				if choice != nil {
 					body["tool_choice"] = choice
 				}
@@ -657,4 +661,23 @@ func lastLive(rest []attempt, skip map[string]bool) bool {
 		}
 	}
 	return true
+}
+
+// withoutToolsPrompt tira das instruções o trecho que descreve as ferramentas
+// (vem no fim, a partir de "Ferramentas:"), para o provedor que vai sem elas.
+func withoutToolsPrompt(raw json.RawMessage) json.RawMessage {
+	var msgs []map[string]any
+	if json.Unmarshal(raw, &msgs) != nil || len(msgs) == 0 || msgs[0]["role"] != "system" {
+		return raw
+	}
+	if text, ok := msgs[0]["content"].(string); ok {
+		if i := strings.Index(text, "\n\nFerramentas:\n"); i >= 0 {
+			msgs[0]["content"] = text[:i]
+		}
+	}
+	out, err := json.Marshal(msgs)
+	if err != nil {
+		return raw
+	}
+	return out
 }

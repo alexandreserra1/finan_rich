@@ -53,7 +53,7 @@ nunca deixe a pessoa sem resposta.
   próximo. Passo a passo das chaves em `docs/IA-GRATIS.md`.
 - [ ] B5. Relatórios do Otávio (semana) e do Tito (mês) gerados uma vez e
   guardados no aparelho, em vez de pergunta ao vivo; sem IA, o texto fixo.
-- [ ] B6. Menos token por pergunta: cada personagem recebe só a parte do
+- [x] B6. Menos token por pergunta: cada personagem recebe só a parte do
   resumo que usa; resposta guardada para a mesma pergunta com os mesmos dados
   no mesmo dia; histórico mais curto.
 - [x] B7. Aviso claro quando o grátis acaba: "use sua chave grátis do Gemini"

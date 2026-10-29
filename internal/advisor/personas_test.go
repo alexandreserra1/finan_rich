@@ -62,3 +62,35 @@ func TestLocalRequestAsPersona(t *testing.T) {
 		t.Errorf("IA do celular sem a voz do Otávio:\n%s", r.System)
 	}
 }
+
+// Cada personagem recebe só as seções do resumo que usa: prompt menor, mais
+// rápido (principalmente no modelo local) e menos chance de misturar assuntos.
+func TestSnapshotFor(t *testing.T) {
+	f := BuildFacts(evalLedger(), time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC))
+	full := SnapshotFor(f, "jade")
+	if full != Snapshot(f) {
+		t.Error("a Jade recebe o resumo inteiro")
+	}
+	for agent, c := range map[string]struct{ has, hasNot []string }{
+		"bento":  {[]string{"Data de hoje", "## Mês atual", "## Dívidas", "## Diagnóstico das dívidas"}, []string{"## Gastos por estabelecimento", "## Metas do usuário"}},
+		"tito":   {[]string{"## Mês atual", "## Metas do usuário", "## Reserva de emergência"}, []string{"## Gastos por estabelecimento", "## Diagnóstico das dívidas"}},
+		"otavio": {[]string{"## Mês atual", "## Gastos por estabelecimento", "## Ritmo do mês"}, []string{"## Diagnóstico das dívidas", "## Metas do usuário"}},
+		"luna":   {[]string{"## Mês atual", "## Dívidas", "## Lançamentos que se repetem"}, []string{"## Gastos por estabelecimento", "## Metas do usuário"}},
+	} {
+		s := SnapshotFor(f, agent)
+		for _, w := range c.has {
+			if !strings.Contains(s, w) {
+				t.Errorf("%s sem %q", agent, w)
+			}
+		}
+		for _, w := range c.hasNot {
+			if strings.Contains(s, w) {
+				t.Errorf("%s não deveria ter %q", agent, w)
+			}
+		}
+		if len(s) >= len(full) {
+			t.Errorf("%s: %d bytes, não é menor que o resumo inteiro (%d)", agent, len(s), len(full))
+		}
+		t.Logf("%s: %d de %d bytes", agent, len(s), len(full))
+	}
+}

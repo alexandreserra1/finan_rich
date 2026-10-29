@@ -1,5 +1,10 @@
 package advisor
 
+import (
+	"slices"
+	"strings"
+)
+
 // O time do finan_rich no Consultor: a mesma IA, mas cada personagem tem o
 // próprio jeito de aconselhar (a voz, que vai nas instruções) e só as
 // ferramentas da área dele. Os nomes e as imagens ficam em finance.Team.
@@ -62,3 +67,30 @@ func persona(id string) Persona {
 }
 
 func systemFor(agent string) string { return SystemPrompt + "\n\n" + persona(agent).Voice }
+
+// sections: as seções do resumo (Snapshot) que cada personagem recebe, pelo
+// começo do título. A Jade, que olha o quadro inteiro, recebe todas.
+var sections = map[string][]string{
+	"bento":  {"Mês atual", "Dívidas", "Diagnóstico das dívidas", "Plano do mês", "Reserva de emergência", "Pontos de atenção"},
+	"tito":   {"Mês atual", "Metas do usuário", "Reserva de emergência", "Plano do mês", "Últimos meses", "Pontos de atenção"},
+	"otavio": {"Mês atual", "Últimos meses", "Ritmo do mês", "Gastos por estabelecimento", "Lançamentos que se repetem", "Orçamentos por categoria", "Pontos de atenção"},
+	"luna":   {"Mês atual", "Dívidas", "Lançamentos que se repetem", "Orçamentos por categoria", "Ritmo do mês", "Pontos de atenção"},
+}
+
+// SnapshotFor é o resumo só com as seções do personagem: prompt menor (o
+// modelo local lê uns 240 tokens por segundo) e menos assunto misturado.
+func SnapshotFor(f Facts, agent string) string {
+	full := Snapshot(f)
+	keep, ok := sections[persona(agent).ID]
+	if !ok {
+		return full
+	}
+	parts := strings.Split(full, "\n## ")
+	out := []string{parts[0]} // "Data de hoje" e o que vem antes da primeira seção
+	for _, p := range parts[1:] {
+		if slices.ContainsFunc(keep, func(k string) bool { return strings.HasPrefix(p, k) }) {
+			out = append(out, p)
+		}
+	}
+	return strings.Join(out, "\n## ")
+}

@@ -185,7 +185,7 @@ func Answer(ctx context.Context, p llm.Provider, q Question, onText func(string)
 		proposals = append(proposals, pr)
 		onProposal(pr)
 	})
-	answer, err := Ask(ctx, p, q.Agent, history, text, withPrefetch(Snapshot(BuildFacts(ledger, q.Today)), q.Agent, tools, text), tools, emit)
+	answer, err := Ask(ctx, p, q.Agent, history, text, withPrefetch(SnapshotFor(BuildFacts(ledger, q.Today), q.Agent), q.Agent, tools, text), tools, emit)
 	if err == nil && answer == "" {
 		err = errors.New("a IA não devolveu resposta")
 	}
@@ -220,7 +220,7 @@ func LocalRequest(q Question) llm.Request {
 		f.Merchants = f.Merchants[:maxLocalMerchants]
 	}
 	// Sem ferramentas aqui: a conta pronta do personagem é tudo que a IA pequena terá.
-	r := BuildRequest(history, q.Text, withPrefetch(Snapshot(f), q.Agent, NewTools(q.Ledger, q.Today, nil), q.Text))
+	r := BuildRequest(history, q.Text, withPrefetch(SnapshotFor(f, q.Agent), q.Agent, NewTools(q.Ledger, q.Today, nil), q.Text))
 	r.System = systemFor(q.Agent)
 	return r
 }
