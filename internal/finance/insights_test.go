@@ -118,3 +118,20 @@ func TestUnusualSpendingShortHistory(t *testing.T) {
 		t.Errorf("categorias = %+v", c)
 	}
 }
+
+func TestInsightsAvgPaceAndSavingsRate(t *testing.T) {
+	v := Insights(insightsLedger(), time.Date(2026, 10, 15, 0, 0, 0, 0, time.UTC))
+	if len(v.Avg3Pace) != 31 || v.Avg3Pace[2] != 10000 || v.Avg3Pace[9] != 25590 || v.Avg3Pace[30] != 35590 {
+		t.Errorf("ritmo médio de 3 meses = %v", v.Avg3Pace)
+	}
+	var got []string
+	for _, r := range v.SavingsRates {
+		got = append(got, fmt.Sprintf("%s:%d:%v", r.Month, r.Pct, r.HasIncome))
+	}
+	if fmt.Sprint(got) != "[2026-05:0:false 2026-06:0:false 2026-07:62:true 2026-08:62:true 2026-09:62:true 2026-10:88:true]" {
+		t.Errorf("taxa por mês = %v", got)
+	}
+	if v.SavingsPct != 88 || v.SavingsAvgPct != 62 || v.SavingsTargetPct != 20 {
+		t.Errorf("taxa = %d, média = %d, meta = %d", v.SavingsPct, v.SavingsAvgPct, v.SavingsTargetPct)
+	}
+}

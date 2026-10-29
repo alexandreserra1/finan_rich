@@ -31,6 +31,7 @@ type InsightsView struct {
 	Avg3Cents             int64   `json:"avg3Cents"`             // média dos 3 meses anteriores
 	Pace                  []int64 `json:"pace"`                  // variável acumulado, do dia 1 até hoje
 	LastPace              []int64 `json:"lastPace"`              // variável acumulado do mês passado
+	Avg3Pace              []int64 `json:"avg3Pace"`              // variável acumulado médio dos 3 meses anteriores (com lançamentos), nos dias deste mês
 
 	IncomeCents     int64 `json:"incomeCents"`
 	IncomeEstimated bool  `json:"incomeEstimated"` // renda ainda não entrou: média dos meses anteriores
@@ -43,6 +44,20 @@ type InsightsView struct {
 	Subscriptions []Subscription       `json:"subscriptions"`
 	Biggest       []domain.Transaction `json:"biggest"`
 	Budgets       []BudgetView         `json:"budgets"` // orçamentos por categoria no mês
+
+	// Taxa de economia: (entradas − saídas + investido) ÷ entradas.
+	SavingsPct       int         `json:"savingsPct"`       // deste mês
+	SavingsAvgPct    int         `json:"savingsAvgPct"`    // média dos meses anteriores com renda (até 12)
+	SavingsTargetPct int         `json:"savingsTargetPct"` // o que a divisão do salário reserva para Investimentos
+	SavingsRates     []RatePoint `json:"savingsRates"`     // os últimos 6 meses, este incluído
+}
+
+// RatePoint é a taxa de economia de um mês.
+type RatePoint struct {
+	Month     string `json:"month"` // "2026-10"
+	Label     string `json:"label"` // "outubro de 2026"
+	Pct       int    `json:"pct"`
+	HasIncome bool   `json:"hasIncome"` // sem renda no mês, a taxa não diz nada
 }
 
 // PlaceRow é quanto foi gasto num lugar (iFood, Uber...) no mês.
@@ -120,6 +135,7 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 	var investedNow, futureCents int64
 	exists := map[string]bool{}
 	var monthSpends []domain.Transaction
+	byDay3 := map[string][]int64{} // mês anterior → gasto variável por dia (dias deste mês)
 	for _, t := range txs {
 		exists[t.ID] = true
 		mk := t.Date[:7]
@@ -156,6 +172,12 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 			}
 		case mk == prev.Key() && !fixed:
 			v.LastPace[min(dayOf(t.Date), lastDays)-1] += t.AmountCents
+		}
+		if !fixed && (mk == history[0] || mk == history[1] || mk == history[2]) {
+			if byDay3[mk] == nil {
+				byDay3[mk] = make([]int64, days)
+			}
+			byDay3[mk][min(dayOf(t.Date), days)-1] += t.AmountCents // dia 31 de um mês cai no último dia deste
 		}
 	}
 	cumulate(v.Pace)
@@ -194,6 +216,19 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 		return sum / int64(months)
 	}
 	v.Avg3Cents = avg(spendByMonth)
+	v.Avg3Pace = make([]int64, days)
+	if months > 0 {
+		for _, k := range history {
+			cumulate(byDay3[k])
+			for i, c := range byDay3[k] {
+				v.Avg3Pace[i] += c
+			}
+		}
+		for i := range v.Avg3Pace {
+			v.Avg3Pace[i] /= int64(months)
+		}
+	}
+	savingsRates(&v, l, m)
 
 	// Quanto ainda cabe no mês (o "pode gastar" do PocketGuard).
 	v.IncomeCents = incomeByMonth[m.Key()]
@@ -409,4 +444,38 @@ func less(a, b int64, an, bn string) bool {
 		return a > b
 	}
 	return an < bn
+}
+
+// savingsRates preenche a taxa de economia: a deste mês, a dos últimos 6, a
+// média dos meses anteriores com renda e a meta da divisão do salário.
+func savingsRates(v *InsightsView, l domain.Ledger, m domain.Month) {
+	start := m
+	for range 5 {
+		start = start.Prev()
+	}
+	v.SavingsRates = []RatePoint{}
+	for k := start; k.Key() <= m.Key(); k = k.Next() {
+		s := Summarize(k, l)
+		v.SavingsRates = append(v.SavingsRates, RatePoint{Month: k.Key(), Label: k.Label(), Pct: s.SavingsRatePct(), HasIncome: s.InCents > 0})
+	}
+	now := Summarize(m, l)
+	v.SavingsPct = now.SavingsRatePct()
+	v.SavingsTargetPct = domain.DefaultSplit()[domain.BucketInvestimentos]
+	for _, b := range now.Buckets {
+		if b.Bucket == domain.BucketInvestimentos && now.InCents > 0 {
+			v.SavingsTargetPct = int(b.PlannedCents * 100 / now.InCents)
+		}
+	}
+	sum, n := 0, 0
+	k := m.Prev()
+	for range 12 {
+		if s := Summarize(k, l); s.InCents > 0 {
+			sum += s.SavingsRatePct()
+			n++
+		}
+		k = k.Prev()
+	}
+	if n > 0 {
+		v.SavingsAvgPct = sum / n
+	}
 }

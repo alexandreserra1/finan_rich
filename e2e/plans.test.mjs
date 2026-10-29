@@ -187,10 +187,13 @@ try {
   await page.waitForFunction(() => window.Chart && Object.keys(window.Chart.instances).length > 0);
   const analysis = await page.textContent("main");
   ok(/Pode gastar por dia/.test(analysis) && /Projeção do mês/.test(analysis), "análise mostra quanto dá para gastar por dia e a projeção");
-  ok(await page.locator(".hbars li:has-text('iFood')").count() === 1 && !/Poupança/.test(await page.textContent(".grid-2")), "gastei onde: iFood aparece; investimento não conta como gasto");
+  ok(await page.locator(".hbars li:has-text('iFood')").count() === 1 && !/Poupança/.test(await page.textContent("#gastei")), "gastei onde: iFood aparece; investimento não conta como gasto");
   await page.hover(".pace-chart canvas", { position: { x: 60, y: 120 } });
-  await page.waitForSelector(".pace-chart .chart-tip:not([hidden])");
-  ok(/^Dia \d+\s+Este mês\s+R\$/.test(await page.innerText(".pace-chart .chart-tip")), "passar o dedo no gráfico mostra o dia");
+  await page.waitForFunction(() => /^Dia \d+\s+· Este mês R\$/.test(document.querySelector(".pace-chart .chart-strip")?.innerText || ""));
+  ok(true, "passar o dedo no gráfico mostra o dia na faixa de cima");
+  await page.click("[data-compare=media]");
+  await page.waitForSelector("[data-compare=media][aria-checked=true]");
+  ok(new URL(page.url()).searchParams.get("comparar") === "media" && (await page.textContent("main")).includes("Média de 3 meses"), "comparar com a média de 3 meses");
 
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);
 } catch (err) {

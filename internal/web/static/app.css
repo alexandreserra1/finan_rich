@@ -247,10 +247,32 @@ main {
 .split { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; align-items: center; }
 @media (min-width: 721px) { .split:has(.chart-box) { grid-template-columns: 210px minmax(0, 1fr); } }
 .pace-chart { position: relative; margin-top: .25rem; }
-.savings { list-style: none; padding: 0; margin: 0; display: grid; gap: .6rem; }
-.saving { --c: var(--warn); padding: .8rem 1rem; border-radius: var(--radius-sm); background: color-mix(in srgb, var(--c) 8%, var(--surface-2)); border-left: 4px solid var(--c); }
-.saving.assinaturas { --c: var(--renda); }
-.saving p { margin: .25rem 0 0; }
+.savings { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.saving { padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--inset); }
+.saving-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.saving p { margin: 4px 0 0; }
+/* Análise: comparação, categorias contra a média e taxa de economia por mês. */
+.ins-kpis { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.ins-kpis .card.perday { border-color: var(--accent-line); }
+.ins-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 0 14px; align-items: start; }
+.cat-avg { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.cat-avg-top { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; margin-bottom: 5px; }
+.cat-avg-top .num small { margin-left: 6px; }
+.cat-avg-track { position: relative; display: block; height: 8px; border-radius: 99px; background: var(--track); }
+.cat-avg-track .fill { display: block; height: 100%; border-radius: 99px; background: var(--accent); }
+.cat-avg-track .fill.over { background: var(--desejos); }
+.cat-avg-track i { position: absolute; top: -3px; width: 2px; height: 14px; margin-left: -1px; border-radius: 1px; background: var(--text); }
+.rate-cols { padding-top: 22px; }
+.rate-plot { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 10px; align-items: end; justify-items: center; height: 170px; border-bottom: 1px solid var(--border); }
+.rate-target { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--accent); pointer-events: none; z-index: 1; }
+.rate-target small { position: absolute; left: 0; bottom: 3px; padding: 0 4px; border-radius: 4px; background: var(--surface); font-size: 11px; color: var(--accent); }
+.rate-bar { width: 100%; max-width: 44px; border-radius: 6px 6px 0 0; background: var(--accent); }
+.rate-bar.low { background: color-mix(in srgb, var(--accent) 45%, transparent); }
+.rate-bar.neg { background: var(--neg); }
+.rate-bar.none { background: var(--track); }
+.rate-labels { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 10px; margin-top: 6px; text-align: center; font-size: 12px; }
+.rate-labels span { display: flex; flex-direction: column; align-items: center; }
+.rate-labels .num { text-align: center; }
 .hbars .fill.place { --c: var(--accent-2); }
 .subs .num { display: grid; justify-items: end; white-space: nowrap; font-variant-numeric: tabular-nums; }
 ul.plain { list-style: none; padding: 0; margin: 0; display: grid; gap: .5rem; }
