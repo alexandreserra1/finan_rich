@@ -20,7 +20,7 @@ faltam está em [PLANO.md](PLANO.md).
   de qualquer conferência. Lançamento feito ali e ainda na fila (sem conexão com o PC) se perdia.
   Era real. O Sair do **site** (com Google) já salvava no Drive antes de apagar; a auditoria
   misturou os dois.
-- **Corrigido em `55f29af`:** `internal/web/static/js/main.js` chama `sync.flushBeforeLeaving()`
+- **Corrigido em `4e075f2`:** `internal/web/static/js/main.js` chama `sync.flushBeforeLeaving()`
   (`internal/web/static/js/sync.js`), que sincroniza e devolve quantas alterações ainda estão
   na fila. Só apaga com zero; senão avisa quantas faltam e não apaga nada. Teste em
   `e2e/offline.test.mjs` (com o PC desligado e depois ligado).
@@ -58,7 +58,7 @@ faltam está em [PLANO.md](PLANO.md).
 A auditoria achou a contradição entre "usar sem conta" e "precisa de login". Decidido: o site
 só funciona com Entrar com Google (`2398954`): sem login, nenhuma tela do app aparece, nem
 digitando o endereço; sessão vence após 30 minutos parado; sair salva no Drive e apaga o
-navegador. README corrigido em `c9ecd2b`; regras em [GOOGLE.md](GOOGLE.md). O computador e o
+navegador. README corrigido em `6f57882`; regras em [GOOGLE.md](GOOGLE.md). O computador e o
 app do celular continuam sem conta (o aparelho é da pessoa).
 
 ### 2.2 Token de renovação do Google no navegador · feito
@@ -92,7 +92,7 @@ A lista da auditoria, conferida nos e2e:
 | Importar o mesmo extrato duas vezes | feito: `import.test` ("reimportar não duplica"; Open Finance também) |
 | Fatura com parcelas e saldo do cartão | feito: `accounts.test` |
 | Mudar offline e sincronizar depois | feito: `offline.test` |
-| Sair com alterações pendentes | feito: `offline.test` (desde `55f29af`) e `google.test` (Drive fora do ar) |
+| Sair com alterações pendentes | feito: `offline.test` (desde `4e075f2`) e `google.test` (Drive fora do ar) |
 | Trocar de aparelho e recuperar os dados | feito: `google.test` (segundo navegador pelo Drive) e pareamento em `offline.test` |
 | Exportar e restaurar o backup | feito: `export.test` (apaga tudo e restaura) |
 | IA, Drive ou computador fora do ar | feito: `app.test` (IA no limite, internet caindo, resposta sem IA), `google.test`, `offline.test` |
