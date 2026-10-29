@@ -64,7 +64,7 @@ const minContext = 16384
 
 // notChat marca modelos que não conversam (áudio, imagem, filtros, vetores).
 var notChat = []string{"whisper", "guard", "orpheus", "tts", "embed", "image", "imagen", "veo", "transcribe",
-	"live", "audio", "moderation", "aqa", "lyria", "robotics", "computer-use"}
+	"live", "audio", "moderation", "safety", "aqa", "lyria", "robotics", "computer-use"}
 
 // PickModels devolve os preferidos que o provedor tem (na ordem da lista) e,
 // depois, os outros modelos de conversa dele. O Gemini lista "models/<id>".

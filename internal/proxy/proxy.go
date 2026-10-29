@@ -77,7 +77,7 @@ var presets = map[string]Provider{
 	// é lido se vier, sem pedir (um campo desconhecido pode dar 400).
 	"cerebras": {Upstream: "https://api.cerebras.ai/v1", Models: []string{"gpt-oss-120b", "qwen-3.8-27b"}},
 	// O OpenRouter manda o usage no fim do streaming sozinho.
-	"openrouter": {Upstream: "https://openrouter.ai/api/v1", OnlyFree: true, Models: []string{"openai/gpt-oss-120b:free", "openrouter/free"}},
+	"openrouter": {Upstream: "https://openrouter.ai/api/v1", OnlyFree: true, Models: []string{"openrouter/free"}},
 	// Cloudflare não tem /models no formato OpenAI: fica a lista daqui (modelos
 	// com ferramentas em developers.cloudflare.com/workers-ai/models).
 	"cloudflare": {Upstream: "https://api.cloudflare.com/client/v4/accounts/%s/ai/v1", Models: []string{"@cf/zai-org/glm-4.7-flash"}},
@@ -310,15 +310,17 @@ providers:
 					rec.log(resp.StatusCode, in, out)
 					return
 				}
-				refusedUsage := false
-				if withUsage && resp.StatusCode == http.StatusBadRequest {
+				refusedUsage, keyRejected := false, false
+				if resp.StatusCode == http.StatusBadRequest {
 					msg, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<10))
-					refusedUsage = strings.Contains(strings.ToLower(string(msg)), "stream_options") // 400 de modelo aposentado não é isto
+					text := strings.ToLower(string(msg))
+					refusedUsage = withUsage && strings.Contains(text, "stream_options")                 // 400 de modelo aposentado não é isto
+					keyRejected = strings.Contains(text, "api key") || strings.Contains(text, "api_key") // o Gemini responde 400, e não 401, para chave inválida
 				}
 				resp.Body.Close()
 				rec.log(resp.StatusCode, -1, -1)
 				switch {
-				case badKey(resp.StatusCode):
+				case badKey(resp.StatusCode) || keyRejected:
 					continue providers // chave errada ou sem permissão: os outros modelos dele também falham
 				case refusedUsage:
 					// Provedor que não conhece stream_options: lembra e repete o mesmo

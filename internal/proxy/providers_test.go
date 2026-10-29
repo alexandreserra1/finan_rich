@@ -7,11 +7,13 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync"
 	"testing"
 
 	"github.com/alexandreserra1/finan_rich/internal/advisor"
+	"github.com/alexandreserra1/finan_rich/internal/llm"
 )
 
 // fakeProvider é um provedor no formato OpenAI: lista models em /models (nil:
@@ -21,6 +23,7 @@ type fakeProvider struct {
 	models       []string
 	full         map[string]bool
 	status       int    // se diferente de 0, toda conversa responde isto
+	badKeyBody   string // se preenchido, a conversa responde 400 com este corpo (como o Gemini com chave inválida)
 	noStreamOpts bool   // recusa (400) pedido com stream_options, como provedor que não conhece o campo
 	reply        string // corpo da resposta (padrão: streaming com usage no fim)
 	ctype        string
@@ -56,6 +59,11 @@ func (f *fakeProvider) start(t *testing.T) *httptest.Server {
 		if _, has := body["stream_options"]; has && f.noStreamOpts {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprint(w, `{"error":{"message":"unknown field stream_options"}}`)
+			return
+		}
+		if f.badKeyBody != "" {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, f.badKeyBody)
 			return
 		}
 		if f.status != 0 {
@@ -374,5 +382,50 @@ func TestProxyCapsAttempts(t *testing.T) {
 	}
 	if total != maxAttempts || rec.Code != http.StatusTooManyRequests {
 		t.Errorf("tentativas = %d (quer %d), resposta = %d", total, maxAttempts, rec.Code)
+	}
+}
+
+// O Gemini responde 400 (e não 401) para chave inválida. Isso não pode ser
+// tomado por "modelo aposentado": o proxy passa direto para o próximo provedor,
+// sem gastar tentativas nos outros modelos do mesmo.
+func TestProxyGeminiBadKeyIs400(t *testing.T) {
+	captureLog(t)
+	gemini := &fakeProvider{key: "k", models: []string{"g1", "g2", "g3"}, status: http.StatusBadRequest, reply: ""}
+	gemini.badKeyBody = `[{"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT"}}]`
+	groq := &fakeProvider{key: "k", models: []string{"m1"}}
+	h := New(Config{Providers: []Provider{
+		{Name: "gemini", Upstream: gemini.start(t).URL, APIKey: "k", Models: []string{"g1", "g2", "g3"}},
+		{Name: "groq", Upstream: groq.start(t).URL, APIKey: "k", Models: []string{"m1"}},
+	}, Limits: DefaultLimits})
+	rec := ask(h, "a", personaBody("o Tito", false))
+	if rec.Code != http.StatusOK || len(gemini.models_()) != 1 {
+		t.Errorf("resposta %d; o Gemini foi tentado %v (quer 1 vez, depois o Groq)", rec.Code, gemini.models_())
+	}
+}
+
+func TestListModelsSkipsSafetyModels(t *testing.T) {
+	got := llm.PickModels([]string{"nvidia/nemotron-3.5-content-safety:free", "openrouter/free", "llama-guard-4"}, nil)
+	if strings.Join(got, ",") != "openrouter/free" {
+		t.Errorf("modelos de moderação não conversam: %v", got)
+	}
+}
+
+// Respostas reais do Groq (capturadas em 28/10/2026 no intermediário publicado):
+// o "usage" delas traz campos de tempo antes de prompt_tokens, e o streaming
+// termina com um evento de usage separado. O leitor tem que achar os dois números.
+func TestUsageFromRealGroqResponses(t *testing.T) {
+	for file, want := range map[string][2]int{
+		"testdata/groq_real.json":       {116, 19},
+		"testdata/groq_real_stream.txt": {116, 17},
+	} {
+		raw, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var tail tailBuffer
+		tail.Write(raw)
+		if in, out := tail.usage(); in != want[0] || out != want[1] {
+			t.Errorf("%s: tokens = %d/%d, quer %d/%d", file, in, out, want[0], want[1])
+		}
 	}
 }
