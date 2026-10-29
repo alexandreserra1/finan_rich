@@ -65,22 +65,19 @@ digitando o endereço; sessão vence após 30 minutos parado; sair salva no Driv
 navegador. README corrigido em `c9ecd2b`; regras em [GOOGLE.md](GOOGLE.md). O computador e o
 app do celular continuam sem conta (o aparelho é da pessoa).
 
-### 2.2 Token de renovação do Google no navegador · a fazer (alta, antes de divulgar o site)
+### 2.2 Token de renovação do Google no navegador · feito
 
-- **Verdade:** no site, o token de renovação fica no IndexedDB (`google.js`, `setMeta("google",
-  {refresh})`). Um script malicioso na página poderia lê-lo.
-- **O que já protege (conferido):** a CSP do site só aceita scripts do próprio site, sem script
-  embutido (`internal/web/export.go`, `siteCSP`); o HTML é montado com `html\`\`` em `ui.js`, que
-  escapa tudo; o único `raw()` com conteúdo de fora é o markdown do Consultor, e ele escapa
-  `& < >` antes de formatar e não gera atributos (`static/app.js`, `markdown`). Não há XSS
-  conhecido.
-- **Passos:**
-  1. Guardar o token de renovação num cookie `HttpOnly; Secure; SameSite=Strict` posto pelo
-     intermediário (`internal/proxy/oauth.go`, que já troca e renova os tokens); o JS fica só
-     com o token de acesso (1 hora) na memória.
-  2. `/oauth/refresh` passa a ler o cookie, não o corpo do pedido; sair apaga o cookie.
-  3. Testes em `internal/proxy` (cookie posto, lido e apagado; sem cookie, 401) e em
-     `e2e/google.test.mjs` (nada de token no IndexedDB).
+- **Era verdade:** no site, o token de renovação ficava no IndexedDB, ao alcance de qualquer
+  script da página.
+- **Corrigido:** o intermediário (`internal/proxy/oauth.go`) guarda o token num cookie
+  `__Host-finan_rt` (`HttpOnly`, `Secure`, `SameSite=Strict`, 6 meses) quando a página pede com
+  `X-Finan-Cookie: 1`; a resposta do login não traz mais o token; `/oauth/refresh` lê o cookie;
+  `/oauth/logout` apaga o cookie e revoga no Google. O `google.js` não guarda mais o token no
+  site, e quem entrou antes passa o token antigo para o cookie na primeira renovação. Testes em
+  `internal/proxy/oauth_test.go` e `e2e/google.test.mjs` (o token não aparece no banco nem em
+  `document.cookie`). O app do celular continua com o cofre do sistema.
+- **Já protegia antes:** CSP só com scripts do próprio site; `html\`\`` escapa tudo; o markdown
+  do Consultor escapa `& < >` e não gera atributos.
 
 ### 2.3 Outras conferências · feito
 
@@ -126,8 +123,7 @@ vale otimizar. Já medido: consultor no computador local, de 13 a 35 s por pergu
 
 ## Ordem de execução
 
-1. **2.2** Token de renovação em cookie `HttpOnly`, antes de divulgar o site.
-2. **1.3** Relógio do aparelho em edições simultâneas (teste e correção mínima).
-3. Terminar as telas em andamento (Consultor, Ajustes, Boas-vindas) e conferir em navegador real.
-4. **5** Medir o desempenho e só então otimizar.
-5. Conferir o Sair do acesso pela rede num aparelho de verdade (1.1).
+1. **1.3** Relógio do aparelho em edições simultâneas (teste e correção mínima).
+2. Terminar as telas em andamento (Consultor, Ajustes, Boas-vindas) e conferir em navegador real.
+3. **5** Medir o desempenho e só então otimizar.
+4. Conferir o Sair do acesso pela rede num aparelho de verdade (1.1).

@@ -2,8 +2,9 @@
 // da própria pessoa (gdrive.js; ver docs/GOOGLE.md). Login com código + PKCE:
 // o verificador fica neste aparelho e a troca do código e a renovação do token
 // passam pelo intermediário (cmd/api), que guarda o client secret do Google.
-// O token de renovação fica no cofre do sistema no app e no banco do navegador
-// no site; o token de acesso (1 hora) só na memória.
+// O token de renovação fica no cofre do sistema no app e, no site, num cookie
+// HttpOnly posto pelo intermediário (o JavaScript da página não lê: nem um
+// script injetado); o token de acesso (1 hora) só na memória.
 import { getMeta, setMeta } from "./db.js";
 import * as device from "./device.js";
 
@@ -85,7 +86,9 @@ export async function signIn(kind) {
 }
 
 async function post(path, body) {
-  const res = await fetch(base() + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  // No site, o intermediário guarda o token de renovação no cookie (X-Finan-Cookie).
+  const headers = { "Content-Type": "application/json", ...(device.isSite ? { "X-Finan-Cookie": "1" } : {}) };
+  const res = await fetch(base() + path, { method: "POST", headers, body: JSON.stringify(body) });
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, data };
 }
@@ -108,10 +111,11 @@ export async function finish(code, state) {
   await setMeta("google-pending", null);
   const { ok, data } = await post("/oauth/token", { code, verifier: pending.verifier, redirectUri: base() + "/oauth" });
   if (!ok || !data.access_token) throw new Error("o Google recusou o login (" + (data.error_description || data.error || "tente de novo") + ")");
-  if (!data.refresh_token) throw new Error("o Google não mandou a permissão para manter você conectado; tente de novo");
+  if (!data.refresh_token && !data.cookie) throw new Error("o Google não mandou a permissão para manter você conectado; tente de novo");
   access = { token: data.access_token, exp: Date.now() + (data.expires_in || 3600) * 1000 };
-  await saveRefresh(data.refresh_token);
-  await setMeta("google", { email: email(data.id_token || ""), refresh: vault() ? null : data.refresh_token });
+  if (data.refresh_token) await saveRefresh(data.refresh_token);
+  // No site o token ficou no cookie; aqui só o e-mail. No app, no cofre do sistema.
+  await setMeta("google", { email: email(data.id_token || ""), refresh: vault() || data.cookie ? null : data.refresh_token });
   await markActive(true); // a sessão do site começa agora
 }
 
@@ -135,15 +139,20 @@ const loginError = () => Object.assign(new Error("entre de novo com Google"), { 
 // token devolve um token de acesso válido, renovando quando passa de 1 hora.
 export async function token() {
   if (access && access.exp > Date.now() + 60_000) return access.token;
-  const refresh = await refreshToken();
-  if (!refresh) throw loginError();
-  const { ok, status, data } = await post("/oauth/refresh", { refreshToken: refresh });
+  const refresh = await refreshToken(); // no site, vazio: o intermediário lê o cookie
+  if (!refresh && !device.isSite) throw loginError();
+  if (!(await getMeta("google", null))) throw loginError();
+  const { ok, status, data } = await post("/oauth/refresh", refresh ? { refreshToken: refresh } : {});
   if (status === 400 || status === 401) { // a pessoa tirou o acesso na conta Google
     await forget();
     throw loginError();
   }
   if (!ok || !data.access_token) throw new Error("não foi possível falar com o Google agora");
   access = { token: data.access_token, exp: Date.now() + (data.expires_in || 3600) * 1000 };
+  if (device.isSite && refresh) { // quem entrou antes do cookie: o token foi para o cookie; sai daqui
+    const a = await getMeta("google", null);
+    if (a) await setMeta("google", { ...a, refresh: null });
+  }
   return access.token;
 }
 
@@ -162,6 +171,10 @@ async function forget() {
 // signOut desliga a conta: revoga o acesso no Google e apaga o token daqui.
 // Os dados continuam neste aparelho e no Drive.
 export async function signOut() {
+  if (device.isSite) { // o intermediário apaga o cookie e revoga no Google
+    await post("/oauth/logout", {}).catch(() => {});
+    return forget();
+  }
   const refresh = await refreshToken();
   if (refresh) {
     fetch("https://oauth2.googleapis.com/revoke", {

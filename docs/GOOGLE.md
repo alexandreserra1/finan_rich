@@ -27,7 +27,7 @@ navegador / app ──login (código + PKCE)──▶ Google ──volta──�
   no aparelho). Categorias padrão têm o mesmo ID em todo aparelho, então não duplicam.
 - **Segurança**: o client secret fica só na Vercel; o código do login vem com PKCE (sem o
   verificador, que fica no aparelho, ele não serve); o token de renovação fica no cofre do
-  sistema no app e no banco do navegador no site; o de acesso (1 hora), só na memória. As
+  sistema no app e, no site, num cookie `HttpOnly` posto pelo intermediário (o JavaScript da página não lê); o de acesso (1 hora), só na memória. As
   rotas `/oauth/*` não guardam nada, não registram tokens e têm limite por IP. A volta para o
   computador só aceita `127.0.0.1` com porta numérica. Escopos: `openid email` e
   `drive.appdata` (não sensíveis para o Google).

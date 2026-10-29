@@ -32,6 +32,7 @@ const tokenServer = createServer((req, res) => {
   req.on("data", (c) => (body += c));
   req.on("end", () => {
     const f = Object.fromEntries(new URLSearchParams(body));
+    if (req.url === "/revoke") { drive.revoked.push(body); return res.end(); } // o intermediário revoga ao sair
     exchanges.push(f);
     const idToken = ["x", b64url(Buffer.from(JSON.stringify({ email: "pessoa@gmail.com" }))), "x"].join(".");
     res.writeHead(200, { "Content-Type": "application/json" });
@@ -48,7 +49,7 @@ await new Promise((r) => tokenServer.listen(TOKEN_PORT, "127.0.0.1", r));
 
 const server = spawn(BIN, [], {
   env: { ...process.env, PORT: String(PORT), GROQ_API_KEY: "teste", FINAN_PROXY_UPSTREAM: "http://127.0.0.1:9",
-    GOOGLE_CLIENT_ID: "id-teste.apps.googleusercontent.com", GOOGLE_CLIENT_SECRET: "segredo-teste", GOOGLE_TOKEN_URL: `http://127.0.0.1:${TOKEN_PORT}/token` },
+    GOOGLE_CLIENT_ID: "id-teste.apps.googleusercontent.com", GOOGLE_CLIENT_SECRET: "segredo-teste", GOOGLE_TOKEN_URL: `http://127.0.0.1:${TOKEN_PORT}/token`, GOOGLE_REVOKE_URL: `http://127.0.0.1:${TOKEN_PORT}/revoke` },
   stdio: "ignore",
 });
 for (let i = 0; i < 100; i++) {
@@ -152,7 +153,10 @@ try {
   await until(() => inDrive("Mercado do Google")?.amountCents === 12345, "lançamento de A chegou ao Drive");
   ok(!!inDrive("Mercado do Google"), "lançamento de A gravado no arquivo do Drive");
   const meta = await a.evaluate(async () => (await import("/static/js/db.js")).getMeta("google", null));
-  ok(meta?.email === "pessoa@gmail.com" && meta?.refresh === "renova-1", "conta ligada mostra o e-mail e guarda o token de renovação");
+  const dump = await a.evaluate(async () => JSON.stringify(await (await import("/static/js/db.js")).getMeta("google", null)) + document.cookie);
+  const rt = (await ctxA.cookies()).find((c) => c.name === "__Host-finan_rt");
+  ok(meta?.email === "pessoa@gmail.com" && !meta?.refresh && !dump.includes("renova-1"), "conta ligada mostra o e-mail; o token de renovação não fica no navegador ao alcance do JavaScript");
+  ok(rt?.value === "renova-1" && rt.httpOnly && rt.secure && rt.sameSite === "Strict", `o token de renovação fica num cookie HttpOnly (${JSON.stringify(rt && { httpOnly: rt.httpOnly, secure: rt.secure, sameSite: rt.sameSite })})`);
   await a.goto(`${SITE}/configuracoes`);
   await a.waitForSelector("#google:has-text('pessoa@gmail.com')", { timeout: 20000 });
   ok(true, "Ajustes mostram a conta Google ligada");

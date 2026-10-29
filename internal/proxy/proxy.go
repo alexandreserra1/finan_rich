@@ -49,6 +49,7 @@ type Config struct {
 	// Login com Google (oauth.go): sem os dois, as rotas respondem 404.
 	GoogleClientID, GoogleClientSecret string
 	GoogleTokenURL                     string // padrão: https://oauth2.googleapis.com/token (troca nos testes)
+	GoogleRevokeURL                    string // padrão: https://oauth2.googleapis.com/revoke (troca nos testes)
 }
 
 // Provider é uma API no formato OpenAI (/models e /chat/completions).
@@ -154,6 +155,7 @@ func ConfigFromEnv() (Config, error) {
 		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
 		GoogleTokenURL:     os.Getenv("GOOGLE_TOKEN_URL"),
+		GoogleRevokeURL:    os.Getenv("GOOGLE_REVOKE_URL"),
 	}, nil
 }
 
@@ -174,7 +176,7 @@ const (
 
 // Paths são os caminhos que o intermediário atende; no mesmo programa, o resto
 // é do site (cmd/api).
-var Paths = []string{"/healthz", "/chat/completions", "/v1/chat/completions", "/oauth/config", "/oauth/token", "/oauth/refresh"}
+var Paths = []string{"/healthz", "/chat/completions", "/v1/chat/completions", "/oauth/config", "/oauth/token", "/oauth/refresh", "/oauth/logout"}
 
 // New devolve o handler HTTP do intermediário.
 func New(cfg Config) http.Handler {
@@ -192,6 +194,7 @@ func New(cfg Config) http.Handler {
 	mux.HandleFunc("GET /oauth/config", h.oauthConfig)
 	mux.HandleFunc("POST /oauth/token", h.oauthToken)
 	mux.HandleFunc("POST /oauth/refresh", h.oauthRefresh)
+	mux.HandleFunc("POST /oauth/logout", h.oauthLogout)
 	return cors(mux)
 }
 
