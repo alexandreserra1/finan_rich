@@ -102,4 +102,4 @@ nunca deixe a pessoa sem resposta.
 - [x] Concluir `make test`: corrigida a dependência do Tailscale real nos testes de acesso;
   cobertura dos cenários sem endereço e com Tailscale conectado sem Wi-Fi. Go e WebAssembly passaram.
 - [ ] Conferir Android, Safari e Sair pela rede em aparelhos reais, além de Ollama e nuvem reais.
-- [ ] Preservar os cartões de números no recarregamento do computador e o estado aberto no app.
+- [x] Preservar os cartões de números no recarregamento do computador e o estado aberto no app.

@@ -147,8 +147,8 @@ O andamento detalhado está em [PLANO.md](PLANO.md) e [passo-a-passo.md](passo-a
   e 781 ms. Transferência real da Vercel e aparelhos reais continuam pendentes.
 - **Testes Go:** `make test` aprovado após isolar a detecção do Tailscale nos testes de
   acesso; cenários sem endereço e com Tailscale conectado cobertos sem depender do Mac.
-- **Consultor:** guardar o cartão de números ao recarregar no computador e manter aberto
-  o cartão que a pessoa abriu quando o app atualiza a tela.
+- **Consultor · feito:** o cartão de números fica salvo com a resposta e volta ao recarregar
+  no computador; no app, o cartão aberto continua aberto quando a tela é atualizada.
 - **Aparelhos reais:** conferir Safari, Android, Sair pela rede, Ollama e nuvem na tela nova.
 - **Contas externas:** concluir Tailscale/Funnel e variáveis `FINAN_LOCAL_*` e `GOOGLE_*`
   na Vercel. Seguir [IA-GRATIS.md](IA-GRATIS.md) e [GOOGLE.md](GOOGLE.md).

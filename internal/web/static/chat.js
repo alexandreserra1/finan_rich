@@ -163,7 +163,13 @@
     el.appendChild(box);
   }
 
-  document.querySelectorAll("[data-md]").forEach((md) => render(md.parentElement, md.textContent));
+  // A resposta salva pode ter o cartão dos números: cada bloco vira markdown no lugar,
+  // e o texto para "Salvar como nota" é a resposta inteira (data-raw da mensagem).
+  document.querySelectorAll("[data-md]").forEach((md) => {
+    const msg = md.closest(".msg");
+    if (msg && !msg.dataset.raw) msg.dataset.raw = md.textContent;
+    md.innerHTML = Finan.markdown(md.textContent);
+  });
   team.forEach((b) => b.addEventListener("click", () => pick(b.dataset.agent)));
   pick(agent);
 

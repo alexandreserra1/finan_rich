@@ -36,14 +36,15 @@ const SEND_ICON = "M12 19V5M5 12l7-7 7 7";
 const icon = (d, size = 18) => html`<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"></path></svg>`;
 
 // numbersCard: as contas do app, que chegam na hora; depois da resposta da IA, ficam recolhidas.
-const numbersCard = (text, open) => html`<details class="numbers"${open ? " open" : ""}><summary>Os números do app</summary><div class="md">${md(text)}</div></details>`;
+// i: a mensagem da conversa, para lembrar se a pessoa abriu ou fechou o cartão (bind).
+const numbersCard = (text, open, i) => html`<details class="numbers"${i === undefined ? "" : raw(` data-numbers="${i}"`)}${open ? " open" : ""}><summary>Os números do app</summary><div class="md">${md(text)}</div></details>`;
 
 // answerBody: a resposta com o cartão dos números em cima. Se a IA falhou, o
 // texto termina com os mesmos números: o cartão é a resposta (sem repetir).
-function answerBody(m) {
+function answerBody(m, i) {
   const n = m.numbers;
-  if (n && m.app && m.content.endsWith(n)) return html`${md(m.content.slice(0, -n.length))}${numbersCard(n, true)}`;
-  return html`${n ? numbersCard(n, false) : ""}${md(m.content)}`;
+  if (n && m.app && m.content.endsWith(n)) return html`${md(m.content.slice(0, -n.length))}${numbersCard(n, m.numbersOpen ?? true, i)}`;
+  return html`${n ? numbersCard(n, m.numbersOpen ?? false, i) : ""}${md(m.content)}`;
 }
 
 // aiState: o estado da IA no cabeçalho (pronta, sem IA ou sem conexão).
@@ -88,7 +89,7 @@ export function render() {
           <div class="suggestions">${(SUGGESTIONS[me.id] || SUGGESTIONS.jade).map((s) => html`<button type="button" data-suggest="${s}">${icon(ASK_ICON)}<span>${s}</span></button>`)}</div>
         </div>` : ""}
         ${chat.history.map((m, i) => m.role === "user" ? html`<div class="msg user">${md(m.content)}</div>` : html`<div class="msg assistant">
-          <span class="msg-who">${face(member(m.agent), 28)}${member(m.agent).name} · ${member(m.agent).role}</span>${answerBody(m)}
+          <span class="msg-who">${face(member(m.agent), 28)}${member(m.agent).name} · ${member(m.agent).role}</span>${answerBody(m, i)}
           ${m.app ? html`<p class="small muted app-answer">${m.aiError ? `Resposta do app, sem IA. A IA falhou: ${m.aiError}` : "Resposta do app, sem IA."}</p>` : ""}
           ${m.limit ? limitNotice() : ""}
           ${m.proposals?.length ? html`<div class="proposals">${m.proposals.map((p, j) => html`<div class="proposal"><span><small>${proposalKind(p)}</small>${p.label}</span>
@@ -297,6 +298,11 @@ export function bind(root, ctx) {
     const box = form.elements.message;
     box.addEventListener("input", () => { box.style.height = "auto"; box.style.height = `${Math.min(box.scrollHeight, 160)}px`; });
   }
+  // O cartão dos números fica como a pessoa deixou quando a tela é redesenhada.
+  root.querySelectorAll("details[data-numbers]").forEach((d) => d.addEventListener("toggle", () => {
+    const m = chat.history[d.dataset.numbers];
+    if (m) m.numbersOpen = d.open;
+  }));
   root.querySelectorAll("[data-agent]").forEach((b) => b.addEventListener("click", () => !chat.busy && pick(ctx, b.dataset.agent)));
   root.querySelector("[data-handoff]")?.addEventListener("click", async () => {
     const { agent, question } = chat.suggest;

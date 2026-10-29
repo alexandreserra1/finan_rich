@@ -112,7 +112,7 @@ func TestPagesRender(t *testing.T) {
 	}
 	check("vazio")
 	seed(t, a.st)
-	a.st.AppendChatTurn(context.Background(), "oi", "**olá**", "", nil)
+	a.st.AppendChatTurn(context.Background(), "oi", "**olá**", "", nil, "")
 	check("com dados")
 
 	// O casco das telas de dados diz qual tela o JavaScript deve montar.
@@ -243,6 +243,11 @@ func TestChatWhenOllamaOffline(t *testing.T) {
 	if msgs, _ := a.st.ListChat(context.Background()); len(msgs) != 2 || !strings.HasPrefix(msgs[1].Content, advisor.OfflineNotice) {
 		t.Errorf("a resposta sem IA fica na conversa: %+v", msgs)
 	}
+	// Ao recarregar, a resposta sem IA mostra os números abertos, sem repetir no texto.
+	_, page := a.get("/chat")
+	if !strings.Contains(page, `<details class="numbers" open>`) || strings.Count(page, "data-md>**Resumo de") != 1 || strings.Count(page, "Resumo de") != 2 /* o cartão e o data-raw da nota */ || !strings.Contains(page, "Resposta do app, sem IA.") {
+		t.Errorf("a resposta sem IA deveria voltar com o cartão aberto:\n%s", page)
+	}
 }
 
 // Sugestão com resposta pronta: o Go responde sem chamar a IA.
@@ -272,8 +277,24 @@ func TestChatSendsNumbersFirst(t *testing.T) {
 	if numbers < 0 || text < 0 || numbers > text || !strings.Contains(body, "Resumo de") {
 		t.Errorf("SSE = %s", body)
 	}
-	if msgs, _ := a.st.ListChat(context.Background()); len(msgs) != 2 || msgs[1].Content != "Pague o cartão." {
-		t.Errorf("só a resposta da IA fica na conversa: %+v", msgs)
+	if msgs, _ := a.st.ListChat(context.Background()); len(msgs) != 2 || msgs[1].Content != "Pague o cartão." || !strings.Contains(msgs[1].Numbers, "Resumo de") {
+		t.Errorf("a resposta da IA e os números ficam na conversa, separados: %+v", msgs)
+	}
+	// Ao recarregar, o cartão volta recolhido, em cima da resposta.
+	_, page := a.get("/chat")
+	card, answer := strings.Index(page, `<details class="numbers"><summary>Os números do app</summary>`), strings.Index(page, "data-md>Pague o cartão.")
+	if card < 0 || answer < card || !strings.Contains(page, "Resumo de") {
+		t.Errorf("a página do chat deveria mostrar o cartão dos números salvo:\n%s", page)
+	}
+	resp, err := http.Get(a.srv.URL + "/api/chat")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var info struct{ History []map[string]any }
+	json.NewDecoder(resp.Body).Decode(&info)
+	if n, _ := info.History[1]["numbers"].(string); !strings.Contains(n, "Resumo de") || info.History[1]["app"] != nil {
+		t.Errorf("o app do celular também recebe os números: %+v", info.History)
 	}
 }
 

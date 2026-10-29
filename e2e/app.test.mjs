@@ -315,6 +315,11 @@ try {
   await page.waitForSelector(".msg.assistant:not(.pending):has-text('Resposta demorada')", { timeout: 30000 });
   ok(await page.locator(".msg.assistant >> nth=-1 >> .numbers").count() === 1 && await page.locator(".msg.assistant >> nth=-1 >> table td.num:has-text('R$ 250,00')").count() === 1,
     "a resposta da IA chega embaixo do cartão, que continua; a tabela do markdown vira tabela");
+  await page.click(".msg.assistant >> nth=-1 >> .numbers summary");
+  await page.evaluate(() => { document.querySelector(".messages").dataset.antes = "1"; });
+  await page.click(".team-member[data-agent=jade]"); // redesenha a tela
+  await page.waitForFunction(() => !document.querySelector(".messages").dataset.antes);
+  ok(await page.locator(".msg.assistant >> nth=-1 >> details.numbers[open]").count() === 1, "o cartão que a pessoa abriu continua aberto quando a tela é redesenhada");
 
   // O time: a Jade responde e, como o assunto é dívida, oferece passar para o
   // Bento; com ele, a IA recebe a voz e só as ferramentas de dívida.
@@ -580,6 +585,8 @@ try {
   await desk.waitForSelector(".team-member[data-agent=bento][aria-pressed=true]");
   ok((await desk.locator(".msg.assistant >> nth=-1 >> .msg-who").textContent()) === "Bento · Dívidas" && (await desk.getAttribute("textarea[name=message]", "placeholder")).includes("Bento"),
     "no computador, a resposta fica do Bento e a escolha é lembrada");
+  ok(await desk.locator(".msg.assistant:has-text('Resposta demorada') >> details.numbers:not([open]):has-text('Resumo de')").count() === 1,
+    "no computador, ao recarregar, o cartão dos números volta recolhido em cima da resposta");
 
   // Open Finance no app sem computador: o Client Secret vai para o cofre do
   // sistema (falso aqui) e a busca sai do próprio celular direto para a Pluggy.

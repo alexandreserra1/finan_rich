@@ -20,9 +20,15 @@ type chatEntry struct {
 	Role      string             `json:"role"`
 	Content   string             `json:"content"`
 	Proposals []advisor.Proposal `json:"proposals,omitempty"`
-	Agent     string             `json:"agent,omitempty"` // quem do time respondeu
-	Who       finance.Agent      `json:"-"`               // o mesmo, com nome e imagem (página do computador)
+	Agent     string             `json:"agent,omitempty"`   // quem do time respondeu
+	Numbers   string             `json:"numbers,omitempty"` // as contas do app mostradas antes da resposta
+	// App: resposta sem IA, que termina com os mesmos números (o cartão é a resposta).
+	App bool          `json:"app,omitempty"`
+	Who finance.Agent `json:"-"` // quem respondeu, com nome e imagem (página do computador)
 }
+
+// Lead é o texto da resposta sem IA antes dos números (que a página mostra no cartão).
+func (e chatEntry) Lead() string { return strings.TrimSuffix(e.Content, e.Numbers) }
 
 // member devolve o personagem pelo id; vazio ou desconhecido é a Jade.
 func member(id string) finance.Agent {
@@ -43,7 +49,7 @@ func (s *Server) chatHistory(ctx context.Context) ([]chatEntry, error) {
 	var ledger *domain.Ledger
 	out := make([]chatEntry, len(history))
 	for i, m := range history {
-		out[i] = chatEntry{Role: m.Role, Content: m.Content}
+		out[i] = chatEntry{Role: m.Role, Content: m.Content, Numbers: m.Numbers, App: m.Numbers != "" && strings.HasSuffix(m.Content, m.Numbers)}
 		if m.Role == store.RoleAssistant {
 			out[i].Who = member(m.Agent)
 			out[i].Agent = out[i].Who.ID
@@ -128,8 +134,9 @@ func (s *Server) answer(w http.ResponseWriter, r *http.Request, question, agent 
 	}
 	q := advisor.Question{History: past, Text: question, Ledger: ledger, Today: time.Now(), Agent: agent}
 	// Os números do app vão antes: a tela mostra na hora, enquanto a IA escreve.
-	if n := advisor.Numbers(q); n != "" {
-		sse.Send(map[string]string{"numbers": n})
+	numbers := advisor.Numbers(q)
+	if numbers != "" {
+		sse.Send(map[string]string{"numbers": numbers})
 	}
 	var reply advisor.Reply
 	provider, ai, err := s.provider(ctx)
@@ -160,7 +167,7 @@ func (s *Server) answer(w http.ResponseWriter, r *http.Request, question, agent 
 	if len(proposals) > 0 {
 		saved, _ = json.Marshal(proposals)
 	}
-	if err := s.store.AppendChatTurn(context.WithoutCancel(ctx), question, answer, agent, saved); err != nil {
+	if err := s.store.AppendChatTurn(context.WithoutCancel(ctx), question, answer, agent, saved, numbers); err != nil {
 		fail(err)
 		return
 	}

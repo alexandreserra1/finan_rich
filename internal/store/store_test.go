@@ -213,11 +213,11 @@ func mustChanges(t *testing.T, s *Store) []Change {
 func TestChat(t *testing.T) {
 	ctx := context.Background()
 	s := newTestStore(t)
-	if err := s.AppendChatTurn(ctx, "oi", "olá!", "bento", nil); err != nil {
+	if err := s.AppendChatTurn(ctx, "oi", "olá!", "bento", nil, "**Dívidas:** 2"); err != nil {
 		t.Fatal(err)
 	}
 	msgs, _ := s.ListChat(ctx)
-	if len(msgs) != 2 || msgs[0].Role != RoleUser || msgs[1].Content != "olá!" || msgs[1].Agent != "bento" || msgs[0].Agent != "" {
+	if len(msgs) != 2 || msgs[0].Role != RoleUser || msgs[1].Content != "olá!" || msgs[1].Agent != "bento" || msgs[0].Agent != "" || msgs[1].Numbers != "**Dívidas:** 2" || msgs[0].Numbers != "" {
 		t.Errorf("chat = %+v", msgs)
 	}
 }

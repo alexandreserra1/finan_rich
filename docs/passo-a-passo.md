@@ -187,10 +187,15 @@ login/Drive e aparelhos reais ainda precisam de medição própria.
   cenário sem endereço. A detecção agora é substituída por servidor nos testes de acesso,
   com cobertura separada para Tailscale indisponível e conectado sem acesso pelo Wi-Fi.
   No programa, a detecção continua automática e o comportamento de pareamento é o mesmo.
-- **Consultor:** continuam pendentes a persistência do cartão de números ao recarregar no
-  computador e a manutenção do estado aberto do cartão quando o app redesenha a tela.
-- **Configuração externa:** Tailscale/Funnel, `FINAN_LOCAL_*` e `GOOGLE_*` na Vercel dependem
-  da configuração das contas; não foram ativados nesta retomada. A correção da identidade dos
+- **Consultor · feito:** o cartão "Os números do app" fica salvo com a resposta no banco do
+  computador (migração `009_chat_numbers.sql`) e volta ao recarregar: recolhido em cima da
+  resposta da IA, ou aberto quando a resposta foi do app, sem IA. O app do celular recebe os
+  mesmos números pelo `/api/chat`, e o cartão que a pessoa abriu ou fechou continua assim
+  quando a tela é redesenhada. Testes em `internal/web/web_test.go` e `e2e/app.test.mjs`.
+- **Configuração externa:** o Tailscale está instalado e conectado no Mac (29/10/2026). O
+  `scripts/finanlocal.sh` agora acha o comando dentro do app do Tailscale. Faltam: rodar o
+  script no Terminal, aprovar o HTTPS e o Funnel no link que ele mostra, pôr
+  `FINAN_LOCAL_URL`/`FINAN_LOCAL_KEY` na Vercel, e configurar `GOOGLE_*` (ver [GOOGLE.md](GOOGLE.md)). A correção da identidade dos
   commits já foi publicada, conforme o registro da sessão anterior; não repetir o force push.
 
 ## Ordem de execução
