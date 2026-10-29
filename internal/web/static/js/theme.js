@@ -17,14 +17,15 @@
     const dark = t === "escuro" || (t === "auto" && media.matches);
     document.documentElement.dataset.theme = dark ? "dark" : "light";
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#0a0d0c" : "#f4f6f5");
-    document.querySelectorAll("[data-theme-pick]").forEach((s) => { s.value = t; });
+    // Ajustes: cartões de rádio (um por tema) ou um <select>.
+    document.querySelectorAll("[data-theme-pick]").forEach((s) => { if (s.type === "radio") s.checked = s.value === t; else s.value = t; });
     // Botão do menu lateral: mostra para qual tema ele troca.
     document.querySelectorAll("[data-theme-label]").forEach((el) => { el.textContent = dark ? "Tema claro" : "Tema escuro"; });
     document.querySelectorAll("[data-theme-icon]").forEach((el) => el.setAttribute("d", dark ? SUN : MOON));
   };
   window.finanTheme = { get };
   media.addEventListener("change", apply);
-  // Qualquer <select data-theme-pick> da tela troca o tema (Ajustes no computador e no app).
+  // Qualquer campo data-theme-pick da tela troca o tema (Ajustes no computador e no app).
   document.addEventListener("change", (e) => {
     if (!e.target.matches?.("[data-theme-pick]")) return;
     try {

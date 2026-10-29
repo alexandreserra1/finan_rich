@@ -199,12 +199,12 @@ try {
   await page.goto(`${APP}/configuracoes`);
   const theme = () => page.evaluate(() => [document.documentElement.dataset.theme, getComputedStyle(document.body).backgroundColor]);
   ok((await theme())[0] === "light", "tema automático segue o aparelho (claro)");
-  await page.selectOption("[data-theme-pick]", "escuro");
+  await page.check("[data-theme-pick][value=escuro]");
   await page.reload();
   await page.waitForSelector("[data-theme-pick]");
   const [darkTheme, darkBg] = await theme();
-  ok(darkTheme === "dark" && darkBg === "rgb(10, 13, 12)" && (await page.inputValue("[data-theme-pick]")) === "escuro", "tema escuro fica salvo ao reabrir o app");
-  await page.selectOption("[data-theme-pick]", "auto");
+  ok(darkTheme === "dark" && darkBg === "rgb(10, 13, 12)" && await page.isChecked("[data-theme-pick][value=escuro]"), "tema escuro fica salvo ao reabrir o app");
+  await page.check("[data-theme-pick][value=auto]");
   ok((await theme())[0] === "light", "voltar ao automático segue o aparelho de novo");
 
   // Usar só no celular: cria as categorias no aparelho e já dá para lançar.
@@ -232,6 +232,12 @@ try {
   await page.evaluate(async () => (await import("/static/js/db.js")).setMeta("cloud-ai", { preset: "groq", baseUrl: "http://127.0.0.1:18082" })); // a nuvem falsa
   await page.goto(`${APP}/configuracoes`);
   await page.waitForSelector("form[data-form=cloud-ai]", { timeout: 20000 });
+  const cloudForm = "form[data-form=cloud-ai]";
+  ok(await page.isChecked(`${cloudForm} input[name=caminho][value=propria]`), "com outra IA guardada, o caminho da própria chave vem marcado");
+  await page.check(`${cloudForm} input[name=caminho][value=finan]`);
+  ok(await page.isHidden(`${cloudForm} select[name=preset]`) && await page.isHidden(`${cloudForm} input[name=apiKey]`) && await page.isVisible(`${cloudForm} li:has-text('apelidos')`),
+    "IA do finan_rich: sem provedor nem chave, e explica os apelidos");
+  await page.check(`${cloudForm} input[name=caminho][value=propria]`);
   await page.selectOption("form[data-form=cloud-ai] select[name=preset]", "groq");
   ok(await page.isVisible(".key-guide li:has-text('Create API Key')") && await page.isVisible(".key-guide a.button"),
     "sem chave, mostra o passo a passo e o botão para pegar a chave");

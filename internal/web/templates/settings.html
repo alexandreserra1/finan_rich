@@ -1,34 +1,87 @@
 {{define "content"}}
-<div class="page-head"><h1>Ajustes</h1></div>
-<a class="panel link-card" href="/contas"><span>{{template "icon" "card"}} <strong>Contas e cartões</strong></span><span aria-hidden="true">›</span></a>
-<a class="panel link-card" href="/metas"><span>{{template "icon" "flag"}} <strong>Metas</strong></span><span aria-hidden="true">›</span></a>
-<a class="panel link-card" href="/notas"><span>{{template "icon" "note"}} <strong>Notas</strong></span><span aria-hidden="true">›</span></a>
-<a class="panel link-card" href="/categorias"><span>{{template "icon" "tag"}} <strong>Categorias e divisão do salário</strong></span><span aria-hidden="true">›</span></a>
+<div class="page-head"><div class="title"><span class="kicker">Este computador</span><h1>Ajustes</h1></div></div>
+<div class="settings">
+<nav class="settings-index" aria-label="Seções de ajustes">
+  <a href="#atalhos">Mais telas</a>
+  <a href="#tema">Aparência</a>
+  <a href="#ia">Consultor IA</a>
+  <a href="#open-finance">Open Finance</a>
+  <a href="#acesso">Celular</a>
+  <a href="#instalar">Instalar</a>
+  <a href="#dados">Seus dados</a>
+  {{if .CanQuit}}<a href="#fechar">Sessão</a>{{end}}
+</nav>
+<div class="settings-body">
+
+<section class="panel" id="atalhos">
+  <div class="panel-head"><div><h2>Mais telas</h2></div></div>
+  <div class="link-grid">
+    <a class="link-card" href="/contas"><span>{{template "icon" "card"}} <span class="lc-text"><strong>Contas e cartões</strong><span class="faint small">Saldos, faturas e patrimônio</span></span></span><span aria-hidden="true">›</span></a>
+    <a class="link-card" href="/metas"><span>{{template "icon" "flag"}} <span class="lc-text"><strong>Metas</strong><span class="faint small">Quanto falta e quando chega</span></span></span><span aria-hidden="true">›</span></a>
+    <a class="link-card" href="/notas"><span>{{template "icon" "note"}} <span class="lc-text"><strong>Notas</strong><span class="faint small">Anotações que o Consultor também lê</span></span></span><span aria-hidden="true">›</span></a>
+    <a class="link-card" href="/categorias"><span>{{template "icon" "tag"}} <span class="lc-text"><strong>Categorias e divisão do salário</strong><span class="faint small">Grupos, nomes e os 50/30/20</span></span></span><span aria-hidden="true">›</span></a>
+  </div>
+</section>
+
+<section class="panel" id="tema">
+  <div class="panel-head"><div><h2>Aparência</h2><span class="muted small">Vale só para este aparelho e não vai na sincronização.</span></div></div>
+  <div class="theme-cards" role="radiogroup" aria-label="Tema">
+    {{range .Themes}}
+    <label class="theme-card">
+      <span class="theme-preview tp-{{index . 0}}" aria-hidden="true"><i class="tp-side"></i><span class="tp-main"><i class="tp-bar"></i><i class="tp-bar tp-accent"></i><i class="tp-card"></i></span></span>
+      <span class="theme-card-foot"><strong>{{index . 1}}</strong><input type="radio" class="pick" name="tema" value="{{index . 0}}" data-theme-pick></span>
+    </label>
+    {{end}}
+  </div>
+</section>
 
 <section class="panel" id="ia">
-  <h2>Assistente de IA</h2>
-  <p class="muted">Escolha qual inteligência artificial o consultor usa. A recomendada é o <strong>Ollama</strong>: é grátis, não precisa de chave e seus dados financeiros não saem do computador.</p>
+  <div class="panel-head"><div><h2>Consultor IA</h2><span class="muted small">Escolha de onde vem a IA que conversa com você no Consultor.</span></div></div>
+  {{$free := eq .AI.Preset.ID .FreeID}}
   {{template "aistatus" .}}
-  {{if .Status.Ready}}<p class="notice ok">Pronto para usar: <strong>{{.AI.Preset.Name}}</strong> com o modelo <code>{{.AI.Model}}</code>.</p>{{end}}
+  {{if .Status.Ready}}<p class="ai-status on"><span class="dot" aria-hidden="true"></span><span>Pronto para usar: <b>{{if $free}}IA do finan_rich{{else}}{{.AI.Preset.Name}}{{end}}</b>{{if not $free}} com o modelo <code>{{.AI.Model}}</code>{{end}}</span></p>{{end}}
 
   <form method="post" action="/configuracoes" id="ai-form">
-    <fieldset class="presets">
-      <legend class="small muted">Provedor</legend>
-      {{range .Presets}}
-      <label class="preset">
-        <input type="radio" name="preset" value="{{.ID}}" {{if eq .ID $.AI.Preset.ID}}checked{{end}}>
-        <span><strong>{{.Name}}</strong><br><small class="muted">{{.Description}}</small></span>
+    <div class="choice-cards" role="radiogroup" aria-label="De onde vem a IA">
+      {{if .HasFree}}
+      <label class="choice-card">
+        <input type="radio" class="pick" name="caminho" value="finan"{{if $free}} checked{{end}}>
+        <span><span class="choice-title"><strong>Usar a IA do finan_rich</strong><span class="tag on">Grátis</span></span><span class="muted small">Grátis, sem conta e sem chave. É só ligar.</span></span>
       </label>
       {{end}}
-    </fieldset>
+      <label class="choice-card">
+        <input type="radio" class="pick" name="caminho" value="propria"{{if not $free}} checked{{end}}>
+        <span><span class="choice-title"><strong>Usar a minha própria chave</strong></span><span class="muted small">Você escolhe o provedor e o modelo, sem o limite do finan_rich. Ou o Ollama, de graça, aqui no seu computador.</span></span>
+      </label>
+    </div>
+
+    <ul class="ai-facts" data-path="finan"{{if not $free}} hidden{{end}}>
+      <li>Não precisa criar conta nem pegar chave.</li>
+      <li>Antes de sair do computador, nomes de lojas, dívidas e metas viram apelidos ("Loja AB", "Dívida 1"). Notas ficam de fora.</li>
+      <li>Tem um limite justo de perguntas por dia, para dar para todo mundo.</li>
+      <li>Se a IA não responder, o time responde do mesmo jeito, com as contas do próprio app.</li>
+    </ul>
+
+    <div class="ai-own" data-path="propria"{{if $free}} hidden{{end}}>
+      <fieldset class="presets">
+        <legend class="small muted">Provedor</legend>
+        {{range .Presets}}
+        <label class="preset"{{if eq .ID $.FreeID}} hidden{{end}}>
+          <input type="radio" class="pick" name="preset" value="{{.ID}}" {{if eq .ID $.AI.Preset.ID}}checked{{end}}>
+          <span><span class="choice-title"><strong>{{.Name}}</strong>{{if eq .ID "ollama"}}<span class="tag on">Recomendado</span>{{end}}</span><small class="muted">{{.Description}}</small></span>
+        </label>
+        {{end}}
+      </fieldset>
+      <p class="small muted">Na nuvem, os nomes também saem trocados por apelidos. A chave fica guardada só neste computador e nunca aparece de novo nesta tela.</p>
+    </div>
 
     <div class="grid-form">
       <label data-field="model">Modelo
-        <input name="model" list="model-options" value="{{.AI.Model}}" required>
+        <input name="model" class="mono" list="model-options" value="{{.AI.Model}}" required>
         <datalist id="model-options"></datalist>
       </label>
       <label data-field="base_url">Endereço da API
-        <input name="base_url" value="{{.AI.BaseURL}}">
+        <input name="base_url" class="mono" value="{{.AI.BaseURL}}">
       </label>
       <label data-field="api_key">Chave da API
         <input name="api_key" type="password" autocomplete="off" placeholder="{{if .HasKey}}•••••• (deixe em branco para manter){{else}}cole sua chave aqui{{end}}">
@@ -40,13 +93,13 @@
       <button type="button" class="secondary" data-test>Testar conexão</button>
       <span class="test-result small"></span>
     </div>
+    <p class="small muted" data-field="ollama-tip">Qual modelo usar no Ollama: com 16 GB de RAM ou mais, <code>qwen3.5:9b</code> (padrão, o que raciocina melhor); com 8 GB, troque para <code>qwen3.5:4b</code>; em PCs bem fracos, <code>qwen3.5:2b</code>. Quer o mais inteligente sem pesar no PC? Escolha <strong>Ollama Cloud</strong>.</p>
   </form>
-  <p class="small muted">Qual modelo usar no Ollama: com 16 GB de RAM ou mais, <code>qwen3.5:9b</code> (padrão, o que raciocina melhor); com 8 GB, troque para <code>qwen3.5:4b</code>; em PCs bem fracos, <code>qwen3.5:2b</code>. Quer o mais inteligente sem pesar no PC? Escolha <strong>Ollama Cloud</strong>.</p>
 </section>
 
 <section class="panel" id="open-finance">
-  <h2>Open Finance (seus bancos, sem digitar)</h2>
-  <p class="muted">Traga os lançamentos direto do banco, de graça, pelo <strong>Meu Pluggy</strong>. Cada pessoa usa a própria conta: os dados vão do banco para este computador, sem passar por servidor do finan_rich.</p>
+  <div class="panel-head"><div><h2>Open Finance</h2><span class="muted small">Lançamentos direto do banco, de graça, pelo Meu Pluggy, com a sua própria conta. Sem passar por servidor do finan_rich.</span></div>
+    <span class="tag{{if .Pluggy.ClientID}} on{{end}}">{{if .Pluggy.ClientID}}Configurado{{else}}Não configurado{{end}}</span></div>
   <details{{if not .Pluggy.ClientID}} open{{end}}>
     <summary>Como configurar (uma vez, uns 10 minutos)</summary>
     <ol class="small">
@@ -69,7 +122,7 @@
 </section>
 
 <section class="panel" id="acesso">
-  <h2>Acesso pelo celular</h2>
+  <div class="panel-head"><div><h2>Acesso pelo celular</h2><span class="muted small">Abra as telas do finan_rich no navegador do celular, pelo Wi-Fi de casa.</span></div></div>
   {{if .EnvPassword}}
     <p class="muted">O acesso pela rede está protegido pela senha definida em <code>FINAN_PASSWORD</code> (modo servidor).</p>
   {{else if .LAN}}
@@ -110,8 +163,8 @@
 </section>
 
 <section class="panel" id="app">
-  <h2>App do celular</h2>
-  <p class="muted">Com o app do finan_rich instalado (Android), o celular guarda seus dados, abre sem internet e sincroniza com este computador quando estiver no mesmo Wi-Fi. Baixe o <code>.apk</code> em <a href="{{.App.Download}}" target="_blank" rel="noopener">finan_rich no GitHub</a>.</p>
+  <div class="panel-head"><div><h2>App do celular</h2><span class="muted small">O app Android guarda os dados, abre sem internet e sincroniza pelo Wi-Fi.</span></div></div>
+  <p class="small muted">Com o app do finan_rich instalado (Android), o celular guarda seus dados, abre sem internet e sincroniza com este computador quando estiver no mesmo Wi-Fi. Baixe o <code>.apk</code> em <a href="{{.App.Download}}" target="_blank" rel="noopener">finan_rich no GitHub</a>.</p>
   {{if not .App.Base}}
     <p class="notice warn">Primeiro ligue o <a href="#acesso">acesso pelo celular</a> acima: é por esse endereço que o app conversa com este computador.</p>
   {{else if .App.Code}}
@@ -147,8 +200,8 @@
 </section>
 
 <section class="panel" id="offline-celular">
-  <h2>Usar no celular sem conexão e fora de casa</h2>
-  <p class="muted">Pelo Wi-Fi o celular já guarda seus dados e continua funcionando se a conexão cair com o app aberto. Para <strong>abrir o app sem conexão</strong> e <strong>sincronizar de qualquer lugar</strong>, o celular precisa de um endereço seguro (https). O jeito grátis e simples é o <strong>Tailscale</strong>: só os seus aparelhos acessam, nada fica exposto na internet.</p>
+  <div class="panel-head"><div><h2>Fora de casa e sem conexão</h2><span class="muted small">Com o Tailscale, grátis: só os seus aparelhos acessam.</span></div></div>
+  <p class="small muted">Pelo Wi-Fi o celular já guarda seus dados e continua funcionando se a conexão cair com o app aberto. Para <strong>abrir o app sem conexão</strong> e <strong>sincronizar de qualquer lugar</strong>, o celular precisa de um endereço seguro (https). O jeito grátis e simples é o <strong>Tailscale</strong>: só os seus aparelhos acessam, nada fica exposto na internet.</p>
   {{if .TailscaleURL}}
     <p class="notice ok">Tailscale encontrado neste computador.</p>
     <ol class="small">
@@ -170,7 +223,7 @@
 </section>
 
 <section class="panel" id="instalar">
-  <h2>Instalar como aplicativo</h2>
+  <div class="panel-head"><div><h2>Instalar como aplicativo</h2></div></div>
   <ul class="small">
     <li><strong>Computador</strong>: instale pelo terminal com um comando (veja o README) e o finan_rich ganha ícone no menu de aplicativos e abre em janela própria.</li>
     <li><strong>Android</strong> (Chrome): menu ⋮ → <em>Adicionar à tela inicial</em>.</li>
@@ -178,37 +231,29 @@
   </ul>
 </section>
 
-<section class="panel" id="tema">
-  <h2>Aparência</h2>
-  <label>Tema
-    <select data-theme-pick>
-      <option value="auto">Automático (igual ao aparelho)</option>
-      <option value="claro">Claro</option>
-      <option value="escuro">Escuro</option>
-    </select>
-  </label>
-</section>
-
-{{if .CanQuit}}
-<section class="panel" id="fechar">
-  <h2>Fechar o finan_rich</h2>
-  <p class="muted small">Desliga o programa neste computador. Seus dados ficam salvos; o celular continua funcionando e sincroniza quando o finan_rich abrir de novo.</p>
-  <form method="post" action="/configuracoes/fechar"><button type="submit" class="secondary">Fechar o finan_rich</button></form>
-</section>
-{{end}}
-
-<section class="panel">
-  <h2>Seus dados</h2>
-  <p class="muted">Tudo fica num único arquivo neste computador, o <code>finan.db</code> (o caminho aparece na janela do finan_rich ao abrir).</p>
-  <div class="row-actions">
-    <a class="button" href="/exportar">Exportar (Excel, CSV, PDF) e backup</a>
-    <a class="button secondary-link" href="/configuracoes/backup.db">Baixar o banco completo (.db)</a>
+<section class="panel" id="dados">
+  <div class="panel-head"><div><h2>Seus dados</h2><span class="muted small">Tudo num único arquivo neste computador, o <code>finan.db</code> (o caminho aparece na janela do finan_rich ao abrir).</span></div></div>
+  <div class="data-cards">
+    <a class="link-card" href="/exportar"><span><span class="lc-text"><strong>Exportar e backup</strong><span class="faint small">Excel, CSV, relatório em PDF e backup (.json)</span></span></span><span aria-hidden="true">›</span></a>
+    <a class="link-card" href="/configuracoes/backup.db"><span><span class="lc-text"><strong>Banco completo (.db)</strong><span class="faint small">Inclui a chave da IA: guarde em lugar seguro</span></span></span><span aria-hidden="true">›</span></a>
   </div>
   <p class="small muted">O banco completo inclui também a configuração da IA (com a chave), as credenciais do Open Finance e a conversa com o consultor: guarde em lugar seguro. Para restaurá-lo, feche o finan_rich e troque o arquivo <code>finan.db</code> da pasta de dados por ele.</p>
 </section>
+
+{{if .CanQuit}}
+<section class="panel danger-zone" id="fechar">
+  <div class="panel-head"><div><h2>Sessão</h2></div></div>
+  <div class="set-row">
+    <span class="set-row-text"><strong>Fechar o finan_rich</strong><span class="faint small">Desliga o programa neste computador. Seus dados ficam salvos; o celular continua funcionando e sincroniza quando o finan_rich abrir de novo.</span></span>
+    <form method="post" action="/configuracoes/fechar"><button type="submit" class="secondary danger">Fechar o finan_rich</button></form>
+  </div>
+</section>
+{{end}}
+</div>
+</div>
 {{end}}
 
 {{define "scripts"}}
-<script type="application/json" id="ai-data">{"presets": {{json .Presets}}, "installed": {{json .Status.Installed}}, "saved": {{json .AI.Preset.ID}}}</script>
+<script type="application/json" id="ai-data">{"presets": {{json .Presets}}, "installed": {{json .Status.Installed}}, "saved": {{json .AI.Preset.ID}}, "free": {{json .FreeID}}}</script>
 <script src="/static/settings.js"></script>
 {{end}}

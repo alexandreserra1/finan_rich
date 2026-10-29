@@ -1,7 +1,8 @@
-// Tela de configurações da IA: preenche os campos conforme o provedor escolhido.
+// Tela de configurações da IA: o caminho (grátis ou chave própria) e os campos
+// conforme o provedor escolhido.
 (function () {
   // Os dados vêm num <script type="application/json"> (a CSP não deixa rodar script embutido).
-  const { presets, installed, saved } = JSON.parse(document.getElementById("ai-data").textContent);
+  const { presets, installed, saved, free } = JSON.parse(document.getElementById("ai-data").textContent);
   const form = document.getElementById("ai-form");
   const byId = Object.fromEntries(presets.map((p) => [p.ID, p]));
   const field = (name) => form.querySelector(`[data-field="${name}"]`);
@@ -21,6 +22,7 @@
     field("base_url").hidden = preset.Kind === "anthropic" || preset.ID === "finan";
     if (field("model")) field("model").hidden = preset.ID === "finan";
     field("api_key").hidden = !preset.NeedsKey && preset.ID !== "custom";
+    form.querySelector('[data-field="ollama-tip"]').hidden = preset.Kind !== "ollama";
     const link = field("api_key").querySelector("[data-key-link]");
     link.innerHTML = preset.KeyURL ? `Gere sua chave em <a href="${preset.KeyURL}" target="_blank" rel="noopener">${new URL(preset.KeyURL).host}</a>` : "";
     const models = new Set([...(preset.Kind === "ollama" ? installed || [] : []), ...(preset.Models || [])]);
@@ -30,6 +32,19 @@
   form.querySelectorAll('input[name="preset"]').forEach((radio) =>
     radio.addEventListener("change", () => apply(byId[radio.value], true)));
   apply(byId[form.elements.preset.value], false);
+
+  // Dois caminhos: a IA grátis do finan_rich (o preset dela, escondido) ou a
+  // própria chave (os outros provedores). Só os campos do caminho escolhido aparecem.
+  let own = saved !== free ? saved : presets.find((p) => p.ID !== free).ID; // último provedor próprio escolhido
+  form.querySelectorAll('input[name="caminho"]').forEach((radio) =>
+    radio.addEventListener("change", () => {
+      const id = radio.value === "finan" ? free : own;
+      form.querySelectorAll("[data-path]").forEach((el) => { el.hidden = el.dataset.path !== radio.value; });
+      form.querySelector(`input[name="preset"][value="${id}"]`).checked = true;
+      apply(byId[id], true);
+    }));
+  form.querySelectorAll('input[name="preset"]').forEach((radio) =>
+    radio.addEventListener("change", () => { if (radio.value !== free) own = radio.value; }));
 
   // Testar usa a configuração salva; avisa se há alterações não salvas.
   const result = form.querySelector(".test-result");

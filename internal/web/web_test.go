@@ -317,8 +317,16 @@ func TestSettings(t *testing.T) {
 	if saved["preset"] != "groq" || saved["api_key"] != "segredo" {
 		t.Errorf("configuração salva = %v", saved)
 	}
-	if _, body := a.get("/configuracoes"); strings.Contains(body, "segredo") {
+	_, body := a.get("/configuracoes")
+	if strings.Contains(body, "segredo") {
 		t.Error("a chave não pode aparecer no HTML")
+	}
+	// Dois caminhos para a IA: a grátis do finan_rich ou a chave da pessoa
+	// (com a chave salva, o segundo vem marcado).
+	for _, want := range []string{`name="caminho" value="finan"`, `name="caminho" value="propria" checked`, "Usar a IA do finan_rich", "Usar a minha própria chave"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("ajustes deveriam ter %q", want)
+		}
 	}
 }
 

@@ -22,6 +22,8 @@ func (s *Server) settings(w http.ResponseWriter, r *http.Request) {
 		"AI": ai, "Status": s.aiStatus(ctx, ai), "Presets": llm.All(), "HasKey": ai.APIKey != "",
 		"LAN": s.LANEnabled(ctx), "EnvPassword": s.envPasswordHash != "",
 		"CanQuit": s.onQuit != nil && isLoopback(r),
+		"FreeID":  llm.FreeID, "HasFree": llm.FreeProxyURL != "",
+		"Themes": [][2]string{{"claro", "Claro"}, {"escuro", "Escuro"}, {"auto", "Igual ao aparelho"}},
 	}
 	data["Port"] = s.port
 	if c, err := s.pluggyCredentials(ctx); err == nil {

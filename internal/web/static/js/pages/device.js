@@ -1,4 +1,5 @@
-// Ajustes do app do celular: pareamento com o computador.
+// Ajustes do app do celular e do site: índice das seções à esquerda (no
+// computador) e um cartão por assunto, como no settings.html.
 import * as db from "../db.js";
 import * as device from "../device.js";
 import * as finance from "../finance.js";
@@ -11,8 +12,12 @@ import { resetChat } from "./advisor.js";
 import * as sync from "../sync.js";
 import { canScan, hasReminders, remindersEnabled, scanPairingQR, setRemindersEnabled } from "../native.js";
 import { html, toString } from "../ui.js";
+import { pageHead } from "./dashboard.js";
 
 export const needsData = false; // funciona antes de baixar qualquer dado
+
+// head: título do cartão com a linha de explicação embaixo.
+const head = (title, sub, extra = "") => html`<div class="panel-head"><div><h2>${title}</h2>${sub ? html`<span class="muted small">${sub}</span>` : ""}</div>${extra}</div>`;
 
 function pairForm(params, paired) {
   return html`
@@ -39,18 +44,27 @@ let gState; // conta Google: undefined = carregando; { on, account }
 function googleSection() {
   if (!gState?.on) return html`<section id="google" hidden></section>`;
   const st = sync.state;
+  const email = gState.account?.email || "sua conta Google";
   return html`<section class="panel" id="google">
-    <h2>Conta Google</h2>
+    ${head("Conta e sincronização", "Com Google, os dados ficam também no seu Drive e aparecem iguais no celular, no site e no computador.")}
     ${gState.account
-      ? html`<p class="notice ok">Conectado como <strong>${gState.account.email || "sua conta Google"}</strong>.</p>
-        <p class="small muted">Seus dados ficam também no seu Google Drive, numa pasta que só o finan_rich usa, e aparecem iguais no celular, no site e no computador.
-          ${st.lastSync ? ` Última sincronização: ${st.lastSync.toLocaleString("pt-BR")}.` : ""}</p>
-        <div class="row-actions">
-          <button type="button" data-action="google-sync">Sincronizar agora</button>
-          <button type="button" class="secondary" data-action="google-out">Sair</button>
-        </div>`
-      : html`<p class="small muted">Entre com Google para não perder seus dados e usar os mesmos no celular, no site e no computador. Eles ficam no seu Google Drive, numa pasta que só o finan_rich usa; nenhum servidor do finan_rich guarda nada.</p>
-        <button type="button" class="google" data-action="google-in"><span class="g" aria-hidden="true">G</span>Entrar com Google</button>`}
+      ? html`<div class="set-row">
+          <span class="avatar" aria-hidden="true">${email[0].toUpperCase()}</span>
+          <span class="set-row-text"><strong>${email}</strong>
+            <span class="faint small">Google Drive · pasta do finan_rich${st.lastSync ? ` · sincronizado às ${st.lastSync.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : ""}</span></span>
+          <span class="set-row-actions">
+            <button type="button" class="small-btn" data-action="google-sync">Sincronizar agora</button>
+            <button type="button" class="secondary small-btn" data-action="google-out">Sair</button>
+          </span>
+        </div>
+        <p class="faint small set-note">${device.isSite
+          ? "Ao sair, os dados saem deste navegador e continuam no seu Drive."
+          : "Ao sair, os dados continuam neste celular e no seu Drive."} Nenhum servidor do finan_rich guarda nada.</p>`
+      : html`<div class="set-row dashed">
+          <span class="set-row-text"><strong>Só neste aparelho</strong>
+            <span class="faint small">Entre com Google para não perder seus dados. Eles ficam numa pasta do seu Drive que só o finan_rich usa.</span></span>
+          <button type="button" class="google" data-action="google-in"><span class="g" aria-hidden="true">G</span>Entrar com Google</button>
+        </div>`}
   </section>`;
 }
 
@@ -59,6 +73,8 @@ function bindGoogle(root, ctx) {
     const section = root.querySelector("#google");
     if (!section) return;
     section.outerHTML = toString(googleSection());
+    const link = root.querySelector('.settings-index a[href="#google"]');
+    if (link) link.hidden = !gState?.on;
     bindGoogle(root, ctx);
   };
   if (gState === undefined) {
@@ -98,81 +114,149 @@ function bindGoogle(root, ctx) {
 }
 let ai = null; // { presets, cfg } da IA na nuvem (carregado depois, do advisor.wasm)
 
+// aiPath: "finan" (a IA grátis do finan_rich) ou "propria" (a chave da pessoa).
+function aiPath(free) {
+  if (!free) return "propria";
+  if (ai.path) return ai.path;
+  return ai.cfg?.preset && ai.cfg.preset !== free.id ? "propria" : "finan";
+}
+
 function cloudSection(server) {
-  if (!ai || ai.loading) return html`<section class="panel" id="ia-nuvem"><h2>Consultor sem computador</h2><p class="muted small loading">Carregando…</p></section>`;
-  if (ai.error) return html`<section class="panel" id="ia-nuvem"><h2>Consultor sem computador</h2><p class="notice warn">${ai.error}</p></section>`;
+  const title = "Consultor IA";
+  if (!ai || ai.loading) return html`<section class="panel" id="ia-nuvem">${head(title)}<p class="muted small loading">Carregando…</p></section>`;
+  if (ai.error) return html`<section class="panel" id="ia-nuvem">${head(title)}<p class="notice warn">${ai.error}</p></section>`;
   const cfg = ai.cfg || {};
-  const preset = ai.presets.find((p) => p.id === (ai.chosen || cfg.preset)) || ai.presets[0];
+  const free = ai.presets.find((p) => p.free); // some se o grátis não estiver ligado
+  const own = ai.presets.filter((p) => !p.free);
+  const path = aiPath(free);
+  const preset = own.find((p) => p.id === (ai.chosen || cfg.preset)) || own[0];
   const model = cfg.preset === preset.id && cfg.model ? cfg.model : preset.model;
   const hasKey = cfg.key && cfg.preset === preset.id;
-  const free = !!preset.free; // grátis do finan_rich: sem chave nem modelo
+  const where = cloud.inVault() ? "no cofre do sistema do celular (Android Keystore ou iOS Keychain)" : "guardada cifrada neste aparelho";
+  const active = cloud.ready(cfg) && ai.presets.find((p) => p.id === cfg.preset);
+  const card = (value, name, line, tag) => html`<label class="choice-card">
+    <input type="radio" class="pick" name="caminho" value="${value}" ${path === value ? "checked" : ""}>
+    <span><span class="choice-title"><strong>${name}</strong>${tag ? html`<span class="tag on">${tag}</span>` : ""}</span><span class="muted small">${line}</span></span>
+  </label>`;
   return html`<section class="panel" id="ia-nuvem">
-    <h2>Consultor sem computador</h2>
-    <p class="small muted">O consultor pode usar uma IA na nuvem, chamada direto deste celular. Antes de sair, os nomes de lojas e pessoas,
-      dívidas, credores, metas e categorias criadas por você viram apelidos ("Loja AB", "Dívida 1") e as notas ficam de fora:
-      a IA vê só valores, datas e categorias genéricas. A conexão é cifrada (HTTPS) e a chave fica ${cloud.inVault() ? "no cofre do sistema do celular (Android Keystore ou iOS Keychain)" : "guardada cifrada neste aparelho"}.</p>
-    <form data-form="cloud-ai" class="grid-form">
-      <label>IA na nuvem
-        <select name="preset">${ai.presets.map((p) => html`<option value="${p.id}" ${p.id === preset.id ? "selected" : ""}>${p.name}</option>`)}</select>
-      </label>
-      <p class="small muted">${preset.description}</p>
-      ${free ? "" : html`<details class="key-guide" ${hasKey ? "" : "open"}>
-        <summary>${hasKey ? "Como pegar outra chave" : "Como pegar a chave (leva 1 minuto)"}</summary>
-        <ol class="small">
-          ${(preset.keySteps || []).map((s) => html`<li>${s}</li>`)}
-          <li>Volte aqui, cole no campo "Chave da IA" e toque em Salvar. O app testa a chave na hora.</li>
-        </ol>
-        <a class="button" href="${preset.keyUrl}" target="_blank" rel="noopener">Abrir o site para pegar a chave</a>
-      </details>
-      <label>Modelo
-        <input name="model" value="${model}" list="cloud-models" autocomplete="off">
-        <datalist id="cloud-models">${(preset.models || []).map((m) => html`<option value="${m}">`)}</datalist>
-      </label>
-      <label>Chave da IA
-        <input name="apiKey" type="password" autocomplete="off" placeholder="${hasKey ? "guardada ✓ (cole outra para trocar)" : "cole a chave aqui"}">
-      </label>`}
-      ${server ? html`<label class="check"><input type="checkbox" name="enabled" ${cfg.enabled ? "checked" : ""}> Usar a nuvem mesmo com o computador conectado</label>` : ""}
-      <div class="row-actions tight">
-        <button type="submit">Salvar</button>
+    ${head(title, server
+      ? "Com o computador conectado, o Consultor usa a IA dele. Aqui fica a IA para quando você quiser usar sem ele."
+      : "Escolha de onde vem a IA que conversa com você no Consultor.")}
+    ${active
+      ? html`<p class="ai-status on"><span class="dot" aria-hidden="true"></span><span>Ligado: <b>${active.free ? "IA do finan_rich" : active.name}</b>${active.free ? "" : html` com o modelo <code>${cfg.model || active.model}</code>`}</span></p>`
+      : html`<p class="ai-status"><span class="dot" aria-hidden="true"></span><span>Ainda não ligado. Escolha um dos caminhos e salve.</span></p>`}
+    <form data-form="cloud-ai">
+      <div class="choice-cards" role="radiogroup" aria-label="De onde vem a IA">
+        ${free ? card("finan", "Usar a IA do finan_rich", "Grátis, sem conta e sem chave. É só ligar.", "Grátis") : ""}
+        ${card("propria", "Usar a minha própria chave", "Você escolhe o provedor e o modelo, sem o limite do finan_rich.")}
+      </div>
+      ${path === "finan"
+        ? html`<ul class="ai-facts">
+            <li>Não precisa criar conta nem pegar chave.</li>
+            <li>Antes de sair do aparelho, nomes de lojas, dívidas e metas viram apelidos ("Loja AB", "Dívida 1"). Notas ficam de fora.</li>
+            <li>Tem um limite justo de perguntas por dia, para dar para todo mundo.</li>
+            <li>Se a IA não responder, o time responde do mesmo jeito, com as contas do próprio app.</li>
+          </ul>`
+        : html`<div class="ai-own">
+          <p class="small muted">Os nomes também saem trocados por apelidos, direto deste aparelho para o provedor, com conexão cifrada (HTTPS). A chave fica ${where}.</p>
+          <label>Provedor
+            <select name="preset">${own.map((p) => html`<option value="${p.id}" ${p.id === preset.id ? "selected" : ""}>${p.name}</option>`)}</select>
+          </label>
+          <p class="small muted">${preset.description}</p>
+          <details class="key-guide" ${hasKey ? "" : "open"}>
+            <summary>${hasKey ? "Como pegar outra chave" : "Como pegar a chave (leva 1 minuto)"}</summary>
+            <ol class="small">
+              ${(preset.keySteps || []).map((st) => html`<li>${st}</li>`)}
+              <li>Volte aqui, cole no campo "Chave da IA" e toque em Salvar e testar.</li>
+            </ol>
+            <a class="button" href="${preset.keyUrl}" target="_blank" rel="noopener">Abrir o site para pegar a chave</a>
+          </details>
+          <div class="grid-form">
+            <label>Chave da IA
+              <input name="apiKey" type="password" autocomplete="off" placeholder="${hasKey ? "guardada ✓ (cole outra para trocar)" : "cole a chave aqui"}">
+            </label>
+            <label>Modelo
+              <input name="model" class="mono" value="${model}" list="cloud-models" autocomplete="off">
+              <datalist id="cloud-models">${(preset.models || []).map((m) => html`<option value="${m}">`)}</datalist>
+            </label>
+          </div>
+        </div>`}
+      ${server ? html`<label class="check"><input type="checkbox" name="enabled" ${cfg.enabled ? "checked" : ""}> Usar esta IA mesmo com o computador conectado</label>` : ""}
+      <div class="row-actions">
+        <button type="submit">${path === "finan" ? "Usar a IA do finan_rich" : "Salvar e testar"}</button>
         ${cloud.ready(cfg) ? html`<button type="button" class="secondary" data-action="cloud-forget">${cfg.key ? "Apagar a chave e a conversa" : "Desligar e apagar a conversa"}</button>` : ""}
       </div>
     </form>
   </section>`;
 }
 
+const THEMES = [["claro", "Claro"], ["escuro", "Escuro"], ["auto", "Igual ao aparelho"]];
+
+// themeSection: um cartão com a miniatura de cada tema (theme.js troca e guarda).
+export function themeCards(current) {
+  return html`<div class="theme-cards" role="radiogroup" aria-label="Tema">
+    ${THEMES.map(([v, label]) => html`<label class="theme-card">
+      <span class="theme-preview tp-${v}" aria-hidden="true"><i class="tp-side"></i><span class="tp-main"><i class="tp-bar"></i><i class="tp-bar tp-accent"></i><i class="tp-card"></i></span></span>
+      <span class="theme-card-foot"><strong>${label}</strong><input type="radio" class="pick" name="tema" value="${v}" data-theme-pick ${current === v ? "checked" : ""}></span>
+    </label>`)}
+  </div>`;
+}
+
+const SHORTCUTS = [["/contas", "Contas e cartões", "Saldos, faturas e patrimônio"], ["/metas", "Metas", "Quanto falta e quando chega"],
+  ["/notas", "Notas", "Anotações que o Consultor também lê"], ["/categorias", "Categorias e divisão do salário", "Grupos, nomes e os 50/30/20"]];
+
 export function render({ server, params, ledger }) {
   const fromLink = params.has("codigo");
   const status = sync.state;
+  const index = [["#atalhos", "Mais telas"], ["#tema", "Aparência"], ["#google", "Conta e sincronização", !gState?.on],
+    !device.isSite && ["#parear", "Computador"], ["#ia-nuvem", "Consultor IA"], !device.isSite && ["#open-finance", "Open Finance"],
+    hasReminders() && ["#lembretes", "Lembretes"], ["#bloqueio", "Bloqueio"], ["#dados", "Seus dados"]].filter(Boolean);
   return html`
-    <a class="panel link-card" href="/contas"><span><strong>Contas e cartões</strong></span><span aria-hidden="true">›</span></a>
-    <a class="panel link-card" href="/metas"><span><strong>Metas</strong></span><span aria-hidden="true">›</span></a>
-    <a class="panel link-card" href="/notas"><span><strong>Notas</strong></span><span aria-hidden="true">›</span></a>
-    <a class="panel link-card" href="/categorias"><span><strong>Categorias e divisão do salário</strong></span><span aria-hidden="true">›</span></a>
+    ${pageHead("Ajustes", null, { kicker: device.isSite ? "Este navegador" : "Este celular" })}
+    <div class="settings">
+      <nav class="settings-index" aria-label="Seções de ajustes">
+        ${index.map(([href, label, hidden]) => html`<a href="${href}" ${hidden ? "hidden" : ""}>${label}</a>`)}
+      </nav>
+      <div class="settings-body">
+
+    <section class="panel" id="atalhos">
+      ${head("Mais telas")}
+      <div class="link-grid">
+        ${SHORTCUTS.map(([href, name, sub]) => html`<a class="link-card" href="${href}"><span><span class="lc-text"><strong>${name}</strong><span class="faint small">${sub}</span></span></span><span aria-hidden="true">›</span></a>`)}
+      </div>
+    </section>
+
+    <section class="panel" id="tema">
+      ${head("Aparência", "Vale só para este aparelho e não vai na sincronização.")}
+      ${themeCards(window.finanTheme?.get() || "auto")}
+    </section>
+
+    ${googleSection()}
 
     ${device.isSite ? "" : html`<section class="panel" id="parear">
-      <h2>Computador</h2>
+      ${head("Computador", "O celular guarda tudo e sincroniza com o finan_rich do computador pelo Wi-Fi.")}
       ${server
         ? html`
-          <p class="notice ok">✅ Conectado a <code>${server.url}</code> como <strong>${server.device}</strong>.</p>
-          <p class="small muted">${status.lastSync ? `Última sincronização: ${status.lastSync.toLocaleString("pt-BR")}.` : "Ainda não sincronizou nesta abertura do app."}
-            ${status.pending ? ` ${status.pending} alteração(ões) esperando para enviar.` : ""}
-            Tudo que você faz fica salvo neste celular e vai para o computador quando ele estiver ao alcance (mesmo Wi-Fi ligado e finan_rich aberto).</p>
-          <div class="row-actions">
-            <button type="button" data-action="sync">Sincronizar agora</button>
-            <button type="button" class="secondary" data-action="unpair">Desconectar</button>
+          <div class="set-row">
+            <span class="avatar" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></span>
+            <span class="set-row-text"><strong>Conectado a <code>${server.url}</code></strong>
+              <span class="faint small">como ${server.device} · ${status.lastSync ? `última sincronização ${status.lastSync.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}` : "ainda não sincronizou nesta abertura"}${status.pending ? ` · ${status.pending} alteração(ões) esperando` : ""}</span></span>
+            <span class="set-row-actions">
+              <button type="button" class="small-btn" data-action="sync">Sincronizar agora</button>
+              <button type="button" class="secondary small-btn danger" data-action="unpair">Desconectar</button>
+            </span>
           </div>
+          <p class="faint small set-note">Tudo que você faz fica salvo neste celular e vai para o computador quando ele estiver ao alcance (mesmo Wi-Fi e finan_rich aberto).</p>
           ${fromLink
             ? html`<h3>Conectar a outro computador?</h3>
               <p class="notice warn">Você abriu um link de pareamento. Só confirme se o endereço abaixo for mesmo o do seu computador.</p>
               ${pairForm(params, true)}`
             : html`<details><summary>Conectar a outro computador</summary>${pairForm(params, true)}</details>`}`
         : html`
-          <p class="muted">O app guarda seus dados neste celular e funciona sem internet. Para trazer os dados que já estão no computador e manter os dois iguais, conecte-o uma vez ao finan_rich do computador.</p>
+          <p class="small muted">O app guarda seus dados neste celular e funciona sem internet. Para trazer os dados que já estão no computador e manter os dois iguais, conecte-o uma vez ao finan_rich do computador.</p>
           ${fromLink ? html`<p class="notice warn">Confira se o endereço abaixo é mesmo o do seu computador antes de conectar.</p>` : ""}
           ${pairForm(params, false)}`}
     </section>`}
-
-    ${googleSection()}
 
     ${cloudSection(server)}
 
@@ -180,43 +264,36 @@ export function render({ server, params, ledger }) {
 
     ${device.isSite ? "" : openFinanceSection()}
 
-    ${device.isSite ? html`<section class="panel" id="sozinho">
-      <h2>Seus dados</h2>
-      <p class="small muted">Ficam neste navegador e no seu Google Drive (nada vai para servidor do finan_rich). Ao sair da conta, eles saem deste navegador e continuam no Drive. Sem usar por 30 minutos, o site pede para entrar de novo.</p>
-    </section>` : !server ? html`<section class="panel" id="sozinho">
-      <h2>Sem computador?</h2>
-      ${ledger.categories.length
-        ? html`<p class="small muted">Você está usando o finan_rich só neste celular. Faça um backup de vez em quando em <a href="/exportar">Exportar</a>. Se um dia conectar a um computador, tudo vai para lá, sem duplicar categorias.</p>`
-        : html`<p class="small muted">Dá para usar só neste celular: lançamentos, dívidas, metas, importação de extratos, notas e exportação funcionam sem computador. O consultor com IA funciona com uma IA na nuvem (veja acima). Se depois conectar a um, seus dados vão junto.</p>
-          <button type="button" class="secondary" data-action="solo">Usar só neste celular</button>`}
-    </section>` : ""}
-
-    ${hasReminders() ? html`<section class="panel">
-      <h2>Lembretes</h2>
+    ${hasReminders() ? html`<section class="panel" id="lembretes">
+      ${head("Lembretes", "O aviso é do próprio celular: funciona sem internet.")}
       <label class="check"><input type="checkbox" data-action="reminders" ${remindersOn ? "checked" : ""}> Lembretes do time (às 9h)</label>
-      <ul class="small muted">
-        <li>Luna: 2 dias antes do vencimento de cada dívida (cadastre o dia em Dívidas).</li>
-        <li>Otávio: toda segunda, os achados da semana.</li>
-        <li>Tito: no dia do salário, o balanço das metas.</li>
+      <ul class="small muted team-reminders">
+        <li><b>Luna</b>: 2 dias antes do vencimento de cada dívida (cadastre o dia em Dívidas).</li>
+        <li><b>Otávio</b>: toda segunda, os achados da semana.</li>
+        <li><b>Tito</b>: no dia do salário, o balanço das metas.</li>
       </ul>
-      <p class="small muted">O aviso é do próprio celular: funciona sem internet.</p>
     </section>` : ""}
-
-    <section class="panel" id="tema">
-      <h2>Aparência</h2>
-      <label>Tema
-        <select data-theme-pick>${[["auto", "Automático (igual ao aparelho)"], ["claro", "Claro"], ["escuro", "Escuro"]].map(([v, label]) =>
-          html`<option value="${v}" ${window.finanTheme?.get() === v ? "selected" : ""}>${label}</option>`)}</select>
-      </label>
-    </section>
 
     ${lockSection()}
 
-    <section class="panel">
-      <h2>Dados ${device.here}</h2>
-      <p class="muted small">Apaga os lançamentos, dívidas e categorias guardados ${device.here}${device.isSite ? "." : " e desconecta do computador. Os dados que já estão no computador continuam lá."}</p>
-      <button type="button" class="secondary" data-action="wipe">Apagar dados ${device.here}</button>
-    </section>`;
+    <section class="panel danger-zone" id="dados">
+      ${head("Seus dados", device.isSite
+        ? "Ficam neste navegador e no seu Google Drive (nada vai para servidor do finan_rich). Sem usar por 30 minutos, o site pede para entrar de novo."
+        : server ? "Ficam neste celular e no computador conectado." : "Ficam só neste celular.")}
+      ${!device.isSite && !server ? html`<div id="sozinho">
+        ${ledger.categories.length
+          ? html`<p class="small muted">Você está usando o finan_rich só neste celular. Faça um backup de vez em quando em <a href="/exportar">Exportar</a>. Se um dia conectar a um computador, tudo vai para lá, sem duplicar categorias.</p>`
+          : html`<p class="small muted">Dá para usar só neste celular: lançamentos, dívidas, metas, importação de extratos, notas e exportação funcionam sem computador. O Consultor funciona com a IA do finan_rich ou com a sua chave (veja acima). Se depois conectar a um computador, seus dados vão junto.</p>
+            <div class="row-actions"><button type="button" class="secondary" data-action="solo">Usar só neste celular</button></div>`}
+      </div>` : ""}
+      <div class="set-row">
+        <span class="set-row-text"><strong>Apagar dados ${device.here}</strong>
+          <span class="faint small">Apaga os lançamentos, dívidas e categorias guardados ${device.here}${device.isSite ? ". Os do seu Drive continuam lá." : " e desconecta do computador. Os dados que já estão no computador continuam lá."}</span></span>
+        <button type="button" class="secondary danger" data-action="wipe">Apagar dados ${device.here}</button>
+      </div>
+    </section>
+      </div>
+    </div>`;
 }
 
 // startSolo começa a usar sem computador: cria as categorias padrão neste aparelho.
@@ -324,15 +401,22 @@ function bindCloud(root, ctx) {
       .then(redraw);
   }
   const form = root.querySelector('[data-form="cloud-ai"]');
-  form?.elements.preset.addEventListener("change", (e) => { ai.chosen = e.target.value; redraw(); });
+  form?.elements.preset?.addEventListener("change", (e) => { ai.chosen = e.target.value; redraw(); });
+  form?.querySelectorAll('input[name="caminho"]').forEach((r) => r.addEventListener("change", () => {
+    ai.path = r.value;
+    redraw();
+    root.querySelector(`#ia-nuvem input[name="caminho"][value="${r.value}"]`)?.focus(); // o foco não se perde ao redesenhar
+  }));
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const f = form.elements;
     try {
-      const free = ai.presets.find((p) => p.id === f.preset.value)?.free;
-      if (!free && !f.apiKey.value && !(ai.cfg?.key && ai.cfg.preset === f.preset.value)) throw new Error("cole a chave da IA");
-      ai.cfg = await cloud.saveConfig({ preset: f.preset.value, model: f.model?.value.trim() || "", enabled: !!f.enabled?.checked, apiKey: f.apiKey?.value || "" });
+      const free = f.caminho.value === "finan";
+      const preset = free ? ai.presets.find((p) => p.free).id : f.preset.value;
+      if (!free && !f.apiKey.value && !(ai.cfg?.key && ai.cfg.preset === preset)) throw new Error("cole a chave da IA");
+      ai.cfg = await cloud.saveConfig({ preset, model: free ? "" : f.model.value.trim(), enabled: !!f.enabled?.checked, apiKey: free ? "" : f.apiKey.value });
       ai.chosen = null;
+      ai.path = null;
       resetChat();
       redraw();
       ctx.flash("Testando a chave…");
@@ -362,11 +446,10 @@ let lockState = null; // { on, bio, editing } (carregado depois)
 function lockSection() {
   const s = lockState || {};
   return html`<section class="panel" id="bloqueio">
-    <h2>Bloqueio do app</h2>
+    ${head("Bloqueio do app", "Protege de quem pegar o celular desbloqueado; os dados continuam no celular do mesmo jeito.")}
     <label class="check"><input type="checkbox" data-action="lock" ${s.on || s.editing ? "checked" : ""} ${lockState ? "" : "disabled"}> Pedir digital/rosto ou senha para abrir</label>
     <p class="small muted">Pede ao abrir o app e ao voltar depois de 1 minuto fora dele.
-      ${s.bio ? "Se a digital ou o rosto falhar, vale a senha do app." : "Sem digital ou rosto cadastrados no celular, vale a senha do app."}
-      Protege de quem pegar o celular desbloqueado; os dados continuam no celular do mesmo jeito.</p>
+      ${s.bio ? "Se a digital ou o rosto falhar, vale a senha do app." : "Sem digital ou rosto cadastrados no celular, vale a senha do app."}</p>
     ${s.editing ? html`<form data-form="lock-pin" class="grid-form">
       <label>Senha do app (4 a 6 números)
         <input name="pin" type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" required>
@@ -434,8 +517,9 @@ function openFinanceSection() {
   if (ofState === undefined) return html`<section id="open-finance" hidden></section>`;
   const c = ofState || {};
   return html`<section class="panel" id="open-finance">
-    <h2>Open Finance (seus bancos, sem digitar)</h2>
-    <p class="small muted">Os lançamentos vêm direto do banco, de graça, pelo Meu Pluggy, com a sua própria conta: vão do banco para este celular sem passar por servidor do finan_rich. Depois, use <a href="/importar">Importar → Buscar do banco</a>.</p>
+    ${head("Open Finance", "Lançamentos direto do banco, de graça, pelo Meu Pluggy, com a sua própria conta. Sem passar por servidor do finan_rich.",
+      html`<span class="tag ${ofState ? "on" : ""}">${ofState ? "Configurado" : "Não configurado"}</span>`)}
+    <p class="small muted">Depois de configurar, use <a href="/importar">Importar → Buscar do banco</a>.</p>
     <details ${ofState ? "" : "open"}><summary>Como configurar (uma vez)</summary>
       <ol class="small">
         <li>Crie uma conta grátis em dashboard.pluggy.ai, crie uma <strong>Application</strong> e copie o <strong>Client ID</strong> e o <strong>Client Secret</strong>.</li>
@@ -499,7 +583,7 @@ function localSection() {
   const s = localState;
   const m = local.MODEL;
   return html`<section class="panel" id="ia-local">
-    <h2>IA dentro do celular</h2>
+    ${head("IA dentro do celular", "Um terceiro caminho, sem internet nenhuma.")}
     <p class="small muted">O consultor roda neste celular, sem internet: nem a pergunta nem os seus números saem do aparelho.
       Usa o modelo ${m.name} (código aberto, Apache-2.0), baixado uma vez (${m.mb} MB; prefira o Wi-Fi).
       É uma IA pequena: responde mais devagar que a do computador ou da nuvem, erra mais e não lança nada por você.</p>
