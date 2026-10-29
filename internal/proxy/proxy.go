@@ -150,9 +150,10 @@ type Limits struct{ DeviceHour, DeviceDay, IPHour, IPDay int }
 var DefaultLimits = Limits{DeviceHour: 15, DeviceDay: 40, IPHour: 30, IPDay: 100}
 
 const (
-	maxModels = 6         // além disso, o pedido demora demais pulando modelos
-	maxBody   = 128 << 10 // cabe a conversa longa com ferramentas; a cota grátis por minuto do Groq é menor ainda
-	maxTokens = 2048
+	maxModels   = 6         // além disso, o pedido demora demais pulando modelos
+	maxAttempts = 12        // tentativas por pergunta, somando todos os provedores
+	maxBody     = 128 << 10 // cabe a conversa longa com ferramentas; a cota grátis por minuto do Groq é menor ainda
+	maxTokens   = 2048
 )
 
 // Paths são os caminhos que o intermediário atende; no mesmo programa, o resto
@@ -183,8 +184,24 @@ type handler struct {
 	limiter      *limiter
 	oauthLimiter *limiter // separado: entrar com Google não gasta a cota do consultor
 
-	mu     sync.Mutex
-	models map[string]cachedModels // por provedor: os modelos que ele ainda tem
+	mu      sync.Mutex
+	models  map[string]cachedModels // por provedor: os modelos que ele ainda tem
+	noUsage map[string]bool         // provedores que recusaram stream_options (não pedimos mais)
+}
+
+func (h *handler) refusesUsage(name string) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.noUsage[name]
+}
+
+func (h *handler) markRefusesUsage(name string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.noUsage == nil {
+		h.noUsage = map[string]bool{}
+	}
+	h.noUsage[name] = true
 }
 
 type cachedModels struct {
@@ -250,50 +267,70 @@ func (h *handler) chat(w http.ResponseWriter, r *http.Request) {
 	var stream bool
 	json.Unmarshal(body["stream"], &stream)
 	rec := usageRecord{Persona: personaOf(msgs), Device: hashDevice(device)}
+	attempts := 0
+providers:
 	for pi, p := range h.cfg.Providers {
 		models := h.available(p)
 		for i, model := range models {
-			last := pi == len(h.cfg.Providers)-1 && i == len(models)-1
-			body["model"], _ = json.Marshal(model)
-			delete(body, "reasoning_effort")
-			if strings.Contains(model, "gpt-oss") {
-				body["reasoning_effort"] = json.RawMessage(`"low"`) // menos tokens de raciocínio: sobra cota grátis
-			}
-			delete(body, "stream_options")
-			if stream && p.StreamUsage {
-				body["stream_options"] = json.RawMessage(`{"include_usage":true}`) // tokens no último evento
-			}
-			payload, _ := json.Marshal(body)
-			req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, strings.TrimRight(p.Upstream, "/")+"/chat/completions", bytes.NewReader(payload))
-			if err != nil {
-				fail(w, http.StatusInternalServerError, err.Error())
-				return
-			}
-			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("Authorization", "Bearer "+p.APIKey)
-			rec.Provider, rec.Model, rec.start = p.Name, model, time.Now()
-			resp, err := h.cfg.Client.Do(req)
-			if err != nil {
-				rec.log(0, -1, -1)
-				if last || r.Context().Err() != nil {
-					fail(w, http.StatusBadGateway, "o provedor de IA não respondeu")
+			withUsage := stream && p.StreamUsage && !h.refusesUsage(p.Name)
+			for {
+				// A última tentativa (o último modelo do último provedor, ou o teto de
+				// tentativas) entrega o que vier, erro incluído, à pessoa.
+				last := pi == len(h.cfg.Providers)-1 && i == len(models)-1 || attempts >= maxAttempts-1
+				attempts++
+				body["model"], _ = json.Marshal(model)
+				delete(body, "reasoning_effort")
+				if strings.Contains(model, "gpt-oss") {
+					body["reasoning_effort"] = json.RawMessage(`"low"`) // menos tokens de raciocínio: sobra cota grátis
+				}
+				delete(body, "stream_options")
+				if withUsage {
+					body["stream_options"] = json.RawMessage(`{"include_usage":true}`) // tokens no último evento
+				}
+				payload, _ := json.Marshal(body)
+				req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, strings.TrimRight(p.Upstream, "/")+"/chat/completions", bytes.NewReader(payload))
+				if err != nil {
+					fail(w, http.StatusInternalServerError, err.Error())
 					return
 				}
-				break // provedor fora do ar: o próximo
-			}
-			if !last && (retryable(resp.StatusCode) || badKey(resp.StatusCode)) {
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Authorization", "Bearer "+p.APIKey)
+				rec.Provider, rec.Model, rec.start = p.Name, model, time.Now()
+				resp, err := h.cfg.Client.Do(req)
+				if err != nil {
+					rec.log(0, -1, -1)
+					if last || r.Context().Err() != nil {
+						fail(w, http.StatusBadGateway, "o provedor de IA não respondeu")
+						return
+					}
+					continue providers // provedor fora do ar: o próximo
+				}
+				if last || !(retryable(resp.StatusCode) || badKey(resp.StatusCode)) {
+					in, out := relay(w, resp)
+					rec.log(resp.StatusCode, in, out)
+					return
+				}
+				refusedUsage := false
+				if withUsage && resp.StatusCode == http.StatusBadRequest {
+					msg, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<10))
+					refusedUsage = strings.Contains(strings.ToLower(string(msg)), "stream_options") // 400 de modelo aposentado não é isto
+				}
 				resp.Body.Close()
 				rec.log(resp.StatusCode, -1, -1)
-				if badKey(resp.StatusCode) {
-					break // chave errada ou sem permissão: os outros modelos dele também falham
+				switch {
+				case badKey(resp.StatusCode):
+					continue providers // chave errada ou sem permissão: os outros modelos dele também falham
+				case refusedUsage:
+					// Provedor que não conhece stream_options: lembra e repete o mesmo
+					// modelo sem o campo (em vez de falhar em todos os modelos dele).
+					h.markRefusesUsage(p.Name)
+					withUsage = false
+					continue
 				}
 				// Cota grátis deste modelo acabou, ele está fora ou foi desligado
 				// (400/404 de modelo aposentado): tenta o próximo.
-				continue
+				break
 			}
-			in, out := relay(w, resp)
-			rec.log(resp.StatusCode, in, out)
-			return
 		}
 	}
 	fail(w, http.StatusBadGateway, "nenhum provedor de IA respondeu")

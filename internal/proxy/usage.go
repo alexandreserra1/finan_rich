@@ -65,7 +65,7 @@ func personaOf(msgs []chatMessage) string {
 		return "categorize"
 	}
 	if m := personaRe.FindStringSubmatch(msgs[0].Content); m != nil {
-		return strings.ToLower(m[1])
+		return strings.NewReplacer("á", "a").Replace(strings.ToLower(m[1])) // o mesmo id de finance.Team ("otavio")
 	}
 	return "consultor"
 }

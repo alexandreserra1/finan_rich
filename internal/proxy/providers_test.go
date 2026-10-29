@@ -17,12 +17,13 @@ import (
 // fakeProvider é um provedor no formato OpenAI: lista models em /models (nil:
 // a lista falha), confere a chave e responde 429 aos modelos em full.
 type fakeProvider struct {
-	key    string
-	models []string
-	full   map[string]bool
-	status int    // se diferente de 0, toda conversa responde isto
-	reply  string // corpo da resposta (padrão: streaming com usage no fim)
-	ctype  string
+	key          string
+	models       []string
+	full         map[string]bool
+	status       int    // se diferente de 0, toda conversa responde isto
+	noStreamOpts bool   // recusa (400) pedido com stream_options, como provedor que não conhece o campo
+	reply        string // corpo da resposta (padrão: streaming com usage no fim)
+	ctype        string
 
 	mu   sync.Mutex
 	seen []map[string]any
@@ -52,6 +53,11 @@ func (f *fakeProvider) start(t *testing.T) *httptest.Server {
 		f.mu.Lock()
 		f.seen = append(f.seen, body)
 		f.mu.Unlock()
+		if _, has := body["stream_options"]; has && f.noStreamOpts {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, `{"error":{"message":"unknown field stream_options"}}`)
+			return
+		}
 		if f.status != 0 {
 			w.WriteHeader(f.status)
 			fmt.Fprint(w, `{"error":{"message":"falhou"}}`)
@@ -181,7 +187,7 @@ func TestProxyLogsUsageWithoutStreaming(t *testing.T) {
 func TestPersonaOf(t *testing.T) {
 	for system, want := range map[string]string{
 		advisor.SystemPrompt: "consultor",
-		advisor.SystemPrompt + "\n\nVocê é o Otávio, o da análise": "otávio",
+		advisor.SystemPrompt + "\n\nVocê é o Otávio, o da análise": "otavio",
 		advisor.SystemPrompt + "\n\nVocê é a Jade, a consultora":   "jade",
 		advisor.CategorizeMarker + " nas categorias":               "categorize",
 		"": "ping",
@@ -318,5 +324,55 @@ func TestConfigFromEnvProviders(t *testing.T) {
 	}
 	if got := strings.Join(names, ","); got != "cloudflare,openrouter,groq" {
 		t.Errorf("ordem de FINAN_PROVIDERS = %s", got)
+	}
+}
+
+// Um provedor que não conhece stream_options responde 400: a mesma pergunta
+// tem que passar logo em seguida sem o campo, no mesmo modelo, e não gastar
+// os outros modelos dele com o mesmo pedido que vai falhar de novo.
+func TestProxyRetriesWithoutStreamOptions(t *testing.T) {
+	captureLog(t)
+	p := &fakeProvider{key: "k", models: []string{"m1", "m2", "m3"}, noStreamOpts: true}
+	h := New(Config{Providers: []Provider{{Name: "groq", Upstream: p.start(t).URL, APIKey: "k", Models: []string{"m1", "m2", "m3"}, StreamUsage: true}}, Limits: DefaultLimits})
+	rec := ask(h, "a", personaBody("o Bento", true))
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"content":"ok"`) {
+		t.Fatalf("resposta = %d %s", rec.Code, rec.Body.String())
+	}
+	if got := strings.Join(p.models_(), ","); got != "m1,m1" {
+		t.Errorf("tentativas = %s; quer o m1 duas vezes (com e sem stream_options)", got)
+	}
+	if _, has := p.seen[1]["stream_options"]; has {
+		t.Error("a segunda tentativa ainda leva stream_options")
+	}
+	// Na próxima pergunta o proxy já lembra e nem tenta o campo.
+	p.mu.Lock()
+	p.seen = nil
+	p.mu.Unlock()
+	ask(h, "a", personaBody("o Bento", true))
+	if got := strings.Join(p.models_(), ","); got != "m1" {
+		t.Errorf("segunda pergunta tentou %s; quer só m1, sem stream_options", got)
+	}
+}
+
+// Tudo esgotado: o proxy desiste depois de maxAttempts tentativas (cada uma
+// custa tempo de quem espera), em vez de passar por todos os modelos de todos os provedores.
+func TestProxyCapsAttempts(t *testing.T) {
+	captureLog(t)
+	var provs []Provider
+	var fakes []*fakeProvider
+	for i := 0; i < 5; i++ {
+		models := []string{"a", "b", "c", "d", "e", "f"}
+		f := &fakeProvider{key: "k", models: models, status: http.StatusTooManyRequests}
+		fakes = append(fakes, f)
+		provs = append(provs, Provider{Name: fmt.Sprintf("p%d", i), Upstream: f.start(t).URL, APIKey: "k", Models: models})
+	}
+	h := New(Config{Providers: provs, Limits: DefaultLimits})
+	rec := ask(h, "a", personaBody("a Luna", false))
+	total := 0
+	for _, f := range fakes {
+		total += len(f.models_())
+	}
+	if total != maxAttempts || rec.Code != http.StatusTooManyRequests {
+		t.Errorf("tentativas = %d (quer %d), resposta = %d", total, maxAttempts, rec.Code)
 	}
 }

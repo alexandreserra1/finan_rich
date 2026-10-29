@@ -45,10 +45,10 @@ nunca deixe a pessoa sem resposta.
   texto fixo, do jeito dele. Computador, site e celular.
 - [ ] B2. Respostas prontas para as sugestões ("Qual dívida pagar primeiro?",
   "O que vence esta semana?"…): o Go responde direto, sem gastar token.
-- [ ] B3. Registro de tokens por pedido no intermediário (sem guardar texto da
+- [x] B3. Registro de tokens por pedido no intermediário (sem guardar texto da
   pessoa): tokens de entrada, de saída, modelo e personagem, para medir o
   custo por pessoa.
-- [ ] B4. Vários provedores grátis no intermediário (Groq, Gemini, Cerebras,
+- [x] B4. Vários provedores grátis no intermediário (Groq, Gemini, Cerebras,
   Cloudflare Workers AI, OpenRouter): quando um dá limite, passa para o
   próximo. Passo a passo das chaves em `docs/IA-GRATIS.md`.
 - [ ] B5. Relatórios do Otávio (semana) e do Tito (mês) gerados uma vez e
@@ -62,6 +62,10 @@ nunca deixe a pessoa sem resposta.
   no teto, volta para a resposta sem IA. Só com os números do B3 na mão.
 - [ ] B9. Decisão de produto (Alexandre): plano barato só para a IA sem limite,
   ou crédito de programas para startups e código aberto.
+- B3 e B4 entraram em 28/10/2026 (feitos por um agente e revisados aqui): o proxy tenta os
+  provedores na ordem de `FINAN_PROVIDERS`, com no máximo 12 tentativas por pergunta, e repete
+  sem `stream_options` quando o provedor recusa o campo. Nenhum provedor foi chamado de verdade
+  ainda: depende das chaves na Vercel (passo a passo em `docs/IA-GRATIS.md`).
 - Celular: B1, B2, B5 e B6 valem no app (nuvem e IA dentro do celular); a IA
   dentro do celular já recebe as contas prontas.
 
