@@ -131,6 +131,20 @@ func Offline(reqJSON string) string {
 	return reply(askReply(advisor.Fallback(req.question(), errors.New("a IA não respondeu")), ""), nil)
 }
 
+// Numbers são as contas do personagem para a tela mostrar na hora, antes da
+// resposta da IA; {} se a pergunta é pronta (aí o app já responde com Prepared).
+func Numbers(reqJSON string) string {
+	var req AskRequest
+	if err := json.Unmarshal([]byte(reqJSON), &req); err != nil {
+		return reply(nil, err)
+	}
+	n := advisor.Numbers(req.question())
+	if n == "" {
+		return reply(nil, nil)
+	}
+	return reply(askReply(advisor.Reply{Text: n, App: true}, ""), nil)
+}
+
 // LocalPrompt monta as mensagens (formato OpenAI: system, user, assistant)
 // para a IA que roda dentro do celular (wllama). As instruções e o retrato
 // financeiro vêm daqui, das mesmas regras do computador; só a geração do

@@ -322,3 +322,15 @@ func TestAskPreparedSkipsAI(t *testing.T) {
 		t.Errorf("Offline: %+v", r)
 	}
 }
+
+// Os números do app, mostrados na hora enquanto a IA escreve: sem o aviso de falha;
+// pergunta pronta devolve {} (ela já é respondida pelo app).
+func TestNumbers(t *testing.T) {
+	r := askOut(t, Numbers(`{"ledger":`+offlineLedger+`,"question":"e a moto?","agent":"bento","today":"2026-10-20"}`))
+	if !r.App || strings.Contains(r.Answer, advisor.OfflineNotice) || !strings.Contains(r.Answer, "Cartão Nubank") {
+		t.Errorf("Numbers: %+v", r)
+	}
+	if got := Numbers(`{"ledger":` + offlineLedger + `,"question":"Qual dívida devo pagar primeiro?","agent":"bento"}`); got != `{}` {
+		t.Errorf("pergunta pronta não tem números à parte: %s", got)
+	}
+}

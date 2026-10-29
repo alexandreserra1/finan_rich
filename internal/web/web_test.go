@@ -259,8 +259,21 @@ func TestChatPreparedSkipsAI(t *testing.T) {
 		t.Error("a página deveria ter as sugestões de cada personagem")
 	}
 	_, body := a.post("/chat/enviar", url.Values{"message": {"Qual dívida devo pagar primeiro?"}, "agent": {"bento"}})
-	if !strings.Contains(body, `"app":{`) || strings.Contains(body, "A IA não respondeu") || !strings.Contains(body, "Nenhuma dívida") {
+	if !strings.Contains(body, `"app":{`) || strings.Contains(body, "A IA não respondeu") || !strings.Contains(body, "Nenhuma dívida") || strings.Contains(body, `"numbers"`) {
 		t.Errorf("SSE = %s", body)
+	}
+}
+
+// Os números do app chegam antes da IA, num evento próprio (a tela mostra na hora).
+func TestChatSendsNumbersFirst(t *testing.T) {
+	a := newApp(t, fakeOllama(t).URL)
+	_, body := a.post("/chat/enviar", url.Values{"message": {"O que eu faço com o meu dinheiro este mês?"}})
+	numbers, text := strings.Index(body, `"numbers":"`), strings.Index(body, `"text":"Pague o cartão."`)
+	if numbers < 0 || text < 0 || numbers > text || !strings.Contains(body, "Resumo de") {
+		t.Errorf("SSE = %s", body)
+	}
+	if msgs, _ := a.st.ListChat(context.Background()); len(msgs) != 2 || msgs[1].Content != "Pague o cartão." {
+		t.Errorf("só a resposta da IA fica na conversa: %+v", msgs)
 	}
 }
 

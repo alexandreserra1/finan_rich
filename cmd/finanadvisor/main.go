@@ -65,9 +65,11 @@ func main() {
 		}),
 		// localPrompt: mensagens prontas para a IA dentro do celular (js/local-ai.js).
 		"localPrompt": js.FuncOf(func(_ js.Value, a []js.Value) any { return askapi.LocalPrompt(str(a, 0)) }),
-		// prepared e offline: respostas do app, sem IA (sugestões prontas; IA fora ou sem internet).
+		// prepared e offline: respostas do app, sem IA (sugestões prontas; IA fora ou sem internet);
+		// numbers: as contas do personagem, mostradas na hora enquanto a IA escreve.
 		"prepared":        js.FuncOf(func(_ js.Value, a []js.Value) any { return askapi.Prepared(str(a, 0)) }),
 		"offline":         js.FuncOf(func(_ js.Value, a []js.Value) any { return askapi.Offline(str(a, 0)) }),
+		"numbers":         js.FuncOf(func(_ js.Value, a []js.Value) any { return askapi.Numbers(str(a, 0)) }),
 		"cloudPresets":    js.FuncOf(func(js.Value, []js.Value) any { return askapi.CloudPresets() }),
 		"proposalApplied": js.FuncOf(func(_ js.Value, a []js.Value) any { return askapi.ProposalApplied(str(a, 0), str(a, 1)) }),
 	}

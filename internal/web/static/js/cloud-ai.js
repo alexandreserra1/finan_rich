@@ -180,6 +180,11 @@ export async function offline(ledger, question, agent = "jade") {
   await loadAdvisor();
   return unwrap(window.finanAdvisor.offline(appRequest(ledger, question, agent)));
 }
+// numbers: as contas do personagem para mostrar na hora, enquanto a IA escreve ("" na pergunta pronta).
+export async function numbers(ledger, question, agent = "jade") {
+  await loadAdvisor();
+  return unwrap(window.finanAdvisor.numbers(appRequest(ledger, question, agent)))?.answer || "";
+}
 
 // categorize: "IA sugere" da importação, com a IA na nuvem deste celular.
 export async function categorize(categories, items) {

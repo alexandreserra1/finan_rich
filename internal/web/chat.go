@@ -77,7 +77,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) {
 		serverError(w, err)
 		return
 	}
-	s.render(w, r, "chat", map[string]any{"History": history, "AI": ai, "Status": s.aiStatus(ctx, ai), "Team": finance.Team, "Suggestions": advisor.Suggestions})
+	s.render(w, r, "chat", map[string]any{"History": history, "AI": ai, "Status": s.aiStatus(ctx, ai), "Local": llm.IsLocal(ai.Config), "Team": finance.Team, "Suggestions": advisor.Suggestions})
 }
 
 func (s *Server) chatClear(w http.ResponseWriter, r *http.Request) {
@@ -127,6 +127,10 @@ func (s *Server) answer(w http.ResponseWriter, r *http.Request, question, agent 
 		past[i] = llm.Message{Role: llm.Role(m.Role), Content: m.Content}
 	}
 	q := advisor.Question{History: past, Text: question, Ledger: ledger, Today: time.Now(), Agent: agent}
+	// Os números do app vão antes: a tela mostra na hora, enquanto a IA escreve.
+	if n := advisor.Numbers(q); n != "" {
+		sse.Send(map[string]string{"numbers": n})
+	}
 	var reply advisor.Reply
 	provider, ai, err := s.provider(ctx)
 	if err != nil { // IA mal configurada: responde sem IA, com o motivo

@@ -145,3 +145,16 @@ func TestOverLimit(t *testing.T) {
 		t.Error("OverLimit")
 	}
 }
+
+// Os números do app, mostrados na hora enquanto a IA escreve: as mesmas contas
+// da resposta sem IA, sem o aviso de falha; pergunta pronta não tem (o app já responde).
+func TestNumbers(t *testing.T) {
+	q := offlineQ("jade", "O que eu faço com o meu dinheiro este mês?")
+	got := Numbers(q)
+	if got != Offline(q) || strings.Contains(got, OfflineNotice) || !strings.Contains(got, "Resumo de") {
+		t.Errorf("números:\n%s", got)
+	}
+	if got := Numbers(offlineQ("bento", "Qual dívida devo pagar primeiro?")); got != "" {
+		t.Errorf("pergunta pronta não leva números à parte:\n%s", got)
+	}
+}

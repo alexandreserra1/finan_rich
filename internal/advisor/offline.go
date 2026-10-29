@@ -83,6 +83,16 @@ func answerOrFallback(ctx context.Context, q Question, err error) (Reply, error)
 	return Fallback(q, err), nil
 }
 
+// Numbers são as contas do personagem para mostrar na hora, enquanto a IA
+// escreve (a IA leva de segundos a quase um minuto). Vazio para pergunta
+// pronta: nela o app já responde e a IA nem é chamada.
+func Numbers(q Question) string {
+	if Prepared(q) {
+		return ""
+	}
+	return Offline(q)
+}
+
 // Offline é a resposta do personagem só com as contas do app.
 func Offline(q Question) string {
 	t := NewTools(q.Ledger, q.Today, nil)
