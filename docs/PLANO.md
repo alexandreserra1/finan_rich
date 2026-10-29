@@ -1,0 +1,69 @@
+# Plano: acesso seguro ao site e IA que não para
+
+Lista de trabalho combinada em 28/10/2026. Cada item sai com teste e é marcado
+aqui quando entra na main. Vale para o computador, o site e o app do celular,
+salvo onde está escrito.
+
+## A. Segurança do site (login obrigatório)
+
+O site pode ser aberto num computador de outra pessoa. Os dados ficam no
+navegador (nenhum servidor nosso guarda dados), então a proteção é: nada do
+app aparece sem login, e nenhum dado fica no navegador sem conta.
+
+- [ ] A1. Barreira de login: sem sessão Google, qualquer endereço do app (`/`,
+  `/dividas`, `/lancamentos`…) mostra só a landing ou o login, nunca uma tela
+  do app. Vale também para endereço digitado ou favorito.
+- [ ] A2. Tirar o "Usar sem conta" do site (landing, boas-vindas e Ajustes).
+  No computador e no celular continua: o aparelho é da pessoa.
+- [ ] A3. Dados antigos de quem usou sem conta: ficam guardados, mas só
+  aparecem depois de entrar (aí se juntam com o Drive).
+- [ ] A4. Sessão que expira: sem uso por um tempo, o site pede para entrar de
+  novo. Sair continua salvando no Drive e apagando tudo do navegador.
+- [ ] A5. Enquanto o Google não está configurado na Vercel, o site mostra a
+  landing e o aviso de que o login abre em breve (nenhuma tela do app).
+- [ ] A6. Testes: endereço direto sem login cai no login; com login entra;
+  sair e recarregar volta à landing; nenhum "Usar sem conta" no site.
+- Pendente com o Alexandre: cadastrar o app no Google e pôr
+  `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` na Vercel (`docs/GOOGLE.md`).
+- Celular: o app já tem o bloqueio com digital ou senha (`lock.js`); conferir
+  se ele vale também na volta do segundo plano.
+
+Por que não "criptografar a URL": o endereço não carrega segredo nenhum; os
+dados estão no navegador. O que protege é a barreira de login, não ter dado
+sem conta e a sessão que expira.
+
+## B. IA que não para (gastando pouco)
+
+A IA só escreve o texto: toda conta é do Go. A meta é que a falta de token
+nunca deixe a pessoa sem resposta.
+
+- [ ] B1. Resposta sem IA dos personagens: se nenhuma IA responder (cota,
+  erro, sem internet), o personagem responde com a conta pronta do Go num
+  texto fixo, do jeito dele. Computador, site e celular.
+- [ ] B2. Respostas prontas para as sugestões ("Qual dívida pagar primeiro?",
+  "O que vence esta semana?"…): o Go responde direto, sem gastar token.
+- [ ] B3. Registro de tokens por pedido no intermediário (sem guardar texto da
+  pessoa): tokens de entrada, de saída, modelo e personagem, para medir o
+  custo por pessoa.
+- [ ] B4. Vários provedores grátis no intermediário (Groq, Gemini, Cerebras,
+  Cloudflare Workers AI, OpenRouter): quando um dá limite, passa para o
+  próximo. Passo a passo das chaves em `docs/IA-GRATIS.md`.
+- [ ] B5. Relatórios do Otávio (semana) e do Tito (mês) gerados uma vez e
+  guardados no aparelho, em vez de pergunta ao vivo; sem IA, o texto fixo.
+- [ ] B6. Menos token por pergunta: cada personagem recebe só a parte do
+  resumo que usa; resposta guardada para a mesma pergunta com os mesmos dados
+  no mesmo dia; histórico mais curto.
+- [ ] B7. Aviso claro quando o grátis acaba: "use sua chave grátis do Gemini"
+  com o passo a passo (a opção já existe em Ajustes).
+- [ ] B8. Teto de gasto com alarme (se um dia houver reserva paga): ao bater
+  no teto, volta para a resposta sem IA. Só com os números do B3 na mão.
+- [ ] B9. Decisão de produto (Alexandre): plano barato só para a IA sem limite,
+  ou crédito de programas para startups e código aberto.
+- Celular: B1, B2, B5 e B6 valem no app (nuvem e IA dentro do celular); a IA
+  dentro do celular já recebe as contas prontas.
+
+## C. Redesign Esmeralda (telas que faltam)
+
+- [ ] Consultor IA
+- [ ] Ajustes
+- [ ] Boas-vindas (login)
