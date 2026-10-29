@@ -202,8 +202,17 @@ e rode o script de novo. Ver uso e erros: *Cloud Run → finanproxy → Registro
 
 Um computador com o Ollama pode emprestar a IA ao intermediário: entra por último na ordem
 padrão (`local` em `FINAN_PROVIDERS`), sem cota de tokens, uma pergunta por vez. Medido num Mac
-M1 Pro com o `qwen2.5:7b-instruct`: de 30 a 48 s por pergunta. Ele vai **sem as ferramentas**
+M1 Pro com o `qwen2.5:7b-instruct`: de 13 a 35 s por pergunta (com o resumo só das seções de cada
+personagem; o Painel e o Consultor mostram as contas do app na hora, antes da IA). Ele vai **sem as ferramentas**
 (modelo pequeno escrevia o pedido como texto); as contas prontas do Go já vão nos dados.
+
+**Jeito rápido:** instale o Tailscale (App Store ou versão standalone) e entre com a sua conta;
+depois rode `scripts/finanlocal.sh`. Ele gera a chave em `~/.config/finan_rich/local.key` (fora
+do repositório), compila o porteiro, deixa o Ollama e o porteiro ligando sozinhos ao entrar no
+Mac, abre o túnel, mostra o endereço e copia a chave para a área de transferência (nunca mostra
+na tela). Falta só pôr as duas variáveis na Vercel. `scripts/finanlocal.sh --off` desliga tudo.
+
+Passo a passo à mão:
 
 1. `ollama pull qwen2.5:7b-instruct` e `OLLAMA_CONTEXT_LENGTH=8192 ollama serve`.
 2. Gere uma senha longa (`openssl rand -base64 32`) e guarde **fora do repositório**.

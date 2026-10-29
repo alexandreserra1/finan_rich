@@ -4,7 +4,7 @@
 // internet. Passo a passo em docs/IA-GRATIS.md.
 //
 //	FINAN_LOCAL_KEY=<senha longa> OLLAMA_CONTEXT_LENGTH=8192 ollama serve   (em outro terminal: só o OLLAMA_...)
-//	FINAN_LOCAL_KEY=<senha longa> go run ./cmd/finanlocal
+//	FINAN_LOCAL_KEY=<senha longa> go run ./cmd/finanlocal   (ou -keyfile <arquivo>; scripts/finanlocal.sh faz tudo)
 package main
 
 import (
@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/localguard"
@@ -22,9 +23,18 @@ func main() {
 	ollama := flag.String("ollama", "http://127.0.0.1:11434", "endereço do Ollama")
 	model := flag.String("model", "qwen2.5:7b-instruct", "o único modelo que responde")
 	busy := flag.Int("busy", 1, "perguntas ao mesmo tempo (as outras recebem 429 e vão para outro provedor)")
+	keyFile := flag.String("keyfile", "", "arquivo com a chave (no lugar de FINAN_LOCAL_KEY; assim ela não fica na linha de comando)")
 	flag.Parse()
 
-	h, err := localguard.New(localguard.Config{Key: os.Getenv("FINAN_LOCAL_KEY"), Ollama: *ollama, Model: *model, MaxBusy: *busy})
+	key := os.Getenv("FINAN_LOCAL_KEY")
+	if key == "" && *keyFile != "" {
+		b, err := os.ReadFile(*keyFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		key = strings.TrimSpace(string(b))
+	}
+	h, err := localguard.New(localguard.Config{Key: key, Ollama: *ollama, Model: *model, MaxBusy: *busy})
 	if err != nil {
 		log.Fatal(err)
 	}
