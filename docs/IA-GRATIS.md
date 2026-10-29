@@ -2,12 +2,13 @@
 
 Para quem não quer criar conta em provedor de IA, o app pode oferecer a opção
 **"finan_rich grátis (sem chave)"**. O celular manda a pergunta (já com os nomes trocados por
-apelidos, ver [MOBILE.md](MOBILE.md)) para um intermediário pequeno, que repassa ao
-[Groq](https://groq.com) com uma chave que fica só no servidor. Nenhuma chave vai dentro do
-APK.
+apelidos, ver [MOBILE.md](MOBILE.md)) para um intermediário pequeno, que repassa a provedores
+de IA grátis ([Groq](https://groq.com), Gemini, Cerebras, OpenRouter e Cloudflare Workers AI)
+com chaves que ficam só no servidor. Nenhuma chave vai dentro do APK.
 
 ```
-celular (anonimiza) ──HTTPS──> intermediário (Vercel, chave numa variável secreta) ──> Groq
+celular (anonimiza) ──HTTPS──> intermediário (Vercel, chaves em variáveis secretas) ──> Groq
+                                                                   (cota acabou?) ──> Gemini ──> Cerebras ──> OpenRouter ──> Cloudflare
 ```
 
 - **Código**: `cmd/api` (programa) e `internal/proxy` (regras e limites, com testes).
@@ -64,6 +65,87 @@ perguntas por dia somando todo mundo; com o cache, a maior parte se repete e nã
 sobe para perto de 200. O Groq não garante o cache, então vale olhar o uso real em
 console.groq.com depois de alguns dias. Para mais, cada pessoa pode usar a própria chave grátis
 em Ajustes.
+
+## Vários provedores grátis (um esgota, passa para o próximo)
+
+Cada provedor tem a própria cota grátis. O intermediário tenta os modelos de um provedor (na
+ordem: os preferidos dele que ainda existem e depois os outros de conversa que o `/models`
+dele listar, até 6, lista guardada por 1 hora) e, quando todos dão limite (429), caem (5xx) ou
+foram desligados (400/404), passa para o próximo provedor. Chave errada ou sem permissão
+(401/403) e provedor que nem responde pulam direto para o próximo, sem gastar tentativa nos
+outros modelos dele. Só o último erro chega à pessoa.
+
+Cada provedor só entra se a variável da chave existir na Vercel. Só com `GROQ_API_KEY`, tudo
+continua como antes.
+
+| Provedor | Variável | Endereço (formato OpenAI) | Modelos preferidos |
+|---|---|---|---|
+| Groq | `GROQ_API_KEY` | `https://api.groq.com/openai/v1` | `openai/gpt-oss-120b`, `qwen/qwen3.8-27b`, `openai/gpt-oss-20b` (ou `FINAN_PROXY_MODELS`) |
+| Gemini | `GEMINI_API_KEY` | `https://generativelanguage.googleapis.com/v1beta/openai` | `gemini-3.8-flash`, `gemini-flash-latest`, `gemini-3.5-flash-lite` |
+| Cerebras | `CEREBRAS_API_KEY` | `https://api.cerebras.ai/v1` | `gpt-oss-120b`, `qwen-3.8-27b` |
+| OpenRouter | `OPENROUTER_API_KEY` | `https://openrouter.ai/api/v1` | `openai/gpt-oss-120b:free`, `openrouter/free` (só modelos `:free`; os outros cobram) |
+| Cloudflare Workers AI | `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID` | `https://api.cloudflare.com/client/v4/accounts/<id>/ai/v1` | `@cf/zai-org/glm-4.7-flash` (a Cloudflare não lista modelos no formato OpenAI, então vale só esta lista) |
+
+- **Ordem**: a variável `FINAN_PROVIDERS` (padrão `groq,gemini,cerebras,openrouter,cloudflare`).
+  Nome desconhecido ou sem chave é ignorado.
+- Os modelos `gpt-oss` (de qualquer provedor) vão com `reasoning_effort: low`; os outros, sem.
+- Os provedores grátis podem guardar ou usar os pedidos de forma diferente do Groq (o Gemini
+  grátis pode usar os dados para melhorar o produto; no OpenRouter depende do modelo). Os nomes
+  já chegam trocados por apelidos, mas vale ler os termos de cada um antes de ligar.
+
+### Criar as contas grátis e pôr as chaves na Vercel
+
+Não cole nenhuma chave em chat, issue ou no repositório. Para cada chave: no projeto
+**finan-rich-ia** da Vercel, *Settings → Environment Variables → Add*, nome da variável, valor
+da chave, ambiente *Production*, **Save**. Depois de criar todas, *Deployments → (último) → ⋯ →
+Redeploy*: a Vercel só lê as variáveis novas numa publicação nova.
+
+1. **Groq**: console.groq.com, entre com o Google (sem cartão), *API Keys → Create API Key*.
+   Variável `GROQ_API_KEY`.
+2. **Gemini**: aistudio.google.com, entre com o Google, *Get API key → Create API key* (pode
+   criar um projeto novo). Sem cartão, fica no plano grátis. Variável `GEMINI_API_KEY`.
+3. **Cerebras**: cloud.cerebras.ai, crie a conta (sem cartão), menu *API Keys → Generate API
+   Key*. Variável `CEREBRAS_API_KEY`.
+4. **OpenRouter**: openrouter.ai, entre (Google ou GitHub), *Keys → Create Key*. Não precisa
+   pôr crédito: o intermediário só usa modelos `:free`. Variável `OPENROUTER_API_KEY`.
+5. **Cloudflare Workers AI**: dash.cloudflare.com, crie a conta (sem cartão; o plano grátis
+   dá uma cota diária de "neurons"). O **Account ID** aparece em *Workers AI* (ou na barra
+   lateral da página inicial da conta): variável `CLOUDFLARE_ACCOUNT_ID`. Depois *Workers AI →
+   Use REST API → Create a Workers AI API Token* (ou *My Profile → API Tokens → Create Token*,
+   modelo "Workers AI"): variável `CLOUDFLARE_API_TOKEN`. Precisa das duas.
+
+Para conferir: depois do Redeploy, faça uma pergunta no app e veja em *Logs* as linhas
+`ia {...}` (abaixo), com o nome do provedor que respondeu. Na partida, o programa também
+escreve `finanproxy ouvindo em ... (provedores: groq, gemini, ...)` (só os nomes; as chaves
+nunca vão para o log).
+
+## Registro de tokens por pedido
+
+Cada resposta de um provedor vira uma linha no log, para medir o custo por pessoa e por
+personagem. Exemplo:
+
+```
+ia {"provedor":"groq","modelo":"openai/gpt-oss-120b","status":200,"entrada":4120,"saida":310,"ms":1840,"personagem":"bento","aparelho":"3f9a0c12be47"}
+```
+
+- `entrada` e `saida`: tokens do campo `usage` da resposta. No streaming, o intermediário pede
+  `stream_options.include_usage` ao Groq e ao Gemini (o OpenRouter manda sozinho) e lê o último
+  evento depois de repassar tudo, sem atrasar a pessoa. `-1` quer dizer que o provedor não
+  informou (ou que foi uma tentativa que falhou e passou para o próximo).
+- `status`: o HTTP do provedor; `0` quando ele nem respondeu. Uma pergunta que pulou modelos
+  tem uma linha por tentativa (ex.: um 429 e depois o 200).
+- `personagem`: o nome do personagem nas instruções ("Você é o Bento…"), `consultor` (sem
+  personagem), `categorize` (categorização de extrato) ou `ping` (teste de conexão).
+- `aparelho`: um resumo (hash) do id do aparelho, que dá para contar pedidos por aparelho mas
+  não volta ao id; vazio quando o pedido não tem id.
+- Nunca vai para o log o texto da pessoa, a resposta da IA, a chave do provedor ou o id cru
+  do aparelho.
+
+**Como ver na Vercel**: projeto *finan-rich-ia → Logs*, e escreva `ia {` na busca para ver
+só essas linhas (ou, no terminal, `vercel logs --environment production --query 'ia {' --since 1h`).
+O Go escreve o log na saída de erro, então a Vercel mostra essas linhas com nível *Error*:
+é normal. No plano Hobby a Vercel guarda só **1 hora** de log; para juntar os números do mês,
+copie de tempos em tempos ou use um plano com retenção maior (Pro guarda 1 dia).
 
 ## Publicar na Vercel (uma vez; depois, cada push na main atualiza)
 
