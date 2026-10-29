@@ -187,3 +187,24 @@ grátis.
 
 Trocar a chave do Groq: `printf '%s' "NOVA" | gcloud secrets versions add groq-api-key --data-file=-`
 e rode o script de novo. Ver uso e erros: *Cloud Run → finanproxy → Registros*.
+
+## Seu computador como provedor (sem cota de tokens)
+
+Um computador com o Ollama pode emprestar a IA ao intermediário: entra por último na ordem
+padrão (`local` em `FINAN_PROVIDERS`), sem cota de tokens, uma pergunta por vez. Medido num Mac
+M1 Pro com o `qwen2.5:7b-instruct`: de 30 a 48 s por pergunta. Ele vai **sem as ferramentas**
+(modelo pequeno escrevia o pedido como texto); as contas prontas do Go já vão nos dados.
+
+1. `ollama pull qwen2.5:7b-instruct` e `OLLAMA_CONTEXT_LENGTH=8192 ollama serve`.
+2. Gere uma senha longa (`openssl rand -base64 32`) e guarde **fora do repositório**.
+3. `FINAN_LOCAL_KEY=<senha> go run ./cmd/finanlocal`: o porteiro escuta só neste computador
+   (`127.0.0.1:11435`), pede a senha, só deixa passar a conversa e sempre com o modelo escolhido
+   (o Ollama não tem senha; nunca exponha a porta 11434).
+4. Túnel com endereço fixo e grátis: Tailscale Funnel (`tailscale funnel 11435`), que dá
+   `https://<computador>.<rede>.ts.net`.
+5. Na Vercel: `FINAN_LOCAL_URL` = `https://<computador>.<rede>.ts.net/v1` e `FINAN_LOCAL_KEY` =
+   a mesma senha; Redeploy. Só o computador, sem nenhuma chave de nuvem, também funciona.
+
+Nunca vão para o GitHub: a senha, o endereço do túnel e o `dist/finanlocal` (a pasta `dist/` é
+ignorada). Com o computador desligado, o intermediário passa para o próximo provedor ou a tela
+mostra a resposta sem IA.

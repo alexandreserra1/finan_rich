@@ -429,3 +429,57 @@ func TestUsageFromRealGroqResponses(t *testing.T) {
 		}
 	}
 }
+
+// O computador de casa como provedor (cmd/finanlocal atrás de um túnel): entra
+// por último na ordem padrão, só com endereço e chave, e o modelo padrão é o
+// Qwen 7B (17 de 17 na avaliação do time, igual à nuvem).
+func TestConfigFromEnvLocal(t *testing.T) {
+	for _, k := range []string{"GROQ_API_KEY", "GEMINI_API_KEY", "CEREBRAS_API_KEY", "OPENROUTER_API_KEY", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "FINAN_PROVIDERS", "FINAN_LOCAL_URL", "FINAN_LOCAL_KEY", "FINAN_LOCAL_MODEL"} {
+		t.Setenv(k, "")
+	}
+	t.Setenv("GROQ_API_KEY", "g")
+	t.Setenv("FINAN_LOCAL_KEY", "segredo") // sem o endereço fica de fora
+	if cfg, _ := ConfigFromEnv(); len(cfg.Providers) != 1 {
+		t.Errorf("local sem endereço entrou: %+v", cfg.Providers)
+	}
+	t.Setenv("FINAN_LOCAL_URL", "https://meu-mac.exemplo.ts.net/v1")
+	cfg, err := ConfigFromEnv()
+	if err != nil || len(cfg.Providers) != 2 {
+		t.Fatalf("%v %+v", err, cfg.Providers)
+	}
+	if p := cfg.Providers[1]; p.Name != "local" || p.Upstream != "https://meu-mac.exemplo.ts.net/v1" || p.APIKey != "segredo" || strings.Join(p.Models, ",") != "qwen2.5:7b-instruct" || !p.StreamUsage || !p.NoTools {
+		t.Errorf("local = %+v", p)
+	}
+	t.Setenv("FINAN_LOCAL_MODEL", "qwen2.5:1.5b-instruct")
+	t.Setenv("FINAN_PROVIDERS", "local,groq")
+	if cfg, _ := ConfigFromEnv(); cfg.Providers[0].Name != "local" || cfg.Providers[0].Models[0] != "qwen2.5:1.5b-instruct" {
+		t.Errorf("ordem e modelo trocados por variável: %+v", cfg.Providers)
+	}
+	// Só o computador de casa, sem nenhuma chave de nuvem, também serve.
+	t.Setenv("GROQ_API_KEY", "")
+	if cfg, err := ConfigFromEnv(); err != nil || len(cfg.Providers) != 1 {
+		t.Errorf("só local: %v %+v", err, cfg.Providers)
+	}
+}
+
+// O modelo local pequeno escreve o pedido de ferramenta como texto em vez de
+// chamá-la (visto com o Qwen 7B no caminho completo). Para ele o pedido vai
+// sem as ferramentas: as contas prontas do Go já estão nos dados, e o prompt
+// fica menor (mais rápido).
+func TestProxyLocalWithoutTools(t *testing.T) {
+	captureLog(t)
+	local := &fakeProvider{key: "k", models: []string{"qwen2.5:7b-instruct"}}
+	h := New(Config{Providers: []Provider{{Name: "local", Upstream: local.start(t).URL, APIKey: "k", Models: []string{"qwen2.5:7b-instruct"}, NoTools: true}}, Limits: DefaultLimits})
+	body := `{"stream":false,"tools":[{"type":"function","function":{"name":"simular_dividas"}}],"tool_choice":"auto","messages":[{"role":"system","content":` + jsonString(advisor.SystemPrompt) + `},{"role":"user","content":"oi"}]}`
+	if rec := ask(h, "a", body); rec.Code != http.StatusOK {
+		t.Fatalf("resposta = %d %s", rec.Code, rec.Body.String())
+	}
+	if _, has := local.seen[0]["tools"]; has {
+		t.Error("o modelo local recebeu as ferramentas")
+	}
+	if _, has := local.seen[0]["tool_choice"]; has {
+		t.Error("o modelo local recebeu tool_choice")
+	}
+}
+
+func jsonString(s string) string { b, _ := json.Marshal(s); return string(b) }
