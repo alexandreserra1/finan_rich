@@ -18,9 +18,12 @@ BIN="$DIR/finanlocal"
 AGENTS="$HOME/Library/LaunchAgents"
 MODEL="${FINAN_LOCAL_MODEL:-qwen2.5:7b-instruct}"
 PORT=11435
+# O Tailscale da App Store e o standalone não põem o comando no PATH; ele fica dentro do app.
+TS=$(command -v tailscale || true)
+[ -n "$TS" ] || [ ! -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ] || TS=/Applications/Tailscale.app/Contents/MacOS/Tailscale
 
 if [ "${1:-}" = "--off" ]; then
-  command -v tailscale >/dev/null && tailscale funnel --https=443 off 2>/dev/null || true
+  [ -n "$TS" ] && "$TS" funnel --https=443 off 2>/dev/null || true
   for name in ollama local; do
     launchctl bootout "gui/$(id -u)/com.finanrich.$name" 2>/dev/null || true
     rm -f "$AGENTS/com.finanrich.$name.plist"
@@ -76,9 +79,10 @@ curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$PORT/v1/models" | grep
 pbcopy < "$KEY"
 echo "A chave foi copiada para a área de transferência (está em $KEY; não mostre a ninguém)."
 
-if command -v tailscale >/dev/null; then
-  tailscale funnel --bg "$PORT"
-  host=$(tailscale status --json | sed -n 's/.*"DNSName": *"\([^"]*\)\.".*/\1/p' | head -1)
+if [ -n "$TS" ]; then
+  echo "Abrindo o túnel. Se o Tailscale mostrar um link para liberar o HTTPS e o Funnel, abra, aprove e espere."
+  "$TS" funnel --bg "$PORT"
+  host=$("$TS" status --json | sed -n 's/.*"DNSName": *"\([^"]*\)\.".*/\1/p' | head -1)
   echo
   echo "Na Vercel (projeto finan-rich-ia → Settings → Environment Variables):"
   echo "  FINAN_LOCAL_URL = https://$host/v1"

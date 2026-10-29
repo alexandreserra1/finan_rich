@@ -207,7 +207,9 @@ personagem; o Consultor mostra "Os números do app" na hora, e a IA escreve a ex
 (modelo pequeno escrevia o pedido como texto); as contas prontas do Go já vão nos dados.
 
 **Jeito rápido:** instale o Tailscale (App Store ou versão standalone) e entre com a sua conta;
-depois rode `scripts/finanlocal.sh`. Ele gera a chave em `~/.config/finan_rich/local.key` (fora
+depois rode `scripts/finanlocal.sh` no Terminal (o comando `tailscale` não precisa estar no
+PATH: o script usa o que vem dentro do app). Na primeira vez, o Tailscale mostra um link para
+liberar o HTTPS e o Funnel na sua rede: abra, aprove, e o script continua sozinho. Ele gera a chave em `~/.config/finan_rich/local.key` (fora
 do repositório), compila o porteiro, deixa o Ollama e o porteiro ligando sozinhos ao entrar no
 Mac, abre o túnel, mostra o endereço e copia a chave para a área de transferência (nunca mostra
 na tela). Falta só pôr as duas variáveis na Vercel. `scripts/finanlocal.sh --off` desliga tudo.
