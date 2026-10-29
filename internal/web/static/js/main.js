@@ -88,9 +88,16 @@ window.finanSaveNote = saveNote;
 // E isto para aplicar o que o consultor propôs (depois do toque no botão).
 window.finanProposal = { apply: applyProposal, button: proposalButton };
 
-// Ao sair da conta, apaga os dados guardados neste aparelho.
+// Ao sair da conta (acesso ao computador pela rede), apaga os dados deste
+// aparelho, mas só depois de tudo o que foi feito aqui chegar ao computador:
+// com alteração na fila, não apaga nada e avisa.
 document.querySelectorAll('form[action="/sair"]').forEach((form) => form.addEventListener("submit", async (e) => {
   e.preventDefault();
+  const left = await sync.flushBeforeLeaving();
+  if (left > 0) {
+    flash(`${left} ${left === 1 ? "alteração deste aparelho ainda não chegou" : "alterações deste aparelho ainda não chegaram"} ao computador. Conecte-se e tente sair de novo; nada foi apagado.`, "err");
+    return;
+  }
   await db.wipe();
   form.submit();
 }));

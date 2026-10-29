@@ -117,6 +117,11 @@ try {
   await page.goto(`${B}/lancamentos`);
   await page.waitForSelector("td:has-text('Feira (offline)')", { timeout: 20000 });
   ok(true, "recarregando sem servidor, nada se perde");
+  // Sair da conta (acesso pela rede) com alteração que ainda não chegou ao
+  // computador: não pode apagar nada; só sai quando a fila estiver vazia.
+  const left = await page.evaluate(async () => (await import("/static/js/sync.js")).flushBeforeLeaving());
+  ok(left === 1 && (await page.evaluate(async () => (await (await import("/static/js/db.js")).pending()).length)) === 1,
+    `sem o computador, sair não apaga: ${left} alteração ainda na fila`);
 
   // O servidor volta: sincroniza sozinho.
   await startServer();
@@ -124,6 +129,7 @@ try {
   await waitStatus(page, "ok", 20000);
   ok((await serverRecords()).some((r) => r.description === "Feira (offline)" && r.amountCents === 8750),
     "ao voltar a conexão, o servidor recebeu o lançamento feito offline");
+  ok(await page.evaluate(async () => (await import("/static/js/sync.js")).flushBeforeLeaving()) === 0, "com tudo enviado, sair pode apagar");
 
   // Outro aparelho recebe; e o que ele lança chega ao primeiro.
   const phone = await browser.newContext({ ...devices["iPhone 13"] });

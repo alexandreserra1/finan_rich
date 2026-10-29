@@ -134,3 +134,11 @@ export function start() {
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") sync(); });
   setInterval(sync, PERIOD_MS);
 }
+
+// flushBeforeLeaving sincroniza e devolve quantas alterações deste aparelho
+// ainda não chegaram ao computador. Sair da conta só apaga com zero (senão
+// elas se perderiam).
+export async function flushBeforeLeaving() {
+  await sync();
+  return (await pending()).length;
+}
