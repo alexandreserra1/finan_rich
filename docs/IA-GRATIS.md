@@ -83,7 +83,7 @@ continua como antes.
 | Groq | `GROQ_API_KEY` | `https://api.groq.com/openai/v1` | `openai/gpt-oss-120b`, `qwen/qwen3.8-27b`, `openai/gpt-oss-20b` (ou `FINAN_PROXY_MODELS`) |
 | Gemini | `GEMINI_API_KEY` | `https://generativelanguage.googleapis.com/v1beta/openai` | `gemini-3.8-flash`, `gemini-flash-latest`, `gemini-3.5-flash-lite` |
 | Cerebras | `CEREBRAS_API_KEY` | `https://api.cerebras.ai/v1` | `gpt-oss-120b`, `qwen-3.8-27b` |
-| OpenRouter | `OPENROUTER_API_KEY` | `https://openrouter.ai/api/v1` | `openai/gpt-oss-120b:free`, `openrouter/free` (só modelos `:free`; os outros cobram) |
+| OpenRouter | `OPENROUTER_API_KEY` | `https://openrouter.ai/api/v1` | `openrouter/free` (só modelos `:free`; os outros cobram) |
 | Cloudflare Workers AI | `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID` | `https://api.cloudflare.com/client/v4/accounts/<id>/ai/v1` | `@cf/zai-org/glm-4.7-flash` (a Cloudflare não lista modelos no formato OpenAI, então vale só esta lista) |
 
 - **Ordem**: a variável `FINAN_PROVIDERS` (padrão `groq,gemini,cerebras,openrouter,cloudflare`).
