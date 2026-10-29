@@ -191,10 +191,13 @@ O que precisa do computador ligado: o **Consultor IA** (a IA roda nele) e os **A
 
 ### No site, sem instalar nada
 
-Abra **https://finan-rich-ia.vercel.app**. São as mesmas telas do app. Sem conta, os dados
-ficam no navegador; com **Entrar com Google**, ficam também no seu Google Drive (numa pasta
-que só o finan_rich usa) e aparecem iguais em outros navegadores. Nenhum servidor do
-finan_rich guarda seus dados. Detalhes em [docs/GOOGLE.md](docs/GOOGLE.md).
+Abra **https://finan-rich-ia.vercel.app**. São as mesmas telas do app, e o site só funciona
+com **Entrar com Google** (o computador de quem abre o site pode ser de outra pessoa). Os
+dados ficam no navegador e no seu Google Drive (numa pasta que só o finan_rich usa) e aparecem
+iguais em outros navegadores. Ao sair, eles saem do navegador e continuam no Drive; sem usar por
+30 minutos, o site pede para entrar de novo. Nenhum servidor do finan_rich guarda seus dados.
+Quem quer usar sem conta usa o programa do computador ou o app do celular. Detalhes em
+[docs/GOOGLE.md](docs/GOOGLE.md).
 
 ### No celular
 
