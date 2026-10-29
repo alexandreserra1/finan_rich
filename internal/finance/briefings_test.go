@@ -39,8 +39,8 @@ func TestBriefings(t *testing.T) {
 	for _, b := range Briefings(l, today) {
 		got[b.Agent.ID] = b.Title + "\n" + strings.Join(b.Lines, "\n")
 		order = append(order, b.Agent.ID)
-		if b.Link == "" || len(b.Lines) == 0 || len(b.Lines) > 3 {
-			t.Errorf("%s: link %q, %d linhas", b.Agent.Name, b.Link, len(b.Lines))
+		if b.Link == "" || b.Ask == "" || len(b.Lines) == 0 || len(b.Lines) > 3 {
+			t.Errorf("%s: link %q, pergunta %q, %d linhas", b.Agent.Name, b.Link, b.Ask, len(b.Lines))
 		}
 	}
 	if strings.Join(order, ",") != "bento,tito,otavio" {

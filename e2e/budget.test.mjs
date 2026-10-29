@@ -73,7 +73,9 @@ try {
   ok(await page.isVisible(".flash:has-text('Pronto!')"), "ao terminar, mostra o Painel montado");
   const brief = (name) => page.locator(`#time .brief:has(strong:text-is('${name}'))`);
   ok((await brief("Bento").textContent()).includes("Cartão: 10,00% ao mês") && (await brief("Tito").textContent()).includes("Reserva de emergência") &&
-    await brief("Bento").getAttribute("href") === "/dividas", "o time conta no Painel o que viu (Bento na dívida, Tito na meta)");
+    await brief("Bento").locator(".brief-main").getAttribute("href") === "/dividas", "o time conta no Painel o que viu (Bento na dívida, Tito na meta)");
+  ok(decodeURIComponent(await brief("Bento").locator(".ask-team").getAttribute("href")) === "/chat?agente=bento&pergunta=Qual+dívida+devo+pagar+primeiro?",
+    "cada resumo do time tem 'Perguntar para ...', com uma pergunta que o app responde sem IA");
   await page.evaluate(() => window.finanSync());
   const [rec, prefs, debts, goals] = await Promise.all(["recurring", "pref", "debt", "goal"].map(records));
   const split = prefs.find((p) => p.id === "split")?.value;
@@ -115,6 +117,11 @@ try {
   ok(await page.isVisible(".alert.warn:has-text('Orçamento de Restaurantes e delivery em 80%')"), "aviso ao chegar a 80%");
   ok(await page.locator(".alert.warn:has-text('em 80%') .who").textContent() === "Luna" &&
     await page.locator(".alert.warn:has-text('em 80%') img.face").evaluate((i) => i.complete && i.naturalWidth > 0), "o aviso vem da Luna, com o rosto dela");
+  await page.click(".alert.warn:has-text('em 80%') .ask-team");
+  await page.waitForSelector(".team-member[data-agent=luna][aria-pressed=true]");
+  ok(await page.inputValue("textarea[name=message]") === "Como chego no fim do mês sem estourar o orçamento de Restaurantes e delivery?" &&
+    page.url() === `${B}/chat` && await page.evaluate(() => document.activeElement?.name) === "message",
+    "'Perguntar para Luna' no aviso abre o Consultor com a Luna e a pergunta já escrita");
   await page.goto(`${B}/lancamentos`);
   await page.waitForSelector(".tx-card");
   await add("iFood lanche", "30", "Restaurantes e delivery · Desejos");
@@ -127,7 +134,7 @@ try {
 
   // O aviso leva aos lançamentos da categoria.
   await page.goto(`${B}/`);
-  await page.click(".alert.danger:has-text('estourou')");
+  await page.click(".alert.danger:has-text('estourou') .alert-main");
   await page.waitForSelector(".filter-total");
   ok(await page.locator("tbody tr.tx-row").count() === 3 && (await page.textContent(".filter-total")).includes("R$ 110,00"), "o aviso abre os lançamentos filtrados pela categoria");
 

@@ -70,6 +70,9 @@ export function budgetBars(budgets) {
   </div>`;
 }
 
+// askLink: "Perguntar para Luna" abre o Consultor com quem avisou e a pergunta já escrita.
+const askLink = (x, about) => html`<a class="ask-team" href="/chat?${new URLSearchParams({ agente: x.agent.id, pergunta: x.ask })}" aria-label="Perguntar para ${x.agent.name}: ${about}">Perguntar para ${x.agent.name}</a>`;
+
 const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const DAY = 864e5;
 const isoDay = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -159,7 +162,7 @@ export function render(ctx) {
     ${pageHead("Painel", month, { kicker: "Visão do mês", actions: html`<a class="btn" href="/lancamentos">${PLUS}Novo lançamento</a>` })}
 
     ${alerts.length ? html`<section class="alerts" aria-label="Avisos">
-      ${alerts.map((a) => html`<a class="alert ${a.level}" href="${a.link}"><img class="face" src="/static/img/avatar-${a.agent.animal}.png" alt="" width="24" height="24"><b class="who">${a.agent.name}</b><strong>${a.title}</strong><span>${a.text}</span></a>`)}
+      ${alerts.map((a) => html`<div class="alert ${a.level}"><a class="alert-main" href="${a.link}"><img class="face" src="/static/img/avatar-${a.agent.animal}.png" alt="" width="24" height="24"><b class="who">${a.agent.name}</b><strong>${a.title}</strong><span>${a.text}</span></a>${askLink(a, a.title)}</div>`)}
     </section>` : ""}
 
     <section class="cards has-hero dash-kpis">
@@ -284,9 +287,9 @@ export function render(ctx) {
 
     ${briefs.length ? html`<section class="panel" id="time" aria-labelledby="time-h">
       <div class="panel-head"><h2 id="time-h">O que o time viu</h2><a class="small" href="/chat">Conversar</a></div>
-      <div class="briefs">${briefs.map((b) => html`<a class="brief" href="${b.link}">
+      <div class="briefs">${briefs.map((b) => html`<div class="brief"><a class="brief-main" href="${b.link}">
         <span class="brief-who"><img class="face" src="/static/img/avatar-${b.agent.animal}.png" alt="" width="36" height="36"><span><strong>${b.agent.name}</strong><small>${b.title}</small></span></span>
-        <ul>${b.lines.map((l) => html`<li>${l}</li>`)}</ul></a>`)}</div>
+        <ul>${b.lines.map((l) => html`<li>${l}</li>`)}</ul></a>${askLink(b, b.title)}</div>`)}</div>
     </section>` : ""}
 
     ${v.budgets.length ? html`<section class="panel" id="orcamentos">

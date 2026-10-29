@@ -106,6 +106,7 @@ A lista da auditoria, conferida nos e2e:
 | Ponto da auditoria | Situação |
 |---|---|
 | Painel como centro de decisão (situação, atenção, ação, evolução) | feito no redesign: avisos assinados pelo time, "O que o time viu", números do mês no topo |
+| Do aviso para a conversa | feito em 29/10/2026: cada aviso e cada resumo do time tem "Perguntar para ...", que abre o Consultor com quem avisou e a pergunta já escrita (app, site e computador). Antes, o aviso só levava à tela do assunto e o "Conversar" abria com o último personagem escolhido. Testes em `e2e/budget.test.mjs` e `e2e/app.test.mjs` |
 | Lançamento rápido, com desfazer | feito: janela curta, Desfazer depois de apagar |
 | Dívidas com cenários (mínimo, valor a mais, ordem) | feito: tela Dívidas e o Bento (`simular_dividas`) |
 | Consultor que separa conta do Go e texto da IA | feito: cartão "Os números do app" (Go) na hora, a IA explica embaixo; sem IA, o cartão é a resposta |

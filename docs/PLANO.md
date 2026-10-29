@@ -103,3 +103,5 @@ nunca deixe a pessoa sem resposta.
   cobertura dos cenários sem endereço e com Tailscale conectado sem Wi-Fi. Go e WebAssembly passaram.
 - [ ] Conferir Android, Safari e Sair pela rede em aparelhos reais, além de Ollama e nuvem reais.
 - [x] Preservar os cartões de números no recarregamento do computador e o estado aberto no app.
+- [x] "Perguntar para ..." em cada aviso e resumo do time: abre o Consultor com quem avisou e a
+  pergunta pronta; as de vencimento, dívida, metas e gastos têm resposta sem IA.

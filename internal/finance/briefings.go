@@ -15,6 +15,7 @@ type Briefing struct {
 	Title string   `json:"title"`
 	Lines []string `json:"lines"`
 	Link  string   `json:"link"`
+	Ask   string   `json:"ask"` // a pergunta do "Perguntar para ...", com resposta pronta (sem IA)
 }
 
 const maxBriefingLines = 3
@@ -23,17 +24,17 @@ const maxBriefingLines = 3
 // a dizer hoje. A Luna fala pelos avisos (Alerts). Quem não tem nada fica de fora.
 func Briefings(l domain.Ledger, today time.Time) []Briefing {
 	out := []Briefing{}
-	add := func(agent, title, link string, lines []string) {
+	add := func(agent, title, link, ask string, lines []string) {
 		if len(lines) > maxBriefingLines {
 			lines = lines[:maxBriefingLines]
 		}
 		if len(lines) > 0 {
-			out = append(out, Briefing{agentByID(agent), title, lines, link})
+			out = append(out, Briefing{agentByID(agent), title, lines, link, ask})
 		}
 	}
-	add("bento", "Plano das dívidas", "/dividas", debtLines(l, today))
-	add("tito", "Suas metas", "/metas", goalLines(l, today))
-	add("otavio", "Achados do mês", "/analise", spendingLines(l, today))
+	add("bento", "Plano das dívidas", "/dividas", "Qual dívida devo pagar primeiro?", debtLines(l, today))
+	add("tito", "Suas metas", "/metas", "Minhas metas estão no ritmo?", goalLines(l, today))
+	add("otavio", "Achados do mês", "/analise", "Onde estou gastando demais este mês?", spendingLines(l, today))
 	return out
 }
 

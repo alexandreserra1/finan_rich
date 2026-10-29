@@ -106,7 +106,7 @@ export function render() {
       </div>
       <form data-form="ask" class="chat-form">
         <div class="composer">
-          <textarea name="message" rows="1" placeholder="Mensagem para ${me.name}…" aria-label="Mensagem para ${me.name}" required ${chat.busy ? "disabled" : ""}></textarea>
+          <textarea name="message" rows="1" placeholder="Mensagem para ${me.name}…" aria-label="Mensagem para ${me.name}" required ${chat.busy ? "disabled" : ""}>${chat.draft || ""}</textarea>
           <button type="submit" class="send" aria-label="Enviar" ${chat.busy ? "disabled" : ""}>${icon(SEND_ICON, 16)}</button>
         </div>
         <p class="composer-hint"><span class="desk-only">Enter envia · Shift+Enter quebra a linha · </span>Confira os números antes de seguir um plano.</p>
@@ -281,6 +281,19 @@ export function bind(root, ctx) {
   }
   const form = root.querySelector('[data-form="ask"]');
   if (!form) return; // só o aviso de configurar a IA
+  // Vindo do "Perguntar para ..." do Painel: quem avisou e a pergunta já escrita.
+  const want = ctx.params.get("agente"), question = ctx.params.get("pergunta");
+  if (want !== null || question !== null) {
+    history.replaceState(null, "", "/chat"); // recarregar não escreve a pergunta de novo
+    if (team.some((a) => a.id === want)) {
+      agentId = want;
+      db.setMeta(AGENT_KEY, want).catch(() => {});
+    }
+    chat.draft = (question || "").slice(0, 500);
+    chat.suggest = null;
+    ctx.rerender();
+    return;
+  }
   if (chat.scroll) {
     root.querySelector(".messages > :last-child")?.scrollIntoView({ block: "end" });
     chat.scroll = chat.busy;
@@ -297,6 +310,13 @@ export function bind(root, ctx) {
   if (!CSS.supports("field-sizing", "content")) {
     const box = form.elements.message;
     box.addEventListener("input", () => { box.style.height = "auto"; box.style.height = `${Math.min(box.scrollHeight, 160)}px`; });
+  }
+  if (chat.draft) { // a pergunta do Painel, pronta para enviar ou mudar
+    const box = form.elements.message;
+    box.dispatchEvent(new Event("input"));
+    box.focus();
+    box.setSelectionRange(box.value.length, box.value.length);
+    chat.draft = "";
   }
   // O cartão dos números fica como a pessoa deixou quando a tela é redesenhada.
   root.querySelectorAll("details[data-numbers]").forEach((d) => d.addEventListener("toggle", () => {

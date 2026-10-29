@@ -344,6 +344,15 @@ try {
   await page.waitForSelector(".team-member[data-agent=bento][aria-pressed=true]", { timeout: 20000 });
   ok((await page.getAttribute("textarea[name=message]", "placeholder")).includes("Bento") && (await page.textContent(".messages")).includes("Jade · Consultora"),
     "a escolha fica guardada e cada resposta antiga mostra quem respondeu");
+  // "Perguntar para Tito" no Painel: o Consultor abre com o Tito e a pergunta já escrita.
+  await page.evaluate(() => {
+    const a = Object.assign(document.createElement("a"), { id: "ir-tito", textContent: "Perguntar para Tito", href: "/chat?agente=tito&pergunta=" + encodeURIComponent("Minhas metas estão no ritmo?") });
+    document.querySelector("main").append(a);
+  });
+  await page.click("#ir-tito");
+  await page.waitForSelector(".team-member[data-agent=tito][aria-pressed=true]");
+  ok(await page.inputValue("textarea[name=message]") === "Minhas metas estão no ritmo?" && page.url() === `${APP}/chat` &&
+    await page.evaluate(() => document.activeElement?.name) === "message", "no app, o link do Painel abre o Consultor com o Tito e a pergunta já escrita");
   await page.click(".team-member[data-agent=jade]");
   await page.waitForSelector(".team-member[data-agent=jade][aria-pressed=true]");
 

@@ -204,6 +204,16 @@
   const grow = !CSS.supports("field-sizing", "content");
   if (grow) input.addEventListener("input", () => { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 160) + "px"; });
 
+  // Vindo do "Perguntar para ..." do Painel: quem avisou e a pergunta já escrita.
+  const params = new URLSearchParams(location.search);
+  if (params.has("agente") || params.has("pergunta")) {
+    history.replaceState(null, "", "/chat"); // recarregar não escreve a pergunta de novo
+    if (params.get("agente")) pick(params.get("agente"));
+    input.value = (params.get("pergunta") || "").slice(0, 500);
+    input.dispatchEvent(new Event("input"));
+    input.focus();
+  }
+
   // setState: o estado da IA no cabeçalho (pronta, sem IA, sem conexão).
   function setState(state, text) {
     const el = document.querySelector(".ai-state");

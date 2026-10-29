@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alexandreserra1/finan_rich/internal/domain"
+	"github.com/alexandreserra1/finan_rich/internal/finance"
 	"github.com/alexandreserra1/finan_rich/internal/llm"
 )
 
@@ -156,5 +158,37 @@ func TestNumbers(t *testing.T) {
 	}
 	if got := Numbers(offlineQ("bento", "Qual dívida devo pagar primeiro?")); got != "" {
 		t.Errorf("pergunta pronta não leva números à parte:\n%s", got)
+	}
+}
+
+// O "Perguntar para ..." dos avisos e do time: as perguntas de vencimento, dívida,
+// meta atrasada e gasto fora do normal têm resposta pronta, sem gastar IA.
+func TestTeamAsksArePrepared(t *testing.T) {
+	l := teamLedger()
+	l.Debts[0].DueDay = 17 // vence amanhã
+	l.Debts = append(l.Debts, domain.Debt{Meta: domain.Meta{ID: "d3", UpdatedAt: 1}, Name: "Cheque especial", BalanceCents: 500000, MinPaymentCents: 10000, MonthlyRateBP: 800})
+	l.Goals = append(l.Goals, domain.Goal{Meta: domain.Meta{ID: "g3", UpdatedAt: 1}, Name: "Sofá", TargetCents: 300000, Deadline: "2026-08", StartDate: "2026-01-01"})
+	free := map[string]bool{"debt-due": true, "debt-growing": true, "goal-late": true, "unusual": true}
+	seen := map[string]bool{}
+	for _, a := range finance.Alerts(l, teamDay) {
+		if !free[a.Kind] {
+			continue
+		}
+		seen[a.Kind] = true
+		if !Prepared(Question{Agent: a.Agent.ID, Text: a.Ask}) {
+			t.Errorf("aviso %s (%s): %q não tem resposta pronta", a.Kind, a.Agent.ID, a.Ask)
+		}
+	}
+	if !seen["debt-due"] || !seen["debt-growing"] || !seen["goal-late"] {
+		t.Errorf("o teste precisa dos avisos de vencimento, dívida e meta: %v", seen)
+	}
+	briefs := finance.Briefings(l, teamDay)
+	for _, b := range briefs {
+		if !Prepared(Question{Agent: b.Agent.ID, Text: b.Ask}) {
+			t.Errorf("resumo de %s: %q não tem resposta pronta", b.Agent.ID, b.Ask)
+		}
+	}
+	if len(briefs) < 2 {
+		t.Errorf("o teste precisa dos resumos do time: %+v", briefs)
 	}
 }

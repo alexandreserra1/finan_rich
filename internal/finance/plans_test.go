@@ -105,6 +105,16 @@ func TestAlerts(t *testing.T) {
 			t.Errorf("%s (%s): agente %+v, quer %s", a.Title, a.Kind, a.Agent, want)
 		}
 	}
+	// Cada aviso traz a pergunta do "Perguntar para ...": a conversa abre com quem avisou.
+	ask := map[string]string{
+		"debt-due": "O que vence esta semana?", "debt-growing": "Qual dívida devo pagar primeiro?",
+		"bucket-over": "Passei da meta de Desejos este mês. Onde dá para cortar?", "unusual": "Onde estou gastando demais este mês?",
+	}
+	for _, a := range Alerts(l, today) {
+		if a.Ask != ask[a.Kind] {
+			t.Errorf("%s (%s): pergunta %q, quer %q", a.Title, a.Kind, a.Ask, ask[a.Kind])
+		}
+	}
 	if !strings.HasPrefix(got[0], "danger") || !strings.HasPrefix(got[len(got)-1], "warn") {
 		t.Errorf("os alertas graves vêm primeiro:\n%s", all)
 	}
