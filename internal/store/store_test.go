@@ -73,6 +73,12 @@ func TestApplyChangesLastWriteWins(t *testing.T) {
 		t.Errorf("apagar: n=%d err=%v", n, err)
 	}
 
+	// Uma edição antiga (outro aparelho, offline) chegando depois de apagar não
+	// ressuscita o lançamento.
+	if n, _ := s.ApplyChanges(ctx, []Change{change(t, TypeTransaction, txRecord("t1", 250, "celular offline"))}); n != 0 {
+		t.Error("edição mais antiga que o apagamento não pode trazer o lançamento de volta")
+	}
+
 	changes, cursor, err := s.ChangesSince(ctx, start, 100)
 	if err != nil || len(changes) != 1 || cursor != start+3 {
 		t.Fatalf("mudanças desde %d: %d itens, cursor %d, err %v", start, len(changes), cursor, err)
