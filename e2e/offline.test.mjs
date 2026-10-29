@@ -5,7 +5,8 @@
 //   npm install && npx playwright install chromium
 //   FINANRICH_BIN=../dist/finanrich npm test
 // Para usar um Chromium já instalado: CHROMIUM_PATH=/caminho/do/chrome
-import { chromium, devices } from "playwright";
+import { chromium as chromiumEngine, devices, webkit } from "playwright";
+const chromium = process.env.BROWSER === "webkit" ? webkit : chromiumEngine; // BROWSER=webkit: o motor do Safari
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

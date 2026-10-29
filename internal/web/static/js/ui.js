@@ -41,6 +41,10 @@ export function newId() {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
 
+// askLink: "Perguntar para Luna" abre o Consultor com quem avisou e a pergunta já
+// escrita (x é um aviso ou resumo do time, com agent e ask vindos do Go).
+export const askLink = (x, about) => html`<a class="ask-team" href="/chat?${new URLSearchParams({ agente: x.agent.id, pergunta: x.ask })}" aria-label="Perguntar para ${x.agent.name}: ${about}">Perguntar para ${x.agent.name}</a>`;
+
 export const BUCKETS = { necessidades: "Necessidades", desejos: "Desejos", investimentos: "Investimentos", renda: "Renda" };
 export const SPENDING = ["necessidades", "desejos", "investimentos"];
 

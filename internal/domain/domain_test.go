@@ -47,6 +47,17 @@ func TestValidate(t *testing.T) {
 	if (Pref{Meta: meta(PrefSplit), Value: split}).Validate() == nil {
 		t.Error("divisão somando 110% aceita")
 	}
+	// Avisos limpos: só uma lista de IDs.
+	if (Pref{Meta: meta(PrefAlertsCleared), Value: json.RawMessage(`["budget-near:res:2026-10"]`)}).Validate() != nil {
+		t.Error("lista de avisos limpos recusada")
+	}
+	if (Pref{Meta: meta(PrefAlertsCleared), Value: json.RawMessage(`{"x":1}`)}).Validate() == nil {
+		t.Error("avisos limpos que não são lista aceitos")
+	}
+	l := Ledger{Prefs: []Pref{{Meta: meta(PrefAlertsCleared), Value: json.RawMessage(`["a","b"]`)}}}
+	if got := l.ClearedAlerts(); !got["a"] || !got["b"] || len(got) != 2 {
+		t.Errorf("avisos limpos = %v", got)
+	}
 }
 
 func TestLedger(t *testing.T) {

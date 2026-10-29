@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "performance": "node performance.mjs",
-    "test": "node offline.test.mjs && node app.test.mjs && node export.test.mjs && node import.test.mjs && node plans.test.mjs && node budget.test.mjs && node accounts.test.mjs && node debts.test.mjs && node site.test.mjs && node google.test.mjs"
+    "test": "node offline.test.mjs && node app.test.mjs && node export.test.mjs && node import.test.mjs && node plans.test.mjs && node budget.test.mjs && node accounts.test.mjs && node debts.test.mjs && node site.test.mjs && node google.test.mjs",
+    "webkit": "BROWSER=webkit npm test"
   },
   "devDependencies": {
     "playwright": "1.56.1"

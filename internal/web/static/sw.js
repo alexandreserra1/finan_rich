@@ -15,7 +15,7 @@ const PRECACHE = [
   ...APP_ROUTES, "/offline",
   "/static/app.css", "/static/app.js", "/static/chat.js", "/static/settings.js", "/static/favicon.svg", "/static/img/brand-mark.png", "/static/img/avatar-pantera.png", "/static/img/avatar-urso.png", "/static/img/avatar-raposa.png", "/static/img/avatar-texugo.png", "/static/img/avatar-coruja.png", "/static/vendor/geist/Geist-Variable.woff2",
   "/static/icons/icon-192.png", "/static/finance.wasm",
-  "/static/js/main.js", "/static/js/db.js", "/static/js/sync.js", "/static/js/finance.js", "/static/js/ui.js",
+  "/static/js/main.js", "/static/js/db.js", "/static/js/sync.js", "/static/js/finance.js", "/static/js/ui.js", "/static/js/bell.js",
   "/static/js/device.js", "/static/js/pages/device.js", "/static/js/pages/advisor.js",
   "/static/js/exporter.js", "/static/js/pages/notes.js", "/static/js/pages/export.js", "/static/js/pages/import.js", "/static/js/pages/goals.js", "/static/js/pages/insights.js", "/static/js/pdftext.js", "/static/js/notes-save.js", "/static/js/native.js", "/static/js/qrscan.js", "/static/vendor/jsqr/jsQR.min.js",
   "/static/vendor/pdfjs/pdf.min.js", "/static/vendor/pdfjs/pdf.worker.min.js",

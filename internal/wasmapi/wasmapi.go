@@ -220,13 +220,13 @@ func RecurringDue(ledgerJSON, today string) string {
 	return reply(due, nil)
 }
 
-// Alerts devolve os avisos do painel.
+// Alerts devolve os avisos do sininho: os que a pessoa ainda não limpou.
 func Alerts(ledgerJSON, today string) string {
 	l, day, err := planInput(ledgerJSON, today)
 	if err != nil {
 		return reply(nil, err)
 	}
-	return reply(finance.Alerts(l, day), nil)
+	return reply(finance.PendingAlerts(l, day), nil)
 }
 
 // Briefings devolve o que Bento, Tito e Otávio têm a dizer hoje (Painel).

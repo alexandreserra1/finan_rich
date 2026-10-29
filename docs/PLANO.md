@@ -105,3 +105,7 @@ nunca deixe a pessoa sem resposta.
 - [x] Preservar os cartões de números no recarregamento do computador e o estado aberto no app.
 - [x] "Perguntar para ..." em cada aviso e resumo do time: abre o Consultor com quem avisou e a
   pergunta pronta; as de vencimento, dívida, metas e gastos têm resposta sem IA.
+- [x] Avisos no sininho do cabeçalho, com "Limpar tudo" sincronizado entre aparelhos.
+- [x] Testes também no motor do Safari (WebKit): PDF corrigido; trava ao recarregar o Painel
+  a conferir no iPhone.
+- [ ] Redesenho do Painel (o Alexandre desenha no Claude Design; depois implementar aqui).

@@ -1,6 +1,7 @@
 package finance
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -120,5 +121,44 @@ func TestAlerts(t *testing.T) {
 	}
 	if a := Alerts(domain.Ledger{}, today); a == nil || len(a) != 0 {
 		t.Error("sem dados, lista vazia (não nula)")
+	}
+}
+
+// Sininho: o aviso limpo some em todos os aparelhos e só volta se a situação mudar.
+func TestPendingAlerts(t *testing.T) {
+	today := time.Date(2026, 10, 15, 0, 0, 0, 0, time.UTC)
+	l := domain.Ledger{
+		Categories: []domain.Category{{Meta: meta("res"), Name: "Restaurantes", Bucket: domain.BucketDesejos, BudgetCents: 10000}},
+		Transactions: []domain.Transaction{
+			{Meta: meta("t1"), Kind: domain.KindSaida, Description: "iFood", AmountCents: 8500, CategoryID: "res", Date: "2026-10-05"},
+		},
+		Debts: []domain.Debt{{Meta: meta("d1"), Name: "Cartão", BalanceCents: 100000, MinPaymentCents: 20000, MonthlyRateBP: 1000, DueDay: 17}},
+	}
+	ids := func(list []Alert) (out []string) {
+		for _, a := range list {
+			out = append(out, a.ID)
+		}
+		return out
+	}
+	all := ids(Alerts(l, today))
+	if strings.Join(all, ",") != "debt-due:d1:2026-10-17:warn,budget-near:res:2026-10" || strings.Join(ids(Alerts(l, today)), ",") != strings.Join(all, ",") {
+		t.Fatalf("IDs = %v", all)
+	}
+	clear := func(ids ...string) {
+		v, _ := json.Marshal(ids)
+		l.Prefs = []domain.Pref{{Meta: meta(domain.PrefAlertsCleared), Value: v}}
+	}
+	clear(all...)
+	if got := PendingAlerts(l, today); len(got) != 0 {
+		t.Errorf("depois de limpar tudo, nada pendente: %v", ids(got))
+	}
+	if len(Alerts(l, today)) != 2 {
+		t.Error("o Consultor continua vendo todos os avisos")
+	}
+	// Piorou: o orçamento estourou e o vencimento é hoje. Os avisos voltam.
+	l.Transactions = append(l.Transactions, domain.Transaction{Meta: meta("t2"), Kind: domain.KindSaida, Description: "Outback", AmountCents: 3000, CategoryID: "res", Date: "2026-10-16"})
+	later := today.AddDate(0, 0, 2)
+	if got := strings.Join(ids(PendingAlerts(l, later)), ","); got != "debt-due:d1:2026-10-17:danger,budget-over:res:2026-10" {
+		t.Errorf("pendentes depois de piorar = %s", got)
 	}
 }

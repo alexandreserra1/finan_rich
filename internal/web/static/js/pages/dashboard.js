@@ -2,7 +2,7 @@
 // divisão do salário, para onde foi o dinheiro, últimos lançamentos, próximos
 // vencimentos e dívidas. Os números vêm do Go (finance.*); aqui só desenha.
 import * as finance from "../finance.js";
-import { BUCKETS, barPct, html, iconTile, raw, shiftMonth, today } from "../ui.js";
+import { BUCKETS, askLink, barPct, html, iconTile, raw, shiftMonth, today } from "../ui.js";
 import { goalCards } from "./goals.js";
 import { chart } from "../charts.js";
 import * as welcome from "./welcome.js";
@@ -70,9 +70,6 @@ export function budgetBars(budgets) {
   </div>`;
 }
 
-// askLink: "Perguntar para Luna" abre o Consultor com quem avisou e a pergunta já escrita.
-const askLink = (x, about) => html`<a class="ask-team" href="/chat?${new URLSearchParams({ agente: x.agent.id, pergunta: x.ask })}" aria-label="Perguntar para ${x.agent.name}: ${about}">Perguntar para ${x.agent.name}</a>`;
-
 const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const DAY = 864e5;
 const isoDay = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -131,7 +128,6 @@ export function render(ctx) {
   const rise = painted ? "" : "rise";
   painted = true;
 
-  const alerts = month === day.slice(0, 7) ? finance.alerts(ledger, day) : [];
   const briefs = month === day.slice(0, 7) ? finance.briefings(ledger, day) : [];
   const goalViews = finance.goals(ledger, day).filter((g) => !g.done || g.deadline >= month);
   const inMonth = ledger.transactions.filter((t) => !t.deleted && t.date.startsWith(month));
@@ -160,10 +156,6 @@ export function render(ctx) {
 
   return html`
     ${pageHead("Painel", month, { kicker: "Visão do mês", actions: html`<a class="btn" href="/lancamentos">${PLUS}Novo lançamento</a>` })}
-
-    ${alerts.length ? html`<section class="alerts" aria-label="Avisos">
-      ${alerts.map((a) => html`<div class="alert ${a.level}"><a class="alert-main" href="${a.link}"><img class="face" src="/static/img/avatar-${a.agent.animal}.png" alt="" width="24" height="24"><b class="who">${a.agent.name}</b><strong>${a.title}</strong><span>${a.text}</span></a>${askLink(a, a.title)}</div>`)}
-    </section>` : ""}
 
     <section class="cards has-hero dash-kpis">
       <div class="card hero ${rise}">

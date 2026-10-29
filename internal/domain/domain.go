@@ -156,6 +156,12 @@ type Pref struct {
 // PrefSplit é o ID da preferência com a divisão do salário.
 const PrefSplit = "split"
 
+// PrefAlertsCleared é o ID da preferência com os avisos que a pessoa limpou no
+// sininho (lista de IDs de finance.Alert). Vai junto na sincronização.
+const PrefAlertsCleared = "avisos-limpos"
+
+const maxClearedAlerts = 200
+
 // Split é o percentual planejado da renda para cada bucket de gasto.
 type Split map[string]int
 
@@ -277,6 +283,12 @@ func (p Pref) Validate() error {
 			return errors.New("divisão do salário inválida")
 		}
 		return s.Validate()
+	}
+	if p.ID == PrefAlertsCleared {
+		var ids []string
+		if err := json.Unmarshal(p.Value, &ids); err != nil || len(ids) > maxClearedAlerts {
+			return errors.New("lista de avisos limpos inválida")
+		}
 	}
 	return nil
 }

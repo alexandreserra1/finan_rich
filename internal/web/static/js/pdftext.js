@@ -6,6 +6,23 @@
 const BASE = "/static/vendor/pdfjs/";
 let lib = null;
 
+// Safari (até a 26) não percorre ReadableStream com "for await", que o pdf.js 6
+// usa ao ler o texto: sem isto, a fatura em PDF dava "undefined is not a function".
+if (!ReadableStream.prototype[Symbol.asyncIterator]) {
+  ReadableStream.prototype[Symbol.asyncIterator] = async function* () {
+    const reader = this.getReader();
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) return;
+        yield value;
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  };
+}
+
 async function pdfjs() {
   if (!lib) {
     lib = await import(BASE + "pdf.min.js");

@@ -28,6 +28,7 @@ Arquitetura: `docs/ARCHITECTURE.md`. App do celular: `docs/MOBILE.md`. Licenças
 make wasm          # gera internal/web/static/finance.wasm (precisa existir antes de go build/test)
 make test          # gofmt, go vet, go test e as regras rodando como WebAssembly
 make e2e           # testes no navegador (offline, sync, app, importação, exportação, metas)
+cd e2e && npm run webkit   # os mesmos testes no motor do Safari (npx playwright install webkit antes)
 make mobile        # mobile/www + cap sync;  make apk: APK de teste (Android SDK + Java 21)
 scripts/check-licenses.sh   # só dependências de código aberto
 scripts/clean.sh   # limpeza (veja "Limpeza" abaixo)

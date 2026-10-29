@@ -4,7 +4,8 @@
 // um resumo. No fim, a jornada inteira: extrato do banco pelo Open Finance
 // (Pluggy falsa), dívidas, diagnóstico e cortes que refazem o plano.
 // Uso (na pasta e2e): FINANRICH_BIN=../dist/finanrich node debts.test.mjs
-import { chromium } from "playwright";
+import { chromium as chromiumEngine, webkit } from "playwright";
+const chromium = process.env.BROWSER === "webkit" ? webkit : chromiumEngine; // BROWSER=webkit: o motor do Safari
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import { mkdtempSync, rmSync } from "node:fs";

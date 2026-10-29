@@ -11,6 +11,9 @@ import (
 
 // Alert é um aviso do painel (e, no celular, base das notificações).
 type Alert struct {
+	// ID: tipo, item, período e, no vencimento, a gravidade. Fica igual enquanto a
+	// situação não muda; é por ele que o sininho lembra o que a pessoa limpou.
+	ID    string `json:"id"`
 	Kind  string `json:"kind"`  // debt-due, debt-growing, bucket-over, budget-near, budget-over, unusual, goal-late, goal-done
 	Level string `json:"level"` // danger, warn, ok
 	Title string `json:"title"`
@@ -22,14 +25,46 @@ type Alert struct {
 	Ask string `json:"ask"`
 }
 
-func alert(kind, level, title, text, link, ask string) Alert {
-	return Alert{kind, level, title, text, link, agentFor(kind), ask}
+// alert monta o aviso; key é o item e o período (o ID fica kind:key).
+func alert(kind, key, level, title, text, link, ask string) Alert {
+	return Alert{ID: kind + ":" + key, Kind: kind, Level: level, Title: title, Text: text, Link: link, Agent: agentFor(kind), Ask: ask}
 }
 
 const maxAlerts = 6
 
-// Alerts levanta o que merece atenção hoje.
+// Alerts levanta o que merece atenção hoje (o Consultor vê todos).
 func Alerts(l domain.Ledger, today time.Time) []Alert {
+	return top(allAlerts(l, today))
+}
+
+// PendingAlerts são os avisos do sininho: os de Alerts menos os que a pessoa
+// limpou (domain.PrefAlertsCleared). Um aviso limpo volta quando a situação
+// muda: piorou, venceu de novo ou virou o mês com o problema ainda lá.
+func PendingAlerts(l domain.Ledger, today time.Time) []Alert {
+	cleared := l.ClearedAlerts()
+	var out []Alert
+	for _, a := range allAlerts(l, today) {
+		if !cleared[a.ID] {
+			out = append(out, a)
+		}
+	}
+	return top(out)
+}
+
+// top deixa os graves primeiro e no máximo maxAlerts (lista vazia, nunca nula).
+func top(out []Alert) []Alert {
+	rank := map[string]int{"danger": 0, "warn": 1, "ok": 2}
+	sort.SliceStable(out, func(i, j int) bool { return rank[out[i].Level] < rank[out[j].Level] })
+	if len(out) > maxAlerts {
+		out = out[:maxAlerts]
+	}
+	if out == nil {
+		out = []Alert{}
+	}
+	return out
+}
+
+func allAlerts(l domain.Ledger, today time.Time) []Alert {
 	var out []Alert
 	brl := money.Format
 	day := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.UTC)
@@ -46,13 +81,13 @@ func Alerts(l domain.Ledger, today time.Time) []Alert {
 			}
 			switch days := int(due.Sub(day).Hours() / 24); {
 			case days == 0:
-				out = append(out, alert("debt-due", "danger", d.Name+" vence hoje", "Parcela mínima: "+brl(d.MinPaymentCents)+".", "/dividas", "O que vence esta semana?"))
+				out = append(out, alert("debt-due", d.ID+":"+due.Format(time.DateOnly)+":danger", "danger", d.Name+" vence hoje", "Parcela mínima: "+brl(d.MinPaymentCents)+".", "/dividas", "O que vence esta semana?"))
 			case days <= 3:
-				out = append(out, alert("debt-due", "warn", fmt.Sprintf("%s vence em %d dia%s (dia %d)", d.Name, days, plural(days), d.DueDay), "Parcela mínima: "+brl(d.MinPaymentCents)+".", "/dividas", "O que vence esta semana?"))
+				out = append(out, alert("debt-due", d.ID+":"+due.Format(time.DateOnly)+":warn", "warn", fmt.Sprintf("%s vence em %d dia%s (dia %d)", d.Name, days, plural(days), d.DueDay), "Parcela mínima: "+brl(d.MinPaymentCents)+".", "/dividas", "O que vence esta semana?"))
 			}
 		}
 		if d.MinPaymentCents > 0 && !d.Payable {
-			out = append(out, alert("debt-growing", "danger", d.Name+" está crescendo",
+			out = append(out, alert("debt-growing", d.ID+":"+current.Key(), "danger", d.Name+" está crescendo",
 				"A parcela mínima ("+brl(d.MinPaymentCents)+") não cobre os juros do mês ("+brl(d.MonthlyInterestCents)+").", "/dividas",
 				"Qual dívida devo pagar primeiro?"))
 		}
@@ -62,7 +97,7 @@ func Alerts(l domain.Ledger, today time.Time) []Alert {
 	if s.InCents > 0 {
 		for _, b := range s.Buckets {
 			if b.PlannedCents > 0 && b.SpentCents > b.PlannedCents {
-				out = append(out, alert("bucket-over", "warn", fmt.Sprintf("%s passou da meta do mês", bucketName(b.Bucket)),
+				out = append(out, alert("bucket-over", b.Bucket+":"+current.Key(), "warn", fmt.Sprintf("%s passou da meta do mês", bucketName(b.Bucket)),
 					fmt.Sprintf("Gasto %s de %s planejados (%d%%).", brl(b.SpentCents), brl(b.PlannedCents), b.UsedPct()), "/",
 					fmt.Sprintf("Passei da meta de %s este mês. Onde dá para cortar?", bucketName(b.Bucket))))
 			}
@@ -76,11 +111,11 @@ func Alerts(l domain.Ledger, today time.Time) []Alert {
 			if b.RemainingCents == 0 {
 				title = "Orçamento de " + b.Name + " acabou"
 			}
-			out = append(out, alert("budget-over", "danger", title,
+			out = append(out, alert("budget-over", b.CategoryID+":"+current.Key(), "danger", title,
 				fmt.Sprintf("Gasto %s de %s no mês (%d%%).", brl(b.SpentCents), brl(b.BudgetCents), b.UsedPct), link,
 				"O orçamento de "+b.Name+" estourou. Como seguro os gastos até o fim do mês?"))
 		case b.UsedPct >= budgetWarnPct:
-			out = append(out, alert("budget-near", "warn", fmt.Sprintf("Orçamento de %s em %d%%", b.Name, b.UsedPct),
+			out = append(out, alert("budget-near", b.CategoryID+":"+current.Key(), "warn", fmt.Sprintf("Orçamento de %s em %d%%", b.Name, b.UsedPct),
 				fmt.Sprintf("Restam %s de %s no mês.", brl(b.RemainingCents), brl(b.BudgetCents)), link,
 				"Como chego no fim do mês sem estourar o orçamento de "+b.Name+"?"))
 		}
@@ -90,19 +125,10 @@ func Alerts(l domain.Ledger, today time.Time) []Alert {
 	for _, g := range Goals(l, today) {
 		switch {
 		case g.Late:
-			out = append(out, alert("goal-late", "warn", "Prazo da meta \""+g.Name+"\" passou", "Faltam "+brl(g.RemainingCents)+". Que tal ajustar o prazo?", "/metas", "Minhas metas estão no ritmo?"))
+			out = append(out, alert("goal-late", g.ID+":"+current.Key(), "warn", "Prazo da meta \""+g.Name+"\" passou", "Faltam "+brl(g.RemainingCents)+". Que tal ajustar o prazo?", "/metas", "Minhas metas estão no ritmo?"))
 		case g.Done && g.Deadline != "" && g.Deadline >= current.Key():
-			out = append(out, alert("goal-done", "ok", "Meta \""+g.Name+"\" atingida!", "Você juntou "+brl(g.ProgressCents)+".", "/metas", "Bati a meta \""+g.Name+"\". O que eu faço agora?"))
+			out = append(out, alert("goal-done", g.ID, "ok", "Meta \""+g.Name+"\" atingida!", "Você juntou "+brl(g.ProgressCents)+".", "/metas", "Bati a meta \""+g.Name+"\". O que eu faço agora?"))
 		}
-	}
-
-	rank := map[string]int{"danger": 0, "warn": 1, "ok": 2}
-	sort.SliceStable(out, func(i, j int) bool { return rank[out[i].Level] < rank[out[j].Level] })
-	if len(out) > maxAlerts {
-		out = out[:maxAlerts]
-	}
-	if out == nil {
-		out = []Alert{}
 	}
 	return out
 }
@@ -127,7 +153,7 @@ func unusualSpending(l domain.Ledger, m domain.Month) []Alert {
 	for _, c := range now.Categories {
 		a := avg[c.Name] / max(months, 1)
 		if a > 0 && c.SpentCents*2 >= a*3 && c.SpentCents-a >= 10000 {
-			out = append(out, alert("unusual", "warn", c.Name+" acima do normal",
+			out = append(out, alert("unusual", c.Name+":"+m.Key(), "warn", c.Name+" acima do normal",
 				fmt.Sprintf("%s este mês, %d%% acima da média dos últimos 3 meses (%s).", money.Format(c.SpentCents), (c.SpentCents-a)*100/a, money.Format(a)), "/lancamentos",
 				"Onde estou gastando demais este mês?"))
 		}

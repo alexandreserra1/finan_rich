@@ -1,7 +1,8 @@
 // Teste de ponta a ponta de contas e cartões: cadastrar, lançar parcelado no
 // cartão, ver a fatura, o saldo das contas e o patrimônio.
 // Uso (na pasta e2e): FINANRICH_BIN=../dist/finanrich node accounts.test.mjs
-import { chromium } from "playwright";
+import { chromium as chromiumEngine, webkit } from "playwright";
+const chromium = process.env.BROWSER === "webkit" ? webkit : chromiumEngine; // BROWSER=webkit: o motor do Safari
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

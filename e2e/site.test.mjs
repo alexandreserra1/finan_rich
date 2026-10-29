@@ -2,7 +2,8 @@
 // -tags sitebundle) servindo as telas do app em modo site e o intermediário da
 // IA no mesmo endereço. Sem computador: os dados ficam no navegador.
 // Uso (na pasta e2e): SITE_BIN=../dist/finansite node site.test.mjs
-import { chromium, devices } from "playwright";
+import { chromium as chromiumEngine, devices, webkit } from "playwright";
+const chromium = process.env.BROWSER === "webkit" ? webkit : chromiumEngine; // BROWSER=webkit: o motor do Safari
 import { spawn } from "node:child_process";
 
 const BIN = process.env.SITE_BIN || "../dist/finansite";

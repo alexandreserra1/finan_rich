@@ -3,7 +3,8 @@
 // troca de token, revogação) e um Google Drive falso em memória. Duas abas
 // independentes com a mesma conta: o que uma lança, a outra recebe pelo Drive.
 // Uso (na pasta e2e): SITE_BIN=../dist/finansite node google.test.mjs
-import { chromium, devices } from "playwright";
+import { chromium as chromiumEngine, devices, webkit } from "playwright";
+const chromium = process.env.BROWSER === "webkit" ? webkit : chromiumEngine; // BROWSER=webkit: o motor do Safari
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";

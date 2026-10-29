@@ -1,6 +1,7 @@
 // Teste de ponta a ponta de lançamentos recorrentes, metas e avisos do painel.
 // Uso (na pasta e2e): FINANRICH_BIN=../dist/finanrich node plans.test.mjs
-import { chromium } from "playwright";
+import { chromium as chromiumEngine, webkit } from "playwright";
+const chromium = process.env.BROWSER === "webkit" ? webkit : chromiumEngine; // BROWSER=webkit: o motor do Safari
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -86,8 +87,10 @@ try {
     await page.click("form[data-form=debt] button[type=submit]");
     await page.waitForSelector("td:has-text('Cartão')");
     await page.goto(`${B}/`);
-    await page.waitForSelector(".alert.warn:has-text('Cartão vence em 2 dias')", { timeout: 10000 });
-    ok(true, "aviso de vencimento no painel");
+    await page.locator("[data-bell]:visible").click();
+    await page.waitForSelector("#avisos .bell-item.warn:has-text('Cartão vence em 2 dias')", { timeout: 10000 });
+    ok(true, "aviso de vencimento no sininho");
+    await page.keyboard.press("Escape");
   }
 
   // Apagar dívida: some da tela, não volta ao recarregar e o apagamento chega ao computador.

@@ -3,7 +3,8 @@
 // Envia uma fatura em CSV e um extrato OFX (os mesmos dos testes em Go),
 // revisa as sugestões, importa e confere que reimportar não duplica.
 // Uso (na pasta e2e): FINANRICH_BIN=../dist/finanrich node import.test.mjs
-import { chromium } from "playwright";
+import { chromium as chromiumEngine, webkit } from "playwright";
+const chromium = process.env.BROWSER === "webkit" ? webkit : chromiumEngine; // BROWSER=webkit: o motor do Safari
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -136,6 +137,15 @@ try {
   const pdfRows = await page.locator(".import-table tbody tr").count();
   ok(pdfRows === 5, `fatura em PDF: ${pdfRows} lançamentos lidos`);
   ok((await row("Ifood *Ifood").locator("td.num").textContent()).includes("−R$ 52,30") && await page.isChecked("[data-action=invert]"), "compras do PDF entram como gastos");
+  // Safari (até a 26) não tem "for await" em ReadableStream, que o pdf.js usa: a fatura é lida mesmo assim.
+  const safari = await browser.newPage();
+  await safari.addInitScript(() => { delete ReadableStream.prototype[Symbol.asyncIterator]; });
+  await safari.goto(`${B}/importar`);
+  await safari.waitForSelector("input[name=statement]", { state: "attached" });
+  await safari.setInputFiles("input[name=statement]", `${TESTDATA}/fatura.pdf`);
+  await safari.waitForSelector(".import-table", { timeout: 20000 });
+  ok(await safari.locator(".import-table tbody tr").count() === 5, "fatura em PDF no Safari (sem for await em ReadableStream)");
+  await safari.close();
   ok(!(await row("Pagamento recebido").locator("input[type=checkbox]").isChecked()), "pagamento da fatura (PDF) vem desmarcado");
   ok(await row("Amazon Marketplace - Parcela 2/10").locator("select option:checked").textContent() === "Compras · Desejos", "parcela da Amazon sugerida em Compras");
 

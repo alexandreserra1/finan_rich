@@ -5,7 +5,8 @@
 // app e o computador fica em outro endereço. Cobre: pareamento por código,
 // sincronização com token, uso offline e aparelho desconectado no computador.
 // Uso (na pasta e2e): FINANRICH_BIN=../dist/finanrich APP_WWW=../mobile/www node app.test.mjs
-import { chromium, devices } from "playwright";
+import { chromium as chromiumEngine, devices, webkit } from "playwright";
+const chromium = process.env.BROWSER === "webkit" ? webkit : chromiumEngine; // BROWSER=webkit: o motor do Safari
 import { spawn } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { createServer } from "node:http";
@@ -329,7 +330,7 @@ try {
   await page.click("form[data-form=ask] button");
   await page.waitForSelector(".handoff:has-text('Isso é com Bento (Dívidas)')", { timeout: 30000 });
   await page.click("[data-handoff]");
-  await page.waitForSelector(".msg.assistant >> nth=-1 >> text=Bento · Dívidas", { timeout: 30000 });
+  await page.waitForSelector(".msg.assistant:not(.pending):has-text('Bento · Dívidas')", { timeout: 30000 }); // a pendente já tem o nome
   const toBento = cloudBodies.at(-1);
   ok(toBento.messages[0].content.includes("Você é o Bento") && toBento.tools.join() === "buscar_lancamentos,criar_divida,registrar_pagamento,simular_dividas" &&
     await page.getAttribute(".team-member[data-agent=bento]", "aria-pressed") === "true" && await page.locator(".handoff").count() === 0,

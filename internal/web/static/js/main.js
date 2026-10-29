@@ -10,6 +10,7 @@ import { applyProposal, proposalButton, proposalKind, saveNote } from "./notes-s
 import { onReminderTap, scheduleReminders } from "./native.js";
 import * as finance from "./finance.js";
 import * as charts from "./charts.js";
+import * as bell from "./bell.js";
 import * as sync from "./sync.js";
 import { currentMonth, flash, newId, today, toString } from "./ui.js";
 import * as dashboard from "./pages/dashboard.js";
@@ -159,6 +160,7 @@ function render(message) {
   // menu antes de decidir entre a landing e o Painel.
   if (ledger || !page) document.documentElement.dataset.ready = "";
   if (!page || !ledger) return;
+  refreshBell();
   document.body.classList.remove("landing-mode", "login-mode");
   if (device.isSite && !signedIn && path !== "/oauth") {
     // Site sem login: nenhuma tela do app, nem por endereço digitado. Endereço
@@ -204,7 +206,22 @@ async function load() {
   }
   await applyRecurring();
   scheduleReminders(ledger).catch(() => {}); // no app: os lembretes do time
+  refreshBell();
 }
+
+// O sininho (bell.js): site sem login não mostra; limpar grava a preferência sincronizada.
+const refreshBell = () => bell.update(device.isSite && !signedIn ? null : ledger);
+bell.mount({
+  save: async (ids) => {
+    await context("/", new URLSearchParams()).save("pref", { id: "avisos-limpos", value: ids }, null, { rerender: false });
+    refreshBell();
+  },
+  go: (url) => {
+    const u = new URL(url, location.href);
+    if (root && ROUTES[u.pathname]) navigate(u.href);
+    else location.assign(u.href);
+  },
+});
 
 // applyRecurring grava os lançamentos recorrentes que já venceram e ainda não
 // existem. O ID é fixo por recorrência e mês: outro aparelho que gerar o mesmo
@@ -254,7 +271,7 @@ if (device.isSite) ["click", "keydown"].forEach((ev) => document.addEventListene
 
 document.addEventListener("click", (e) => {
   const a = e.target.closest("a[href]");
-  if (!a || !root || e.metaKey || e.ctrlKey || e.shiftKey || a.target) return;
+  if (!a || !root || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || a.target) return;
   if (a.getAttribute("href").startsWith("#")) return; // âncora na mesma página (landing): o navegador rola
   const u = new URL(a.href, location.href);
   if (u.origin !== location.origin || !ROUTES[u.pathname]) return;
@@ -282,6 +299,9 @@ if (root) {
     .catch((err) => {
       root.innerHTML = `<p class="notice warn">Não foi possível iniciar o app: ${String(err.message || err).replace(/</g, "&lt;")}</p>`;
     });
+} else if (document.querySelector("[data-bell]")) {
+  // Telas do servidor (Consultor e Ajustes no computador): as regras só para o sininho.
+  finance.load().then(load).catch(() => {});
 }
 
 // App do celular: links finanrich://parear?url=...&codigo=... (QR code do

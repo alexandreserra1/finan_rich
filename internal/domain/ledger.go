@@ -141,6 +141,20 @@ func (l Ledger) Split() Split {
 	return DefaultSplit()
 }
 
+// ClearedAlerts devolve os IDs dos avisos que a pessoa limpou no sininho.
+func (l Ledger) ClearedAlerts() map[string]bool {
+	out := map[string]bool{}
+	for _, p := range l.Prefs {
+		var ids []string
+		if p.ID == PrefAlertsCleared && !p.Deleted && json.Unmarshal(p.Value, &ids) == nil {
+			for _, id := range ids {
+				out[id] = true
+			}
+		}
+	}
+	return out
+}
+
 // CanDeleteCategory diz se a categoria pode ser apagada: não pode enquanto
 // lançamentos, recorrentes ou metas não apagados ainda a usam (o erro diz
 // quantos). É a mesma regra no aparelho (antes de apagar) e no servidor (ao

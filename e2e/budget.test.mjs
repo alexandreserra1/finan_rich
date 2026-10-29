@@ -1,7 +1,8 @@
 // Teste de ponta a ponta do primeiro uso guiado, do orçamento por categoria e
 // da busca nos lançamentos.
 // Uso (na pasta e2e): FINANRICH_BIN=../dist/finanrich node budget.test.mjs
-import { chromium } from "playwright";
+import { chromium as chromiumEngine, webkit } from "playwright";
+const chromium = process.env.BROWSER === "webkit" ? webkit : chromiumEngine; // BROWSER=webkit: o motor do Safari
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -114,29 +115,60 @@ try {
   await page.goto(`${B}/`);
   await page.waitForSelector("#orcamentos");
   ok((await page.textContent("#orcamentos")).includes("R$ 80,00 de R$ 100,00"), "Painel mostra quanto já foi usado do orçamento");
-  ok(await page.isVisible(".alert.warn:has-text('Orçamento de Restaurantes e delivery em 80%')"), "aviso ao chegar a 80%");
-  ok(await page.locator(".alert.warn:has-text('em 80%') .who").textContent() === "Luna" &&
-    await page.locator(".alert.warn:has-text('em 80%') img.face").evaluate((i) => i.complete && i.naturalWidth > 0), "o aviso vem da Luna, com o rosto dela");
-  await page.click(".alert.warn:has-text('em 80%') .ask-team");
+  // Os avisos ficam no sininho do cabeçalho (no computador, ao lado da marca).
+  const bell = page.locator("[data-bell]:visible");
+  const openBell = async () => { if (await page.locator("#avisos").isHidden()) await bell.click(); };
+  ok(await page.locator(".alerts, .alert").count() === 0 && await bell.locator("[data-bell-count]").textContent() === "1" &&
+    (await bell.getAttribute("aria-label")) === "Avisos: 1 novo", "o Painel não tem mais a faixa de avisos: o sininho mostra quantos há");
+  await openBell();
+  ok(await page.isVisible("#avisos .bell-item.warn:has-text('Orçamento de Restaurantes e delivery em 80%')"), "aviso ao chegar a 80%");
+  ok(await page.locator("#avisos .bell-item:has-text('em 80%') b").textContent() === "Luna" &&
+    await page.locator("#avisos .bell-item:has-text('em 80%') img.face").evaluate((i) => i.complete && i.naturalWidth > 0), "o aviso vem da Luna, com o rosto dela");
+  await page.keyboard.press("Escape");
+  ok(await page.locator("#avisos").isHidden() && await page.evaluate(() => document.activeElement?.hasAttribute("data-bell")), "Esc fecha a lista e volta ao sininho");
+  await openBell();
+  await page.click("#avisos .bell-item:has-text('em 80%') .ask-team");
   await page.waitForSelector(".team-member[data-agent=luna][aria-pressed=true]");
   ok(await page.inputValue("textarea[name=message]") === "Como chego no fim do mês sem estourar o orçamento de Restaurantes e delivery?" &&
     page.url() === `${B}/chat` && await page.evaluate(() => document.activeElement?.name) === "message",
     "'Perguntar para Luna' no aviso abre o Consultor com a Luna e a pergunta já escrita");
+  await page.waitForSelector("[data-bell]:visible", { timeout: 20000 });
+  ok(await bell.locator("[data-bell-count]").isHidden(), "o sininho também está no Consultor do computador, já sem o aviso tocado");
   await page.goto(`${B}/lancamentos`);
   await page.waitForSelector(".tx-card");
   await add("iFood lanche", "30", "Restaurantes e delivery · Desejos");
   await page.goto(`${B}/`);
-  await page.waitForSelector(".alert.danger:has-text('Orçamento de Restaurantes e delivery estourou')");
+  await page.waitForSelector("#orcamentos");
+  await openBell();
+  ok(await page.locator("#avisos .bell-item").count() === 1 && await page.isVisible("#avisos .bell-item.danger:has-text('Orçamento de Restaurantes e delivery estourou')"),
+    "o aviso de 80% saiu ao ser tocado; o de orçamento estourado é outro e aparece");
   ok((await page.textContent("#orcamentos")).includes("estourou R$ 10,00"), "aviso e barra quando o orçamento estoura");
   await page.goto(`${B}/analise`);
   await page.waitForSelector(".pace-chart canvas");
   ok(/Orçamentos por categoria[\s\S]*R\$ 110,00 de R\$ 100,00/.test(await page.textContent("main")), "Análise mostra os orçamentos");
 
-  // O aviso leva aos lançamentos da categoria.
+  // O aviso leva aos lançamentos da categoria e sai da lista.
   await page.goto(`${B}/`);
-  await page.click(".alert.danger:has-text('estourou') .alert-main");
+  await page.waitForSelector("#orcamentos");
+  await openBell();
+  await page.click("#avisos .bell-item:has-text('estourou') .bell-main");
   await page.waitForSelector(".filter-total");
   ok(await page.locator("tbody tr.tx-row").count() === 3 && (await page.textContent(".filter-total")).includes("R$ 110,00"), "o aviso abre os lançamentos filtrados pela categoria");
+  ok(await bell.locator("[data-bell-count]").isHidden() && (await bell.getAttribute("aria-label")) === "Avisos: nenhum novo", "o aviso tocado sai do sininho");
+  await page.evaluate(() => window.finanSync());
+  const cleared = (await records("pref")).find((p) => p.id === "avisos-limpos")?.value || [];
+  ok(cleared.some((id) => id.startsWith("budget-near:")) && cleared.some((id) => id.startsWith("budget-over:")), "o que foi limpo vai na sincronização (some nos outros aparelhos)");
+  // "Limpar tudo": um aviso novo (Mercado estourou) aparece e é limpo junto.
+  await page.goto(`${B}/categorias`);
+  const market = page.locator("tr:has-text('Mercado')");
+  await market.locator("input[name=budget]").fill("100");
+  await market.locator("button[type=submit]").click();
+  await page.waitForSelector(".flash:has-text('Orçamento de Mercado')");
+  await openBell();
+  await page.waitForSelector("#avisos .bell-item:has-text('Orçamento de Mercado')");
+  await page.click("#avisos [data-bell-clear]");
+  await page.waitForSelector("#avisos .bell-empty");
+  ok(await bell.locator("[data-bell-count]").isHidden(), "Limpar tudo esvazia o sininho");
 
   // ---------- Busca e filtros ----------
   await page.goto(`${B}/lancamentos`);

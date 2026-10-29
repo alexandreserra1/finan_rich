@@ -3,7 +3,8 @@
 // Cria notas e lançamentos, baixa planilha, PDF, CSV e backup (gerados no
 // aparelho, pelo WebAssembly), apaga tudo e restaura o backup.
 // Uso (na pasta e2e): FINANRICH_BIN=../dist/finanrich node export.test.mjs
-import { chromium } from "playwright";
+import { chromium as chromiumEngine, webkit } from "playwright";
+const chromium = process.env.BROWSER === "webkit" ? webkit : chromiumEngine; // BROWSER=webkit: o motor do Safari
 import { spawn } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

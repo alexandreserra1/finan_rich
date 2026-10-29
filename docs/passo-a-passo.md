@@ -106,6 +106,7 @@ A lista da auditoria, conferida nos e2e:
 | Ponto da auditoria | Situação |
 |---|---|
 | Painel como centro de decisão (situação, atenção, ação, evolução) | feito no redesign: avisos assinados pelo time, "O que o time viu", números do mês no topo |
+| Avisos no sininho | feito em 29/10/2026: os avisos saíram do corpo do Painel para um sininho no alto de toda tela (app, site e computador), com o número de avisos. Tocar num leva à tela dele; "Limpar tudo" esvazia a lista em todos os aparelhos; o aviso volta se a situação mudar (`finance.Alert.ID`, `PendingAlerts`). Testes em `internal/finance/plans_test.go` e `e2e/budget.test.mjs` |
 | Do aviso para a conversa | feito em 29/10/2026: cada aviso e cada resumo do time tem "Perguntar para ...", que abre o Consultor com quem avisou e a pergunta já escrita (app, site e computador). Antes, o aviso só levava à tela do assunto e o "Conversar" abria com o último personagem escolhido. Testes em `e2e/budget.test.mjs` e `e2e/app.test.mjs` |
 | Lançamento rápido, com desfazer | feito: janela curta, Desfazer depois de apagar |
 | Dívidas com cenários (mínimo, valor a mais, ordem) | feito: tela Dívidas e o Bento (`simular_dividas`) |
@@ -198,6 +199,25 @@ login/Drive e aparelhos reais ainda precisam de medição própria.
   script no Terminal, aprovar o HTTPS e o Funnel no link que ele mostra, pôr
   `FINAN_LOCAL_URL`/`FINAN_LOCAL_KEY` na Vercel, e configurar `GOOGLE_*` (ver [GOOGLE.md](GOOGLE.md)). A correção da identidade dos
   commits já foi publicada, conforme o registro da sessão anterior; não repetir o force push.
+
+## Safari (motor WebKit), 29/10/2026
+
+Os testes no navegador agora rodam também no WebKit, o motor do Safari (`cd e2e && npm run
+webkit`; versão 26.0). Resultado:
+
+- **Erro real, corrigido:** a fatura em PDF não era lida no Safari ("undefined is not a
+  function"). O pdf.js 6 percorre `ReadableStream` com `for await`, que o Safari 26 não tem;
+  `js/pdftext.js` completa isso antes de carregar o pdf.js. O `e2e/import.test.mjs` simula o
+  Safari no Chromium para a falha não voltar.
+- **Corrida no teste, corrigida:** a troca de personagem no Consultor (`e2e/app.test.mjs`)
+  esperava a mensagem pendente, que já tem o nome.
+- **A conferir no iPhone:** no WebKit do Playwright, a página trava ("Page crashed") ao
+  recarregar o Painel logo depois que ele aparece (offline, app e budget). Não é memória
+  (o WebAssembly usa 6 MB), nem o gráfico, nem as animações, nem o service worker; outras
+  telas recarregam sem problema. Pode ser defeito do WebKit do Playwright: conferir no Safari
+  do iPhone abrindo o Painel e recarregando algumas vezes seguidas.
+- **Limite do Playwright:** no WebKit, o Google falso não pode responder com redirecionamento
+  (302), então `google.test` só roda no Chromium.
 
 ## Ordem de execução
 
