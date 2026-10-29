@@ -119,6 +119,16 @@ Para conferir: depois do Redeploy, faça uma pergunta no app e veja em *Logs* as
 escreve `finanproxy ouvindo em ... (provedores: groq, gemini, ...)` (só os nomes; as chaves
 nunca vão para o log).
 
+## Troca antes de a cota acabar
+
+O Groq informa em cada resposta quanto falta da cota daquele modelo
+(`x-ratelimit-remaining-requests` por dia e `x-ratelimit-remaining-tokens` por minuto). Quando
+sobram menos de 20 pedidos no dia ou menos de 6 mil tokens no minuto (uma pergunta), aquele
+modelo vai para o fim da fila até a hora informada em `x-ratelimit-reset-*`, e as próximas
+perguntas vão para o próximo modelo ou provedor (o computador local por último), sem esperar o
+429. Um 429 com `retry-after` faz o mesmo. A pessoa não vê a troca; só a resposta pode demorar
+mais quando cai no computador local. Se todos os outros falharem, o modelo cansado ainda é tentado.
+
 ## Registro de tokens por pedido
 
 Cada resposta de um provedor vira uma linha no log, para medir o custo por pessoa e por

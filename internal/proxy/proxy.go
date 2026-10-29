@@ -26,6 +26,7 @@ import (
 	"net/url"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -202,6 +203,70 @@ type handler struct {
 	mu      sync.Mutex
 	models  map[string]cachedModels // por provedor: os modelos que ele ainda tem
 	noUsage map[string]bool         // provedores que recusaram stream_options (não pedimos mais)
+	resting map[string]time.Time    // provedores quase sem cota: vão para o fim da fila até esta hora
+}
+
+// rest manda um modelo de um provedor ("groq/openai/gpt-oss-120b") para o fim da fila até a cota dele voltar.
+func (h *handler) rest(name string, d time.Duration) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.resting == nil {
+		h.resting = map[string]time.Time{}
+	}
+	h.resting[name] = time.Now().Add(d)
+}
+
+// attempt é um modelo de um provedor, na fila de tentativas de uma pergunta.
+type attempt struct {
+	p     Provider
+	model string
+}
+
+// plan devolve a fila de tentativas: os modelos de cada provedor na ordem
+// configurada, com os que estão quase sem cota (a cota é por modelo no Groq)
+// no fim; ainda são tentados se os outros falharem.
+func (h *handler) plan() []attempt {
+	var ready, tired []attempt
+	for _, p := range h.cfg.Providers {
+		for _, m := range h.available(p) {
+			h.mu.Lock()
+			resting := time.Now().Before(h.resting[p.Name+"/"+m])
+			h.mu.Unlock()
+			if resting {
+				tired = append(tired, attempt{p, m})
+			} else {
+				ready = append(ready, attempt{p, m})
+			}
+		}
+	}
+	return append(ready, tired...)
+}
+
+// Limites para trocar de provedor antes do 429 (cabeçalhos x-ratelimit-* do
+// Groq: pedidos por dia e tokens por minuto). Uma pergunta gasta uns 5 mil tokens.
+const (
+	minRequestsLeft = 20
+	minTokensLeft   = 6000
+)
+
+// nearLimit lê os cabeçalhos de cota e diz se o provedor está quase sem e por
+// quanto tempo descansar.
+func nearLimit(h http.Header) (time.Duration, bool) {
+	var rest time.Duration
+	check := func(remaining, reset string, min int) {
+		n, err := strconv.Atoi(h.Get(remaining))
+		if err != nil || n >= min {
+			return
+		}
+		d, err := time.ParseDuration(h.Get(reset)) // "2m59.56s", "7.66s"
+		if err != nil || d <= 0 {
+			d = time.Minute
+		}
+		rest = max(rest, d)
+	}
+	check("x-ratelimit-remaining-requests", "x-ratelimit-reset-requests", minRequestsLeft)
+	check("x-ratelimit-remaining-tokens", "x-ratelimit-reset-tokens", minTokensLeft)
+	return rest, rest > 0
 }
 
 func (h *handler) refusesUsage(name string) bool {
@@ -283,82 +348,93 @@ func (h *handler) chat(w http.ResponseWriter, r *http.Request) {
 	json.Unmarshal(body["stream"], &stream)
 	rec := usageRecord{Persona: personaOf(msgs), Device: hashDevice(device)}
 	attempts := 0
-providers:
-	for pi, p := range h.cfg.Providers {
-		models := h.available(p)
-		for i, model := range models {
-			withUsage := stream && p.StreamUsage && !h.refusesUsage(p.Name)
-			for {
-				// A última tentativa (o último modelo do último provedor, ou o teto de
-				// tentativas) entrega o que vier, erro incluído, à pessoa.
-				last := pi == len(h.cfg.Providers)-1 && i == len(models)-1 || attempts >= maxAttempts-1
-				attempts++
-				body["model"], _ = json.Marshal(model)
-				delete(body, "reasoning_effort")
-				if strings.Contains(model, "gpt-oss") {
-					body["reasoning_effort"] = json.RawMessage(`"low"`) // menos tokens de raciocínio: sobra cota grátis
+	queue := h.plan()
+	skip := map[string]bool{} // provedores fora do ar ou com chave errada nesta pergunta
+	for qi, a := range queue {
+		p, model := a.p, a.model
+		if skip[p.Name] {
+			continue
+		}
+		withUsage := stream && p.StreamUsage && !h.refusesUsage(p.Name)
+		for {
+			// A última tentativa (o último da fila, ou o teto de tentativas)
+			// entrega o que vier, erro incluído, à pessoa.
+			last := lastLive(queue[qi+1:], skip) || attempts >= maxAttempts-1
+			attempts++
+			body["model"], _ = json.Marshal(model)
+			delete(body, "reasoning_effort")
+			if strings.Contains(model, "gpt-oss") {
+				body["reasoning_effort"] = json.RawMessage(`"low"`) // menos tokens de raciocínio: sobra cota grátis
+			}
+			tools, choice := body["tools"], body["tool_choice"]
+			if p.NoTools {
+				delete(body, "tools")
+				delete(body, "tool_choice")
+			}
+			delete(body, "stream_options")
+			if withUsage {
+				body["stream_options"] = json.RawMessage(`{"include_usage":true}`) // tokens no último evento
+			}
+			payload, _ := json.Marshal(body)
+			if p.NoTools && tools != nil { // o próximo provedor recebe o pedido inteiro
+				body["tools"] = tools
+				if choice != nil {
+					body["tool_choice"] = choice
 				}
-				tools, choice := body["tools"], body["tool_choice"]
-				if p.NoTools {
-					delete(body, "tools")
-					delete(body, "tool_choice")
-				}
-				delete(body, "stream_options")
-				if withUsage {
-					body["stream_options"] = json.RawMessage(`{"include_usage":true}`) // tokens no último evento
-				}
-				payload, _ := json.Marshal(body)
-				if p.NoTools && tools != nil { // o próximo provedor recebe o pedido inteiro
-					body["tools"] = tools
-					if choice != nil {
-						body["tool_choice"] = choice
-					}
-				}
-				req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, strings.TrimRight(p.Upstream, "/")+"/chat/completions", bytes.NewReader(payload))
-				if err != nil {
-					fail(w, http.StatusInternalServerError, err.Error())
+			}
+			req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, strings.TrimRight(p.Upstream, "/")+"/chat/completions", bytes.NewReader(payload))
+			if err != nil {
+				fail(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Authorization", "Bearer "+p.APIKey)
+			rec.Provider, rec.Model, rec.start = p.Name, model, time.Now()
+			resp, err := h.cfg.Client.Do(req)
+			if err != nil {
+				rec.log(0, -1, -1)
+				if last || r.Context().Err() != nil {
+					fail(w, http.StatusBadGateway, "o provedor de IA não respondeu")
 					return
 				}
-				req.Header.Set("Content-Type", "application/json")
-				req.Header.Set("Authorization", "Bearer "+p.APIKey)
-				rec.Provider, rec.Model, rec.start = p.Name, model, time.Now()
-				resp, err := h.cfg.Client.Do(req)
-				if err != nil {
-					rec.log(0, -1, -1)
-					if last || r.Context().Err() != nil {
-						fail(w, http.StatusBadGateway, "o provedor de IA não respondeu")
-						return
-					}
-					continue providers // provedor fora do ar: o próximo
-				}
-				if last || !(retryable(resp.StatusCode) || badKey(resp.StatusCode)) {
-					in, out := relay(w, resp)
-					rec.log(resp.StatusCode, in, out)
-					return
-				}
-				refusedUsage, keyRejected := false, false
-				if resp.StatusCode == http.StatusBadRequest {
-					msg, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<10))
-					text := strings.ToLower(string(msg))
-					refusedUsage = withUsage && strings.Contains(text, "stream_options")                 // 400 de modelo aposentado não é isto
-					keyRejected = strings.Contains(text, "api key") || strings.Contains(text, "api_key") // o Gemini responde 400, e não 401, para chave inválida
-				}
-				resp.Body.Close()
-				rec.log(resp.StatusCode, -1, -1)
-				switch {
-				case badKey(resp.StatusCode) || keyRejected:
-					continue providers // chave errada ou sem permissão: os outros modelos dele também falham
-				case refusedUsage:
-					// Provedor que não conhece stream_options: lembra e repete o mesmo
-					// modelo sem o campo (em vez de falhar em todos os modelos dele).
-					h.markRefusesUsage(p.Name)
-					withUsage = false
-					continue
-				}
-				// Cota grátis deste modelo acabou, ele está fora ou foi desligado
-				// (400/404 de modelo aposentado): tenta o próximo.
+				skip[p.Name] = true // provedor fora do ar: o próximo
 				break
 			}
+			if d, near := nearLimit(resp.Header); near {
+				h.rest(p.Name+"/"+model, d) // a próxima pergunta já vai para outro, sem esperar o 429
+			}
+			if resp.StatusCode == http.StatusTooManyRequests {
+				if secs, err := strconv.Atoi(resp.Header.Get("retry-after")); err == nil && secs > 0 {
+					h.rest(p.Name+"/"+model, time.Duration(secs)*time.Second)
+				}
+			}
+			if last || !(retryable(resp.StatusCode) || badKey(resp.StatusCode)) {
+				in, out := relay(w, resp)
+				rec.log(resp.StatusCode, in, out)
+				return
+			}
+			refusedUsage, keyRejected := false, false
+			if resp.StatusCode == http.StatusBadRequest {
+				msg, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<10))
+				text := strings.ToLower(string(msg))
+				refusedUsage = withUsage && strings.Contains(text, "stream_options")                 // 400 de modelo aposentado não é isto
+				keyRejected = strings.Contains(text, "api key") || strings.Contains(text, "api_key") // o Gemini responde 400, e não 401, para chave inválida
+			}
+			resp.Body.Close()
+			rec.log(resp.StatusCode, -1, -1)
+			switch {
+			case badKey(resp.StatusCode) || keyRejected:
+				skip[p.Name] = true // chave errada ou sem permissão: os outros modelos dele também falham
+			case refusedUsage:
+				// Provedor que não conhece stream_options: lembra e repete o mesmo
+				// modelo sem o campo (em vez de falhar em todos os modelos dele).
+				h.markRefusesUsage(p.Name)
+				withUsage = false
+				continue
+			}
+			// Cota grátis deste modelo acabou, ele está fora ou foi desligado
+			// (400/404 de modelo aposentado): tenta o próximo.
+			break
 		}
 	}
 	fail(w, http.StatusBadGateway, "nenhum provedor de IA respondeu")
@@ -570,4 +646,15 @@ func (l *limiter) allow(device, ip string, lim Limits) string {
 	ipc.inHour++
 	ipc.inDay++
 	return ""
+}
+
+// lastLive diz se não sobra nenhuma tentativa na fila (as dos provedores
+// pulados nesta pergunta não contam): aí esta é a última e entrega o que vier.
+func lastLive(rest []attempt, skip map[string]bool) bool {
+	for _, a := range rest {
+		if !skip[a.p.Name] {
+			return false
+		}
+	}
+	return true
 }

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/advisor"
 	"github.com/alexandreserra1/finan_rich/internal/llm"
@@ -483,3 +484,91 @@ func TestProxyLocalWithoutTools(t *testing.T) {
 }
 
 func jsonString(s string) string { b, _ := json.Marshal(s); return string(b) }
+
+// Troca antecipada: quando o provedor avisa nos cabeçalhos que está quase sem
+// cota (x-ratelimit-remaining-*), as próximas perguntas vão direto para o
+// próximo provedor até a hora de voltar (x-ratelimit-reset-*), sem esperar o
+// 429 e sem a pessoa perceber. Se todos os outros falharem, ele ainda é tentado.
+func TestProxyRestsProviderNearLimit(t *testing.T) {
+	captureLog(t)
+	var groqCalls int
+	groq := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/models") {
+			fmt.Fprint(w, `{"data":[{"id":"g1"}]}`)
+			return
+		}
+		groqCalls++
+		w.Header().Set("x-ratelimit-remaining-requests", "5") // quase acabou o dia
+		w.Header().Set("x-ratelimit-reset-requests", "2m30s")
+		w.Header().Set("x-ratelimit-remaining-tokens", "17000")
+		w.Header().Set("x-ratelimit-reset-tokens", "7.66s")
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"choices":[{"message":{"content":"groq"}}]}`)
+	}))
+	t.Cleanup(groq.Close)
+	local := &fakeProvider{key: "k", models: []string{"qwen"}, reply: `{"choices":[{"message":{"content":"local"}}]}`, ctype: "application/json"}
+	h := New(Config{Providers: []Provider{
+		{Name: "groq", Upstream: groq.URL, APIKey: "k", Models: []string{"g1"}},
+		{Name: "local", Upstream: local.start(t).URL, APIKey: "k", Models: []string{"qwen"}},
+	}, Limits: DefaultLimits})
+	if rec := ask(h, "a", personaBody("o Bento", false)); !strings.Contains(rec.Body.String(), "groq") {
+		t.Fatalf("primeira pergunta = %s", rec.Body.String())
+	}
+	if rec := ask(h, "a", personaBody("o Bento", false)); !strings.Contains(rec.Body.String(), "local") || groqCalls != 1 {
+		t.Errorf("com o Groq quase sem cota, a segunda pergunta deveria ir ao local (groq chamado %d vezes): %s", groqCalls, rec.Body.String())
+	}
+	// Sem o próximo provedor responder, o que está descansando ainda é tentado.
+	local.status = http.StatusServiceUnavailable
+	if rec := ask(h, "a", personaBody("o Bento", false)); !strings.Contains(rec.Body.String(), "groq") {
+		t.Errorf("com o local fora, o Groq ainda responde: %s", rec.Body.String())
+	}
+}
+
+func TestNearLimit(t *testing.T) {
+	h := http.Header{}
+	if _, near := nearLimit(h); near {
+		t.Error("sem cabeçalhos não está perto do limite")
+	}
+	h.Set("x-ratelimit-remaining-tokens", "2000") // menos que uma pergunta (uns 5 mil tokens)
+	h.Set("x-ratelimit-reset-tokens", "7.66s")
+	if d, near := nearLimit(h); !near || d < 7*time.Second || d > 8*time.Second {
+		t.Errorf("tokens do minuto: %v %v", d, near)
+	}
+	h = http.Header{}
+	h.Set("x-ratelimit-remaining-requests", "100")
+	if _, near := nearLimit(h); near {
+		t.Error("100 pedidos no dia ainda não é perto")
+	}
+}
+
+// No Groq a cota é por modelo: um modelo quase sem cota vai para o fim da
+// fila, mas os outros modelos do Groq continuam antes do próximo provedor.
+func TestProxyRestsOnlyTheTiredModel(t *testing.T) {
+	captureLog(t)
+	var seen []string
+	groq := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/models") {
+			fmt.Fprint(w, `{"data":[{"id":"g1"},{"id":"g2"}]}`)
+			return
+		}
+		var b map[string]any
+		json.NewDecoder(r.Body).Decode(&b)
+		seen = append(seen, fmt.Sprint(b["model"]))
+		if b["model"] == "g1" {
+			w.Header().Set("x-ratelimit-remaining-tokens", "100")
+			w.Header().Set("x-ratelimit-reset-tokens", "30s")
+		}
+		fmt.Fprint(w, `{"choices":[{"message":{"content":"ok"}}]}`)
+	}))
+	t.Cleanup(groq.Close)
+	local := &fakeProvider{key: "k", models: []string{"qwen"}}
+	h := New(Config{Providers: []Provider{
+		{Name: "groq", Upstream: groq.URL, APIKey: "k", Models: []string{"g1", "g2"}},
+		{Name: "local", Upstream: local.start(t).URL, APIKey: "k", Models: []string{"qwen"}},
+	}, Limits: DefaultLimits})
+	ask(h, "a", personaBody("o Bento", false))
+	ask(h, "a", personaBody("o Bento", false))
+	if strings.Join(seen, ",") != "g1,g2" || len(local.models_()) != 0 {
+		t.Errorf("groq tentou %v, local %v; quer g1 e depois g2, sem o local", seen, local.models_())
+	}
+}
