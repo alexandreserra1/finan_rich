@@ -25,7 +25,10 @@ func Goals(l domain.Ledger, today time.Time) []GoalView {
 	for _, g := range l.ActiveGoals() {
 		v := GoalView{Goal: g}
 		if g.CategoryID != "" {
-			for _, t := range l.ActiveTransactions() {
+			for _, t := range l.Transactions { // soma: a ordem não importa (ActiveTransactions copia e ordena tudo)
+				if t.Deleted {
+					continue
+				}
 				if t.CategoryID == g.CategoryID && t.Kind == domain.KindSaida && t.Date >= g.StartDate {
 					v.ContributedCents += t.AmountCents
 				}

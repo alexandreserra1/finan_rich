@@ -131,3 +131,24 @@ Achados das revisões de código, segurança e testes que ficaram para depois:
   plano grátis do Gemini acaba rápido (erro 429, a tela avisa). Vale mostrar o uso do dia.
 - **Pelo Wi-Fi o tráfego é HTTP**: para usar fora de casa, Tailscale (HTTPS).
 - **IA "custom" num proxy local** (LiteLLM etc.) conta como local e vai sem apelidos.
+
+## Retomada do Consultor e da auditoria (29/10/2026)
+
+O redesign de Consultor, Ajustes e Boas-vindas está entregue. O Consultor mostra as contas
+do Go antes da explicação da IA; as sugestões prontas continuam sem gastar tokens.
+O andamento detalhado está em [PLANO.md](PLANO.md) e [passo-a-passo.md](passo-a-passo.md).
+
+- **Feito:** relógio do Drive aprendido pelo `modifiedTime` e alternativa de crescimento
+  da caixa de mensagem sem `field-sizing`.
+- **Desempenho:** precache medido em 8.414.189 bytes sem compressão; gzip estimado em
+  2.553.917 bytes. O roteiro `cd e2e && npm run performance` prepara cinco amostras com
+  5 mil lançamentos. Medianas locais no Apple M1 Pro: 2.761 ms na primeira abertura e
+  2.346 ms na recarga; depois de tirar a cópia ordenada dos lançamentos das somas, 1.036 ms
+  e 781 ms. Transferência real da Vercel e aparelhos reais continuam pendentes.
+- **Testes Go:** `make test` aprovado após isolar a detecção do Tailscale nos testes de
+  acesso; cenários sem endereço e com Tailscale conectado cobertos sem depender do Mac.
+- **Consultor:** guardar o cartão de números ao recarregar no computador e manter aberto
+  o cartão que a pessoa abriu quando o app atualiza a tela.
+- **Aparelhos reais:** conferir Safari, Android, Sair pela rede, Ollama e nuvem na tela nova.
+- **Contas externas:** concluir Tailscale/Funnel e variáveis `FINAN_LOCAL_*` e `GOOGLE_*`
+  na Vercel. Seguir [IA-GRATIS.md](IA-GRATIS.md) e [GOOGLE.md](GOOGLE.md).

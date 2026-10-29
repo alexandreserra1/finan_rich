@@ -113,7 +113,7 @@ A lista da auditoria, conferida nos e2e:
 | Estados vazios, carregamento, erro padronizados | feito em todas as telas redesenhadas |
 | Acessibilidade e contraste | feito: teste de contraste dos temas; gráficos com tabela |
 
-## 5. Medir antes de otimizar · medição local concluída
+## 5. Medir antes de otimizar · medido e otimizado no computador
 
 A auditoria não mediu desempenho. Passos: medir o tempo até o Painel aparecer (com o
 `finance.wasm`), com 5 mil lançamentos, e o tamanho do que o site baixa; só então decidir se
@@ -158,8 +158,22 @@ de animação. Não é LCP nem INP. O navegador registrou 2.792.392 bytes de rec
 abertura e 13.262 bytes na recarga; essa soma não inclui o documento principal nem o
 precache do service worker, que fica bloqueado nesse cenário. A primeira amostra inclui
 aquecimento do processo; por isso foram preservadas todas as amostras e usada a mediana.
-Não houve otimização nesta etapa. Rede móvel, Vercel, login/Drive e aparelhos reais ainda
-precisam de medição própria antes de definir uma meta de desempenho.
+
+**Otimização (29/10/2026).** O perfil mostrou o gargalo: cada soma do Painel chamava
+`ActiveTransactions()`, que copia e ordena todos os lançamentos, umas 20 vezes por abertura.
+As somas em que a ordem não importa (`summary.go`, `budgets.go`, `goals.go` e
+`placeCategories` em `insights.go`) passaram a percorrer a lista direto, pulando os apagados.
+Resultado, com os mesmos 5 mil lançamentos:
+
+| Medida | Antes | Depois |
+|---|---:|---:|
+| `go test ./internal/finance -bench Painel` (nativo) | 53 ms | 13 ms |
+| Painel, primeira abertura (mediana, `npm run performance`) | 2.761 ms | 1.036 ms |
+| Painel, recarga (mediana) | 2.346 ms | 781 ms |
+
+O que ainda pesa: cada chamada ao WebAssembly decodifica o JSON de todos os lançamentos
+(uns 45 ms com 5 mil) e o `finance.wasm` tem 5,5 MB (1,5 MB com gzip). Rede móvel, Vercel,
+login/Drive e aparelhos reais ainda precisam de medição própria.
 
 ## Conferência da retomada (29/10/2026)
 
@@ -183,5 +197,5 @@ precisam de medição própria antes de definir uma meta de desempenho.
 
 1. Manter `make test` e `make e2e` como verificação das próximas alterações.
 2. Conferir as telas novas (Consultor, Ajustes, Boas-vindas) num celular e num Safari de verdade.
-2. **5** Medir também em rede móvel e no site publicado antes de decidir se vale otimizar.
-3. Conferir o Sair do acesso pela rede num aparelho de verdade (1.1).
+3. **5** Medir também em rede móvel e no site publicado.
+4. Conferir o Sair do acesso pela rede num aparelho de verdade (1.1).

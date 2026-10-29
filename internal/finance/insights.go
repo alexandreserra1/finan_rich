@@ -410,7 +410,10 @@ func pct(part, total int64) int {
 // placeCategories: a categoria mais usada nos gastos de cada lugar (iFood → Restaurantes).
 func placeCategories(l domain.Ledger) map[string]string {
 	counts := map[string]map[string]int{}
-	for _, t := range l.ActiveTransactions() {
+	for _, t := range l.Transactions { // soma: a ordem não importa (ActiveTransactions copia e ordena tudo)
+		if t.Deleted {
+			continue
+		}
 		if t.Kind != domain.KindSaida {
 			continue
 		}

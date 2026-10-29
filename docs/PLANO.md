@@ -85,3 +85,21 @@ nunca deixe a pessoa sem resposta.
 - [x] Consultor IA (com "Os números do app" na hora, antes da resposta da IA)
 - [x] Ajustes (com a escolha "IA do finan_rich" ou "minha própria chave")
 - [x] Boas-vindas (login)
+
+## D. Conferência após a entrega (29/10/2026)
+
+- [x] Implementar o acerto do relógio ao gravar no Drive e o teste com navegador uma hora
+  atrasado (commit a6a41d1).
+- [x] Implementar a alternativa de crescimento da caixa do Consultor sem `field-sizing`.
+  Teste de `/chat` aprovado no `make e2e`; Safari real e o fluxo do app ainda pendentes.
+- [x] Levantar o tamanho do precache e preparar a medição reproduzível com 5 mil lançamentos
+  (`cd e2e && npm run performance`). Valores e limites em [passo-a-passo.md](passo-a-passo.md).
+- [x] Medir os tempos do Painel: mediana de 2.761 ms na primeira abertura e 2.346 ms na
+  recarga, no Mac local; condições e amostras em `passo-a-passo.md`.
+- [x] Tirar a cópia ordenada dos lançamentos das somas: Painel em 1.036 ms na primeira
+  abertura e 781 ms na recarga (benchmark em `internal/finance/bench_test.go`).
+- [x] Reexecutar as dez suítes de `make e2e` fora do sandbox: todas passaram.
+- [x] Concluir `make test`: corrigida a dependência do Tailscale real nos testes de acesso;
+  cobertura dos cenários sem endereço e com Tailscale conectado sem Wi-Fi. Go e WebAssembly passaram.
+- [ ] Conferir Android, Safari e Sair pela rede em aparelhos reais, além de Ollama e nuvem reais.
+- [ ] Preservar os cartões de números no recarregamento do computador e o estado aberto no app.

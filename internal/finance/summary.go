@@ -85,7 +85,10 @@ func summarize(l domain.Ledger, in func(date string) bool) Summary {
 	cats := l.CategoryIndex()
 	spentByBucket := map[string]int64{}
 	byCategory := map[string]*CategoryLine{}
-	for _, t := range l.ActiveTransactions() {
+	for _, t := range l.Transactions { // soma: a ordem não importa (ActiveTransactions copia e ordena tudo)
+		if t.Deleted {
+			continue
+		}
 		if !in(t.Date) {
 			continue
 		}
@@ -142,7 +145,10 @@ func YearTotals(l domain.Ledger, year int) []Totals {
 		out[i].Month = domain.NewMonth(year, time.Month(i+1))
 		out[i].Key = out[i].Month.Key()
 	}
-	for _, t := range l.ActiveTransactions() {
+	for _, t := range l.Transactions { // soma: a ordem não importa (ActiveTransactions copia e ordena tudo)
+		if t.Deleted {
+			continue
+		}
 		d := t.Day()
 		if d.Year() != year {
 			continue

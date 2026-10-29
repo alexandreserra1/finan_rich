@@ -24,7 +24,10 @@ const budgetWarnPct = 80
 // usado para o menos usado. Conta todas as saídas da categoria no mês.
 func Budgets(l domain.Ledger, m domain.Month) []BudgetView {
 	spent := map[string]int64{}
-	for _, t := range l.ActiveTransactions() {
+	for _, t := range l.Transactions { // soma: a ordem não importa (ActiveTransactions copia e ordena tudo)
+		if t.Deleted {
+			continue
+		}
 		if t.Kind == domain.KindSaida && m.Contains(t.Date) {
 			spent[t.CategoryID] += t.AmountCents
 		}

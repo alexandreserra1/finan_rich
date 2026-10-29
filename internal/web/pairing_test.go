@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -144,6 +145,21 @@ func TestPairingNeedsAddress(t *testing.T) {
 	a := newAccessApp(t, "")
 	if body := a.do("GET", "/configuracoes", local, nil).Body.String(); !strings.Contains(body, "Primeiro ligue o") {
 		t.Error("sem acesso pela rede, Ajustes deveria pedir para ligar")
+	}
+}
+
+func TestPairingUsesTailscaleWithoutLAN(t *testing.T) {
+	a := newAccessApp(t, "")
+	a.srv.tailscaleURL = func(context.Context) string { return "https://computador.tail1234.ts.net" }
+	if a.srv.LANEnabled(t.Context()) {
+		t.Fatal("o acesso pelo Wi-Fi deveria estar desligado")
+	}
+	if body := a.do("GET", "/configuracoes", local, nil).Body.String(); strings.Contains(body, "Primeiro ligue o") || !strings.Contains(body, "Parear um celular") {
+		t.Fatal("com Tailscale, Ajustes deveria permitir o pareamento sem pedir para ligar o Wi-Fi")
+	}
+	a.newCode()
+	if body := a.do("GET", "/configuracoes", local, nil).Body.String(); !strings.Contains(body, "https://computador.tail1234.ts.net</code>") {
+		t.Error("o pareamento deveria mostrar o endereço do Tailscale")
 	}
 }
 

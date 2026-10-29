@@ -42,6 +42,7 @@ func newAccessApp(t *testing.T, envPassword string) *accessApp {
 		t.Fatal(err)
 	}
 	a.srv = s
+	s.tailscaleURL = func(context.Context) string { return "" }
 	a.h = s.Routes()
 	return a
 }

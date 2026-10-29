@@ -3,6 +3,7 @@ package web
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"embed"
 	"encoding/hex"
@@ -41,6 +42,7 @@ type Server struct {
 	updates         *updateChecker
 	assetsVersion   string // impressão digital de static/ e templates/
 	pairing         pairing
+	tailscaleURL    func(context.Context) string
 }
 
 // Options configura o servidor.
@@ -84,6 +86,7 @@ func New(st *store.Store, opts Options) (*Server, error) {
 		onQuit:          opts.OnQuit,
 		updates:         newUpdateCheckerIf(opts.Version),
 		assetsVersion:   assetsFingerprint(),
+		tailscaleURL:    tailscaleURL,
 	}
 	if _, err := staticFS.ReadFile("static/finance.wasm"); err != nil {
 		return nil, errors.New("static/finance.wasm não encontrado: rode 'go generate ./internal/web' (ou 'make wasm') antes de compilar")
