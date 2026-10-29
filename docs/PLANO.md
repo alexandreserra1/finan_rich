@@ -51,8 +51,11 @@ nunca deixe a pessoa sem resposta.
 - [x] B4. Vários provedores grátis no intermediário (Groq, Gemini, Cerebras,
   Cloudflare Workers AI, OpenRouter): quando um dá limite, passa para o
   próximo. Passo a passo das chaves em `docs/IA-GRATIS.md`.
-- [ ] B5. Relatórios do Otávio (semana) e do Tito (mês) gerados uma vez e
-  guardados no aparelho, em vez de pergunta ao vivo; sem IA, o texto fixo.
+- [x] B5. Relatórios do Otávio (semana) e do Tito (mês) sem pergunta ao vivo: feito sem IA, de
+  propósito. O cartão "O que o time viu" do Painel (`finance.Briefings`, em Go, zero token) e as
+  notificações do celular (Otávio às segundas, Tito no dia do salário) já entregam o relatório; um
+  texto escrito pela IA por cima gastaria tokens para repetir os mesmos números. Se um dia
+  valer, gerar uma vez por semana e guardar no aparelho.
 - [x] B6. Menos token por pergunta: cada personagem recebe só a parte do
   resumo que usa; resposta guardada para a mesma pergunta com os mesmos dados
   no mesmo dia; histórico mais curto.
