@@ -99,7 +99,7 @@ aparelho; o que falta para chegar perto, do mais simples ao mais caro:
    *ferramentas*: busca lançamentos de qualquer período; lança, corrige, apaga, cria metas e
    dívidas por mensagem, registra aportes em metas e pagamentos de dívidas, sempre com um
    cartão para confirmar (salvo na conversa).
-3. ~~**Alertas**~~ — feito: avisos no painel e lembrete de vencimento no celular.
+3. ~~**Alertas**~~ — feito: avisos no sininho (com "Perguntar para ...") e lembrete de vencimento no celular.
 4. ~~**Open Finance**~~ — feito pelo Meu Pluggy (grátis para a pessoa, com a conta dela; os
    dados vão do banco direto para o aparelho). Falta: buscar sozinho de tempos em tempos
    (hoje é pelo botão "Buscar do banco"). Notificações dos apps de banco no Android: feito
