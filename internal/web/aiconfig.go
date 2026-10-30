@@ -56,6 +56,7 @@ type AIStatus struct {
 	OllamaOff    bool     // Ollama não instalado/aberto
 	ModelMissing bool     // modelo ainda não baixado no Ollama
 	Installed    []string // modelos já baixados no Ollama
+	Alternatives []string // com o modelo faltando: os de conversa já baixados (usar sem baixar nada)
 }
 
 func (s *Server) aiStatus(ctx context.Context, a AISettings) AIStatus {
@@ -75,6 +76,7 @@ func (s *Server) aiStatus(ctx context.Context, a AISettings) AIStatus {
 	if has, _ := ollama.HasModel(ctx); !has {
 		st.ModelMissing = true
 		st.Problem = "O modelo " + a.Model + " ainda não foi baixado."
+		st.Alternatives = llm.PickModels(models, nil)
 		return st
 	}
 	st.Ready = true

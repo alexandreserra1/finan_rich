@@ -22,7 +22,7 @@ type chatEntry struct {
 	Proposals []advisor.Proposal `json:"proposals,omitempty"`
 	Agent     string             `json:"agent,omitempty"`   // quem do time respondeu
 	Numbers   string             `json:"numbers,omitempty"` // as contas do app mostradas antes da resposta
-	// App: resposta sem IA, que termina com os mesmos números (o cartão é a resposta).
+	// App: resposta do app, sem IA (a pronta, ou a que termina com os números do cartão).
 	App bool          `json:"app,omitempty"`
 	Who finance.Agent `json:"-"` // quem respondeu, com nome e imagem (página do computador)
 }
@@ -49,10 +49,14 @@ func (s *Server) chatHistory(ctx context.Context) ([]chatEntry, error) {
 	var ledger *domain.Ledger
 	out := make([]chatEntry, len(history))
 	for i, m := range history {
-		out[i] = chatEntry{Role: m.Role, Content: m.Content, Numbers: m.Numbers, App: m.Numbers != "" && strings.HasSuffix(m.Content, m.Numbers)}
+		out[i] = chatEntry{Role: m.Role, Content: m.Content, Numbers: m.Numbers}
 		if m.Role == store.RoleAssistant {
 			out[i].Who = member(m.Agent)
 			out[i].Agent = out[i].Who.ID
+			// Resposta do app: a pronta (depende só da pergunta e de quem respondeu)
+			// ou a sem IA, que termina com os mesmos números do cartão.
+			prepared := i > 0 && history[i-1].Role == store.RoleUser && advisor.Prepared(advisor.Question{Agent: m.Agent, Text: history[i-1].Content})
+			out[i].App = prepared || (m.Numbers != "" && strings.HasSuffix(m.Content, m.Numbers))
 		}
 		if len(m.Proposals) == 0 || json.Unmarshal(m.Proposals, &out[i].Proposals) != nil {
 			continue

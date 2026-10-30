@@ -17,6 +17,10 @@
     <span class="pull-status muted small"></span>
   </div>
   <progress class="pull-bar" max="100" value="0" hidden></progress>
+  {{with .Status.Alternatives}}<p class="small">Ou use um que já está neste computador, sem baixar nada:</p>
+  <div class="row-actions">{{range .}}
+    <form method="post" action="/configuracoes"><input type="hidden" name="preset" value="{{$.AI.Preset.ID}}"><input type="hidden" name="base_url" value="{{$.AI.BaseURL}}"><input type="hidden" name="model" value="{{.}}"><input type="hidden" name="volta" value="{{if eq $.Page "chat"}}/chat{{end}}"><button type="submit" class="secondary">Usar {{.}}</button></form>{{end}}
+  </div>{{end}}
 </div>
 {{else if not .Status.Ready}}
 <div class="notice warn"><strong>IA não configurada:</strong> {{.Status.Problem}}. Ajuste em <a href="/configuracoes">Configurações</a>.</div>

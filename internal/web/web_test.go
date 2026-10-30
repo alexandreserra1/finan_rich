@@ -267,6 +267,10 @@ func TestChatPreparedSkipsAI(t *testing.T) {
 	if !strings.Contains(body, `"app":{`) || strings.Contains(body, "A IA não respondeu") || !strings.Contains(body, "Nenhuma dívida") || strings.Contains(body, `"numbers"`) {
 		t.Errorf("SSE = %s", body)
 	}
+	// Ao recarregar, a resposta pronta continua marcada como do app (sem cartão vazio).
+	if _, page := a.get("/chat"); !strings.Contains(page, "Resposta do app, sem IA.") || strings.Contains(page, `class="numbers"`) {
+		t.Errorf("a resposta pronta deveria voltar marcada como do app:\n%s", page)
+	}
 }
 
 // Os números do app chegam antes da IA, num evento próprio (a tela mostra na hora).
@@ -556,5 +560,28 @@ func TestStaticGzipAndETag(t *testing.T) {
 	resp.Body.Close()
 	if resp.StatusCode == 200 && resp.Header.Get("Content-Type") != "application/wasm" {
 		t.Errorf("wasm com tipo %q", resp.Header.Get("Content-Type"))
+	}
+}
+
+// Falta o modelo configurado, mas outro de conversa já está baixado: o aviso
+// oferece usar o que já existe (sem os de vetores) e volta para o Consultor.
+func TestChatOffersInstalledModel(t *testing.T) {
+	ollama := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"models":[{"name":"qwen2.5:7b-instruct"},{"name":"nomic-embed-text:latest"},{"name":"bge-m3:latest"}]}`)
+	}))
+	t.Cleanup(ollama.Close)
+	a := newApp(t, ollama.URL) // configurado com qwen3:4b, que não está baixado
+	_, page := a.get("/chat")
+	if !strings.Contains(page, "Falta baixar o modelo qwen3:4b") || !strings.Contains(page, `value="qwen2.5:7b-instruct"`) || !strings.Contains(page, `name="volta" value="/chat"`) || strings.Contains(page, "nomic-embed") || strings.Contains(page, "bge-m3") {
+		t.Fatalf("o aviso deveria oferecer o modelo já baixado:\n%s", page)
+	}
+	if _, loc := a.post("/configuracoes", url.Values{"preset": {"ollama"}, "base_url": {ollama.URL}, "model": {"qwen2.5:7b-instruct"}, "volta": {"/chat"}}); !strings.HasPrefix(loc, "/chat?msg=") {
+		t.Errorf("depois de trocar, volta ao Consultor: %s", loc)
+	}
+	if _, loc := a.post("/configuracoes", url.Values{"preset": {"ollama"}, "base_url": {ollama.URL}, "model": {"qwen2.5:7b-instruct"}, "volta": {"https://evil.example"}}); !strings.HasPrefix(loc, "/configuracoes?msg=") {
+		t.Errorf("volta só para telas conhecidas: %s", loc)
+	}
+	if _, page := a.get("/chat"); strings.Contains(page, "Falta baixar") || !strings.Contains(page, "qwen2.5:7b-instruct") {
+		t.Errorf("com o modelo trocado, a IA fica pronta:\n%s", page)
 	}
 }

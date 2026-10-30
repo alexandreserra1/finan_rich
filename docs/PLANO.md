@@ -28,8 +28,8 @@ app aparece sem login, e nenhum dado fica no navegador sem conta.
 - Feito em 28/10/2026 (commit desta marca). A3 ficou assim: os dados antigos de quem
   usou sem conta continuam no navegador, mas nada aparece sem entrar; depois do login, juntam
   com o Drive. O ícone da pantera: landing sem login, Painel com login.
-- Celular: o app já tem o bloqueio com digital ou senha (`lock.js`); conferir
-  se ele vale também na volta do segundo plano (ainda não conferido).
+- Celular: o app já tem o bloqueio com digital ou senha (`lock.js`); vale também na volta
+  do segundo plano, depois de 1 minuto fora (conferido em 30/10/2026, com teste no e2e).
 
 Por que não "criptografar a URL": o endereço não carrega segredo nenhum; os
 dados estão no navegador. O que protege é a barreira de login, não ter dado
@@ -109,3 +109,7 @@ nunca deixe a pessoa sem resposta.
 - [x] Testes também no motor do Safari (WebKit): PDF corrigido; trava ao recarregar o Painel
   a conferir no iPhone.
 - [ ] Redesenho do Painel (o Alexandre desenha no Claude Design; depois implementar aqui).
+- [x] Análise de segurança (30/10/2026): sem falhas conhecidas nas dependências nem segredos no
+  histórico; corrigido o `<option>` montado com nome do Ollama. A decidir: limite de pedidos do
+  intermediário na Vercel (detalhes em `passo-a-passo.md`, 2.4).
+- [x] Resposta pronta marcada ao recarregar e "Usar <modelo já baixado>" no aviso do computador.

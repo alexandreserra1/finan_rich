@@ -568,6 +568,9 @@ func cors(next http.Handler) http.Handler {
 // limiter conta chamadas em janelas fixas de uma hora e de um dia. Fica na
 // memória: com o Cloud Run em no máximo 1 instância, vale para todos; se a
 // instância dormir, a contagem recomeça (aceitável: a cota do Groq é o teto).
+// shortcut: na Vercel cada instância da função conta à parte (e recomeça ao
+// acordar), então o limite real é maior; com chave paga ou muita gente usando,
+// pôr a regra de limite no Firewall da Vercel ou um contador compartilhado.
 // maxKeys limita a memória do limitador (cada aparelho e cada IP é uma chave).
 const maxKeys = 100000
 

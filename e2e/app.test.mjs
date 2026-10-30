@@ -523,6 +523,27 @@ try {
   await page.click(".app-lock button[type=submit]");
   await page.waitForSelector(".app-lock", { state: "detached", timeout: 15000 });
   ok(await page.locator("main").evaluate((m) => getComputedStyle(m).visibility) === "visible", "senha errada é recusada; a certa desbloqueia");
+  // Volta do segundo plano: menos de 1 minuto fora segue aberto; mais que isso pede de novo.
+  const awayFor = (ms) => page.evaluate((ms) => {
+    const hidden = (v) => Object.defineProperty(document, "hidden", { configurable: true, get: () => v });
+    hidden(true);
+    document.dispatchEvent(new Event("visibilitychange"));
+    const real = Date.now;
+    Date.now = () => real() + ms;
+    hidden(false);
+    document.dispatchEvent(new Event("visibilitychange"));
+    setTimeout(() => { Date.now = real; }, 1000);
+  }, ms);
+  await awayFor(20_000);
+  await page.waitForTimeout(300);
+  ok(await page.locator(".app-lock").count() === 0, "20 s fora do app: volta sem pedir a senha");
+  await page.waitForTimeout(1000);
+  await awayFor(61_000);
+  await page.waitForSelector(".app-lock form[data-lock=pin]", { timeout: 15000 });
+  ok(await page.locator("main").evaluate((m) => getComputedStyle(m).visibility) === "hidden", "mais de 1 minuto fora do app: pede a senha de novo e esconde os dados");
+  await page.fill(".app-lock input[name=pin]", "1234");
+  await page.click(".app-lock button[type=submit]");
+  await page.waitForSelector(".app-lock", { state: "detached", timeout: 15000 });
   page.once("dialog", (d) => d.accept());
   await page.uncheck("#bloqueio input[data-action=lock]");
   await page.waitForSelector(".flash:has-text('Bloqueio desligado')");

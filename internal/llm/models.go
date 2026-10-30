@@ -63,7 +63,7 @@ func ListModels(ctx context.Context, baseURL, apiKey string) ([]string, error) {
 const minContext = 16384
 
 // notChat marca modelos que não conversam (áudio, imagem, filtros, vetores).
-var notChat = []string{"whisper", "guard", "orpheus", "tts", "embed", "image", "imagen", "veo", "transcribe",
+var notChat = []string{"whisper", "guard", "orpheus", "tts", "embed", "bge-", "image", "imagen", "veo", "transcribe",
 	"live", "audio", "moderation", "safety", "aqa", "lyria", "robotics", "computer-use"}
 
 // PickModels devolve os preferidos que o provedor tem (na ordem da lista) e,

@@ -26,7 +26,8 @@
     const link = field("api_key").querySelector("[data-key-link]");
     link.innerHTML = preset.KeyURL ? `Gere sua chave em <a href="${preset.KeyURL}" target="_blank" rel="noopener">${new URL(preset.KeyURL).host}</a>` : "";
     const models = new Set([...(preset.Kind === "ollama" ? installed || [] : []), ...(preset.Models || [])]);
-    datalist.innerHTML = [...models].map((m) => `<option value="${m}">`).join("");
+    // Os nomes vêm do Ollama: elementos, não HTML montado (um nome com aspas não vira atributo).
+    datalist.replaceChildren(...[...models].map((m) => Object.assign(document.createElement("option"), { value: m })));
   }
 
   form.querySelectorAll('input[name="preset"]').forEach((radio) =>

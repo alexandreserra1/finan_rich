@@ -88,7 +88,11 @@ func (s *Server) saveSettings(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	err = s.saveAISettings(ctx, ai)
-	redirect(w, r, "/configuracoes", "Configuração da IA salva.", err)
+	back := "/configuracoes"
+	if r.FormValue("volta") == "/chat" { // o "Usar este modelo" do aviso do Consultor
+		back = "/chat"
+	}
+	redirect(w, r, back, "Configuração da IA salva.", err)
 }
 
 // testAI faz uma pergunta curta ao modelo configurado e devolve o resultado em texto.

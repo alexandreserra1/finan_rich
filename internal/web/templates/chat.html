@@ -17,7 +17,7 @@
   </div>
   <div id="messages" class="messages">
     {{range .History}}{{if eq .Role "assistant"}}<div class="msg assistant" data-raw="{{.Content}}"><span class="msg-who"><img class="face" src="/static/img/avatar-{{.Who.Animal}}.png" alt="" width="28" height="28">{{.Who.Name}} · {{.Who.Role}}</span>
-    {{- if .App}}<div class="md" data-md>{{.Lead}}</div><details class="numbers" open><summary>Os números do app</summary><div class="md" data-md>{{.Numbers}}</div></details><p class="small muted app-answer">Resposta do app, sem IA.</p>
+    {{- if .App}}<div class="md" data-md>{{.Lead}}</div>{{with .Numbers}}<details class="numbers" open><summary>Os números do app</summary><div class="md" data-md>{{.}}</div></details>{{end}}<p class="small muted app-answer">Resposta do app, sem IA.</p>
     {{- else}}{{with .Numbers}}<details class="numbers"><summary>Os números do app</summary><div class="md" data-md>{{.}}</div></details>{{end}}<div class="md" data-md>{{.Content}}</div>{{end}}{{with .Proposals}}<div class="proposals" data-proposals="{{jsonText .}}"></div>{{end}}</div>
     {{else}}<div class="msg {{.Role}}"><div class="md" data-md>{{.Content}}</div></div>
     {{end}}{{end}}

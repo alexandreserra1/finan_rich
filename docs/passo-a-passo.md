@@ -85,6 +85,28 @@ números; ver [IA-GRATIS.md](IA-GRATIS.md)). Rotas OAuth com limite por IP. Uplo
 tamanho máximo. Chave do computador local fora do repositório (`scripts/finanlocal.sh`, e
 `.gitignore` com `*.key`).
 
+### 2.4 Análise de segurança de 30/10/2026
+
+Revisão por fronteira de confiança (intermediário na internet, site, programa do computador
+pela rede, porteiro do Ollama, dados vindos de outros aparelhos e da IA), com as checagens
+automáticas.
+
+| Ponto | Situação |
+|---|---|
+| Dependências Go | `govulncheck`: nenhuma falha conhecida |
+| Dependências do e2e | `npm audit`: nenhuma |
+| Dependências do app (`mobile/`) | 3 avisos moderados no `uuid`, por `@capacitor/cli` → `xcode`. Só roda ao montar o app (não vai dentro dele) e a falha só existe com o parâmetro `buf`, que o CLI não usa. Rever quando sair `@capacitor/cli` com `xcode` novo; o `npm audit fix --force` sairia da faixa declarada |
+| Segredos no histórico do git | nenhum (chaves do Groq, Google, OpenRouter, GitHub, chaves privadas); nenhum `.env`, `.key`, keystore ou `.db` versionado |
+| Login do Google no site | cookie `HttpOnly`, `Secure`, `SameSite=Strict`; segredo do cliente só no servidor; limite por IP; respostas sem cache |
+| Cabeçalhos | computador: CSP só com arquivos próprios, `frame-ancestors 'none'`, `nosniff`; site: CSP na página, `X-Frame-Options: DENY`, HSTS, `Permissions-Policy` |
+| Acesso pela rede (computador) | senha com PBKDF2-SHA256 de 600 mil iterações; sessão e tokens guardados só como hash; 5 tentativas a cada 10 minutos por IP (IPv6 por /64); pedido de outro site bloqueado; proteção contra DNS rebinding; token do celular só vale para a API |
+| Pareamento | código de 8 caracteres (40 bits), 10 minutos, comparação em tempo constante, mesmo limite de tentativas |
+| Texto na tela (IA, Drive, outros aparelhos) | `html```, que escapa tudo, e o markdown do Consultor (escapa antes, não gera atributos); links do sininho vêm das regras em Go |
+| Bloqueio do app ao voltar do segundo plano | conferido: pede de novo depois de 1 minuto fora; agora com teste em `e2e/app.test.mjs` |
+| **Corrigido:** nomes de modelo do Ollama | `settings.js` montava `<option value="...">` com o nome; agora cria o elemento (um nome com aspas não vira atributo; a CSP já impedia rodar script) |
+| **A decidir:** limite de pedidos do intermediário na Vercel | o contador fica na memória da função. Na Vercel cada instância conta à parte e recomeça ao acordar, então o limite por aparelho e por IP vale menos do que parece. Hoje o teto real é a cota grátis de cada provedor. Antes de pôr chave paga (OpenRouter com crédito) ou divulgar o site: criar a regra de limite no Firewall da Vercel ou um contador compartilhado (serviço novo, decisão sua) |
+| Já conhecido | pelo Wi-Fi o tráfego é HTTP (o cookie de sessão não tem `Secure`); fora de casa, Tailscale. Avisado em Ajustes |
+
 ## 3. Testes dos fluxos de verdade
 
 A lista da auditoria, conferida nos e2e:
@@ -106,6 +128,8 @@ A lista da auditoria, conferida nos e2e:
 | Ponto da auditoria | Situação |
 |---|---|
 | Painel como centro de decisão (situação, atenção, ação, evolução) | feito no redesign: avisos assinados pelo time, "O que o time viu", números do mês no topo |
+| Resposta pronta ao recarregar | feito em 30/10/2026: continua marcada "Resposta do app, sem IA" (a marca sai da pergunta, sem migração) |
+| Modelo do computador não baixado | feito em 30/10/2026: o aviso oferece "Usar <modelo>" com os modelos de conversa que já estão no Ollama, sem baixar nada |
 | Avisos no sininho | feito em 29/10/2026: os avisos saíram do corpo do Painel para um sininho no alto de toda tela (app, site e computador), com o número de avisos. Tocar num leva à tela dele; "Limpar tudo" esvazia a lista em todos os aparelhos; o aviso volta se a situação mudar (`finance.Alert.ID`, `PendingAlerts`). Testes em `internal/finance/plans_test.go` e `e2e/budget.test.mjs` |
 | Do aviso para a conversa | feito em 29/10/2026: cada aviso e cada resumo do time tem "Perguntar para ...", que abre o Consultor com quem avisou e a pergunta já escrita (app, site e computador). Antes, o aviso só levava à tela do assunto e o "Conversar" abria com o último personagem escolhido. Testes em `e2e/budget.test.mjs` e `e2e/app.test.mjs` |
 | Lançamento rápido, com desfazer | feito: janela curta, Desfazer depois de apagar |
