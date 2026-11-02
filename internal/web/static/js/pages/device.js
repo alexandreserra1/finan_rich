@@ -73,8 +73,6 @@ function bindGoogle(root, ctx) {
     const section = root.querySelector("#google");
     if (!section) return;
     section.outerHTML = toString(googleSection());
-    const link = root.querySelector('.settings-index a[href="#google"]');
-    if (link) link.hidden = !gState?.on;
     bindGoogle(root, ctx);
   };
   if (gState === undefined) {
@@ -122,7 +120,7 @@ function aiPath(free) {
 }
 
 function cloudSection(server) {
-  const title = "Consultor IA";
+  const title = "O time e a inteligência";
   if (!ai || ai.loading) return html`<section class="panel" id="ia-nuvem">${head(title)}<p class="muted small loading">Carregando…</p></section>`;
   if (ai.error) return html`<section class="panel" id="ia-nuvem">${head(title)}<p class="notice warn">${ai.error}</p></section>`;
   const cfg = ai.cfg || {};
@@ -208,15 +206,9 @@ const SHORTCUTS = [["/contas", "Contas e cartões", "Saldos, faturas e patrimôn
 export function render({ server, params, ledger }) {
   const fromLink = params.has("codigo");
   const status = sync.state;
-  const index = [["#atalhos", "Mais telas"], ["#tema", "Aparência"], ["#google", "Conta e sincronização", !gState?.on],
-    !device.isSite && ["#parear", "Computador"], ["#ia-nuvem", "Consultor IA"], !device.isSite && ["#open-finance", "Open Finance"],
-    hasReminders() && ["#lembretes", "Lembretes"], ["#bloqueio", "Bloqueio"], ["#dados", "Seus dados"]].filter(Boolean);
   return html`
     ${pageHead("Do seu jeito. Mesmo.", null, { kicker: device.isSite ? "Ajustes deste navegador" : "Ajustes deste celular", sub: "Aparência, dados, a IA e o que vai para onde, sem letra miúda." })}
     <div class="settings">
-      <nav class="settings-index" aria-label="Seções de ajustes">
-        ${index.map(([href, label, hidden]) => html`<a href="${href}" ${hidden ? "hidden" : ""}>${label}</a>`)}
-      </nav>
       <div class="settings-body">
 
     <section class="panel" id="atalhos">
@@ -227,7 +219,7 @@ export function render({ server, params, ledger }) {
     </section>
 
     <section class="panel" id="tema">
-      ${head("Aparência", "Vale só para este aparelho e não vai na sincronização.")}
+      ${head("Aparência e preferências", "Vale só para este aparelho e não vai na sincronização.")}
       ${themeCards(window.finanTheme?.get() || "auto")}
     </section>
 
@@ -277,7 +269,7 @@ export function render({ server, params, ledger }) {
     ${lockSection()}
 
     <section class="panel danger-zone" id="dados">
-      ${head("Seus dados", device.isSite
+      ${head("Privacidade e dados", device.isSite
         ? "Ficam neste navegador e no seu Google Drive (nada vai para servidor da Rich). Sem usar por 30 minutos, o site pede para entrar de novo."
         : server ? "Ficam neste celular e no computador conectado." : "Ficam só neste celular.")}
       ${!device.isSite && !server ? html`<div id="sozinho">

@@ -1,16 +1,6 @@
 {{define "content"}}
 <div class="page-head"><div class="title"><span class="kicker">Ajustes deste computador</span><h1>Do seu jeito. Mesmo.</h1><p class="sub">Aparência, dados, a IA e o que vai para onde, sem letra miúda.</p></div></div>
 <div class="settings">
-<nav class="settings-index" aria-label="Seções de ajustes">
-  <a href="#atalhos">Mais telas</a>
-  <a href="#tema">Aparência</a>
-  <a href="#ia">Consultor IA</a>
-  <a href="#open-finance">Open Finance</a>
-  <a href="#acesso">Celular</a>
-  <a href="#instalar">Instalar</a>
-  <a href="#dados">Seus dados</a>
-  {{if .CanQuit}}<a href="#fechar">Sessão</a>{{end}}
-</nav>
 <div class="settings-body">
 
 <section class="panel" id="atalhos">
@@ -24,7 +14,7 @@
 </section>
 
 <section class="panel" id="tema">
-  <div class="panel-head"><div><h2>Aparência</h2><span class="muted small">Vale só para este aparelho e não vai na sincronização.</span></div></div>
+  <div class="panel-head"><div><h2>Aparência e preferências</h2><span class="muted small">Vale só para este aparelho e não vai na sincronização.</span></div></div>
   <div class="theme-cards" role="radiogroup" aria-label="Tema">
     {{range .Themes}}
     <label class="theme-card">
@@ -36,7 +26,7 @@
 </section>
 
 <section class="panel" id="ia">
-  <div class="panel-head"><div><h2>Consultor IA</h2><span class="muted small">Escolha de onde vem a IA que conversa com você no Consultor.</span></div></div>
+  <div class="panel-head"><div><h2>O time e a inteligência</h2><span class="muted small">Escolha de onde vem a IA que conversa com você no Consultor.</span></div></div>
   {{$free := eq .AI.Preset.ID .FreeID}}
   {{template "aistatus" .}}
   {{if .Status.Ready}}<p class="ai-status on"><span class="dot" aria-hidden="true"></span><span>Pronto para usar: <b>{{if $free}}IA da Rich{{else}}{{.AI.Preset.Name}}{{end}}</b>{{if not $free}} com o modelo <code>{{.AI.Model}}</code>{{end}}</span></p>{{end}}
@@ -232,7 +222,7 @@
 </section>
 
 <section class="panel" id="dados">
-  <div class="panel-head"><div><h2>Seus dados</h2><span class="muted small">Tudo num único arquivo neste computador, o <code>finan.db</code> (o caminho aparece na janela da Rich ao abrir).</span></div></div>
+  <div class="panel-head"><div><h2>Privacidade e dados</h2><span class="muted small">Tudo num único arquivo neste computador, o <code>finan.db</code> (o caminho aparece na janela da Rich ao abrir).</span></div></div>
   <div class="data-cards">
     <a class="link-card" href="/exportar"><span><span class="lc-text"><strong>Exportar e backup</strong><span class="faint small">Excel, CSV, relatório em PDF e backup (.json)</span></span></span><span aria-hidden="true">›</span></a>
     <a class="link-card" href="/configuracoes/backup.db"><span><span class="lc-text"><strong>Banco completo (.db)</strong><span class="faint small">Inclui a chave da IA: guarde em lugar seguro</span></span></span><span aria-hidden="true">›</span></a>
