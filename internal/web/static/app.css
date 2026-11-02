@@ -548,15 +548,17 @@ button.link.plain { color: var(--accent); }
 button.link.plain:hover { background: var(--accent-soft); }
 @media (max-width: 720px) { .search, .search input { width: 100%; min-width: 0; } }
 
-/* Exportar e backup */
-.export-form { display: grid; gap: 1rem; }
-.period { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1.25rem; border: 0; padding: 0; margin: 0; }
-.period legend { font-size: .84rem; font-weight: 500; color: var(--text-2); margin-bottom: .4rem; padding: 0; }
-.period input[type="month"] { width: auto; }
-.export-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .9rem; }
-.export-card { display: flex; flex-direction: column; gap: .55rem; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1rem; background: var(--surface-2); }
-.export-card small { flex: 1; line-height: 1.45; }
-label.file-button { display: inline-flex; flex-direction: row; align-items: center; justify-content: center; min-height: 44px; padding: .6rem 1.1rem; border-radius: var(--radius-sm);
+/* Exportar e backup (design Rich): relatórios à esquerda, backup à direita. */
+.export-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 20px; align-items: start; }
+.export-cols .panel { display: flex; flex-direction: column; gap: 14px; margin: 0; }
+.export-cols .panel > p { margin: 0; }
+.panel > .big-h2 { margin: 0; font: 700 21px/1.3 var(--font-title); letter-spacing: -.02em; }
+label.file-button.wide-btn { font-size: 13px; font-weight: 700; }
+.export-form { display: flex; flex-direction: column; gap: 12px; }
+.field-grid .wide { grid-column: 1 / -1; }
+.wide-btn { width: 100%; justify-content: center; gap: 8px; }
+.wide-btn .icon { width: 16px; height: 16px; }
+label.file-button { display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: .6rem 1.1rem; border-radius: 40px;
   border: 1px solid var(--border-input); background: var(--surface); color: var(--text); font-size: .95rem; font-weight: 500; cursor: pointer; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
 label.file-button:hover { background: var(--surface-2); }

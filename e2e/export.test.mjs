@@ -89,7 +89,7 @@ try {
   ok(xlsx.name.endsWith(".xlsx") && xlsx.bytes.subarray(0, 2).toString() === "PK", `planilha do Excel (${xlsx.name}, ${xlsx.bytes.length} bytes)`);
   const pdf = await download(page, "[data-format=pdf]");
   ok(pdf.name.startsWith("rich_relatorio_") && pdf.bytes.subarray(0, 5).toString() === "%PDF-", `relatório em PDF (${pdf.name})`);
-  await page.check("input[name=scope][value=all]");
+  await page.selectOption("select[name=scope]", "all");
   await page.selectOption("select[name=dataset]", "transactions");
   const csv = await download(page, "[data-format=csv]");
   ok(csv.name === "rich_lancamentos_completo.csv" && /Saída;Mercado do mês;[^;]+;Necessidades;-812,40\r\n/.test(csv.bytes.toString()), `CSV de lançamentos (${csv.name})`);
