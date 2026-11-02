@@ -131,4 +131,11 @@ falsos). Do protótipo veio o visual e os textos; as contas continuam as do Go.
 - [x] Página de entrada do site e login no design; prévia do link (WhatsApp e redes) com
   imagem própria; seções "Grátis de verdade", "Segurança" e "Baixe"; rodapé completo; nada
   fica escondido esperando a rolagem.
+- [x] Telas internas no formato do design (02/11/2026), uma por vez, com os números do Go:
+  Contas e cartões (o cartão desenhado), Metas (cartões com arte e "Registrar aporte"),
+  Dívidas (ponto de partida, ajustes e plano de saída em duas colunas; "Registrar pagamento"
+  com a regra nova `finance.DebtPayment`, a mesma do consultor), Lançamentos (abas com
+  Recorrências, filtros com valor mínimo e máximo), Categorias e orçamento (divisão em cartões
+  e limites com barra), Análise (mapa de gastos, limites, estabelecimentos), Notas (cartões e
+  janela), Importar (passos), Exportar e backup (duas colunas) e Ajustes (grade de cartões).
 - [ ] Domínio próprio: a prévia do link aponta para `finan-rich-ia.vercel.app` até lá.
