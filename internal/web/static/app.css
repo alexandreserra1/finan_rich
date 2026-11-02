@@ -527,21 +527,23 @@ a.button:hover { background: var(--accent-strong); }
 }
 
 /* Notas */
-.note-form { display: grid; gap: .9rem; }
-.note-form textarea { width: 100%; resize: vertical; }
 label.check { flex-direction: row; align-items: center; gap: .5rem; font-weight: 400; color: var(--text); }
 label.check input { width: auto; min-height: 0; }
 .panel-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; margin-bottom: 1rem; }
 .panel-head h2 { margin: 0; }
 .search input { min-width: 220px; }
-.notes { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }
-.note { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: .85rem 1rem; background: var(--surface); }
-.note.pinned { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); background: var(--accent-soft); }
-.note-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .25rem 1rem; align-items: baseline; }
-.note-head strong { display: inline-flex; align-items: center; gap: .35rem; }
-.note-head .pin { width: 16px; height: 16px; color: var(--accent-strong); }
-.note-body { white-space: pre-wrap; overflow-wrap: anywhere; margin: .5rem 0 0; color: var(--text-2); max-height: 14em; overflow: auto; }
-.note-actions { display: flex; flex-wrap: wrap; gap: .25rem .75rem; align-items: center; margin-top: .6rem; font-size: .9rem; }
+/* Notas (design Rich): cartões com a faixa amarela no topo. */
+.note-search { max-width: 420px; margin-bottom: 18px; }
+.notes { list-style: none; margin: 0 0 14px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 20px; }
+.note { display: flex; flex-direction: column; gap: 12px; padding: 22px 23px; border: 1px solid var(--border); border-top: 3px solid var(--desejos); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); min-width: 0; }
+.note.pinned { border-top-color: var(--accent); }
+.note-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.note-head strong { font: 700 17px/1.3 var(--font-title); letter-spacing: -.01em; }
+.note-pin[aria-pressed="true"] { color: var(--accent); }
+.note-body { flex: 1; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; font-size: 13px; line-height: 1.6; color: var(--text-2); max-height: 14em; overflow: auto; }
+.note-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.note-actions { display: flex; gap: 6px; }
+.round-btn.txt { width: auto; padding: 0 10px; border-radius: 40px; font-size: 11px; font-weight: 600; }
 button.link.plain { color: var(--accent); }
 button.link.plain:hover { background: var(--accent-soft); }
 @media (max-width: 720px) { .search, .search input { width: 100%; min-width: 0; } }

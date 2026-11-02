@@ -60,12 +60,13 @@ try {
 
   await page.click("nav.tabs a[href='/configuracoes']"); // Notas fica em Ajustes
   await page.click("a.link-card[href='/notas']");
-  await page.waitForSelector("form[data-form=note]");
+  await page.click("[data-action=new-note]"); // a janela de nova nota
   await page.fill("input[name=title]", "Reserva de emergência");
   await page.fill("textarea[name=body]", "Juntar 6 meses de gastos.\nComeçar com R$ 300 por mês.");
   await page.check("input[name=pinned]");
   await page.click("form[data-form=note] button[type=submit]");
   await page.waitForSelector(".note.pinned:has-text('Reserva de emergência')");
+  await page.click("[data-action=new-note]");
   await page.fill("input[name=title]", "Ideias");
   await page.fill("textarea[name=body]", "Cancelar streaming que não uso");
   await page.click("form[data-form=note] button[type=submit]");
