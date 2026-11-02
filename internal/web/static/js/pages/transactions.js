@@ -1,6 +1,6 @@
-// Lançamentos do mês (visual Esmeralda): resumo, busca e filtros (no endereço),
-// lista agrupada por dia, janela para criar e editar, apagar com "Desfazer" e
-// recorrentes. Quem filtra, soma e valida é o Go (finance.*); aqui só desenha.
+// Lançamentos do mês (design Rich): resumo, abas Lançamentos e Recorrências,
+// busca e filtros (no endereço), a lista, janela para criar e editar e apagar
+// com "Desfazer". Quem filtra, soma e valida é o Go (finance.*); aqui só desenha.
 import * as finance from "../finance.js";
 import { BUCKETS, closeModal, html, iconTile, newId, openModal, raw, shiftMonth, toast, today } from "../ui.js";
 import { PLUS, metric, pageHead } from "./dashboard.js";
@@ -19,7 +19,6 @@ function monthTransactions(ledger, month) {
 
 // Busca e filtros da lista: o estado fica no endereço (?busca=...&categoria=...),
 // então voltar e avançar funcionam. Quem filtra e soma é o Go (finance.SearchTransactions).
-// min e max continuam valendo no endereço (links antigos), sem campo na tela.
 const FILTER_KEYS = ["busca", "categoria", "tipo", "min", "max", "todos"];
 
 function readFilter(params, month) {
@@ -33,21 +32,11 @@ function readFilter(params, month) {
 
 const ICON = {
   search: raw('<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>'),
-  download: raw('<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>'),
+  pencil: raw('<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4"/></svg>'),
+  copy: raw('<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7a9 9 0 1 0 1 8M20 2v6h-6"/></svg>'),
   trash: raw('<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>'),
   close: raw('<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>'),
 };
-
-const WEEKDAY = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" });
-const WEEKDAY_YEAR = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-const parseDay = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
-function dayLabel(date) {
-  const now = today();
-  const diff = Math.round((parseDay(now) - parseDay(date)) / 864e5);
-  if (diff === 0) return "Hoje";
-  if (diff === 1) return "Ontem";
-  return (date.slice(0, 4) === now.slice(0, 4) ? WEEKDAY : WEEKDAY_YEAR).format(parseDay(date)).replace("-feira", "");
-}
 
 // "Notebook (3/6)" → descrição "Notebook" e selo "3/6".
 function splitInstallment(description) {
@@ -55,32 +44,22 @@ function splitInstallment(description) {
   return m ? [m[1], m[2]] : [description, ""];
 }
 
-function groupByDay(txs) {
-  const groups = [];
-  for (const t of txs) {
-    let g = groups[groups.length - 1];
-    if (!g || g.date !== t.date) groups.push((g = { date: t.date, rows: [], net: 0 }));
-    g.rows.push(t);
-    g.net += t.kind === "entrada" ? t.amountCents : -t.amountCents;
-  }
-  return groups;
-}
-
-function toolbar(params, month, cats) {
+// filters: o cartão de busca do design (campos com rótulo). Tudo vai para o endereço.
+function filters(params, month, cats) {
   const value = (k) => params.get(k) || "";
-  const active = FILTER_KEYS.some((k) => params.get(k));
-  return html`<form data-form="filter" class="tx-toolbar" role="search">
-    <label class="search-field">${ICON.search}<input type="search" name="busca" value="${value("busca")}" placeholder="Buscar: mercado, iFood, aluguel…" aria-label="Buscar lançamentos"></label>
-    <div class="segmented" role="radiogroup" aria-label="Tipo">
-      ${[["", "Todos"], ["entrada", "Entradas"], ["saida", "Saídas"]].map(([v, label]) =>
-        html`<label><input type="radio" name="tipo" value="${v}" ${value("tipo") === v ? "checked" : ""}><span>${label}</span></label>`)}
-    </div>
-    <select name="categoria" aria-label="Categoria">
-      <option value="">Todas as categorias</option>
+  return html`<form data-form="filter" class="panel tx-filters" role="search">
+    <label class="field tx-search">Buscar descrição <input type="search" name="busca" value="${value("busca")}" placeholder="Mercado, salário, cafezinho…"></label>
+    <label class="field">Tipo <select name="tipo">
+      ${[["", "Todos"], ["entrada", "Entradas"], ["saida", "Saídas"]].map(([v, label]) => html`<option value="${v}" ${value("tipo") === v ? "selected" : ""}>${label}</option>`)}
+    </select></label>
+    <label class="field">Categoria <select name="categoria">
+      <option value="">Todas</option>
       ${cats.map((c) => html`<option value="${c.id}" ${c.id === params.get("categoria") ? "selected" : ""}>${c.name}</option>`)}
-    </select>
-    <label class="check"><input type="checkbox" name="todos" value="1" ${params.get("todos") ? "checked" : ""}> Todos os meses</label>
-    ${active ? html`<a class="ghost-link" href="/lancamentos?mes=${month}">Limpar</a>` : ""}
+    </select></label>
+    <label class="field">Valor mínimo <input name="min" inputmode="decimal" value="${value("min")}" placeholder="R$ 0" autocomplete="off"></label>
+    <label class="field">Valor máximo <input name="max" inputmode="decimal" value="${value("max")}" placeholder="Sem limite" autocomplete="off"></label>
+    <label class="check"><input type="checkbox" name="todos" value="1" ${params.get("todos") ? "checked" : ""}> Todo histórico</label>
+    <a class="btn secondary" href="/lancamentos?mes=${month}">Limpar</a>
     <button type="submit" class="sr-only">Buscar</button>
   </form>`;
 }
@@ -89,38 +68,34 @@ function emptyState(filtering, month) {
   return html`<div class="empty-state">
     <div class="empty-art" aria-hidden="true"><span></span><span><i></i><i></i></span></div>
     <strong>${filtering ? "Nada encontrado com esses filtros." : "Nenhum lançamento neste mês."}</strong>
-    <span class="muted small">${filtering ? "Tente outra palavra, outra categoria ou marque Todos os meses." : `Lance os gastos e entradas de ${finance.monthLabel(month)} ou traga o salário e as contas fixas do mês anterior.`}</span>
+    <span class="muted small">${filtering ? "Tente outra palavra, outra categoria ou marque Todos os meses." : `Lance os gastos e entradas de ${finance.monthLabel(month)} ou use “Copiar mês anterior” para trazer o salário e as contas fixas.`}</span>
     <div class="row-actions">
-      ${filtering ? html`<a class="btn secondary" href="/lancamentos?mes=${month}">Limpar filtros</a>`
-        : html`<button type="button" class="secondary" data-action="copy-previous" title="Copia salário e contas fixas do mês anterior">Copiar do mês anterior</button>`}
+      ${filtering ? html`<a class="btn secondary" href="/lancamentos?mes=${month}">Limpar filtros</a>` : ""}
       <button type="button" data-action="new-tx">Novo lançamento</button>
     </div>
   </div>`;
 }
 
+const dmy = (d) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
+
 function txTable(txs, byId, accounts) {
   const m = finance.money;
   return html`<div class="table-wrap"><table class="tx-table">
-    <thead><tr><th><span class="sr-only">Ícone</span></th><th>Descrição</th><th>Categoria</th><th>Conta</th><th class="num">Valor</th><th><span class="sr-only">Ações</span></th></tr></thead>
-    ${groupByDay(txs).map((g) => html`<tbody>
-      <tr class="day-row"><th colspan="4" scope="rowgroup">${dayLabel(g.date)}</th>
-        <td colspan="2" class="num ${g.net < 0 ? "" : "pos"}">${g.net > 0 ? "+" : g.net < 0 ? "−" : ""}${m(Math.abs(g.net))}</td></tr>
-      ${g.rows.map((t) => {
-        const c = byId[t.categoryId];
-        const [desc, part] = splitInstallment(t.description);
-        return html`<tr class="tx-row" data-edit="${t.id}" tabindex="0">
-          <td class="tx-ico">${iconTile(c, t.kind, 36)}</td>
-          <td class="primary"><span class="tx-desc">${desc}</span>
-            ${t.id.startsWith("rec-") ? html`<span class="mini-chip" title="Repete todo mês">↻ mensal</span>` : ""}
-            ${part ? html`<span class="mini-chip" title="Parcela">${part}</span>` : ""}
-            <span class="tx-sub faint">${c?.name || "Sem categoria"}</span></td>
-          <td class="tx-cat"><span class="tag b-${c?.bucket || ""}"><i class="dot"></i>${c?.name || "Sem categoria"}</span></td>
-          <td class="tx-acc muted">${accounts[t.accountId] || "—"}</td>
-          <td class="num amount ${t.kind === "entrada" ? "pos" : ""}">${t.kind === "entrada" ? "+" : "−"}${m(t.amountCents)}</td>
-          <td class="actions"><button type="button" class="icon-btn danger" data-delete="${t.id}" aria-label="Apagar ${desc}">${ICON.trash}</button></td>
-        </tr>`;
-      })}
-    </tbody>`)}
+    <thead><tr><th>Descrição / categoria</th><th class="tx-date">Data</th><th class="tx-acc">Conta</th><th class="num">Valor</th><th>Ações</th></tr></thead>
+    <tbody>${txs.map((t) => {
+      const c = byId[t.categoryId];
+      const [desc, part] = splitInstallment(t.description);
+      return html`<tr class="tx-row" data-edit="${t.id}" tabindex="0">
+        <td class="primary"><span class="tx-main">${iconTile(c, t.kind, 32)}<span class="tx-text"><span class="tx-desc">${desc}</span>
+          ${t.id.startsWith("rec-") ? html`<span class="mini-chip" title="Repete todo mês">↻ mensal</span>` : ""}
+          ${part ? html`<span class="mini-chip" title="Parcela">${part}</span>` : ""}
+          <span class="tx-sub faint">${c?.name || "Sem categoria"}<span class="tx-sub-date"> · ${dmy(t.date)}</span></span></span></span></td>
+        <td class="tx-date">${dmy(t.date)}</td>
+        <td class="tx-acc muted">${accounts[t.accountId] || "—"}</td>
+        <td class="num amount ${t.kind === "entrada" ? "pos" : ""}">${t.kind === "entrada" ? "+" : "−"} ${m(t.amountCents)}</td>
+        <td class="actions"><button type="button" class="icon-btn" data-open="${t.id}" aria-label="Editar ${desc}">${ICON.pencil}</button><button type="button" class="icon-btn danger" data-delete="${t.id}" aria-label="Apagar ${desc}">${ICON.trash}</button></td>
+      </tr>`;
+    })}</tbody>
   </table></div>`;
 }
 
@@ -177,24 +152,35 @@ export function render({ ledger, month, params }) {
   const defaultDate = today().startsWith(month) ? today() : `${month}-01`;
   const m = finance.money;
 
+  const recurringTab = params.get("aba") === "recorrentes";
+  const recurringCount = ledger.recurring.filter((r) => !r.deleted).length;
+  const tab = (on, href, label) => html`<a class="pill ${on ? "on" : ""}" href="${href}" aria-current="${on ? "page" : "false"}">${label}</a>`;
+
   return html`
-    ${pageHead("Cada movimento conta.", month, { sub: "Entradas, saídas e a história do seu mês.", actions: html`
-      <a class="btn secondary" href="/importar">${ICON.download}Importar extrato</a>
-      <button type="button" data-action="new-tx">${PLUS}Novo lançamento</button>` })}
+    ${pageHead("Cada movimento conta.", month, { sub: "Entradas, saídas e a história do seu mês.", actions: html`<button type="button" data-action="new-tx">${PLUS}Novo lançamento</button>` })}
 
     <section class="cards metricgrid three ${filtering ? "filter-total" : ""}" role="status">
       ${metric(filtering ? "Entradas encontradas" : `Entradas · ${finance.monthLabel(month)}`, m(found.inCents), filtering ? `${found.count} ${found.count === 1 ? "lançamento encontrado" : "lançamentos encontrados"}` : "Receitas registradas")}
       ${metric(filtering ? "Saídas encontradas" : `Saídas · ${finance.monthLabel(month)}`, m(found.outCents), "Despesas e investimentos")}
-      ${metric("Saldo", m(found.balanceCents), "Entradas menos saídas", { primary: true })}
+      ${metric(filtering ? "Saldo" : "Saldo do mês", m(found.balanceCents), "Entradas menos saídas", { primary: true })}
     </section>
 
-    <section class="panel tx-card">
-      ${toolbar(params, month, cats)}
-      ${txs.length ? txTable(txs, byId, accounts) : emptyState(filtering, month)}
-      ${found.count > txs.length ? html`<p class="small muted tx-more">Mostrando os ${txs.length} mais recentes de ${found.count}.</p>` : ""}
-    </section>
+    <div class="tx-tabs">
+      <nav class="pills" aria-label="Lançamentos ou recorrências">
+        ${tab(!recurringTab, `/lancamentos?mes=${month}`, "Lançamentos")}
+        ${tab(recurringTab, `/lancamentos?mes=${month}&aba=recorrentes`, `Recorrências (${recurringCount})`)}
+      </nav>
+      <button type="button" class="secondary" data-action="copy-previous" title="Copia salário e contas fixas do mês anterior">${ICON.copy}Copiar mês anterior</button>
+    </div>
 
-    ${recurringPanel(ledger, byId, m)}
+    ${recurringTab ? recurringPanel(ledger, byId, m) : html`
+      ${filters(params, month, cats)}
+      <section class="panel tx-card">
+        <div class="panel-head"><h2>Seus lançamentos</h2><span class="faint small">${found.count} ${found.count === 1 ? "resultado" : "resultados"} · entradas ${m(found.inCents)} · saídas ${m(found.outCents)}</span></div>
+        ${txs.length ? txTable(txs, byId, accounts) : emptyState(filtering, month)}
+        ${found.count > txs.length ? html`<p class="small muted tx-more">Mostrando os ${txs.length} mais recentes de ${found.count}.</p>` : ""}
+      </section>`}
+
     ${txForm(ledger, cats, defaultDate)}
     <button type="button" class="fab" data-action="new-tx" aria-label="Novo lançamento">${PLUS}</button>`;
 }
@@ -202,9 +188,9 @@ export function render({ ledger, month, params }) {
 // recurringPanel lista o que se repete todo mês (com pausar e apagar).
 function recurringPanel(ledger, byId, m) {
   const list = ledger.recurring.filter((r) => !r.deleted).sort((a, b) => a.day - b.day);
-  if (!list.length) return "";
   return html`<section class="panel" id="recorrentes">
-    <div class="panel-head"><h2>Recorrentes</h2><span class="faint small">Entram sozinhos todo mês, no dia marcado, em todos os aparelhos.</span></div>
+    <div class="panel-head"><h2>Recorrências</h2><span class="faint small">Entram sozinhas todo mês, no dia marcado, em todos os aparelhos.</span></div>
+    ${list.length ? "" : html`<p class="empty">Nenhuma recorrência ainda. Ao lançar salário, aluguel ou uma assinatura, marque “Repetir todo mês”.</p>`}
     <ul class="recurring">
       ${list.map((r) => html`<li class="${r.paused ? "paused" : ""}">
         <span class="rec-text"><strong>${r.description}</strong><small class="faint">dia ${r.day} · ${(byId[r.categoryId] || {}).name || "Sem categoria"}${r.paused ? " · pausado" : ""}</small></span>
@@ -282,7 +268,8 @@ export function bind(root, ctx) {
   form.querySelectorAll("[data-kind]").forEach((b) => b.addEventListener("click", () => setKind(form, b.dataset.kind)));
   filterCategories(form);
 
-  // Clique (ou Enter) numa linha abre a edição; o botão da lixeira apaga.
+  // Clique (ou Enter) numa linha, ou o lápis, abre a edição; o botão da lixeira apaga.
+  root.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => open(ctx.ledger.transactions.find((x) => x.id === b.dataset.open), b)));
   root.querySelectorAll("tr[data-edit]").forEach((row) => {
     const edit = () => open(ctx.ledger.transactions.find((x) => x.id === row.dataset.edit), row);
     row.addEventListener("click", (e) => { if (!e.target.closest("button")) edit(); });
@@ -357,7 +344,7 @@ export function bind(root, ctx) {
     await ctx.remove("recurring", r, "Recorrente apagado.");
   }));
 
-  root.querySelector('[data-action="copy-previous"]')?.addEventListener("click", async () => {
+  root.querySelector('[data-action="copy-previous"]').addEventListener("click", async () => {
     const prev = monthTransactions(ctx.ledger, shiftMonth(ctx.month, -1));
     const current = monthTransactions(ctx.ledger, ctx.month);
     const exists = new Set(current.map((t) => `${t.description}|${t.categoryId}`));
@@ -380,13 +367,19 @@ export function bind(root, ctx) {
 // bindFilter põe a busca no endereço (entra no histórico do navegador) e
 // redesenha sem levar a tela para o topo.
 function bindFilter(root, ctx) {
+  // Trocar de mês mantém a busca.
+  root.querySelectorAll(".monthnav a").forEach((a) => {
+    const u = new URL(a.href);
+    for (const k of FILTER_KEYS) if (ctx.params.get(k)) u.searchParams.set(k, ctx.params.get(k));
+    a.href = u.pathname + u.search;
+  });
   const form = root.querySelector('[data-form="filter"]');
+  if (!form) return; // aba Recorrências
   const apply = () => {
     // O "search" do Enter chega depois do submit, quando este formulário já foi redesenhado.
     if (!form.isConnected) return;
     const q = new URLSearchParams({ mes: ctx.month });
     for (const [k, v] of new FormData(form)) if (String(v).trim()) q.set(k, String(v).trim());
-    for (const k of ["min", "max"]) if (ctx.params.get(k)) q.set(k, ctx.params.get(k));
     const url = `/lancamentos?${q}`;
     if (url === location.pathname + location.search) return;
     const focused = document.activeElement?.name;
@@ -397,10 +390,4 @@ function bindFilter(root, ctx) {
   form.addEventListener("submit", (e) => { e.preventDefault(); apply(); });
   form.addEventListener("change", (e) => { if (e.target.name !== "busca") apply(); });
   form.elements.busca.addEventListener("search", apply); // o "x" do campo limpa a busca
-  // Trocar de mês mantém a busca.
-  root.querySelectorAll(".monthnav a").forEach((a) => {
-    const u = new URL(a.href);
-    for (const k of FILTER_KEYS) if (ctx.params.get(k)) u.searchParams.set(k, ctx.params.get(k));
-    a.href = u.pathname + u.search;
-  });
 }

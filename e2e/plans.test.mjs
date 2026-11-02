@@ -52,13 +52,14 @@ try {
   await page.fill("input[name=date]", `${ym(prev)}-01`);
   await page.check("input[name=repeat]");
   await page.click("form[data-form=transaction] button[type=submit]");
+  await page.click(".tx-tabs a:has-text('Recorrências (1)')"); // a aba das recorrências
   await page.waitForSelector("#recorrentes:has-text('Salário')");
   await page.evaluate(() => window.finanSync());
   const generated = (await records("transaction")).filter((t) => t.id.startsWith("rec-"));
   ok(generated.length === 3 && generated.every((t) => t.amountCents === 500000 && t.date.endsWith("-01")), `recorrente gerou os 3 meses (${generated.length})`);
 
   // Recarregar não duplica; apagar um gerado não volta.
-  await page.reload();
+  await page.goto(`${B}/lancamentos`);
   await page.waitForSelector(".tx-card");
   await page.evaluate(() => window.finanSync());
   ok((await records("transaction")).filter((t) => t.id.startsWith("rec-")).length === 3, "abrir de novo não duplica os recorrentes");
@@ -69,6 +70,7 @@ try {
   ok(await page.locator("tr:has-text('Salário')").count() === 0, "lançamento recorrente apagado não volta");
 
   // Pausar e apagar a recorrência.
+  await page.click(".tx-tabs a:has-text('Recorrências')");
   await page.click("[data-pause]");
   await page.waitForSelector("#recorrentes li.paused");
   ok(true, "recorrente pausado");
