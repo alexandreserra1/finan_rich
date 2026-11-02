@@ -81,7 +81,7 @@ export async function pair(address, code) {
       body: JSON.stringify({ code, name: deviceName() }),
     });
   } catch {
-    throw new Error(`não consegui falar com ${url}. Confira se o celular está no mesmo Wi-Fi, se o finan_rich está aberto no computador e se o acesso pelo celular está ligado.`);
+    throw new Error(`não consegui falar com ${url}. Confira se o celular está no mesmo Wi-Fi, se a Rich está aberta no computador e se o acesso pelo celular está ligado.`);
   }
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error || `o computador respondeu ${res.status}`);

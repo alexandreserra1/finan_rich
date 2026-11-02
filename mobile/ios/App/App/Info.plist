@@ -28,7 +28,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>A câmera é usada só para ler o QR code de pareamento com o computador.</string>
 	<key>CFBundleDisplayName</key>
-        <string>finan_rich</string>
+        <string>Rich</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

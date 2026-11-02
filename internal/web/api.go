@@ -78,5 +78,5 @@ func writeJSONError(w http.ResponseWriter, status int, msg string) {
 // para quem pediu (pode ser outro aparelho na rede).
 func internalError(w http.ResponseWriter, err error) {
 	log.Printf("erro: %v", err)
-	writeJSONError(w, http.StatusInternalServerError, "erro interno no computador; os detalhes estão na janela do finan_rich")
+	writeJSONError(w, http.StatusInternalServerError, "erro interno no computador; os detalhes estão na janela da Rich")
 }

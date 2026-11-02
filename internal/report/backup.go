@@ -84,10 +84,10 @@ func Backup(l domain.Ledger, now time.Time) ([]byte, error) {
 func ReadBackup(data []byte) ([]Record, error) {
 	var f backupFile
 	if err := json.Unmarshal(data, &f); err != nil || f.App != backupApp {
-		return nil, errors.New("este arquivo não é um backup do finan_rich")
+		return nil, errors.New("este arquivo não é um backup da Rich")
 	}
 	if f.Version > backupVersion {
-		return nil, errors.New("backup feito por uma versão mais nova do finan_rich; atualize o app para restaurar")
+		return nil, errors.New("backup feito por uma versão mais nova da Rich; atualize o app para restaurar")
 	}
 	out := make([]Record, 0, len(f.Records))
 	for i, r := range f.Records {

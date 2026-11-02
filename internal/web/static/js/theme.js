@@ -16,7 +16,7 @@
     const t = get();
     const dark = t === "escuro" || (t === "auto" && media.matches);
     document.documentElement.dataset.theme = dark ? "dark" : "light";
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#0a0d0c" : "#f4f6f5");
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#17191d" : "#f7f6f0");
     // Ajustes: cartões de rádio (um por tema) ou um <select>.
     document.querySelectorAll("[data-theme-pick]").forEach((s) => { if (s.type === "radio") s.checked = s.value === t; else s.value = t; });
     // Botão do menu lateral: mostra para qual tema ele troca.

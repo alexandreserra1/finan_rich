@@ -8,7 +8,7 @@ export const needsData = false;
 
 const icon = (d) => raw(`<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`);
 const BENEFITS = [
-  [icon('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'), "Seus dados ficam no seu Google Drive, numa pasta que só o finan_rich usa."],
+  [icon('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'), "Seus dados ficam no seu Google Drive, numa pasta que só a Rich usa."],
   [icon('<rect x="2" y="4" width="14" height="11" rx="2"/><rect x="16" y="8" width="6" height="12" rx="1.5"/><path d="M6 19h6"/>'), "Celular, site e computador mostram as mesmas contas."],
   [icon('<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>'), "Mostra qual dívida pagar primeiro e quando cada meta chega."],
 ];
@@ -16,7 +16,7 @@ const BENEFITS = [
 export function render(ctx) {
   return html`<section class="start">
     <div class="start-main">
-      <a class="brand" href="/" aria-label="finan_rich, voltar ao início">finan<span>_rich</span></a>
+      <a class="brand" href="/" aria-label="Rich, voltar ao início">rich<span>✳</span></a>
       <div class="start-body">
         <div class="start-intro">
           <span class="start-pill"><span aria-hidden="true"></span>Grátis e de código aberto</span>

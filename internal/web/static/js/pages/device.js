@@ -33,7 +33,7 @@ function pairForm(params, paired) {
         ${canScan() ? html`<button type="button" class="secondary" data-action="scan">Ler QR code</button>` : ""}
       </div>
     </form>
-    <p class="small muted">No computador, abra o finan_rich e vá em <strong>Ajustes → App do celular → Parear um celular</strong>. Aponte a câmera para o QR code ou digite aqui o endereço e o código que aparecem lá.</p>`;
+    <p class="small muted">No computador, abra a Rich e vá em <strong>Ajustes → App do celular → Parear um celular</strong>. Aponte a câmera para o QR code ou digite aqui o endereço e o código que aparecem lá.</p>`;
 }
 
 let remindersOn = true;
@@ -51,7 +51,7 @@ function googleSection() {
       ? html`<div class="set-row">
           <span class="avatar" aria-hidden="true">${email[0].toUpperCase()}</span>
           <span class="set-row-text"><strong>${email}</strong>
-            <span class="faint small">Google Drive · pasta do finan_rich${st.lastSync ? ` · sincronizado às ${st.lastSync.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : ""}</span></span>
+            <span class="faint small">Google Drive · pasta da Rich${st.lastSync ? ` · sincronizado às ${st.lastSync.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : ""}</span></span>
           <span class="set-row-actions">
             <button type="button" class="small-btn" data-action="google-sync">Sincronizar agora</button>
             <button type="button" class="secondary small-btn" data-action="google-out">Sair</button>
@@ -59,10 +59,10 @@ function googleSection() {
         </div>
         <p class="faint small set-note">${device.isSite
           ? "Ao sair, os dados saem deste navegador e continuam no seu Drive."
-          : "Ao sair, os dados continuam neste celular e no seu Drive."} Nenhum servidor do finan_rich guarda nada.</p>`
+          : "Ao sair, os dados continuam neste celular e no seu Drive."} Nenhum servidor da Rich guarda nada.</p>`
       : html`<div class="set-row dashed">
           <span class="set-row-text"><strong>Só neste aparelho</strong>
-            <span class="faint small">Entre com Google para não perder seus dados. Eles ficam numa pasta do seu Drive que só o finan_rich usa.</span></span>
+            <span class="faint small">Entre com Google para não perder seus dados. Eles ficam numa pasta do seu Drive que só a Rich usa.</span></span>
           <button type="button" class="google" data-action="google-in"><span class="g" aria-hidden="true">G</span>Entrar com Google</button>
         </div>`}
   </section>`;
@@ -143,12 +143,12 @@ function cloudSection(server) {
       ? "Com o computador conectado, o Consultor usa a IA dele. Aqui fica a IA para quando você quiser usar sem ele."
       : "Escolha de onde vem a IA que conversa com você no Consultor.")}
     ${active
-      ? html`<p class="ai-status on"><span class="dot" aria-hidden="true"></span><span>Ligado: <b>${active.free ? "IA do finan_rich" : active.name}</b>${active.free ? "" : html` com o modelo <code>${cfg.model || active.model}</code>`}</span></p>`
+      ? html`<p class="ai-status on"><span class="dot" aria-hidden="true"></span><span>Ligado: <b>${active.free ? "IA da Rich" : active.name}</b>${active.free ? "" : html` com o modelo <code>${cfg.model || active.model}</code>`}</span></p>`
       : html`<p class="ai-status"><span class="dot" aria-hidden="true"></span><span>Ainda não ligado. Escolha um dos caminhos e salve.</span></p>`}
     <form data-form="cloud-ai">
       <div class="choice-cards" role="radiogroup" aria-label="De onde vem a IA">
-        ${free ? card("finan", "Usar a IA do finan_rich", "Grátis, sem conta e sem chave. É só ligar.", "Grátis") : ""}
-        ${card("propria", "Usar a minha própria chave", "Você escolhe o provedor e o modelo, sem o limite do finan_rich.")}
+        ${free ? card("finan", "Usar a IA da Rich", "Grátis, sem conta e sem chave. É só ligar.", "Grátis") : ""}
+        ${card("propria", "Usar a minha própria chave", "Você escolhe o provedor e o modelo, sem o limite da Rich.")}
       </div>
       ${path === "finan"
         ? html`<ul class="ai-facts">
@@ -183,7 +183,7 @@ function cloudSection(server) {
         </div>`}
       ${server ? html`<label class="check"><input type="checkbox" name="enabled" ${cfg.enabled ? "checked" : ""}> Usar esta IA mesmo com o computador conectado</label>` : ""}
       <div class="row-actions">
-        <button type="submit">${path === "finan" ? "Usar a IA do finan_rich" : "Salvar e testar"}</button>
+        <button type="submit">${path === "finan" ? "Usar a IA da Rich" : "Salvar e testar"}</button>
         ${cloud.ready(cfg) ? html`<button type="button" class="secondary" data-action="cloud-forget">${cfg.key ? "Apagar a chave e a conversa" : "Desligar e apagar a conversa"}</button>` : ""}
       </div>
     </form>
@@ -234,7 +234,7 @@ export function render({ server, params, ledger }) {
     ${googleSection()}
 
     ${device.isSite ? "" : html`<section class="panel" id="parear">
-      ${head("Computador", "O celular guarda tudo e sincroniza com o finan_rich do computador pelo Wi-Fi.")}
+      ${head("Computador", "O celular guarda tudo e sincroniza com a Rich do computador pelo Wi-Fi.")}
       ${server
         ? html`
           <div class="set-row">
@@ -246,14 +246,14 @@ export function render({ server, params, ledger }) {
               <button type="button" class="secondary small-btn danger" data-action="unpair">Desconectar</button>
             </span>
           </div>
-          <p class="faint small set-note">Tudo que você faz fica salvo neste celular e vai para o computador quando ele estiver ao alcance (mesmo Wi-Fi e finan_rich aberto).</p>
+          <p class="faint small set-note">Tudo que você faz fica salvo neste celular e vai para o computador quando ele estiver ao alcance (mesmo Wi-Fi e a Rich aberta).</p>
           ${fromLink
             ? html`<h3>Conectar a outro computador?</h3>
               <p class="notice warn">Você abriu um link de pareamento. Só confirme se o endereço abaixo for mesmo o do seu computador.</p>
               ${pairForm(params, true)}`
             : html`<details><summary>Conectar a outro computador</summary>${pairForm(params, true)}</details>`}`
         : html`
-          <p class="small muted">O app guarda seus dados neste celular e funciona sem internet. Para trazer os dados que já estão no computador e manter os dois iguais, conecte-o uma vez ao finan_rich do computador.</p>
+          <p class="small muted">O app guarda seus dados neste celular e funciona sem internet. Para trazer os dados que já estão no computador e manter os dois iguais, conecte-o uma vez à Rich do computador.</p>
           ${fromLink ? html`<p class="notice warn">Confira se o endereço abaixo é mesmo o do seu computador antes de conectar.</p>` : ""}
           ${pairForm(params, false)}`}
     </section>`}
@@ -278,12 +278,12 @@ export function render({ server, params, ledger }) {
 
     <section class="panel danger-zone" id="dados">
       ${head("Seus dados", device.isSite
-        ? "Ficam neste navegador e no seu Google Drive (nada vai para servidor do finan_rich). Sem usar por 30 minutos, o site pede para entrar de novo."
+        ? "Ficam neste navegador e no seu Google Drive (nada vai para servidor da Rich). Sem usar por 30 minutos, o site pede para entrar de novo."
         : server ? "Ficam neste celular e no computador conectado." : "Ficam só neste celular.")}
       ${!device.isSite && !server ? html`<div id="sozinho">
         ${ledger.categories.length
-          ? html`<p class="small muted">Você está usando o finan_rich só neste celular. Faça um backup de vez em quando em <a href="/exportar">Exportar</a>. Se um dia conectar a um computador, tudo vai para lá, sem duplicar categorias.</p>`
-          : html`<p class="small muted">Dá para usar só neste celular: lançamentos, dívidas, metas, importação de extratos, notas e exportação funcionam sem computador. O Consultor funciona com a IA do finan_rich ou com a sua chave (veja acima). Se depois conectar a um computador, seus dados vão junto.</p>
+          ? html`<p class="small muted">Você está usando a Rich só neste celular. Faça um backup de vez em quando em <a href="/exportar">Exportar</a>. Se um dia conectar a um computador, tudo vai para lá, sem duplicar categorias.</p>`
+          : html`<p class="small muted">Dá para usar só neste celular: lançamentos, dívidas, metas, importação de extratos, notas e exportação funcionam sem computador. O Consultor funciona com a IA da Rich ou com a sua chave (veja acima). Se depois conectar a um computador, seus dados vão junto.</p>
             <div class="row-actions"><button type="button" class="secondary" data-action="solo">Usar só neste celular</button></div>`}
       </div>` : ""}
       <div class="set-row">
@@ -517,7 +517,7 @@ function openFinanceSection() {
   if (ofState === undefined) return html`<section id="open-finance" hidden></section>`;
   const c = ofState || {};
   return html`<section class="panel" id="open-finance">
-    ${head("Open Finance", "Lançamentos direto do banco, de graça, pelo Meu Pluggy, com a sua própria conta. Sem passar por servidor do finan_rich.",
+    ${head("Open Finance", "Lançamentos direto do banco, de graça, pelo Meu Pluggy, com a sua própria conta. Sem passar por servidor da Rich.",
       html`<span class="tag ${ofState ? "on" : ""}">${ofState ? "Configurado" : "Não configurado"}</span>`)}
     <p class="small muted">Depois de configurar, use <a href="/importar">Importar → Buscar do banco</a>.</p>
     <details ${ofState ? "" : "open"}><summary>Como configurar (uma vez)</summary>

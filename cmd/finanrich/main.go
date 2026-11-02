@@ -39,7 +39,7 @@ func main() {
 
 func run(args []string) error {
 	if len(args) == 1 && (args[0] == "-version" || args[0] == "--version") {
-		fmt.Println("finan_rich", version)
+		fmt.Println("Rich (finanrich)", version)
 		return nil
 	}
 	cfg, err := config.Load(args)
@@ -94,7 +94,7 @@ func run(args []string) error {
 		ln, err := net.Listen("tcp", addr)
 		if err != nil {
 			if first && alreadyRunning(localURL) {
-				log.Printf("finan_rich já está aberto em %s", localURL)
+				log.Printf("a Rich já está aberta em %s", localURL)
 				if cfg.OpenBrowser {
 					return openApp(localURL)
 				}
@@ -150,7 +150,7 @@ func updateVersion() string {
 }
 
 func printBanner(url, dbPath string) {
-	fmt.Printf("\n  finan_rich %s\n  Aberto em:  %s\n  Seus dados: %s\n  Para fechar, feche esta janela ou aperte Ctrl+C.\n\n", version, url, dbPath)
+	fmt.Printf("\n  Rich %s\n  Aberta em:  %s\n  Seus dados: %s\n  Para fechar, feche esta janela ou aperte Ctrl+C.\n\n", version, url, dbPath)
 }
 
 func shutdown(s *http.Server) {

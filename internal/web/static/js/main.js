@@ -67,7 +67,7 @@ function showStatus(s) {
   for (const pill of pills) {
     pill.hidden = false;
     pill.dataset.status = s.status;
-    pill.textContent = LABELS[s.status](s) + (pill.classList.contains("side-only") && s.status === "ok" && hhmm ? ` · ${hhmm}` : "");
+    pill.textContent = LABELS[s.status](s) + (pill.closest(".nav-foot") && s.status === "ok" && hhmm ? ` · ${hhmm}` : "");
     pill.title = title;
     pill.onclick = action;
     pill.style.cursor = action ? "pointer" : "";
@@ -181,7 +181,7 @@ function render(message) {
     root.innerHTML = device.isApp && !server
       ? `<p class="notice warn">Este celular ainda não está conectado ao computador. <a href="/configuracoes">Conectar agora</a> ou <a href="/configuracoes#sozinho">usar só neste celular</a>.</p>`
       : sync.state.status === "offline"
-        ? `<p class="notice warn">Este aparelho ainda não tem seus dados. Conecte-se ao computador onde o finan_rich está aberto uma vez para baixá-los; depois ele funciona sem conexão.</p>`
+        ? `<p class="notice warn">Este aparelho ainda não tem seus dados. Conecte-se ao computador onde a Rich está aberta uma vez para baixá-los; depois ele funciona sem conexão.</p>`
         : `<p class="muted loading">Baixando seus dados…</p>`;
     return;
   }
@@ -195,8 +195,17 @@ function render(message) {
     if (new URL(a.href).pathname === path) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
   });
+  updateCrumb();
   if (message) flash(message);
 }
+
+// O caminho no topo do computador ("Seu espaço / Painel"): o nome da tela aberta no menu.
+function updateCrumb() {
+  const crumb = document.querySelector("[data-crumb]");
+  const current = document.querySelector("nav.tabs a[aria-current=page]:not(.side-brand)");
+  if (crumb) crumb.textContent = current?.querySelector(".tab-long, span")?.textContent || "";
+}
+updateCrumb();
 
 async function load() {
   [ledger, server] = await Promise.all([db.loadLedger(), device.server()]);

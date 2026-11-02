@@ -275,6 +275,11 @@ export function bind(root, ctx) {
     openModal(modal, trigger);
   };
   root.querySelectorAll('[data-action="new-tx"]').forEach((b) => b.addEventListener("click", () => open(null, b)));
+  // "+ Novo lançamento" do topo (de qualquer tela): chega com ?novo=1 e já abre a janela.
+  if (ctx.params.get("novo")) {
+    history.replaceState(null, "", "/lancamentos");
+    open(null);
+  }
   form.querySelectorAll("[data-kind]").forEach((b) => b.addEventListener("click", () => setKind(form, b.dataset.kind)));
   filterCategories(form);
 

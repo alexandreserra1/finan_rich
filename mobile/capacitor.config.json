@@ -1,6 +1,6 @@
 {
   "appId": "io.github.alexandreserra1.finanrich",
-  "appName": "finan_rich",
+  "appName": "Rich",
   "webDir": "www",
   "android": {
     "allowMixedContent": false

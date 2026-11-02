@@ -69,7 +69,7 @@ function lock() {
   overlay.setAttribute("aria-modal", "true");
   overlay.setAttribute("aria-labelledby", "app-lock-title");
   overlay.innerHTML = `<section class="panel login">
-    <p class="brand big">finan<span>_rich</span></p>
+    <p class="brand big">rich<span>✳</span></p>
     <h2 id="app-lock-title">App bloqueado</h2>
     <button type="button" data-lock="bio" hidden>Usar digital ou rosto</button>
     <form data-lock="pin">
@@ -133,7 +133,7 @@ async function askBiometry(msg) {
   prompting = true;
   try {
     await bio().verifyIdentity({
-      reason: "Desbloquear o finan_rich", title: "Desbloquear o finan_rich",
+      reason: "Desbloquear a Rich", title: "Desbloquear a Rich",
       negativeButtonText: "Usar a senha do app", useFallback: false,
     });
     unlock();

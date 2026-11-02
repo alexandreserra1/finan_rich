@@ -24,7 +24,8 @@ Excel, CSV, PDF, OFX e a leitura de faturas são código nosso (sem bibliotecas)
 | [pdf.js](https://github.com/mozilla/pdf.js) 6.3 | ler o texto das faturas em PDF | Apache-2.0 |
 | [jsQR](https://github.com/cozmo/jsQR) 1.4 | ler o QR code de pareamento pela câmera | Apache-2.0 |
 | [Chart.js](https://github.com/chartjs/Chart.js) 4.5 | gráficos do Painel, da Análise, das Dívidas e do patrimônio | MIT |
-| [Geist](https://github.com/vercel/geist-font) (pacote npm 1.4.2) | fonte das telas, embutida (funciona sem internet) | SIL OFL 1.1 (só para fontes) |
+| [DM Sans](https://github.com/googlefonts/dm-fonts) (pacote npm @fontsource-variable/dm-sans 5.3.0) | fonte do texto das telas, embutida (funciona sem internet) | SIL OFL 1.1 (só para fontes) |
+| [Manrope](https://github.com/sharanda/manrope) (pacote npm @fontsource-variable/manrope 5.3.0) | fonte dos títulos e números, embutida | SIL OFL 1.1 (só para fontes) |
 
 ## App do celular
 

@@ -51,7 +51,7 @@ func export(t *testing.T, o Options) File {
 func TestCSV(t *testing.T) {
 	f := export(t, Options{Format: FormatCSV, Scope: ScopeMonth, Month: "2026-10"})
 	got := string(f.Data)
-	if f.Name != "finan_rich_lancamentos_2026-10.csv" || !strings.HasPrefix(got, "\xef\xbb\xbf") {
+	if f.Name != "rich_lancamentos_2026-10.csv" || !strings.HasPrefix(got, "\xef\xbb\xbf") {
 		t.Fatalf("nome %q ou sem BOM", f.Name)
 	}
 	for _, want := range []string{
@@ -73,7 +73,7 @@ func TestCSV(t *testing.T) {
 
 func TestXLSX(t *testing.T) {
 	f := export(t, Options{Format: FormatXLSX, Scope: ScopeYear, Month: "2026-10"})
-	if f.Name != "finan_rich_2026.xlsx" {
+	if f.Name != "rich_2026.xlsx" {
 		t.Errorf("nome = %q", f.Name)
 	}
 	z, err := zip.NewReader(bytes.NewReader(f.Data), int64(len(f.Data)))
@@ -121,7 +121,7 @@ func TestXLSX(t *testing.T) {
 func TestPDF(t *testing.T) {
 	f := export(t, Options{Format: FormatPDF, Scope: ScopeMonth, Month: "2026-10"})
 	checkPDF(t, f.Data)
-	if f.Name != "finan_rich_relatorio_2026-10.pdf" || f.MIME != "application/pdf" {
+	if f.Name != "rich_relatorio_2026-10.pdf" || f.MIME != "application/pdf" {
 		t.Errorf("arquivo = %q %q", f.Name, f.MIME)
 	}
 }
@@ -180,7 +180,7 @@ func TestNoteExport(t *testing.T) {
 
 func TestBackupRoundTrip(t *testing.T) {
 	f := export(t, Options{Format: FormatJSON})
-	if f.Name != "finan_rich_backup_2026-10-13.json" {
+	if f.Name != "rich_backup_2026-10-13.json" {
 		t.Errorf("nome = %q", f.Name)
 	}
 	recs, err := ReadBackup(f.Data)

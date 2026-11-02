@@ -65,15 +65,15 @@ func Export(l domain.Ledger, o Options, now time.Time) (File, error) {
 	switch o.Format {
 	case FormatXLSX:
 		data, err := writeXLSX(workbook(l, p))
-		return File{Name: "finan_rich_" + p.Slug + ".xlsx", MIME: mimeXLSX, Data: data}, err
+		return File{Name: "rich_" + p.Slug + ".xlsx", MIME: mimeXLSX, Data: data}, err
 	case FormatCSV:
 		t, slug := csvDataset(l, p, o.Dataset)
-		return File{Name: "finan_rich_" + slug + ".csv", MIME: mimeCSV, Data: writeCSV(t)}, nil
+		return File{Name: "rich_" + slug + ".csv", MIME: mimeCSV, Data: writeCSV(t)}, nil
 	case FormatPDF:
-		return File{Name: "finan_rich_relatorio_" + p.Slug + ".pdf", MIME: mimePDF, Data: reportPDF(l, p, now)}, nil
+		return File{Name: "rich_relatorio_" + p.Slug + ".pdf", MIME: mimePDF, Data: reportPDF(l, p, now)}, nil
 	case FormatJSON:
 		data, err := Backup(l, now)
-		return File{Name: "finan_rich_backup_" + now.In(brazil).Format("2006-01-02") + ".json", MIME: mimeJSON, Data: data}, err
+		return File{Name: "rich_backup_" + now.In(brazil).Format("2006-01-02") + ".json", MIME: mimeJSON, Data: data}, err
 	}
 	return File{}, fmt.Errorf("%w: %q", ErrUnknownFormat, o.Format)
 }

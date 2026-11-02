@@ -3,47 +3,53 @@
    barra de abas no rodapé no celular (≤720px). Tema claro ou escuro: o js/theme.js
    põe data-theme no <html> (automático segue o aparelho). */
 
-/* Geist (SIL OFL, static/vendor/geist): embutida para funcionar sem internet. */
-@font-face { font-family: "Geist"; src: url("vendor/geist/Geist-Variable.woff2") format("woff2"); font-weight: 100 900; font-style: normal; font-display: swap; }
+/* Fontes da Rich (SIL OFL, static/vendor/rich-fonts): embutidas para funcionar sem internet.
+   DM Sans no texto; Manrope nos títulos e números; Georgia (do sistema) no itálico de destaque. */
+@font-face { font-family: "DM Sans"; src: url("vendor/rich-fonts/DMSans-Variable.woff2") format("woff2"); font-weight: 100 1000; font-style: normal; font-display: swap; }
+@font-face { font-family: "Manrope"; src: url("vendor/rich-fonts/Manrope-Variable.woff2") format("woff2"); font-weight: 200 800; font-style: normal; font-display: swap; }
 
 :root {
-  /* Esmeralda (docs/design/design_handoff_finan_rich_esmeralda). Claro aqui; escuro abaixo. */
-  --bg: #f4f6f5; --side: #fbfcfb; --surface: #ffffff; --surface-2: #f3f6f4; --hover: #eef2f0; --inset: #f3f6f4;
-  --border: #e2e7e4; --border-2: #d5ddd9; --grid: #edf1ef; --track: #e9eeeb;
-  --border-input: #838f89; /* borda de campo: 3:1 sobre o fundo (acessibilidade) */
-  --text: #15201b; --text-2: #3d4843; --muted: #5f6b66; --faint: #66726c;
-  --accent: #0f7a5c; --accent-hi: #0b5e47; --accent-ink: #ffffff; --accent-soft: #e3f2eb; --accent-line: #bfe0d2;
-  --pos: #0f7a5c; --neg: #c2412f; --neg-soft: #fceeec; --warn: #a8650c; --warn-soft: #fdf3e2; --warn-text: #8a5a0b;
-  --necessidades: #2f6fd6; --desejos: #bc7718; --investimentos: #0f9b6e; --renda: #7a5ad1; --accent-2: #1683a3;
-  /* O cartão de destaque é escuro nos dois temas. --hero (cor sólida) vale para o teste de contraste. */
-  --hero: #0f2e25; --hero-bg: linear-gradient(160deg, #0f2e25 0%, #123a2e 100%); --hero-border: #0f2e25;
-  --hero-text: #ffffff; --hero-muted: #b9d6cb; --hero-pos: #7fe0b8; --hero-neg: #f07163; --hero-track: #24574a;
-  --shadow: 0 1px 2px rgb(16 24 20 / .04), 0 6px 20px -12px rgb(16 24 20 / .12);
-  --shadow-pop: 0 18px 40px -16px rgb(16 24 20 / .28);
-  --scrim: rgb(16 24 20 / .38);
+  /* Rich (docs/rich-mais-recente): papel quente, cobalto e o amarelo de destaque. Claro aqui; escuro abaixo. */
+  --bg: #f7f6f0; --side: #fffefa; --surface: #fffefa; --surface-2: #efeee7; --hover: #efeee7; --inset: #fffefa;
+  --border: #e7e6de; --border-2: #d9d7cc; --grid: #ecebe3; --track: #e9e8df;
+  --border-input: #87887f; /* borda de campo: 3:1 sobre o fundo (acessibilidade) */
+  --text: #252627; --text-2: #45463f; --muted: #66675f; --faint: #66675f;
+  --accent: #233cec; --accent-hi: #1a2db8; --accent-ink: #ffffff; --accent-soft: #e8eafd; --accent-line: #c9cffa;
+  --pos: #356d49; --neg: #a33d35; --neg-soft: #fae8e4; --warn: #8a6516; --warn-soft: #f9efd7; --warn-text: #765512;
+  --necessidades: #233cec; --desejos: #8f7516; --investimentos: #356d49; --renda: #8a4fa8; --accent-2: #b04b85;
+  /* Botão principal: o cobalto nos dois temas (texto branco). */
+  --primary: #233cec; --primary-hi: #1a2db8; --primary-ink: #ffffff;
+  /* Destaques da marca: o amarelo (item ativo do menu, painel de boas-vindas) e o rosa. */
+  --yellow: #f5efab; --yellow-ink: #252627; --pink: #e5b9d4; --lilac: #d4d9fd;
+  /* O cartão de destaque (saldo do mês) é cobalto nos dois temas. --hero (cor sólida) vale para o teste de contraste. */
+  --hero: #233cec; --hero-bg: #233cec; --hero-border: #233cec;
+  --hero-text: #ffffff; --hero-muted: #e1e3ff; --hero-pos: #f5efab; --hero-neg: #ffd0c8; --hero-track: #4a5ff0;
+  --shadow: 0 5px 20px rgb(34 35 35 / .03);
+  --shadow-pop: 0 18px 55px rgb(34 35 35 / .14);
+  --scrim: rgb(16 18 27 / .5);
   /* Nomes antigos, usados pelas telas e pelos gráficos. */
   --border-strong: var(--border-2); --accent-strong: var(--accent-hi); --accent-text: var(--accent-ink);
   --neg-text: #ffffff; --in: var(--accent); --out: var(--neg); --hero-line: var(--hero-track);
   --ring: var(--accent);
-  --radius: 16px; --radius-sm: 10px; --radius-xs: 8px;
-  --top-h: 56px; --side-w: 240px; --tabbar-h: 64px;
+  --radius: 18px; --radius-sm: 12px; --radius-xs: 8px;
+  --top-h: 64px; --side-w: 232px; --tabbar-h: 64px;
+  --font-title: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: Georgia, "Times New Roman", serif;
   color-scheme: light;
 }
 :root[data-theme="dark"] {
-  --bg: #0a0d0c; --side: #0c100f; --surface: #101614; --surface-2: #141c1a; --hover: #141c1a; --inset: #0c1110;
-  --border: #1a2421; --border-2: #24302c; --grid: #18211e; --track: #1a2421;
-  --border-input: #62706a;
-  --text: #e8eeeb; --text-2: #b9c4bf; --muted: #8d9a95; --faint: #788680;
-  /* Os "soft" do design são translúcidos; aqui já misturados sobre o cartão (o teste de contraste lê hex). */
-  --accent: #34c08f; --accent-hi: #5fd6aa; --accent-ink: #05140f; --accent-soft: #152c24; --accent-line: #1d3a30;
-  --pos: #7fe0b8; --neg: #f07163; --neg-soft: #2d221e; --warn: #f0a845; --warn-soft: #2d291a; --warn-text: #f3c57c;
-  --necessidades: #5a93f0; --desejos: #f0a845; --investimentos: #34c08f; --renda: #a184f0; --accent-2: #3fb6d8;
-  --hero: #0f2a22; --hero-bg: linear-gradient(160deg, #0f2a22 0%, #0e1714 60%); --hero-border: #1d3a30;
-  --hero-muted: #a9cbbf; --hero-track: #1a2a25;
+  --bg: #17191d; --side: #202328; --surface: #202328; --surface-2: #2b2e35; --hover: #2b2e35; --inset: #1c1e23;
+  --border: #373a43; --border-2: #464a55; --grid: #2b2e35; --track: #2f323a;
+  --border-input: #7c808b;
+  --text: #f5f2de; --text-2: #dcd9c6; --muted: #b8bab7; --faint: #a9aba8;
+  --accent: #a8b0ff; --accent-hi: #c4c9ff; --accent-ink: #17191d; --accent-soft: #2a3049; --accent-line: #3b4470;
+  --pos: #a7d9af; --neg: #ffb3a9; --neg-soft: #432b2b; --warn: #e9d08a; --warn-soft: #3b3424; --warn-text: #e9d08a;
+  --necessidades: #8491ff; --desejos: #d9c66e; --investimentos: #8fcf9a; --renda: #d7a3e8; --accent-2: #e5b9d4;
+  --hero-border: #3b51f0; --hero-muted: #dfe2ff; --hero-track: #4258f0;
   --neg-text: #1d0a07;
-  --shadow: 0 1px 0 rgb(255 255 255 / .02) inset;
-  --shadow-pop: 0 18px 40px -16px rgb(0 0 0 / .7);
-  --scrim: rgb(3 6 5 / .62);
+  --shadow: 0 5px 20px rgb(0 0 0 / .18);
+  --shadow-pop: 0 18px 55px rgb(0 0 0 / .45);
+  --scrim: rgb(5 6 9 / .62);
   color-scheme: dark;
 }
 
@@ -51,7 +57,7 @@
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; color: var(--text); background: var(--bg);
-  font: 14px/1.5 "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  font: 14px/1.5 "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
   transition: background-color .3s ease, color .3s ease; /* troca de tema suave */
 }
@@ -59,9 +65,10 @@ body {
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
 a { color: var(--accent); text-underline-offset: 2px; }
 a:hover { color: var(--accent-strong); }
-h1, h2, h3 { letter-spacing: -.015em; line-height: 1.25; }
-h2 { font-size: 15px; font-weight: 600; margin: 0 0 1rem; }
-h3 { font-size: 14px; font-weight: 600; margin: 0 0 .5rem; }
+h1, h2, h3 { font-family: var(--font-title); letter-spacing: -.02em; line-height: 1.2; }
+h2 { font-size: 16px; font-weight: 700; margin: 0 0 1rem; letter-spacing: -.03em; }
+h3 { font-size: 14px; font-weight: 700; margin: 0 0 .5rem; }
+h1 em, h2 em { font-family: var(--font-serif); font-weight: 400; font-style: italic; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .num, .money { font-variant-numeric: tabular-nums; }
 .faint { color: var(--faint); }
@@ -74,87 +81,104 @@ code { font-size: .88em; background: var(--surface-2); border: 1px solid var(--b
 .row > h2 { margin: 0; }
 .panel > .row:first-child { margin-bottom: .75rem; }
 
-/* ---------- Topo (celular e tablet; no computador a marca e o status vão para o menu) ---------- */
+/* ---------- Marca: "rich✳" (Manrope 800, o ✳ em cobalto; no escuro, em amarelo) ---------- */
+.brand { display: inline-flex; align-items: baseline; font: 800 30px/1 var(--font-title); letter-spacing: -.08em; color: var(--text); text-decoration: none; }
+.brand:hover { color: var(--text); }
+.brand span { color: var(--accent); font-weight: 700; margin-left: .04em; letter-spacing: 0; }
+:root[data-theme="dark"] .brand span { color: var(--yellow); }
+.brand.big { font-size: 44px; margin: 0 0 1rem; }
+.tab-short { display: none; }
+
+/* ---------- Topo: marca no celular; no computador, o caminho da tela, o tema, os avisos e "Novo lançamento" ---------- */
 .top {
   position: sticky; top: 0; z-index: 20;
-  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
   min-height: var(--top-h); padding: 0 1.25rem; padding-top: env(safe-area-inset-top);
   padding-left: max(1.25rem, env(safe-area-inset-left)); padding-right: max(1.25rem, env(safe-area-inset-right));
-  background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: saturate(1.4) blur(10px);
+  background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: saturate(1.4) blur(10px);
   border-bottom: 1px solid var(--border);
 }
-.brand { display: inline-flex; align-items: center; font-weight: 600; font-size: 16px; color: var(--text); text-decoration: none; letter-spacing: -.01em; }
-.brand:hover { color: var(--text); }
-.brand span { color: var(--accent); }
-/* A pantera (brand-mark.png) é arte em pixel: sem suavizar ao ampliar. */
-.brand::before { content: ""; width: 32px; height: 32px; flex: none; margin-right: 10px; border-radius: 8px; box-shadow: 0 0 0 1px var(--border-2);
-  background: #000 url("img/brand-mark.png") center / cover no-repeat; image-rendering: pixelated; }
-.brand.big { font-size: 1.6rem; margin: 0 0 .75rem; }
-.brand.big::before { width: 44px; height: 44px; border-radius: 11px; }
-.tab-short { display: none; }
-.top-actions { display: flex; gap: .5rem; align-items: center; }
+.top .brand { font-size: 28px; }
+.crumb { display: none; margin: 0; font-size: 12px; color: var(--muted); align-items: center; gap: 10px; }
+.crumb b { color: var(--text); font-weight: 500; }
+.top-actions { display: flex; gap: 10px; align-items: center; }
 .top-actions form { margin: 0; }
 .small-btn { padding: .4rem .85rem; font-size: .85rem; }
+.iconbtn { width: 40px; height: 40px; min-height: 0; padding: 0; display: inline-grid; place-items: center; position: relative; flex: none;
+  border: 1px solid var(--border); border-radius: 50%; background: var(--surface); color: var(--text); box-shadow: none; }
+.iconbtn:hover { background: var(--hover); color: var(--text); transform: none; }
+.iconbtn .icon { width: 19px; height: 19px; }
+.top .new-tx span { display: none; }
+.top .new-tx { width: 40px; padding: 0; border-radius: 50%; }
+.theme-btn { display: none; }
 .sync-pill { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 99px; font-size: 12px; color: var(--muted); white-space: nowrap; }
 .sync-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--faint); flex: none; }
-.sync-pill[data-status="ok"]::before { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.sync-pill[data-status="ok"]::before { background: var(--pos); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pos) 18%, transparent); }
 .sync-pill[data-status="syncing"]::before { background: var(--accent); }
 .sync-pill[data-status="offline"]::before, .sync-pill[data-status="login"]::before, .sync-pill[data-status="google"]::before { background: var(--warn); }
 .sync-pill[data-status="error"]::before { background: var(--neg); }
 .sync-pill[data-status="unpaired"]::before { background: var(--faint); }
 button.sync-pill { cursor: pointer; background: transparent; min-height: 0; box-shadow: none; font-weight: 400; }
 
-/* ---------- Navegação ---------- */
+/* ---------- Navegação: menu lateral (computador), abas no topo (tablet), barra de baixo + "Mais" (celular) ---------- */
 .tabs { display: flex; gap: .25rem; padding: .5rem 1rem; background: var(--side); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
 .tabs::-webkit-scrollbar { display: none; }
 .tabs a, .tabs .theme-toggle {
-  display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 9px;
-  color: var(--muted); text-decoration: none; white-space: nowrap; font-weight: 500; font-size: 14px;
+  display: flex; align-items: center; gap: 12px; padding: 10px 13px; border-radius: 8px; min-height: 42px;
+  color: var(--muted); text-decoration: none; white-space: nowrap; font-weight: 500; font-size: 13px;
   transition: background-color .15s, color .15s;
 }
 .tabs a:hover, .tabs .theme-toggle:hover { background: var(--hover); color: var(--text); }
-.tabs a[aria-current="page"] { background: var(--accent-soft); color: var(--text); box-shadow: inset 0 0 0 1px var(--accent-line); }
-.tabs .side-only, .tabs .side-brand { display: none; }
-.tabs .theme-toggle { border: 0; background: transparent; font: inherit; font-weight: 500; cursor: pointer; text-align: left; min-height: 0; box-shadow: none; justify-content: flex-start; padding: 9px 10px; border-radius: 9px; }
+.tabs a[aria-current="page"] { background: var(--yellow); color: var(--yellow-ink); font-weight: 700; }
+.tabs .side-brand, .tabs .nav-label, .tabs .tab-more, .tabs .nav-foot { display: none; }
+.tabs .side-brand, .tabs .side-brand:hover { gap: 0; font-weight: 800; color: var(--text); background: transparent; min-height: 0; }
+.nav-label { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); padding: 16px 13px 8px; }
+.tabs .theme-toggle { border: 0; background: transparent; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; text-align: left; box-shadow: none; justify-content: flex-start; width: 100%; }
 .theme-toggle:hover { transform: none; }
-.icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 
 main {
   max-width: 1240px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem;
   padding-left: max(1.25rem, env(safe-area-inset-left)); padding-right: max(1.25rem, env(safe-area-inset-right));
 }
 
-/* Computador: menu lateral com a marca, o tema e o status da sincronização (sem a barra do topo). */
+/* Computador: menu lateral com as seções; a barra do topo mostra o caminho e as ações. */
 @media (min-width: 1024px) {
-  body.has-nav { display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr); min-height: 100vh; }
-  body.has-nav > .top { display: none; }
+  body.has-nav { display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr); grid-template-rows: auto 1fr; min-height: 100vh; }
   body.has-nav > .tabs {
     position: sticky; top: 0; align-self: start; height: 100vh; grid-row: 1 / span 2;
-    flex-direction: column; gap: 4px; padding: 20px 14px; overflow: auto;
+    flex-direction: column; gap: 2px; padding: 28px 16px 18px; overflow: auto;
     background: var(--side); border-bottom: 0; border-right: 1px solid var(--border);
   }
-  .tabs .side-brand { display: inline-flex; padding: 4px 8px 22px; }
-  .tabs .side-brand, .tabs .side-brand:hover, .tabs .side-brand[aria-current] { background: transparent; box-shadow: none; color: var(--text); gap: 0; font-size: 16px; font-weight: 600; }
-  .tabs .side-only { display: flex; }
-  .tabs .nav-end { margin-top: auto; }
-  .tabs .sync-pill { margin-top: 8px; padding: 10px 12px; border-radius: 10px; }
-  body.has-nav > main { width: 100%; padding: 28px 36px 56px; margin: 0; max-width: 1240px; }
+  body.has-nav > .top { grid-column: 2; padding: 0 36px; min-height: 76px; background: var(--bg); backdrop-filter: none; }
+  .top .brand { display: none; }
+  .crumb { display: flex; }
+  .theme-btn { display: inline-grid; }
+  .top .new-tx { width: auto; padding: 0 18px; border-radius: 100px; }
+  .top .new-tx span { display: inline; }
+  .top-actions > .sync-pill { display: none !important; }
+  .tabs .side-brand { display: inline-flex; padding: 0 12px 22px; font-size: 38px; }
+  .tabs .side-brand, .tabs .side-brand:hover { background: transparent; color: var(--text); }
+  .tabs .nav-label { display: block; }
+  .tabs .nav-foot { display: flex; flex-direction: column; gap: 8px; margin-top: auto; padding-top: 18px; }
+  .tabs .sync-pill { padding: 12px 13px; border-radius: 10px; background: var(--surface-2); border: 0; white-space: normal; line-height: 1.5; }
+  body.has-nav > main { width: 100%; padding: 30px 36px 56px; margin: 0; max-width: 1320px; grid-column: 2; }
 }
 
 /* ---------- Cabeçalho de página e navegação de mês ---------- */
 .page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
 .page-head .title { display: flex; flex-direction: column; gap: 4px; }
-.page-head .kicker { font-size: 13px; color: var(--faint); }
-.page-head h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -.025em; line-height: 1.15; }
+.page-head .kicker { font-size: 10px; font-weight: 700; letter-spacing: .17em; text-transform: uppercase; color: var(--muted); }
+.page-head h1 { margin: 0; font-size: 34px; font-weight: 800; letter-spacing: -.05em; line-height: 1.15; }
 .page-head .actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.monthnav { display: inline-flex; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+.monthnav { display: inline-flex; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: 40px; padding: 3px; }
 .monthnav strong { min-width: 128px; text-align: center; font-size: 13px; font-weight: 500; }
-.monthnav a { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 7px; text-decoration: none; color: var(--text-2); font-size: 16px; line-height: 1; }
+.monthnav a { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; text-decoration: none; color: var(--text-2); font-size: 16px; line-height: 1; }
 .monthnav a:hover { background: var(--hover); color: var(--text); }
 
 /* ---------- Painéis e cartões ---------- */
-.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 24px; margin-bottom: 14px; box-shadow: var(--shadow); min-width: 0; }
-.panel > h2, .panel > .row > h2, .panel > summary h2 { font-weight: 600; }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 23px; margin-bottom: 18px; box-shadow: var(--shadow); min-width: 0; }
+.panel > h2, .panel > .row > h2, .panel > summary h2 { font-weight: 700; font-size: 15px; }
 .panel.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; }
 .panel.two ol { padding-left: 1.2rem; margin: .5rem 0 0; }
 .panel.two li { padding: .15rem 0; }
@@ -163,7 +187,7 @@ main {
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 14px; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; box-shadow: var(--shadow); min-width: 0; }
 .card > span { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
-.card strong { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -.03em; line-height: 1.1; overflow-wrap: anywhere; }
+.card strong { font-family: var(--font-title); font-size: 29px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.04em; line-height: 1.1; overflow-wrap: anywhere; }
 .card .badge { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; flex: none; }
 .card .badge .icon { width: 14px; height: 14px; stroke-width: 2.4; }
 .badge.in { background: var(--accent-soft); color: var(--accent); }
@@ -172,7 +196,7 @@ main {
 .card.hero { color: var(--hero-text); border-color: var(--hero-border); background: var(--hero-bg); justify-content: space-between; gap: 22px; padding: 22px 24px; }
 .card.hero > span, .hero-label { font-size: 13px; color: var(--hero-muted); }
 .hero-label.caps { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
-.card.hero strong { font-size: 46px; font-weight: 600; letter-spacing: -.035em; line-height: 1; }
+.card.hero strong { font-size: 46px; font-weight: 800; letter-spacing: -.05em; line-height: 1; }
 .card.hero strong.neg, .card.hero.neg-balance strong { color: var(--hero-neg); }
 .card.hero .hero-note { display: block; font-size: 13px; color: var(--hero-muted); }
 .card.hero .hero-note b { color: var(--hero-pos); font-weight: 600; }
@@ -299,7 +323,7 @@ td.actions a { margin-right: .5rem; }
 label { display: flex; flex-direction: column; gap: .35rem; font-size: .84rem; font-weight: 500; color: var(--text-2); }
 input, select, textarea {
   font: inherit; font-size: 14px; color: var(--text); background: var(--inset); width: 100%;
-  border: 1px solid var(--border-input); border-radius: var(--radius-sm); padding: 0 12px; min-height: 44px;
+  border: 1px solid var(--border-input); border-radius: var(--radius-xs); padding: 0 12px; min-height: 44px;
   transition: border-color .15s, box-shadow .15s;
 }
 textarea { min-height: 0; line-height: 1.45; }
@@ -313,16 +337,16 @@ select { appearance: none; -webkit-appearance: none; padding-right: 2.2rem; curs
 input[type="radio"], input[type="checkbox"] { min-height: 0; width: auto; }
 
 button, .btn {
-  font: inherit; cursor: pointer; background: var(--accent); color: var(--accent-ink); border: 1px solid transparent;
-  border-radius: var(--radius-sm); padding: 0 16px; font-weight: 600; min-height: 40px;
+  font: inherit; font-size: 13px; cursor: pointer; background: var(--primary); color: var(--primary-ink); border: 1px solid transparent;
+  border-radius: 100px; padding: 0 18px; font-weight: 700; min-height: 40px;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none;
   transition: background-color .15s, border-color .15s, transform .05s;
 }
-button:hover, .btn:hover { background: var(--accent-hi); color: var(--accent-ink); }
+button:hover, .btn:hover { background: var(--primary-hi); color: var(--primary-ink); }
 button:active, .btn:active { transform: translateY(1px); }
 button:disabled { opacity: .55; cursor: wait; }
 .btn .icon { width: 16px; height: 16px; stroke-width: 2.2; }
-button.secondary, .btn.secondary { background: transparent; color: var(--text); border-color: var(--border-2); font-weight: 500; }
+button.secondary, .btn.secondary { background: var(--surface); color: var(--text); border-color: var(--border-2); font-weight: 700; }
 button.secondary:hover, .btn.secondary:hover { background: var(--hover); border-color: var(--border-2); color: var(--text); }
 button.small-btn { min-height: 36px; }
 button.link { background: none; color: var(--neg); padding: .25rem .4rem; font-weight: 500; min-height: 0; border-radius: 6px; box-shadow: none; }
@@ -390,7 +414,6 @@ body:not(.has-nav) > main { width: 100%; padding: 1.5rem 1.25rem; }
   :root { --top-h: 56px; }
   body.has-nav { padding-bottom: calc(var(--tabbar-h) + 1.25rem + env(safe-area-inset-bottom)); }
   .top { padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right)); }
-  .brand::before { width: 28px; height: 28px; border-radius: 7px; }
   /* Barra flutuante: solta da borda, com cantos arredondados. */
   .tabs {
     position: fixed; z-index: 30; gap: 0; justify-content: space-around; overflow: visible;
@@ -404,16 +427,38 @@ body:not(.has-nav) > main { width: 100%; padding: 1.5rem 1.25rem; }
   .tabs a:hover { background: transparent; }
   .tabs a .icon { width: 52px; height: 28px; padding: 4px 16px; border-radius: 99px; transition: background-color .15s; stroke-width: 1.9; }
   .tabs a span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-  .tabs a[aria-current="page"] { color: var(--text); background: transparent; font-weight: 600; box-shadow: none; }
-  .tabs a[aria-current="page"] .icon { background: var(--accent-soft); color: var(--accent); }
+  .tabs a[aria-current="page"] { color: var(--accent); background: transparent; font-weight: 700; box-shadow: none; }
+  :root[data-theme="dark"] .tabs a[aria-current="page"] { color: var(--yellow); }
+  .tabs a[aria-current="page"] .icon { background: var(--accent-soft); }
   .tabs .tab-extra { display: none; }
+  /* Início, Extrato, Consultor, Metas e "Mais" (abre o menu completo pela lateral). */
+  .tabs a[href="/chat"] { order: 3; } .tabs a[href="/metas"] { order: 4; }
+  .tabs .tab-more { display: flex; order: 5; flex: 1 1 0; flex-direction: column; gap: 2px; align-items: center; justify-content: center; min-height: 52px; padding: .2rem .1rem;
+    background: transparent; border: 0; box-shadow: none; color: var(--muted); font-size: 10.5px; font-weight: 500; }
+  .tabs .tab-more .icon { width: 52px; height: 28px; padding: 4px 16px; border-radius: 99px; }
+  .tabs .tab-more:hover { background: transparent; color: var(--text); transform: none; }
+  /* Menu aberto: a barra vira a lateral inteira, com as seções, o tema e a sincronização. */
+  body.menu-open { overflow: hidden; }
+  body.menu-open::after { content: ""; position: fixed; inset: 0; z-index: 65; background: var(--scrim); }
+  body.menu-open .tabs { z-index: 70; top: 0; bottom: 0; left: 0; right: auto; width: min(300px, 86vw); border-radius: 0 22px 22px 0; background: var(--side); backdrop-filter: none;
+    flex-direction: column; justify-content: flex-start; gap: 2px; padding: calc(22px + env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom)); overflow-y: auto; }
+  body.menu-open .tabs a { flex: none; flex-direction: row; justify-content: flex-start; gap: 12px; font-size: 14px; min-height: 44px; padding: 10px 13px; }
+  body.menu-open .tabs a .icon { width: 19px; height: 19px; padding: 0; background: transparent; }
+  body.menu-open .tabs a[aria-current="page"] { background: var(--yellow); color: var(--yellow-ink); }
+  body.menu-open .tabs .tab-extra, body.menu-open .tabs .nav-label, body.menu-open .tabs .side-brand { display: flex; }
+  body.menu-open .tabs a .tab-long { position: static; width: auto; height: auto; clip: auto; }
+  body.menu-open .tabs a .tab-short { display: none; }
+  body.menu-open .tabs .side-brand { font-size: 34px; padding: 0 12px 16px; }
+  body.menu-open .tabs .nav-foot { display: flex; flex-direction: column; gap: 8px; margin-top: auto; padding-top: 16px; }
+  body.menu-open .tabs .tab-more { display: none; }
+  body.menu-open .tabs a[href="/chat"], body.menu-open .tabs a[href="/metas"] { order: 0; }
   /* Nome curto na barra de baixo; o completo continua para leitores de tela. */
   .tabs a .tab-short { display: inline; }
   .tabs a .tab-long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   main { padding: 1rem max(1rem, env(safe-area-inset-left)) 1.5rem; padding-right: max(1rem, env(safe-area-inset-right)); }
   .page-head { margin-bottom: 1rem; }
-  .page-head h1 { font-size: 1.35rem; }
+  .page-head h1 { font-size: 29px; }
   .monthnav { width: 100%; justify-content: space-between; }
   .monthnav a { width: 44px; height: 40px; }
   .panel { padding: 1.1rem 1rem; border-radius: 14px; margin-bottom: 1rem; }
@@ -453,6 +498,11 @@ body:not(.has-nav) > main { width: 100%; padding: 1.5rem 1.25rem; }
 
   .sync-pill { font-size: .72rem; }
 }
+/* Celular estreito: a sincronização fica só no ponto (o texto continua para leitores de tela pelo role=status). */
+@media (max-width: 380px) {
+  .top-actions > .sync-pill { font-size: 0; gap: 0; padding: 7px; }
+  .top .brand { font-size: 25px; }
+}
 
 @media (max-width: 380px) {
   .cards { grid-template-columns: 1fr; }
@@ -465,7 +515,7 @@ body:not(.has-nav) > main { width: 100%; padding: 1.5rem 1.25rem; }
 }
 
 /* Pareamento do app do celular. */
-a.button { display: inline-flex; align-items: center; min-height: 46px; padding: .65rem 1.2rem; border-radius: var(--radius-sm); background: var(--accent); color: var(--accent-text); text-decoration: none; font-weight: 600;
+a.button { display: inline-flex; align-items: center; min-height: 46px; padding: .65rem 1.3rem; border-radius: 100px; background: var(--primary); color: var(--primary-ink); text-decoration: none; font-weight: 700;
   box-shadow: 0 1px 0 rgb(255 255 255 / .12) inset, 0 1px 2px rgb(16 24 20 / .12); transition: background-color .15s; }
 a.button:hover { background: var(--accent-strong); }
 .pair-code { font-size: 1.3rem; letter-spacing: .12em; font-weight: 700; }
@@ -555,10 +605,8 @@ label.file-button.primary-file:hover { background: var(--accent-strong); }
 .brief ul { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.45; }
 
 /* Sininho dos avisos (bell.js): no topo no celular, ao lado da marca no menu lateral. */
-.bell { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; min-height: 0; padding: 0;
-  border: 1px solid var(--border); border-radius: 50%; background: transparent; color: var(--text); box-shadow: none; cursor: pointer; }
-.bell:hover { background: var(--hover); color: var(--text); transform: none; }
-.bell .icon { width: 20px; height: 20px; }
+.bell { position: relative; }
+.bell .icon { width: 19px; height: 19px; }
 .bell-count { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px;
   background: var(--warn); color: var(--surface); font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
 .bell[data-level="danger"] .bell-count { background: var(--neg); }
@@ -582,8 +630,7 @@ label.file-button.primary-file:hover { background: var(--accent-strong); }
 .bell-item .ask-team { align-self: flex-start; margin-left: 42px; }
 .bell-empty { margin: 2px 0; }
 @media (min-width: 1024px) {
-  .tabs .bell { position: absolute; top: 18px; right: 14px; }
-  .bell-panel { top: 16px; left: calc(var(--side-w) + 12px); right: auto; width: 400px; }
+  .bell-panel { top: 70px; left: auto; right: 36px; width: 400px; }
 }
 /* "Perguntar para ..." (resumos do time e sininho): abre o Consultor com quem avisou. */
 .ask-team { font-size: 13px; font-weight: 600; color: var(--accent); text-decoration: none; white-space: nowrap; }

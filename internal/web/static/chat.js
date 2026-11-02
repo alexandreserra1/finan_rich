@@ -155,7 +155,7 @@
     if (!ev.limit) return;
     const box = document.createElement("p");
     box.className = "notice warn";
-    box.append("O grátis do finan_rich chegou ao limite por agora. Para seguir com IA, use sua própria chave grátis (o Gemini dá uma de graça) em ");
+    box.append("O grátis da Rich chegou ao limite por agora. Para seguir com IA, use sua própria chave grátis (o Gemini dá uma de graça) em ");
     const a = document.createElement("a");
     a.href = "/configuracoes";
     a.textContent = "Ajustes";

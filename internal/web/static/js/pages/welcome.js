@@ -102,7 +102,7 @@ export function render({ ledger, params }) {
   }
   const step = stepOf(params);
   return html`
-    <div class="page-head"><div class="title"><span class="kicker">Primeiro uso · passo ${step} de ${STEPS.length}</span><h1>Bem-vindo ao finan_rich</h1></div></div>
+    <div class="page-head"><div class="title"><span class="kicker">Primeiro uso · passo ${step} de ${STEPS.length}</span><h1>Bem-vindo à Rich</h1></div></div>
     <section class="panel welcome">
       <ol class="steps" aria-label="Passos">
         ${STEPS.map((s, i) => html`<li class="${i + 1 < step ? "done" : ""}" ${i + 1 === step ? html`aria-current="step"` : ""}>${s}</li>`)}

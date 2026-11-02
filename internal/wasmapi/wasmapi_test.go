@@ -67,7 +67,7 @@ func TestValidateAndMoney(t *testing.T) {
 
 func TestExport(t *testing.T) {
 	v, errMsg := decode(t, Export(ledger, `{"format":"csv","scope":"month","month":"2026-10"}`, 1791900000000))
-	if errMsg != "" || v["name"] != "finan_rich_lancamentos_2026-10.csv" || v["mime"] != "text/csv;charset=utf-8" {
+	if errMsg != "" || v["name"] != "rich_lancamentos_2026-10.csv" || v["mime"] != "text/csv;charset=utf-8" {
 		t.Fatalf("export csv: %v %s", v, errMsg)
 	}
 	data, _ := base64.StdEncoding.DecodeString(v["data"].(string))

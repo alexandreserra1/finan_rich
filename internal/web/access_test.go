@@ -256,7 +256,7 @@ func TestBackupDB(t *testing.T) {
 	a := newAccessApp(t, "")
 	rec := a.do("GET", "/configuracoes/backup.db", local, nil)
 	if rec.Code != http.StatusOK || !strings.HasPrefix(rec.Body.String(), "SQLite format 3\x00") ||
-		!strings.Contains(rec.Header().Get("Content-Disposition"), `attachment; filename="finan_rich_`) {
+		!strings.Contains(rec.Header().Get("Content-Disposition"), `attachment; filename="rich_`) {
 		t.Fatalf("backup do banco: %d %q %.20q", rec.Code, rec.Header().Get("Content-Disposition"), rec.Body.String())
 	}
 	a.enableLAN("senha-forte-1")
@@ -274,7 +274,7 @@ func TestQuitOnlyFromThisComputer(t *testing.T) {
 	if rec := a.do("POST", "/configuracoes/fechar", phone, nil); rec.Code == http.StatusOK {
 		t.Errorf("fechar pelo celular = %d", rec.Code)
 	}
-	if rec := a.do("POST", "/configuracoes/fechar", local, nil); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "fechado") {
+	if rec := a.do("POST", "/configuracoes/fechar", local, nil); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Rich fechada") {
 		t.Fatalf("fechar no computador = %d", rec.Code)
 	}
 	for i := 0; i < 50 && a.quits.Load() == 0; i++ {

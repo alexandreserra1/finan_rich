@@ -39,19 +39,19 @@
   <div class="panel-head"><div><h2>Consultor IA</h2><span class="muted small">Escolha de onde vem a IA que conversa com você no Consultor.</span></div></div>
   {{$free := eq .AI.Preset.ID .FreeID}}
   {{template "aistatus" .}}
-  {{if .Status.Ready}}<p class="ai-status on"><span class="dot" aria-hidden="true"></span><span>Pronto para usar: <b>{{if $free}}IA do finan_rich{{else}}{{.AI.Preset.Name}}{{end}}</b>{{if not $free}} com o modelo <code>{{.AI.Model}}</code>{{end}}</span></p>{{end}}
+  {{if .Status.Ready}}<p class="ai-status on"><span class="dot" aria-hidden="true"></span><span>Pronto para usar: <b>{{if $free}}IA da Rich{{else}}{{.AI.Preset.Name}}{{end}}</b>{{if not $free}} com o modelo <code>{{.AI.Model}}</code>{{end}}</span></p>{{end}}
 
   <form method="post" action="/configuracoes" id="ai-form">
     <div class="choice-cards" role="radiogroup" aria-label="De onde vem a IA">
       {{if .HasFree}}
       <label class="choice-card">
         <input type="radio" class="pick" name="caminho" value="finan"{{if $free}} checked{{end}}>
-        <span><span class="choice-title"><strong>Usar a IA do finan_rich</strong><span class="tag on">Grátis</span></span><span class="muted small">Grátis, sem conta e sem chave. É só ligar.</span></span>
+        <span><span class="choice-title"><strong>Usar a IA da Rich</strong><span class="tag on">Grátis</span></span><span class="muted small">Grátis, sem conta e sem chave. É só ligar.</span></span>
       </label>
       {{end}}
       <label class="choice-card">
         <input type="radio" class="pick" name="caminho" value="propria"{{if not $free}} checked{{end}}>
-        <span><span class="choice-title"><strong>Usar a minha própria chave</strong></span><span class="muted small">Você escolhe o provedor e o modelo, sem o limite do finan_rich. Ou o Ollama, de graça, aqui no seu computador.</span></span>
+        <span><span class="choice-title"><strong>Usar a minha própria chave</strong></span><span class="muted small">Você escolhe o provedor e o modelo, sem o limite da Rich. Ou o Ollama, de graça, aqui no seu computador.</span></span>
       </label>
     </div>
 
@@ -98,7 +98,7 @@
 </section>
 
 <section class="panel" id="open-finance">
-  <div class="panel-head"><div><h2>Open Finance</h2><span class="muted small">Lançamentos direto do banco, de graça, pelo Meu Pluggy, com a sua própria conta. Sem passar por servidor do finan_rich.</span></div>
+  <div class="panel-head"><div><h2>Open Finance</h2><span class="muted small">Lançamentos direto do banco, de graça, pelo Meu Pluggy, com a sua própria conta. Sem passar por servidor da Rich.</span></div>
     <span class="tag{{if .Pluggy.ClientID}} on{{end}}">{{if .Pluggy.ClientID}}Configurado{{else}}Não configurado{{end}}</span></div>
   <details{{if not .Pluggy.ClientID}} open{{end}}>
     <summary>Como configurar (uma vez, uns 10 minutos)</summary>
@@ -122,21 +122,21 @@
 </section>
 
 <section class="panel" id="acesso">
-  <div class="panel-head"><div><h2>Acesso pelo celular</h2><span class="muted small">Abra as telas do finan_rich no navegador do celular, pelo Wi-Fi de casa.</span></div></div>
+  <div class="panel-head"><div><h2>Acesso pelo celular</h2><span class="muted small">Abra as telas da Rich no navegador do celular, pelo Wi-Fi de casa.</span></div></div>
   {{if .EnvPassword}}
     <p class="muted">O acesso pela rede está protegido pela senha definida em <code>FINAN_PASSWORD</code> (modo servidor).</p>
   {{else if .LAN}}
     <p class="notice ok"><strong>Ligado.</strong> No celular, conectado ao <strong>mesmo Wi-Fi</strong> deste computador, abra:</p>
     {{if .LANURLs}}
     <div class="lan">
-      {{with .LANQR}}<img src="{{.}}" alt="QR code com o endereço do finan_rich" width="174" height="174">{{end}}
+      {{with .LANQR}}<img src="{{.}}" alt="QR code com o endereço da Rich" width="174" height="174">{{end}}
       <div>
         {{range .LANURLs}}<p class="lan-url"><code>{{.}}</code></p>{{end}}
         <p class="small muted">Aponte a câmera do celular para o QR code. Depois, no menu do navegador, toque em <strong>Adicionar à tela de início</strong> para ter o ícone do app.</p>
       </div>
     </div>
     {{else}}<p class="muted">Não encontrei este computador numa rede Wi-Fi ou cabo.</p>{{end}}
-    <p class="small muted">Este computador precisa ficar ligado com o finan_rich aberto. Se o celular não conectar, permita o finan_rich no firewall quando o sistema perguntar.</p>
+    <p class="small muted">Este computador precisa ficar ligado com a Rich aberta. Se o celular não conectar, permita o finanrich (o programa da Rich) no firewall quando o sistema perguntar.</p>
     <p class="small muted">Use só em redes de confiança (a sua casa). Pelo Wi-Fi a conexão não é cifrada: em Wi-Fi público ou de outras pessoas, quem estiver na mesma rede pode ver o que passa. Fora de casa, use o Tailscale (veja o README), que cifra tudo.</p>
     <details>
       <summary>Trocar a senha ou desligar</summary>
@@ -152,7 +152,7 @@
       </form>
     </details>
   {{else}}
-    <p class="muted">Use o finan_rich no celular enquanto ele roda neste computador, pelo Wi-Fi de casa. Os dados e a IA continuam aqui; o celular só abre as telas. Para proteger seus dados, crie uma senha: ela será pedida no celular (neste computador, não).</p>
+    <p class="muted">Use a Rich no celular enquanto ele roda neste computador, pelo Wi-Fi de casa. Os dados e a IA continuam aqui; o celular só abre as telas. Para proteger seus dados, crie uma senha: ela será pedida no celular (neste computador, não).</p>
     <form method="post" action="/configuracoes/acesso" class="grid-form">
       <input type="hidden" name="acao" value="ligar">
       <label class="wide">Crie uma senha <input type="password" name="senha" minlength="8" autocomplete="new-password" required placeholder="mínimo 8 caracteres"></label>
@@ -164,7 +164,7 @@
 
 <section class="panel" id="app">
   <div class="panel-head"><div><h2>App do celular</h2><span class="muted small">O app Android guarda os dados, abre sem internet e sincroniza pelo Wi-Fi.</span></div></div>
-  <p class="small muted">Com o app do finan_rich instalado (Android), o celular guarda seus dados, abre sem internet e sincroniza com este computador quando estiver no mesmo Wi-Fi. Baixe o <code>.apk</code> em <a href="{{.App.Download}}" target="_blank" rel="noopener">finan_rich no GitHub</a>.</p>
+  <p class="small muted">Com o app da Rich instalado (Android), o celular guarda seus dados, abre sem internet e sincroniza com este computador quando estiver no mesmo Wi-Fi. Baixe o <code>.apk</code> em <a href="{{.App.Download}}" target="_blank" rel="noopener">Rich no GitHub</a>.</p>
   {{if not .App.Base}}
     <p class="notice warn">Primeiro ligue o <a href="#acesso">acesso pelo celular</a> acima: é por esse endereço que o app conversa com este computador.</p>
   {{else if .App.Code}}
@@ -209,7 +209,7 @@
       <li>No celular, com o Tailscale ligado (mesma conta), abra:</li>
     </ol>
     <div class="lan">
-      {{with .TailscaleQR}}<img src="{{.}}" alt="QR code com o endereço seguro do finan_rich" width="174" height="174">{{end}}
+      {{with .TailscaleQR}}<img src="{{.}}" alt="QR code com o endereço seguro da Rich" width="174" height="174">{{end}}
       <div><p class="lan-url"><code>{{.TailscaleURL}}</code></p>
         <p class="small muted">Depois toque em <strong>Adicionar à tela de início</strong>: o app abre mesmo sem internet e sincroniza quando o computador estiver ligado.</p></div>
     </div>
@@ -225,27 +225,27 @@
 <section class="panel" id="instalar">
   <div class="panel-head"><div><h2>Instalar como aplicativo</h2></div></div>
   <ul class="small">
-    <li><strong>Computador</strong>: instale pelo terminal com um comando (veja o README) e o finan_rich ganha ícone no menu de aplicativos e abre em janela própria.</li>
+    <li><strong>Computador</strong>: instale pelo terminal com um comando (veja o README) e a Rich ganha ícone no menu de aplicativos e abre em janela própria.</li>
     <li><strong>Android</strong> (Chrome): menu ⋮ → <em>Adicionar à tela inicial</em>.</li>
     <li><strong>iPhone</strong> (Safari): botão Compartilhar → <em>Adicionar à Tela de Início</em>.</li>
   </ul>
 </section>
 
 <section class="panel" id="dados">
-  <div class="panel-head"><div><h2>Seus dados</h2><span class="muted small">Tudo num único arquivo neste computador, o <code>finan.db</code> (o caminho aparece na janela do finan_rich ao abrir).</span></div></div>
+  <div class="panel-head"><div><h2>Seus dados</h2><span class="muted small">Tudo num único arquivo neste computador, o <code>finan.db</code> (o caminho aparece na janela da Rich ao abrir).</span></div></div>
   <div class="data-cards">
     <a class="link-card" href="/exportar"><span><span class="lc-text"><strong>Exportar e backup</strong><span class="faint small">Excel, CSV, relatório em PDF e backup (.json)</span></span></span><span aria-hidden="true">›</span></a>
     <a class="link-card" href="/configuracoes/backup.db"><span><span class="lc-text"><strong>Banco completo (.db)</strong><span class="faint small">Inclui a chave da IA: guarde em lugar seguro</span></span></span><span aria-hidden="true">›</span></a>
   </div>
-  <p class="small muted">O banco completo inclui também a configuração da IA (com a chave), as credenciais do Open Finance e a conversa com o consultor: guarde em lugar seguro. Para restaurá-lo, feche o finan_rich e troque o arquivo <code>finan.db</code> da pasta de dados por ele.</p>
+  <p class="small muted">O banco completo inclui também a configuração da IA (com a chave), as credenciais do Open Finance e a conversa com o consultor: guarde em lugar seguro. Para restaurá-lo, feche a Rich e troque o arquivo <code>finan.db</code> da pasta de dados por ele.</p>
 </section>
 
 {{if .CanQuit}}
 <section class="panel danger-zone" id="fechar">
   <div class="panel-head"><div><h2>Sessão</h2></div></div>
   <div class="set-row">
-    <span class="set-row-text"><strong>Fechar o finan_rich</strong><span class="faint small">Desliga o programa neste computador. Seus dados ficam salvos; o celular continua funcionando e sincroniza quando o finan_rich abrir de novo.</span></span>
-    <form method="post" action="/configuracoes/fechar"><button type="submit" class="secondary danger">Fechar o finan_rich</button></form>
+    <span class="set-row-text"><strong>Fechar a Rich</strong><span class="faint small">Desliga o programa neste computador. Seus dados ficam salvos; o celular continua funcionando e sincroniza quando a Rich abrir de novo.</span></span>
+    <form method="post" action="/configuracoes/fechar"><button type="submit" class="secondary danger">Fechar a Rich</button></form>
   </div>
 </section>
 {{end}}

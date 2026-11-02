@@ -144,14 +144,14 @@ func (s *Server) pullModel(w http.ResponseWriter, r *http.Request) {
 // rede, ninguém desliga o programa de quem está usando.
 func (s *Server) quit(w http.ResponseWriter, r *http.Request) {
 	if s.onQuit == nil || !isLoopback(r) {
-		http.Error(w, "só dá para fechar o finan_rich no próprio computador", http.StatusForbidden)
+		http.Error(w, "só dá para fechar a Rich no próprio computador", http.StatusForbidden)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	io.WriteString(w, `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width">
-<title>finan_rich</title><body style="font-family:system-ui,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem">
-<h1>finan_rich fechado</h1><p>Seus dados estão salvos. Pode fechar esta janela.</p>
-<p>Para abrir de novo, use o ícone do finan_rich.</p></body>`)
+<title>Rich</title><body style="font-family:system-ui,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem">
+<h1>Rich fechada</h1><p>Seus dados estão salvos. Pode fechar esta janela.</p>
+<p>Para abrir de novo, use o ícone da Rich.</p></body>`)
 	go func() { // fecha depois que a resposta sair
 		time.Sleep(300 * time.Millisecond)
 		s.onQuit()

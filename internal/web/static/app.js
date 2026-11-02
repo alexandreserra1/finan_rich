@@ -128,3 +128,22 @@ window.Finan = (function () {
 
   return { postSSE, markdown };
 })();
+
+// Menu "Mais" (celular): abre a lateral com todas as telas; fecha no Esc, ao tocar
+// fora dela ou ao escolher uma tela.
+(function () {
+  const button = document.querySelector("[data-menu]");
+  if (!button) return;
+  const isOpen = () => document.body.classList.contains("menu-open");
+  const set = (open) => {
+    document.body.classList.toggle("menu-open", open);
+    button.setAttribute("aria-expanded", String(open));
+  };
+  button.addEventListener("click", () => set(!isOpen()));
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && isOpen()) { set(false); button.focus(); }
+  });
+  document.addEventListener("click", (e) => {
+    if (isOpen() && (e.target.closest("#menu a") || !e.target.closest("#menu"))) set(false);
+  });
+})();

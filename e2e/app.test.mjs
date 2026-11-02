@@ -209,7 +209,7 @@ try {
   await page.reload();
   await page.waitForSelector("[data-theme-pick]");
   const [darkTheme, darkBg] = await theme();
-  ok(darkTheme === "dark" && darkBg === "rgb(10, 13, 12)" && await page.isChecked("[data-theme-pick][value=escuro]"), "tema escuro fica salvo ao reabrir o app");
+  ok(darkTheme === "dark" && darkBg === "rgb(23, 25, 29)" && await page.isChecked("[data-theme-pick][value=escuro]"), "tema escuro fica salvo ao reabrir o app");
   await page.check("[data-theme-pick][value=auto]");
   ok((await theme())[0] === "light", "voltar ao automático segue o aparelho de novo");
 

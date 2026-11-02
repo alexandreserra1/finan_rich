@@ -15,7 +15,7 @@ export async function scanPairingQR() {
   const text = await scanQR("Aponte para o QR code em Ajustes → App do celular, no computador");
   if (text == null) return null;
   const found = parsePairingQR(text);
-  if (!found) throw new Error("esse QR code não é o de pareamento do finan_rich");
+  if (!found) throw new Error("esse QR code não é o de pareamento da Rich");
   return found;
 }
 

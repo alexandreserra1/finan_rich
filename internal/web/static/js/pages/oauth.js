@@ -46,7 +46,7 @@ export async function bind(root, ctx) {
   try {
     const target = relay(ctx.params, !!window.Capacitor?.isNativePlatform?.());
     if (target) {
-      status.textContent = "Voltando para o finan_rich… Se não abrir sozinho, volte ao app.";
+      status.textContent = "Voltando para a Rich… Se não abrir sozinho, volte ao app.";
       location.replace(target);
       return;
     }

@@ -66,7 +66,7 @@ export function render() {
     return html`${head(me)}<section class="chat">
       <div class="notice warn ai-setup"><strong>O consultor precisa de uma IA para funcionar.</strong>
       Para usar sem computador, escolha uma IA na nuvem (há opções grátis) em
-      <a href="/configuracoes#ia-nuvem">Ajustes → Consultor sem computador</a>. Ou conecte este celular a um computador com o finan_rich.
+      <a href="/configuracoes#ia-nuvem">Ajustes → Consultor sem computador</a>. Ou conecte este celular a um computador com a Rich.
       <span class="small muted">O resto do app funciona normalmente sem IA.</span></div></section>`;
   }
   return html`
@@ -115,9 +115,9 @@ export function render() {
 // limitNotice: acabou o grátis do finan_rich; o caminho para a chave grátis da própria pessoa.
 function limitNotice() {
   return chat.cloud
-    ? html`<p class="notice warn">O grátis do finan_rich chegou ao limite por agora. Para seguir com IA, use sua própria chave grátis (o Gemini dá uma de graça) em
+    ? html`<p class="notice warn">O grátis da Rich chegou ao limite por agora. Para seguir com IA, use sua própria chave grátis (o Gemini dá uma de graça) em
       <a href="/configuracoes#ia-nuvem">Ajustes → Consultor sem computador</a>.</p>`
-    : html`<p class="notice warn">O grátis do finan_rich chegou ao limite por agora. Para seguir com IA, use sua própria chave grátis nos Ajustes do computador.</p>`;
+    : html`<p class="notice warn">O grátis da Rich chegou ao limite por agora. Para seguir com IA, use sua própria chave grátis nos Ajustes do computador.</p>`;
 }
 
 async function call(path, init = {}) {
@@ -161,7 +161,7 @@ async function openChat(ctx) {
     chat = { history: body.history, model: body.model, ready: body.ready, problem: body.problem || "", busy: false, error: "" };
   } catch (err) {
     const offline = err instanceof TypeError;
-    chat = { history: [], model: "", ready: false, offline, problem: offline ? "Sem conexão com o computador. O consultor funciona quando o celular estiver no mesmo Wi-Fi e o finan_rich aberto lá." : err.message, busy: false, error: "" };
+    chat = { history: [], model: "", ready: false, offline, problem: offline ? "Sem conexão com o computador. O consultor funciona quando o celular estiver no mesmo Wi-Fi e a Rich aberta lá." : err.message, busy: false, error: "" };
   }
   ctx.rerender();
 }

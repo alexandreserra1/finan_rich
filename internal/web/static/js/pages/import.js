@@ -145,7 +145,7 @@ function renderUpload() {
     </section>
     <section class="panel">
       <h2>Traga os lançamentos do banco</h2>
-      <p class="muted">Exporte o extrato da conta ou a fatura do cartão no app ou site do banco e escolha o arquivo aqui. O finan_rich sugere a categoria de cada lançamento, aprende com as suas correções e avisa o que já foi importado. O arquivo é lido neste aparelho e não vai para a internet.</p>
+      <p class="muted">Exporte o extrato da conta ou a fatura do cartão no app ou site do banco e escolha o arquivo aqui. A Rich sugere a categoria de cada lançamento, aprende com as suas correções e avisa o que já foi importado. O arquivo é lido neste aparelho e não vai para a internet.</p>
       <label class="button file-button primary-file">Escolher arquivo (OFX, CSV ou fatura em PDF)… <input type="file" name="statement" accept=".ofx,.qfx,.csv,.txt,.pdf,text/csv,application/x-ofx,application/pdf" class="visually-hidden"></label>
       <details class="banks">
         <summary>Onde encontro o extrato no meu banco?</summary>
@@ -202,7 +202,7 @@ export function bind(root, ctx) {
   root.querySelector('[data-action="bank-notes"]')?.addEventListener("click", async () => {
     try {
       if (!(await bankNotes.enabled())) {
-        ctx.flash("Primeiro permita: Ajustes do Android → Acesso a notificações → finan_rich.");
+        ctx.flash("Primeiro permita: Ajustes do Android → Acesso a notificações → Rich.");
         await bankNotes.openSettings();
         return;
       }

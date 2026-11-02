@@ -56,7 +56,7 @@ func (d *pdfDoc) newPage() {
 	d.pages = append(d.pages, d.cur)
 	d.y = marginY
 	if len(d.pages) > 1 {
-		d.text(marginX, d.y, 8, false, colorMuted, "finan_rich · "+d.title)
+		d.text(marginX, d.y, 8, false, colorMuted, "Rich · "+d.title)
 		d.y += 18
 	}
 }
