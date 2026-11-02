@@ -5,60 +5,43 @@
 // GoalPlan e Contribution).
 import * as finance from "../finance.js";
 import { BUCKETS, centsInput, closeModal, html, openModal, raw, today, toast } from "../ui.js";
-import { PLUS, pageHead } from "./dashboard.js";
+import { PLUS, metric, pageHead } from "./dashboard.js";
 
 const CLOSE = raw('<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>');
+const PENCIL = raw('<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4"/></svg>');
 const CHAT = raw('<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>');
 
 // ring: o anel de progresso (r = 42, volta inteira ≈ 264).
 const ring = (pct, size) => raw(`<svg class="goal-ring" width="${size}" height="${size}" viewBox="0 0 100 100" aria-hidden="true">
   <circle cx="50" cy="50" r="42" class="track"/><circle cx="50" cy="50" r="42" class="arc" style="--dash: ${(pct * 2.64).toFixed(1)}" transform="rotate(-90 50 50)"/></svg>`);
 
-const status = (g) => (g.done ? ["Atingida", "pos"] : g.late ? ["Prazo passou", "neg"] : ["Em dia", ""]);
+const status = (g) => (g.done ? ["Atingida", "pos"] : g.late ? ["Prazo passou", "neg"] : ["Em andamento", ""]);
 
 function advice(g, m) {
   if (g.done) return `Meta atingida: você juntou ${m(g.progressCents)}.`;
   if (g.late) return `O prazo passou e faltam ${m(g.remainingCents)}. Ajuste o prazo ou guarde um pouco a mais por mês.`;
-  if (g.perMonthCents) return `Guarde ${m(g.perMonthCents)} por mês durante ${g.monthsLeft} ${g.monthsLeft === 1 ? "mês" : "meses"} para chegar lá.`;
+  if (g.perMonthCents) return `Faltam ${m(g.remainingCents)}. Para o prazo: ${m(g.perMonthCents)} por mês durante ${g.monthsLeft} ${g.monthsLeft === 1 ? "mês" : "meses"}, sem rendimentos.`;
   return `Faltam ${m(g.remainingCents)}. Com um prazo, o app diz quanto guardar por mês.`;
 }
 
-// goalCards: a versão compacta, para o Painel (anel pequeno, sem ações).
-export function goalCards(views, m) {
-  return html`<ul class="goals">
-    ${views.map((g) => {
-      const [label, tone] = status(g);
-      return html`<li class="goal ${g.done ? "done" : ""} ${g.late ? "late" : ""}">
-        <span class="goal-ring-wrap small">${ring(g.pct, 40)}</span>
-        <span class="goal-text">
-          <span class="goal-top"><strong>${g.name}</strong><span class="goal-chip ${tone}">${label}</span></span>
-          <span class="small muted">${m(g.progressCents)} de ${m(g.targetCents)} · ${g.pct}%${g.perMonthCents ? ` · guarde ${m(g.perMonthCents)}/mês` : ""}</span>
-        </span>
-      </li>`;
-    })}
-  </ul>`;
-}
+// A arte do topo de cada meta: sol, ✳ e ✳ de novo, em amarelo, rosa e lilás (como no design).
+const SUN = raw('<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="11"/><path d="M32 6v9M32 49v9M6 32h9M49 32h9M13.6 13.6l6.4 6.4M44 44l6.4 6.4M13.6 50.4l6.4-6.4M44 20l6.4-6.4"/></svg>');
+const ART = ["yellow", "pink", "lilac"];
 
-function goalCard(g, m, cats) {
+function goalCard(g, m, cats, i) {
   const [label, tone] = status(g);
-  const where = [g.deadline ? `até ${finance.monthLabel(g.deadline)}` : "sem prazo", g.categoryId && cats[g.categoryId] ? `aportes de ${cats[g.categoryId]}` : "atualizado à mão"];
   return html`<article class="goal-card ${g.done ? "done" : ""} ${g.late ? "late" : ""}">
-    <div class="goal-main">
-      <span class="goal-ring-wrap">${ring(g.pct, 96)}<strong>${g.pct}%</strong></span>
-      <div class="goal-info">
-        <div class="goal-top"><h2>${g.name}</h2><span class="goal-chip ${tone}">${label}</span></div>
-        <span class="goal-amount"><b>${m(g.progressCents)}</b> de ${m(g.targetCents)}</span>
-        <span class="faint small">${where.join(" · ")}</span>
-      </div>
-    </div>
+    <div class="goal-art ${ART[i % 3]}" aria-hidden="true">${i % 3 === 0 ? SUN : html`<span>✳</span>`}</div>
+    <div class="goal-top"><h2>${g.name}</h2><button type="button" class="iconbtn goal-edit" data-edit="${g.id}" aria-label="Editar ${g.name}">${PENCIL}</button></div>
+    <strong class="goal-amount">${m(g.progressCents)}</strong>
+    <span class="small muted">de ${m(g.targetCents)} · ${g.pct}% do caminho${g.categoryId && cats[g.categoryId] ? ` · aportes de ${cats[g.categoryId]}` : ""}</span>
+    <span class="progress"><i style="width: ${Math.min(g.pct, 100)}%"></i></span>
+    <div class="row goal-meta"><span class="goal-chip ${tone}">${label}</span><span class="faint tiny">${g.deadline ? `até ${finance.monthLabel(g.deadline)}` : "sem prazo"}</span></div>
     <p class="goal-advice">${advice(g, m)}</p>
-    <div class="goal-actions">
-      ${g.done ? "" : html`<form class="money-field goal-quick" data-quick="${g.id}">
-        <span>R$</span><input name="amount" inputmode="decimal" placeholder="Quanto guardou?" aria-label="Valor para guardar em ${g.name}" autocomplete="off">
-        <button type="submit" class="small-btn">Guardar</button>
-      </form>`}
-      <button type="button" class="secondary" data-edit="${g.id}">Editar</button>
-    </div>
+    ${g.done ? "" : html`<form class="money-field goal-quick" data-quick="${g.id}">
+      <span>R$</span><input name="amount" inputmode="decimal" placeholder="0,00" aria-label="Valor para guardar em ${g.name}" autocomplete="off">
+      <button type="submit" class="small-btn">Registrar aporte</button>
+    </form>`}
   </article>`;
 }
 
@@ -120,15 +103,15 @@ export function render({ ledger }) {
 
   const fits = p.investPlannedCents - p.perMonthCents;
   return html`${head}
-    <section class="sum-strip goal-strip">
-      <div><span>Guardado nas metas</span><strong>${m(p.savedCents)}</strong></div>
-      <div><span>Falta juntar</span><strong>${m(p.remainingCents)}</strong></div>
-      <div><span>Guardar por mês, somando</span><strong class="accent">${m(p.perMonthCents)}</strong></div>
-      <div><span>Cabe nos Investimentos?</span>${p.investPlannedCents
-        ? html`<strong class="${fits >= 0 ? "pos" : "neg"}">${fits >= 0 ? "Sim" : "Não"}</strong><span>${fits >= 0 ? `sobram ${m(fits)} dos ${m(p.investPlannedCents)}` : `faltam ${m(-fits)} nos ${m(p.investPlannedCents)}`}</span>`
-        : html`<strong class="muted">—</strong><span>lance o salário do mês para comparar</span>`}</div>
+    <section class="cards metricgrid goal-strip">
+      ${metric("Guardado nas metas", m(p.savedCents), `${p.goals.length} ${p.goals.length === 1 ? "meta" : "metas"}`)}
+      ${metric("Falta juntar", m(p.remainingCents), "somando todas")}
+      ${metric("Guardar por mês", m(p.perMonthCents), "somando as metas com prazo")}
+      ${metric("Cabe nos Investimentos?", !p.investPlannedCents ? "—" : fits >= 0 ? "Sim" : "Não", !p.investPlannedCents ? "lance o salário do mês para comparar"
+        : fits >= 0 ? `sobram ${m(fits)} dos ${m(p.investPlannedCents)}` : `faltam ${m(-fits)} nos ${m(p.investPlannedCents)}`, { primary: true })}
     </section>
-    <section class="goal-grid">${p.goals.map((g) => goalCard(g, m, catNames))}</section>
+    <section class="goal-grid">${p.goals.map((g, i) => goalCard(g, m, catNames, i))}</section>
+    <p class="tip goal-note"><b>Sobre os aportes:</b> o que já estava guardado é informado à mão. Com uma categoria ligada à meta, cada gasto lançado nela conta como aporte, e o “Registrar aporte” lança esse gasto por você. Sem categoria, o aporte soma no valor guardado.</p>
     <a class="btn secondary" href="/chat">${CHAT}Conversar com o Tito sobre as metas</a>
     ${goalForm(cats)}`;
 }
