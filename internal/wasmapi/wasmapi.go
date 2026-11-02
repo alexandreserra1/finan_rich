@@ -229,7 +229,7 @@ func Alerts(ledgerJSON, today string) string {
 	return reply(finance.PendingAlerts(l, day), nil)
 }
 
-// Briefings devolve o que Bento, Tito e Otávio têm a dizer hoje (Painel).
+// Briefings devolve o que Otávio, Tito e Lia têm a dizer hoje (Painel).
 func Briefings(ledgerJSON, today string) string {
 	l, day, err := planInput(ledgerJSON, today)
 	if err != nil {

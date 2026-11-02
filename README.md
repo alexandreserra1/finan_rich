@@ -6,8 +6,8 @@ números reais. Seus dados ficam num arquivo no seu PC, sem conta e sem nuvem.
 
 - **Painel do mês**: entradas, saídas, saldo, quanto você guardou, divisão do salário
   (planejado x realizado), gastos por categoria e visão anual.
-- **O time**: cinco personagens cuidam cada um de um assunto. Jade (consultora), Bento
-  (dívidas), Luna (alertas), Tito (metas) e Otávio (análise) assinam os avisos do sininho,
+- **O time**: três personagens cuidam cada um de um assunto. Otávio (organização e
+  dívidas, quem atende primeiro), Lia (hábitos e orçamento) e Tito (metas e reserva) assinam os avisos do sininho,
   contam no cartão "O que o time viu" o que acharam e conversam no Consultor, cada um do
   seu jeito. Avisos: dívida vencendo, dívida que cresce, grupo acima da meta do mês, gasto
   fora do padrão e meta atrasada ou atingida. O sininho, no alto de toda tela, mostra
@@ -15,7 +15,7 @@ números reais. Seus dados ficam num arquivo no seu PC, sem conta e sem nuvem.
   os aparelhos (o aviso volta se a situação mudar). Cada aviso e cada resumo do time tem
   "Perguntar para ...": abre o Consultor com quem avisou e a pergunta já escrita (as de
   vencimento, dívida, metas e gastos o app responde sozinho, sem IA). No app do celular, lembretes mesmo sem
-  internet: Luna antes de cada vencimento, Otávio toda segunda e Tito no dia do salário.
+  internet: Otávio antes de cada vencimento, Lia toda segunda e Tito no dia do salário.
 - **Lançamentos** por categoria, com *Repetir todo mês* (salário, aluguel, assinaturas entram
   sozinhos), *Copiar do mês anterior* e busca com filtros (texto sem ligar para acento,
   categoria, tipo, faixa de valor, um mês ou todos) que soma o que achou.

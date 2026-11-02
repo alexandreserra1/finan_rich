@@ -280,7 +280,7 @@ export function render(ctx) {
     ${briefs.length ? html`<section class="panel" id="time" aria-labelledby="time-h">
       <div class="panel-head"><h2 id="time-h">O que o time viu</h2><a class="small" href="/chat">Conversar</a></div>
       <div class="briefs">${briefs.map((b) => html`<div class="brief"><a class="brief-main" href="${b.link}">
-        <span class="brief-who"><img class="face" src="/static/img/avatar-${b.agent.animal}.png" alt="" width="36" height="36"><span><strong>${b.agent.name}</strong><small>${b.title}</small></span></span>
+        <span class="brief-who"><img class="face" src="/static/img/time/${b.agent.id}-mini.webp" alt="" width="36" height="36"><span><strong>${b.agent.name}</strong><small>${b.title}</small></span></span>
         <ul>${b.lines.map((l) => html`<li>${l}</li>`)}</ul></a>${askLink(b, b.title)}</div>`)}</div>
     </section>` : ""}
 

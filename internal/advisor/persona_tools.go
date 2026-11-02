@@ -366,16 +366,31 @@ func questionMoney(q string) string {
 
 var daysRe = regexp.MustCompile(`(\d+)\s*dias`)
 
-// prefetch é a conta principal do personagem para esta pergunta ("" para a Jade).
+// prefetch é a conta principal do personagem para esta pergunta ("" quando o
+// assunto é o mês todo: o retrato já tem os números).
 func prefetch(agent string, t *Tools, question string) string {
 	q := fold(question)
 	switch persona(agent).ID {
-	case "bento":
-		order := ""
-		if strings.Contains(q, "menor") || strings.Contains(q, "bola") {
-			order = "menor saldo"
+	case "otavio":
+		switch otavioTopic(question) {
+		case "dividas":
+			order := ""
+			if strings.Contains(q, "menor") || strings.Contains(q, "bola") {
+				order = "menor saldo"
+			}
+			return t.simulateDebts(questionMoney(question), order)
+		case "vencimentos":
+			days := ""
+			switch m := daysRe.FindStringSubmatch(q); {
+			case m != nil:
+				days = m[1]
+			case strings.Contains(q, "semana"):
+				days = "7"
+			case strings.Contains(q, "mes"):
+				days = "31"
+			}
+			return t.upcoming(days)
 		}
-		return t.simulateDebts(questionMoney(question), order)
 	case "tito":
 		var goals, named []string
 		for _, g := range finance.Goals(t.ledger, t.today) {
@@ -395,19 +410,8 @@ func prefetch(agent string, t *Tools, question string) string {
 			out = append(out, t.simulateGoal(g, "", questionMoney(question)))
 		}
 		return strings.Join(out, "\n\n")
-	case "otavio":
+	case "lia":
 		return t.findings() + "\n\n" + t.compareMonths("", "")
-	case "luna":
-		days := ""
-		switch m := daysRe.FindStringSubmatch(q); {
-		case m != nil:
-			days = m[1]
-		case strings.Contains(q, "semana"):
-			days = "7"
-		case strings.Contains(q, "mes"):
-			days = "31"
-		}
-		return t.upcoming(days)
 	}
 	return ""
 }

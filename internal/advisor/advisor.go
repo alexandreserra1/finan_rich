@@ -20,7 +20,7 @@ import (
 // (internal/proxy) reconhece o app por ela; mude o resto à vontade, ela não.
 const PromptMarker = "Você é o consultor financeiro pessoal do usuário dentro do app finan_rich"
 
-const SystemPrompt = PromptMarker + `, um controle de gastos individual.
+const SystemPrompt = PromptMarker + ` (para as pessoas, o app se chama Rich), um controle de gastos individual.
 
 Como agir:
 - Responda sempre em português do Brasil, de forma direta e prática, como um amigo que entende muito de finanças pessoais no Brasil.
@@ -151,7 +151,7 @@ type Question struct {
 	Ledger    domain.Ledger
 	Today     time.Time
 	Anonymize bool   // IA de fora do aparelho: nomes viram apelidos (ver anon.go)
-	Agent     string // quem do time responde (personas.go); vazio = Jade
+	Agent     string // quem do time responde (personas.go); vazio = Otávio
 }
 
 // Answer responde à pergunta com as ferramentas ligadas. Com Anonymize, a IA

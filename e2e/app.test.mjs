@@ -277,7 +277,7 @@ try {
   await page.waitForSelector(".proposal:has-text('Pão') button:has-text('Adicionado')", { timeout: 10000 });
   ok(true, "pela nuvem, a proposta também vira cartão e grava neste celular");
 
-  // A internet cai no meio da resposta: a Jade responde com as contas do app
+  // A internet cai no meio da resposta: o Otávio responde com as contas do app
   // (sem IA), não fica em "Pensando…" e não guarda a resposta pela metade.
   await page.fill("textarea[name=message]", "E se a internet caiu?");
   await page.click("form[data-form=ask] button");
@@ -318,32 +318,34 @@ try {
     "a resposta da IA chega embaixo do cartão, que continua; a tabela do markdown vira tabela");
   await page.click(".msg.assistant >> nth=-1 >> .numbers summary");
   await page.evaluate(() => { document.querySelector(".messages").dataset.antes = "1"; });
-  await page.click(".team-member[data-agent=jade]"); // redesenha a tela
+  await page.click(".team-member[data-agent=otavio]"); // redesenha a tela
   await page.waitForFunction(() => !document.querySelector(".messages").dataset.antes);
   ok(await page.locator(".msg.assistant >> nth=-1 >> details.numbers[open]").count() === 1, "o cartão que a pessoa abriu continua aberto quando a tela é redesenhada");
 
-  // O time: a Jade responde e, como o assunto é dívida, oferece passar para o
-  // Bento; com ele, a IA recebe a voz e só as ferramentas de dívida.
-  ok((await page.textContent(".msg.assistant >> nth=-1")).includes("Jade · Consultora") && await page.getAttribute(".team-member[data-agent=jade]", "aria-pressed") === "true",
-    "sem escolher ninguém, quem responde é a Jade");
-  await page.fill("textarea[name=message]", "Qual dívida pago primeiro?");
+  // O time: o Otávio responde e, como o assunto é gasto, oferece passar para a
+  // Lia; com ela, a IA recebe a voz e só as ferramentas de gastos.
+  ok((await page.textContent(".msg.assistant >> nth=-1")).includes("Otávio · Organização e dívidas") && await page.getAttribute(".team-member[data-agent=otavio]", "aria-pressed") === "true",
+    "sem escolher ninguém, quem responde é o Otávio");
+  await page.fill("textarea[name=message]", "Quanto gastei com delivery?");
   await page.click("form[data-form=ask] button");
-  await page.waitForSelector(".handoff:has-text('Isso é com Bento (Dívidas)')", { timeout: 30000 });
+  await page.waitForSelector(".handoff:has-text('Isso é com Lia (Hábitos e orçamento)')", { timeout: 30000 });
   await page.click("[data-handoff]");
-  await page.waitForSelector(".msg.assistant:not(.pending):has-text('Bento · Dívidas')", { timeout: 30000 }); // a pendente já tem o nome
-  const toBento = cloudBodies.at(-1);
-  ok(toBento.messages[0].content.includes("Você é o Bento") && toBento.tools.join() === "buscar_lancamentos,criar_divida,registrar_pagamento,simular_dividas" &&
-    await page.getAttribute(".team-member[data-agent=bento]", "aria-pressed") === "true" && await page.locator(".handoff").count() === 0,
-    `trocar para o Bento muda a voz e as ferramentas (${toBento.tools})`);
+  await page.waitForSelector(".msg.assistant:not(.pending):has-text('Lia · Hábitos e orçamento')", { timeout: 30000 }); // a pendente já tem o nome
+  const toLia = cloudBodies.at(-1);
+  ok(toLia.messages[0].content.includes("Você é a Lia") && toLia.tools.join() === "buscar_lancamentos,alterar_lancamento,apagar_lancamento,achados,comparar_meses" &&
+    await page.getAttribute(".team-member[data-agent=lia]", "aria-pressed") === "true" && await page.locator(".handoff").count() === 0,
+    `trocar para a Lia muda a voz e as ferramentas (${toLia.tools})`);
   // Sugestão com resposta pronta: o app responde sem chamar a IA.
   const calls = cloudBodies.length;
-  await page.fill("textarea[name=message]", "Quando eu fico livre das dívidas?");
+  await page.fill("textarea[name=message]", "Quanto ainda posso gastar?");
   await page.click("form[data-form=ask] button");
   await page.waitForSelector(".msg.assistant >> nth=-1 >> .app-answer:has-text('Resposta do app, sem IA.')", { timeout: 30000 });
-  ok(cloudBodies.length === calls, "sugestão pronta do Bento: resposta do app, sem chamar a IA");
+  ok(cloudBodies.length === calls, "pergunta pronta da Lia: resposta do app, sem chamar a IA");
+  const liaText = await page.locator(".msg.assistant").last().innerText();
+  ok(liaText.includes("Ainda não há renda neste mês") && liaText.includes("Lance a entrada"), `sem renda lançada, a Lia pede a entrada antes de dizer quanto cabe: ${liaText.slice(0, 300)}`);
   await page.reload();
-  await page.waitForSelector(".team-member[data-agent=bento][aria-pressed=true]", { timeout: 20000 });
-  ok((await page.getAttribute("textarea[name=message]", "placeholder")).includes("Bento") && (await page.textContent(".messages")).includes("Jade · Consultora"),
+  await page.waitForSelector(".team-member[data-agent=lia][aria-pressed=true]", { timeout: 20000 });
+  ok((await page.getAttribute("textarea[name=message]", "placeholder")).includes("Lia") && (await page.textContent(".messages")).includes("Otávio · Organização e dívidas"),
     "a escolha fica guardada e cada resposta antiga mostra quem respondeu");
   // "Perguntar para Tito" no Painel: o Consultor abre com o Tito e a pergunta já escrita.
   await page.evaluate(() => {
@@ -354,8 +356,8 @@ try {
   await page.waitForSelector(".team-member[data-agent=tito][aria-pressed=true]");
   ok(await page.inputValue("textarea[name=message]") === "Minhas metas estão no ritmo?" && page.url() === `${APP}/chat` &&
     await page.evaluate(() => document.activeElement?.name) === "message", "no app, o link do Painel abre o Consultor com o Tito e a pergunta já escrita");
-  await page.click(".team-member[data-agent=jade]");
-  await page.waitForSelector(".team-member[data-agent=jade][aria-pressed=true]");
+  await page.click(".team-member[data-agent=otavio]");
+  await page.waitForSelector(".team-member[data-agent=otavio][aria-pressed=true]");
 
   // IA dentro do celular, com um wllama falso no lugar do de verdade (o de
   // verdade só entra no app pelo cap sync, e o modelo tem 470 MB).
@@ -597,7 +599,7 @@ try {
   await fresh.locator("button:has-text('Adicionado')").waitFor({ timeout: 10000 });
   await desk.evaluate(() => window.finanSync());
   ok((await serverRecords()).filter((r) => r.description === "Cinema" && !r.deleted).length === 1, "no computador, o Adicionar da proposta também lança");
-  ok(await desk.locator(".msg.assistant >> nth=-1 >> .msg-who").textContent() === "Jade · Consultora" && await desk.locator(".team-member").count() === 5,
+  ok(await desk.locator(".msg.assistant >> nth=-1 >> .msg-who").textContent() === "Otávio · Organização e dívidas" && await desk.locator(".team-member").count() === 3,
     "no computador, o chat mostra o time e quem respondeu");
   await desk.fill("textarea[name=message]", "Por que demora tanto?");
   await desk.click("#chat-form button");
@@ -607,15 +609,15 @@ try {
   await desk.waitForSelector(".msg.assistant:not(.pending):has-text('Resposta demorada')", { timeout: 20000 });
   ok(await desk.locator(".msg.assistant >> nth=-1 >> .numbers").count() === 1 && await desk.locator(".msg.assistant >> nth=-1 >> table").count() === 1,
     "no computador, a resposta da IA chega embaixo do cartão dos números");
-  await desk.click(".team-member[data-agent=bento]");
-  await desk.fill("textarea[name=message]", "Qual dívida devo pagar primeiro?");
+  await desk.click(".team-member[data-agent=lia]");
+  await desk.fill("textarea[name=message]", "Quanto ainda posso gastar?");
   await desk.click("#chat-form button");
-  await desk.waitForFunction(() => { const m = [...document.querySelectorAll(".msg.assistant")].at(-1); return m && !m.classList.contains("pending") && m.querySelector(".msg-who")?.textContent.includes("Bento"); }, null, { timeout: 20000 });
-  ok(await desk.locator(".msg.assistant >> nth=-1 >> .app-answer").count() === 1, "no computador, a sugestão pronta vem marcada como resposta do app");
+  await desk.waitForFunction(() => { const m = [...document.querySelectorAll(".msg.assistant")].at(-1); return m && !m.classList.contains("pending") && m.querySelector(".msg-who")?.textContent.includes("Lia"); }, null, { timeout: 20000 });
+  ok(await desk.locator(".msg.assistant >> nth=-1 >> .app-answer").count() === 1, "no computador, a pergunta pronta vem marcada como resposta do app");
   await desk.reload();
-  await desk.waitForSelector(".team-member[data-agent=bento][aria-pressed=true]");
-  ok((await desk.locator(".msg.assistant >> nth=-1 >> .msg-who").textContent()) === "Bento · Dívidas" && (await desk.getAttribute("textarea[name=message]", "placeholder")).includes("Bento"),
-    "no computador, a resposta fica do Bento e a escolha é lembrada");
+  await desk.waitForSelector(".team-member[data-agent=lia][aria-pressed=true]");
+  ok((await desk.locator(".msg.assistant >> nth=-1 >> .msg-who").textContent()) === "Lia · Hábitos e orçamento" && (await desk.getAttribute("textarea[name=message]", "placeholder")).includes("Lia"),
+    "no computador, a resposta fica da Lia e a escolha é lembrada");
   ok(await desk.locator(".msg.assistant:has-text('Resposta demorada') >> details.numbers:not([open]):has-text('Resumo de')").count() === 1,
     "no computador, ao recarregar, o cartão dos números volta recolhido em cima da resposta");
 
@@ -699,8 +701,8 @@ try {
   ok(!meta.token && meta.vault && inVault?.length > 20, "token antigo em texto passa para o cofre e a sincronização continua");
   await ofCtx.close();
 
-  // Lembretes do time no celular (plugin de notificações falso): Luna avisa
-  // o vencimento, Otávio toda segunda e Tito no dia do salário; o toque abre a tela.
+  // Lembretes do time no celular (plugin de notificações falso): Otávio avisa
+  // o vencimento, Lia toda segunda e Tito no dia do salário; o toque abre a tela.
   const remCtx = await browser.newContext({ ...devices["Pixel 7"] });
   await remCtx.addInitScript(() => {
     const load = () => JSON.parse(localStorage.getItem("notif-falsas") || "[]");
@@ -735,10 +737,10 @@ try {
   await rem.waitForFunction(() => window.__notifs().length >= 3, null, { timeout: 20000 });
   const notifs = await rem.evaluate(() => window.__notifs());
   const by = (who) => notifs.find((n) => n.title.startsWith(who + ":"));
-  ok(by("Luna")?.title === "Luna: Cartão vence dia 12" && by("Luna").schedule.on.day === 10 && by("Luna").extra.link === "/dividas",
-    "Luna avisa o vencimento dois dias antes");
-  ok(by("Otávio")?.schedule.on.weekday === 2 && by("Otávio").schedule.on.hour === 9 && by("Otávio").extra.link === "/analise",
-    "Otávio avisa toda segunda, às 9h, e leva à Análise");
+  ok(by("Otávio")?.title === "Otávio: Cartão vence dia 12" && by("Otávio").schedule.on.day === 10 && by("Otávio").extra.link === "/dividas",
+    "Otávio avisa o vencimento dois dias antes");
+  ok(by("Lia")?.schedule.on.weekday === 2 && by("Lia").schedule.on.hour === 9 && by("Lia").extra.link === "/analise",
+    "Lia avisa toda segunda, às 9h, e leva à Análise");
   ok(by("Tito")?.schedule.on.day === 5 && by("Tito").extra.link === "/metas", "Tito faz o balanço das metas no dia do salário");
   await rem.evaluate(() => window.__tap({ notification: { extra: { link: "/metas" } } }));
   await rem.waitForFunction(() => location.pathname === "/metas");

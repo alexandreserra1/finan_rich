@@ -16,17 +16,15 @@ let chat = null; // { history: [{role, content, proposals, agent}], suggest, mod
 
 // O time: cada personagem aconselha do seu jeito (internal/advisor/personas.go).
 const SUGGESTIONS = {
-  jade: ["O que eu faço com o meu dinheiro este mês?", "Qual é o meu maior problema agora?", "Me ajuda a montar um plano para o mês?"],
-  bento: ["Qual dívida devo pagar primeiro?", "Quando eu fico livre das dívidas?", "Quanto adianta pagar R$ 200 a mais por mês?"],
-  luna: ["O que vence esta semana?", "Algum orçamento perto de estourar?", "Quanto é a fatura do cartão?"],
-  tito: ["Como chego na minha meta mais rápido?", "Quanto guardar por mês para a reserva?", "Minhas metas estão no ritmo?"],
-  otavio: ["Onde estou gastando demais este mês?", "Quanto gastei com iFood este ano?", "Tenho assinatura esquecida?"],
+  otavio: ["Como foi meu mês?", "Qual dívida devo pagar primeiro?", "O que vence esta semana?"],
+  lia: ["Onde estou gastando demais este mês?", "Quanto ainda posso gastar?", "Como reduzir meus gastos?"],
+  tito: ["Minhas metas estão no ritmo?", "Quanto guardar por mês para a reserva?", "Como chego na minha meta mais rápido?"],
 };
 const AGENT_KEY = "consultor-agente";
 let team = [];
-let agentId = "jade"; // com quem a pessoa está falando (lembrado entre aberturas)
+let agentId = "otavio"; // com quem a pessoa está falando (lembrado entre aberturas)
 const member = (id) => team.find((a) => a.id === id) || team[0];
-const face = (a, size) => html`<img class="face" src="/static/img/avatar-${a.animal}.png" alt="" width="${size}" height="${size}">`;
+const face = (a, size) => html`<img class="face" src="/static/img/time/${a.id}-mini.webp" alt="" width="${size}" height="${size}">`;
 
 const md = (text) => raw(window.Finan?.markdown ? window.Finan.markdown(text) : text.replace(/</g, "&lt;"));
 
@@ -86,7 +84,7 @@ export function render() {
         ${!chat.history.length && !chat.busy ? html`<div class="chat-empty">
           <h2>Pergunte sobre o seu dinheiro.</h2>
           <p>${me.name} vê seus lançamentos, dívidas, metas e notas. As contas são feitas pelo app; a IA interpreta e aconselha. Para lançar algo, vem um cartão e você confirma.</p>
-          <div class="suggestions">${(SUGGESTIONS[me.id] || SUGGESTIONS.jade).map((s) => html`<button type="button" data-suggest="${s}">${icon(ASK_ICON)}<span>${s}</span></button>`)}</div>
+          <div class="suggestions">${(SUGGESTIONS[me.id] || SUGGESTIONS.otavio).map((s) => html`<button type="button" data-suggest="${s}">${icon(ASK_ICON)}<span>${s}</span></button>`)}</div>
         </div>` : ""}
         ${chat.history.map((m, i) => m.role === "user" ? html`<div class="msg user">${md(m.content)}</div>` : html`<div class="msg assistant">
           <span class="msg-who">${face(member(m.agent), 28)}${member(m.agent).name} · ${member(m.agent).role}</span>${answerBody(m, i)}
@@ -130,7 +128,7 @@ async function call(path, init = {}) {
 
 async function loadChat(ctx) {
   team = finance.team();
-  agentId = await db.getMeta(AGENT_KEY, "jade").catch(() => "jade");
+  agentId = await db.getMeta(AGENT_KEY, "otavio").catch(() => "otavio");
   await openChat(ctx);
 }
 

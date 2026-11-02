@@ -1,10 +1,27 @@
 package finance
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
+
+func TestTeam(t *testing.T) {
+	var ids []string
+	for _, a := range Team {
+		ids = append(ids, a.ID)
+		if a.Name == "" || a.Role == "" {
+			t.Errorf("%+v sem nome ou papel", a)
+		}
+	}
+	if got := strings.Join(ids, ","); got != "otavio,lia,tito" {
+		t.Errorf("time = %s", got)
+	}
+}
 
 func TestAgentFor(t *testing.T) {
 	for kind, want := range map[string]string{
-		"budget-near": "Luna", "budget-over": "Luna", "goal-late": "Tito", "goal-done": "Tito", "qualquer-outro": "Jade",
+		"debt-due": "Otávio", "debt-growing": "Otávio", "budget-near": "Lia", "budget-over": "Lia", "bucket-over": "Lia",
+		"unusual": "Lia", "goal-late": "Tito", "goal-done": "Tito", "qualquer-outro": "Otávio",
 	} {
 		if got := agentFor(kind); got.Name != want {
 			t.Errorf("agentFor(%q) = %s, quer %s", kind, got.Name, want)
@@ -14,14 +31,14 @@ func TestAgentFor(t *testing.T) {
 
 func TestRoute(t *testing.T) {
 	for q, want := range map[string]string{
-		"Qual dívida devo pagar primeiro?":        "bento",
-		"como saio do rotativo do cartão":         "bento",
+		"Qual dívida devo pagar primeiro?":        "otavio",
+		"como saio do rotativo do cartão":         "otavio",
+		"quando vence a fatura?":                  "otavio",
 		"Como chego na minha meta mais rápido?":   "tito",
 		"quanto guardar para a reserva":           "tito",
-		"Quanto gastei com iFood este ano?":       "otavio",
-		"tenho assinatura esquecida?":             "otavio",
-		"quando vence a fatura?":                  "luna",
-		"meu orçamento de mercado estourou":       "luna",
+		"Quanto gastei com iFood este ano?":       "lia",
+		"tenho assinatura esquecida?":             "lia",
+		"meu orçamento de mercado estourou":       "lia",
 		"oi, tudo bem?":                           "",
 		"o que eu devo fazer com o meu dinheiro?": "", // "devo" de dever fazer não é dívida
 	} {

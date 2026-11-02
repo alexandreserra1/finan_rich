@@ -157,7 +157,7 @@ export function render({ ledger }) {
         </button>
         ${a.current ? html`<div class="invoices">${invoiceBlock("Fatura atual", a.current, m)}${invoiceBlock("Próxima", a.next, m)}</div>` : ""}
       </div>`)}</div>
-      <p class="notice warn">Pague a fatura inteira para não cair no rotativo, o juro mais caro do país. Se não der, fale com o Bento no Consultor.</p>
+      <p class="notice warn">Pague a fatura inteira para não cair no rotativo, o juro mais caro do país. Se não der, fale com o Otávio no Consultor.</p>
     </section>` : ""}
 
     ${plain.length ? html`<section class="panel">

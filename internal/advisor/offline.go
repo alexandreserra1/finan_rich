@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/alexandreserra1/finan_rich/internal/finance"
@@ -32,21 +33,18 @@ type Reply struct {
 // Suggestions são as perguntas sugeridas de cada personagem (a tela do
 // computador usa estas; o app tem a mesma lista em js/pages/advisor.js).
 var Suggestions = map[string][]string{
-	"jade":   {"O que eu faço com o meu dinheiro este mês?", "Qual é o meu maior problema agora?", "Me ajuda a montar um plano para o mês?"},
-	"bento":  {"Qual dívida devo pagar primeiro?", "Quando eu fico livre das dívidas?", "Quanto adianta pagar R$ 200 a mais por mês?"},
-	"luna":   {"O que vence esta semana?", "Algum orçamento perto de estourar?", "Quanto é a fatura do cartão?"},
-	"tito":   {"Como chego na minha meta mais rápido?", "Quanto guardar por mês para a reserva?", "Minhas metas estão no ritmo?"},
-	"otavio": {"Onde estou gastando demais este mês?", "Quanto gastei com iFood este ano?", "Tenho assinatura esquecida?"},
+	"otavio": {"Como foi meu mês?", "Qual dívida devo pagar primeiro?", "O que vence esta semana?"},
+	"lia":    {"Onde estou gastando demais este mês?", "Quanto ainda posso gastar?", "Como reduzir meus gastos?"},
+	"tito":   {"Minhas metas estão no ritmo?", "Quanto guardar por mês para a reserva?", "Como chego na minha meta mais rápido?"},
 }
 
-// prepared: as sugestões que o Go responde sozinho, por personagem. As outras
-// pedem conversa e vão para a IA.
+// prepared: as perguntas que o Go responde sozinho, por personagem (as
+// sugestões e as dos avisos e do time no Painel). As outras vão para a IA.
 var prepared = map[string][]string{
-	"jade":   {"Qual é o meu maior problema agora?"},
-	"bento":  {"Qual dívida devo pagar primeiro?", "Quando eu fico livre das dívidas?", "Quanto adianta pagar R$ 200 a mais por mês?"},
-	"luna":   {"O que vence esta semana?"},
-	"tito":   {"Quanto guardar por mês para a reserva?", "Minhas metas estão no ritmo?"},
-	"otavio": {"Onde estou gastando demais este mês?", "Tenho assinatura esquecida?"},
+	"otavio": {"Como foi meu mês?", "Qual é o meu maior problema agora?", "Qual dívida devo pagar primeiro?", "Quando eu fico livre das dívidas?",
+		"Quanto adianta pagar R$ 200 a mais por mês?", "O que vence esta semana?"},
+	"lia":  {"Onde estou gastando demais este mês?", "Quanto ainda posso gastar?", "Tenho assinatura esquecida?"},
+	"tito": {"Quanto guardar por mês para a reserva?", "Minhas metas estão no ritmo?"},
 }
 
 // Prepared diz se a pergunta tem resposta pronta do app (sem IA) para este personagem.
@@ -97,16 +95,37 @@ func Numbers(q Question) string {
 func Offline(q Question) string {
 	t := NewTools(q.Ledger, q.Today, nil)
 	switch id := persona(q.Agent).ID; id {
-	case "bento":
-		return "**Plano das dívidas**\n\n" + bullets(prefetch(id, t, q.Text))
-	case "luna":
-		return bullets(prefetch(id, t, q.Text))
+	case "otavio":
+		switch otavioTopic(q.Text) {
+		case "dividas":
+			return "**Plano das dívidas**\n\n" + bullets(prefetch(id, t, q.Text))
+		case "vencimentos":
+			return bullets(prefetch(id, t, q.Text))
+		}
+		return overviewOffline(q)
 	case "tito":
 		return titoOffline(t, q)
-	case "otavio":
-		return otavioOffline(q)
+	case "lia":
+		if f := fold(q.Text); strings.Contains(f, "posso gastar") || strings.Contains(f, "ainda cabe") {
+			return liaAllowance(q)
+		}
+		return liaOffline(q)
 	}
-	return jadeOffline(q)
+	return overviewOffline(q)
+}
+
+// otavioTopic: do que a pergunta ao Otávio trata ("" é o mês como um todo).
+func otavioTopic(text string) string {
+	f := fold(text)
+	for _, w := range []string{"vence", "vencimento", "fatura", "boleto"} {
+		if strings.Contains(f, w) {
+			return "vencimentos"
+		}
+	}
+	if finance.Route(text) == "otavio" || strings.Contains(f, "pagar") || strings.Contains(f, "a mais") {
+		return "dividas"
+	}
+	return ""
 }
 
 // bullets põe cada linha da conta pronta como item de lista (cabeçalhos com ":" ficam como estão).
@@ -146,10 +165,10 @@ func titoOffline(t *Tools, q Question) string {
 	return strings.Join(parts, "\n\n")
 }
 
-// maxFindings: o Otávio traz até 3 achados.
+// maxFindings: a Lia traz até 3 achados.
 const maxFindings = 3
 
-func otavioOffline(q Question) string {
+func liaOffline(q Question) string {
 	in := finance.Insights(q.Ledger, q.Today)
 	var lines []string
 	if strings.Contains(fold(q.Text), "assinatura") {
@@ -166,7 +185,7 @@ func otavioOffline(q Question) string {
 			in.Day, money.Format(in.VariableCents), money.Format(in.ProjectedCents), money.Format(in.LastMonthCents)))
 	}
 	for _, b := range finance.Briefings(q.Ledger, q.Today) {
-		if b.Agent.ID == "otavio" {
+		if b.Agent.ID == "lia" {
 			lines = append(lines, b.Lines...)
 		}
 	}
@@ -179,7 +198,42 @@ func otavioOffline(q Question) string {
 	return "**Achados do mês**\n\n" + bullets(strings.Join(lines, "\n"))
 }
 
-func jadeOffline(q Question) string {
+// liaAllowance: quanto ainda cabe no mês (sem estourar a renda) e nos orçamentos.
+func liaAllowance(q Question) string {
+	in := finance.Insights(q.Ledger, q.Today)
+	if in.IncomeCents == 0 {
+		return "Ainda não há renda neste mês nem nos anteriores. Lance a entrada do mês e eu digo quanto ainda cabe."
+	}
+	var lines []string
+	income := money.Format(in.IncomeCents)
+	if in.IncomeEstimated {
+		income += ", pela média dos meses anteriores (a deste mês ainda não entrou)"
+	}
+	if in.FreeCents >= 0 {
+		lines = append(lines, fmt.Sprintf("Ainda cabe no mês: %s (renda de %s).", money.Format(in.FreeCents), income))
+		if in.PerDayCents > 0 {
+			lines = append(lines, fmt.Sprintf("Dá uns %s por dia até o fim do mês.", money.Format(in.PerDayCents)))
+		}
+	} else {
+		lines = append(lines, fmt.Sprintf("O mês já passou da renda (%s) em %s, contando os fixos que ainda vão cair.", income, money.Format(-in.FreeCents)))
+	}
+	budgets := slices.Clone(in.Budgets)
+	slices.SortStableFunc(budgets, func(a, b finance.BudgetView) int { return b.UsedPct - a.UsedPct })
+	for i, b := range budgets {
+		if i == maxFindings {
+			break
+		}
+		if b.RemainingCents > 0 {
+			lines = append(lines, fmt.Sprintf("%s: restam %s de %s (%d%% usado).", b.Name, money.Format(b.RemainingCents), money.Format(b.BudgetCents), b.UsedPct))
+		} else {
+			lines = append(lines, fmt.Sprintf("%s: o orçamento de %s já acabou (%d%% usado).", b.Name, money.Format(b.BudgetCents), b.UsedPct))
+		}
+	}
+	return "**Quanto ainda cabe no mês**\n\n" + bullets(strings.Join(lines, "\n"))
+}
+
+// overviewOffline: o mês como um todo e o maior problema agora (Otávio).
+func overviewOffline(q Question) string {
 	f := BuildFacts(q.Ledger, q.Today)
 	sum := f.Month
 	var b strings.Builder
@@ -209,7 +263,7 @@ func jadeOffline(q Question) string {
 
 	// Quem do time aprofunda: o assunto da pergunta, senão o do problema.
 	for _, id := range []string{finance.Route(q.Text), finance.Route(problem), who} {
-		if id != "" && id != "jade" {
+		if id != "" && id != "otavio" {
 			a := member(id)
 			fmt.Fprintf(&b, "\n\n%s (%s) pode aprofundar: escolha %s no time.", a.Name, a.Role, a.Name)
 			break

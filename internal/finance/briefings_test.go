@@ -43,13 +43,13 @@ func TestBriefings(t *testing.T) {
 			t.Errorf("%s: link %q, pergunta %q, %d linhas", b.Agent.Name, b.Link, b.Ask, len(b.Lines))
 		}
 	}
-	if strings.Join(order, ",") != "bento,tito,otavio" {
+	if strings.Join(order, ",") != "otavio,tito,lia" {
 		t.Errorf("ordem = %v", order)
 	}
 	for agent, want := range map[string][]string{
-		"bento":  {"Cartão primeiro: 10,00% ao mês (R$ 100,00 de juros por mês)", "Só no mínimo, fica livre de todas em 7 meses (maio de 2027)"},
+		"otavio": {"Cartão primeiro: 10,00% ao mês (R$ 100,00 de juros por mês)", "Só no mínimo, fica livre de todas em 7 meses (maio de 2027)"},
 		"tito":   {"Viagem: guarde R$ 1.000,00 por mês até março de 2027", "Notebook: o prazo passou e faltam R$ 2.000,00"},
-		"otavio": {"Restaurantes: R$ 1.200,00 este mês, 140% acima da média"},
+		"lia":    {"Restaurantes: R$ 1.200,00 este mês, 140% acima da média"},
 	} {
 		for _, w := range want {
 			if !strings.Contains(got[agent], w) {

@@ -39,21 +39,21 @@ const ours = async (notif) => (await notif.getPending()).notifications.filter((n
 
 // teamReminders monta os lembretes, todos às 9h e repetindo sozinhos (o
 // próprio Android avisa, mesmo offline):
-// - Luna: cada dívida com vencimento, dois dias antes, todo mês;
-// - Otávio: toda segunda, os achados da semana (se há lançamentos);
+// - Otávio: cada dívida com vencimento, dois dias antes, todo mês;
+// - Lia: toda segunda, os achados da semana (se há lançamentos);
 // - Tito: no dia do salário, o balanço das metas (se há metas).
 // O texto é fixo: a conta de verdade aparece ao abrir (cartão "O que o time viu").
 function teamReminders(ledger) {
   const live = (list) => list.filter((r) => !r.deleted);
   const out = live(ledger.debts).filter((d) => d.dueDay > 0 && d.balanceCents > 0).map((d, i) => ({
     id: 7100 + i,
-    title: `Luna: ${d.name} vence dia ${d.dueDay}`,
-    body: "Abra o finan_rich para ver a parcela e o plano para quitar.",
+    title: `Otávio: ${d.name} vence dia ${d.dueDay}`,
+    body: "Abra a Rich para ver a parcela e o plano para quitar.",
     schedule: { on: { day: Math.max(1, d.dueDay - 2), hour: 9, minute: 0 }, allowWhileIdle: true },
     extra: { kind: "team", link: "/dividas" },
   }));
   if (live(ledger.transactions).length) {
-    out.push({ id: 7300, title: "Otávio: os achados da semana", body: "Veja para onde foi o dinheiro e onde dá para guardar.",
+    out.push({ id: 7300, title: "Lia: os achados da semana", body: "Veja para onde foi o dinheiro e onde dá para guardar.",
       schedule: { on: { weekday: 2, hour: 9, minute: 0 }, allowWhileIdle: true }, extra: { kind: "team", link: "/analise" } }); // weekday 2 = segunda
   }
   if (live(ledger.goals).length) {

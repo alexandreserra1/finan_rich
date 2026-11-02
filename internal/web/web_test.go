@@ -209,22 +209,27 @@ func TestChatStreamsAndSaves(t *testing.T) {
 		t.Fatalf("SSE = %d %s", code, body)
 	}
 	msgs, _ := a.st.ListChat(context.Background())
-	if len(msgs) != 2 || msgs[0].Content != "Qual dívida pago primeiro?" || msgs[1].Content != "Pague o cartão." || msgs[1].Agent != "jade" {
+	if len(msgs) != 2 || msgs[0].Content != "Qual dívida pago primeiro?" || msgs[1].Content != "Pague o cartão." || msgs[1].Agent != "otavio" {
 		t.Errorf("histórico = %+v", msgs)
 	}
-	if !strings.Contains(body, `"suggest":{"id":"bento"`) {
-		t.Errorf("assunto de dívida com a Jade: deveria sugerir o Bento: %s", body)
+	if strings.Contains(body, `"suggest"`) {
+		t.Errorf("dívida é com o próprio Otávio (o padrão): nada de sugerir outro: %s", body)
 	}
 
-	// Com a Luna escolhida, a resposta fica dela; personagem desconhecido vira Jade.
-	_, body = a.post("/chat/enviar", url.Values{"message": {"Qual dívida pago primeiro?"}, "agent": {"luna"}})
-	a.post("/chat/enviar", url.Values{"message": {"oi"}, "agent": {"<script>"}})
-	msgs, _ = a.st.ListChat(context.Background())
-	if msgs[3].Agent != "luna" || msgs[5].Agent != "jade" {
-		t.Errorf("quem respondeu = %q, %q", msgs[3].Agent, msgs[5].Agent)
+	// Com a Lia escolhida, a resposta fica dela e o assunto de dívida sugere o Otávio;
+	// personagem desconhecido ou de quem saiu do time vira o Otávio.
+	_, body = a.post("/chat/enviar", url.Values{"message": {"Qual dívida pago primeiro?"}, "agent": {"lia"}})
+	if !strings.Contains(body, `"suggest":{"id":"otavio"`) {
+		t.Errorf("assunto de dívida com a Lia: deveria sugerir o Otávio: %s", body)
 	}
-	if _, page := a.get("/chat"); !strings.Contains(page, "Luna · Alertas") || !strings.Contains(page, `data-agent="otavio"`) {
-		t.Error("a página do chat deveria mostrar quem respondeu e o time para escolher")
+	a.post("/chat/enviar", url.Values{"message": {"oi"}, "agent": {"<script>"}})
+	a.post("/chat/enviar", url.Values{"message": {"oi"}, "agent": {"bento"}})
+	msgs, _ = a.st.ListChat(context.Background())
+	if msgs[3].Agent != "lia" || msgs[5].Agent != "otavio" || msgs[7].Agent != "otavio" {
+		t.Errorf("quem respondeu = %q, %q, %q", msgs[3].Agent, msgs[5].Agent, msgs[7].Agent)
+	}
+	if _, page := a.get("/chat"); !strings.Contains(page, "Lia · Hábitos e orçamento") || !strings.Contains(page, `data-agent="tito"`) || !strings.Contains(page, "/static/img/time/lia-mini.webp") {
+		t.Error("a página do chat deveria mostrar quem respondeu, com o rosto, e o time para escolher")
 	}
 }
 
@@ -260,10 +265,10 @@ func TestChatPreparedSkipsAI(t *testing.T) {
 	}))
 	t.Cleanup(ollama.Close)
 	a := newApp(t, ollama.URL)
-	if _, page := a.get("/chat"); !strings.Contains(page, `data-for="bento"`) || !strings.Contains(page, "Quando eu fico livre das dívidas?") {
+	if _, page := a.get("/chat"); !strings.Contains(page, `data-for="otavio"`) || !strings.Contains(page, "Qual dívida devo pagar primeiro?") {
 		t.Error("a página deveria ter as sugestões de cada personagem")
 	}
-	_, body := a.post("/chat/enviar", url.Values{"message": {"Qual dívida devo pagar primeiro?"}, "agent": {"bento"}})
+	_, body := a.post("/chat/enviar", url.Values{"message": {"Qual dívida devo pagar primeiro?"}, "agent": {"otavio"}})
 	if !strings.Contains(body, `"app":{`) || strings.Contains(body, "A IA não respondeu") || !strings.Contains(body, "Nenhuma dívida") || strings.Contains(body, `"numbers"`) {
 		t.Errorf("SSE = %s", body)
 	}
@@ -432,7 +437,7 @@ func TestChatAPI(t *testing.T) {
 	if !strings.Contains(string(body), `"text":"Pague o cartão."`) {
 		t.Fatalf("resposta = %s", body)
 	}
-	if h := getInfo()["history"].([]any); len(h) != 2 || h[1].(map[string]any)["agent"] != "jade" {
+	if h := getInfo()["history"].([]any); len(h) != 2 || h[1].(map[string]any)["agent"] != "otavio" {
 		t.Errorf("histórico = %v", h)
 	}
 	if code, _ := a.postJSON("/api/chat/limpar", map[string]any{}); code != http.StatusOK || len(getInfo()["history"].([]any)) != 0 {

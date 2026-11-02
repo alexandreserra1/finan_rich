@@ -73,9 +73,9 @@ try {
   await page.waitForSelector(".cards.has-hero");
   ok(await page.isVisible(".flash:has-text('Pronto!')"), "ao terminar, mostra o Painel montado");
   const brief = (name) => page.locator(`#time .brief:has(strong:text-is('${name}'))`);
-  ok((await brief("Bento").textContent()).includes("Cartão: 10,00% ao mês") && (await brief("Tito").textContent()).includes("Reserva de emergência") &&
-    await brief("Bento").locator(".brief-main").getAttribute("href") === "/dividas", "o time conta no Painel o que viu (Bento na dívida, Tito na meta)");
-  ok(decodeURIComponent(await brief("Bento").locator(".ask-team").getAttribute("href")) === "/chat?agente=bento&pergunta=Qual+dívida+devo+pagar+primeiro?",
+  ok((await brief("Otávio").textContent()).includes("Cartão: 10,00% ao mês") && (await brief("Tito").textContent()).includes("Reserva de emergência") &&
+    await brief("Otávio").locator(".brief-main").getAttribute("href") === "/dividas", "o time conta no Painel o que viu (Otávio na dívida, Tito na meta)");
+  ok(decodeURIComponent(await brief("Otávio").locator(".ask-team").getAttribute("href")) === "/chat?agente=otavio&pergunta=Qual+dívida+devo+pagar+primeiro?",
     "cada resumo do time tem 'Perguntar para ...', com uma pergunta que o app responde sem IA");
   await page.evaluate(() => window.finanSync());
   const [rec, prefs, debts, goals] = await Promise.all(["recurring", "pref", "debt", "goal"].map(records));
@@ -122,16 +122,16 @@ try {
     (await bell.getAttribute("aria-label")) === "Avisos: 1 novo", "o Painel não tem mais a faixa de avisos: o sininho mostra quantos há");
   await openBell();
   ok(await page.isVisible("#avisos .bell-item.warn:has-text('Orçamento de Restaurantes e delivery em 80%')"), "aviso ao chegar a 80%");
-  ok(await page.locator("#avisos .bell-item:has-text('em 80%') b").textContent() === "Luna" &&
-    await page.locator("#avisos .bell-item:has-text('em 80%') img.face").evaluate((i) => i.complete && i.naturalWidth > 0), "o aviso vem da Luna, com o rosto dela");
+  ok(await page.locator("#avisos .bell-item:has-text('em 80%') b").textContent() === "Lia" &&
+    await page.locator("#avisos .bell-item:has-text('em 80%') img.face").evaluate((i) => i.complete && i.naturalWidth > 0), "o aviso vem da Lia, com o rosto dela");
   await page.keyboard.press("Escape");
   ok(await page.locator("#avisos").isHidden() && await page.evaluate(() => document.activeElement?.hasAttribute("data-bell")), "Esc fecha a lista e volta ao sininho");
   await openBell();
   await page.click("#avisos .bell-item:has-text('em 80%') .ask-team");
-  await page.waitForSelector(".team-member[data-agent=luna][aria-pressed=true]");
+  await page.waitForSelector(".team-member[data-agent=lia][aria-pressed=true]");
   ok(await page.inputValue("textarea[name=message]") === "Como chego no fim do mês sem estourar o orçamento de Restaurantes e delivery?" &&
     page.url() === `${B}/chat` && await page.evaluate(() => document.activeElement?.name) === "message",
-    "'Perguntar para Luna' no aviso abre o Consultor com a Luna e a pergunta já escrita");
+    "'Perguntar para Lia' no aviso abre o Consultor com a Lia e a pergunta já escrita");
   await page.waitForSelector("[data-bell]:visible", { timeout: 20000 });
   ok(await bell.locator("[data-bell-count]").isHidden(), "o sininho também está no Consultor do computador, já sem o aviso tocado");
   await page.goto(`${B}/lancamentos`);

@@ -106,21 +106,19 @@ func TestUpcomingTool(t *testing.T) {
 }
 
 func TestPersonaToolSets(t *testing.T) {
-	for agent, want := range map[string]string{
-		"bento":  "simular_dividas",
-		"tito":   "simular_meta",
-		"otavio": "achados",
-		"luna":   "proximos_vencimentos",
+	for _, c := range []struct{ agent, want string }{
+		{"tito", "simular_meta"}, {"lia", "achados"}, {"lia", "comparar_meses"},
 	} {
-		if p := persona(agent); !strings.Contains(strings.Join(p.Tools, ","), want) {
-			t.Errorf("%s sem %s: %v", agent, want, p.Tools)
+		if p := persona(c.agent); !strings.Contains(strings.Join(p.Tools, ","), c.want) {
+			t.Errorf("%s sem %s: %v", c.agent, c.want, p.Tools)
 		}
-		if !strings.Contains(persona(agent).Voice, want) {
-			t.Errorf("a voz de %s não diz quando usar %s", agent, want)
+		if !strings.Contains(persona(c.agent).Voice, c.want) {
+			t.Errorf("a voz de %s não diz quando usar %s", c.agent, c.want)
 		}
 	}
-	if persona("jade").Tools != nil {
-		t.Error("a Jade usa todas")
+	// O Otávio atende primeiro: todas as ferramentas, e a voz diz quando usar as de dívida e vencimento.
+	if persona("otavio").Tools != nil || !strings.Contains(persona("otavio").Voice, "simular_dividas") || !strings.Contains(persona("otavio").Voice, "proximos_vencimentos") {
+		t.Error("o Otávio usa todas as ferramentas e explica as dele")
 	}
 	for _, name := range []string{"simular_dividas", "simular_meta", "achados", "comparar_meses", "proximos_vencimentos"} {
 		found := false
@@ -150,17 +148,17 @@ func TestQuestionMoney(t *testing.T) {
 
 func TestPrefetch(t *testing.T) {
 	tools := NewTools(teamLedger(), teamDay, nil)
-	for agent, c := range map[string]struct{ q, want string }{
-		"bento":  {"e se eu pagar R$ 200 a mais?", "Com R$ 200,00 a mais: livre em 4 meses"},
-		"tito":   {"se eu guardar 500 por mês, quando chego na viagem?", "Guardando R$ 500,00 por mês, chega em 12 meses"},
-		"otavio": {"o que mudou?", "setembro de 2026 → outubro de 2026"},
-		"luna":   {"o que vence esta semana?", "Próximos 7 dias"},
+	for _, c := range []struct{ agent, q, want string }{
+		{"otavio", "e se eu pagar R$ 200 a mais?", "Com R$ 200,00 a mais: livre em 4 meses"},
+		{"otavio", "o que vence esta semana?", "Próximos 7 dias"},
+		{"tito", "se eu guardar 500 por mês, quando chego na viagem?", "Guardando R$ 500,00 por mês, chega em 12 meses"},
+		{"lia", "o que mudou?", "setembro de 2026 → outubro de 2026"},
 	} {
-		if got := prefetch(agent, tools, c.q); !strings.Contains(got, c.want) {
-			t.Errorf("%s: sem %q:\n%s", agent, c.want, got)
+		if got := prefetch(c.agent, tools, c.q); !strings.Contains(got, c.want) {
+			t.Errorf("%s: sem %q:\n%s", c.agent, c.want, got)
 		}
 	}
-	if got := prefetch("jade", tools, "oi"); got != "" {
-		t.Errorf("a Jade não pré-calcula: %q", got)
+	if got := prefetch("otavio", tools, "oi"); got != "" {
+		t.Errorf("o mês todo não pré-calcula (o retrato já tem os números): %q", got)
 	}
 }

@@ -50,7 +50,7 @@ func hashDevice(device string) string {
 	return hex.EncodeToString(sum[:6])
 }
 
-// personaRe acha o personagem nas instruções ("Você é o Bento, ...", de
+// personaRe acha o personagem nas instruções ("Você é o Otávio, ...", de
 // internal/advisor/personas.go). Só letras e no máximo 20: quem copiar o
 // prompt não escreve o que quiser no log.
 var personaRe = regexp.MustCompile(`(?m)^Você é (?:o|a) (\p{Lu}\p{L}{1,19})`)

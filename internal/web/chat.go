@@ -30,7 +30,7 @@ type chatEntry struct {
 // Lead é o texto da resposta sem IA antes dos números (que a página mostra no cartão).
 func (e chatEntry) Lead() string { return strings.TrimSuffix(e.Content, e.Numbers) }
 
-// member devolve o personagem pelo id; vazio ou desconhecido é a Jade.
+// member devolve o personagem pelo id; vazio, desconhecido ou de quem saiu do time é o Otávio.
 func member(id string) finance.Agent {
 	for _, a := range finance.Team {
 		if a.ID == id {

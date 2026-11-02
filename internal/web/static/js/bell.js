@@ -48,7 +48,7 @@ function view() {
   return html`<div class="bell-head"><h2 id="avisos-h" tabindex="-1">Avisos</h2>
     ${list.length ? html`<button type="button" class="link plain" data-bell-clear>Limpar tudo</button>` : ""}</div>
   ${list.length ? html`<ul class="bell-list">${list.map((a) => html`<li class="bell-item ${a.level}">
-    <a class="bell-main" href="${a.link}" data-alert="${a.id}"><img class="face" src="/static/img/avatar-${a.agent.animal}.png" alt="" width="32" height="32">
+    <a class="bell-main" href="${a.link}" data-alert="${a.id}"><img class="face" src="/static/img/time/${a.agent.id}-mini.webp" alt="" width="32" height="32">
       <span><b>${a.agent.name}</b> · ${a.title}<small>${a.text}</small></span></a>
     ${askLink(a, a.title)}</li>`)}</ul>`
     : html`<p class="muted small bell-empty">Nenhum aviso novo. Quando o time vir algo, aparece aqui.</p>`}`;

@@ -79,13 +79,13 @@ var teamEvalCases = []struct {
 	evalCase
 }{
 	// R$ 3.200 a 14% pagando 320 + 500 por mês: zera no 7º mês.
-	{"bento", evalCase{"e se eu pagar R$ 500 a mais por mês no cartão?", []string{`7 meses|maio de 2027`, `820|500`, `juros`}, nil}},
+	{"otavio", evalCase{"e se eu pagar R$ 500 a mais por mês no cartão?", []string{`7 meses|maio de 2027`, `820|500`, `juros`}, nil}},
 	// Faltam R$ 6.000; R$ 400 por mês = 15 meses contando outubro (dezembro de 2027), 5 depois de julho.
 	{"tito", evalCase{"se eu guardar R$ 400 por mês, quando chego na viagem?", []string{`15 meses|dezembro de 2027`, `prazo|julho`}, nil}},
 	// iFood: 4 pedidos de R$ 55 em setembro, 12 em outubro.
-	{"otavio", evalCase{"o que mudou do mês passado para este?", []string{`ifood|delivery|restaurante`, `220|440|660`}, nil}},
+	{"lia", evalCase{"o que mudou do mês passado para este?", []string{`ifood|delivery|restaurante`, `220|440|660`}, nil}},
 	// De 22/10 a 11/11: aluguel no dia 5 e o cartão no dia 10.
-	{"luna", evalCase{"o que vence nos próximos 20 dias?", []string{`aluguel`, `cart[aã]o`, `10/11|dia 10`}, []string{`\n\s*3\.`}}},
+	{"otavio", evalCase{"o que vence nos próximos 20 dias?", []string{`aluguel`, `cart[aã]o`, `10/11|dia 10`}, []string{`\n\s*3\.`}}},
 }
 
 // personal: formato pedido nas instruções (conclusão primeiro, próximo passo no app).
@@ -142,7 +142,7 @@ func TestEval(t *testing.T) {
 		}
 		var fails []string
 		must := c.must
-		if !strings.Contains(c.q, "piada") && c.agent != "luna" { // a Luna responde em 3 frases, sem plano
+		if !strings.Contains(c.q, "piada") && !strings.Contains(c.q, "vence") { // vencimento: resposta curta, sem plano
 			must = append(append([]string{}, must...), personal...)
 		}
 		for _, re := range must {

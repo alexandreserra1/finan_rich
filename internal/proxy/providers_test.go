@@ -142,7 +142,7 @@ func TestProxyLogsTokensPerRequest(t *testing.T) {
 	groq := &fakeProvider{key: "k-groq", full: map[string]bool{"sem-cota": true}}
 	h := New(Config{Providers: []Provider{{Name: "groq", Upstream: groq.start(t).URL, APIKey: "k-groq", Models: []string{"sem-cota", "openai/gpt-oss-120b"}, StreamUsage: true}}, Limits: DefaultLimits})
 
-	rec := ask(h, "aparelho-secreto-1", personaBody("o Bento", true))
+	rec := ask(h, "aparelho-secreto-1", personaBody("o Otávio", true))
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "[DONE]") {
 		t.Fatalf("resposta = %d %s", rec.Code, rec.Body.String())
 	}
@@ -164,7 +164,7 @@ func TestProxyLogsTokensPerRequest(t *testing.T) {
 	}
 	l := lines[1]
 	if l["provedor"] != "groq" || l["modelo"] != "openai/gpt-oss-120b" || l["status"] != float64(200) ||
-		l["entrada"] != float64(1234) || l["saida"] != float64(56) || l["personagem"] != "bento" {
+		l["entrada"] != float64(1234) || l["saida"] != float64(56) || l["personagem"] != "otavio" {
 		t.Errorf("linha = %v", l)
 	}
 	if dev, _ := l["aparelho"].(string); len(dev) != 12 || dev != lines[0]["aparelho"] {
@@ -180,7 +180,7 @@ func TestProxyLogsUsageWithoutStreaming(t *testing.T) {
 	p := &fakeProvider{key: "k", ctype: "application/json",
 		reply: `{"choices":[{"message":{"content":"ok"}}],"usage":{"prompt_tokens":10,"completion_tokens":3}}`}
 	h := New(Config{Providers: []Provider{{Name: "cerebras", Upstream: p.start(t).URL, APIKey: "k", Models: []string{"gpt-oss-120b"}}}, Limits: DefaultLimits})
-	ask(h, "", personaBody("a Luna", false))
+	ask(h, "", personaBody("a Lia", false))
 	if _, has := p.seen[0]["stream_options"]; has {
 		t.Errorf("sem streaming não pede stream_options: %v", p.seen[0])
 	}
@@ -188,7 +188,7 @@ func TestProxyLogsUsageWithoutStreaming(t *testing.T) {
 		t.Errorf("gpt-oss de qualquer provedor vai com raciocínio baixo: %v", p.seen[0])
 	}
 	lines := usageLines(t, logs.String())
-	if len(lines) != 1 || lines[0]["entrada"] != float64(10) || lines[0]["saida"] != float64(3) || lines[0]["personagem"] != "luna" || lines[0]["aparelho"] != "" {
+	if len(lines) != 1 || lines[0]["entrada"] != float64(10) || lines[0]["saida"] != float64(3) || lines[0]["personagem"] != "lia" || lines[0]["aparelho"] != "" {
 		t.Errorf("linhas = %v", lines)
 	}
 }
@@ -197,7 +197,7 @@ func TestPersonaOf(t *testing.T) {
 	for system, want := range map[string]string{
 		advisor.SystemPrompt: "consultor",
 		advisor.SystemPrompt + "\n\nVocê é o Otávio, o da análise": "otavio",
-		advisor.SystemPrompt + "\n\nVocê é a Jade, a consultora":   "jade",
+		advisor.SystemPrompt + "\n\nVocê é a Lia, do time":         "lia",
 		advisor.CategorizeMarker + " nas categorias":               "categorize",
 		"": "ping",
 	} {
@@ -247,13 +247,13 @@ func TestProxySkipsBrokenProvider(t *testing.T) {
 		{Name: "cerebras", Upstream: "http://127.0.0.1:1", APIKey: "k", Models: []string{"c"}}, // não conecta
 		{Name: "gemini", Upstream: ok.start(t).URL, APIKey: "k2", Models: []string{"d"}},
 	}, Limits: DefaultLimits})
-	rec := ask(h, "a", personaBody("o Bento", false))
+	rec := ask(h, "a", personaBody("o Otávio", false))
 	if rec.Code != http.StatusOK || len(ok.seen) != 1 {
 		t.Fatalf("resposta = %d %s; tentativas no bom: %d", rec.Code, rec.Body.String(), len(ok.seen))
 	}
 	// Todos falhando: a pessoa recebe o erro do último.
 	h = New(Config{Providers: []Provider{{Name: "groq", Upstream: bad.start(t).URL, APIKey: "k1", Models: []string{"a"}}}, Limits: DefaultLimits})
-	if rec := ask(h, "a", personaBody("o Bento", false)); rec.Code != http.StatusUnauthorized {
+	if rec := ask(h, "a", personaBody("o Otávio", false)); rec.Code != http.StatusUnauthorized {
 		t.Errorf("só um provedor, chave errada = %d", rec.Code)
 	}
 }
@@ -263,14 +263,14 @@ func TestProxyOpenRouterOnlyFree(t *testing.T) {
 	captureLog(t)
 	or := &fakeProvider{key: "k", models: []string{"anthropic/caro", "meta/llama:free", "openrouter/free"}, full: map[string]bool{"meta/llama:free": true}}
 	h := New(Config{Providers: []Provider{{Name: "openrouter", Upstream: or.start(t).URL, APIKey: "k", Models: []string{"openrouter/free"}, OnlyFree: true}}, Limits: DefaultLimits})
-	ask(h, "a", personaBody("o Bento", true))
+	ask(h, "a", personaBody("o Otávio", true))
 	if got := strings.Join(or.models_(), ","); got != "openrouter/free" {
 		t.Errorf("tentou %s; só os grátis, preferido primeiro, e para no primeiro que responde", got)
 	}
 	or.full["openrouter/free"] = true
 	or.seen = nil
 	h = New(Config{Providers: []Provider{{Name: "openrouter", Upstream: or.start(t).URL, APIKey: "k", Models: []string{"openrouter/free"}, OnlyFree: true}}, Limits: DefaultLimits})
-	ask(h, "a", personaBody("o Bento", true))
+	ask(h, "a", personaBody("o Otávio", true))
 	if got := strings.Join(or.models_(), ","); got != "openrouter/free,meta/llama:free" {
 		t.Errorf("tentou %s", got)
 	}
@@ -343,7 +343,7 @@ func TestProxyRetriesWithoutStreamOptions(t *testing.T) {
 	captureLog(t)
 	p := &fakeProvider{key: "k", models: []string{"m1", "m2", "m3"}, noStreamOpts: true}
 	h := New(Config{Providers: []Provider{{Name: "groq", Upstream: p.start(t).URL, APIKey: "k", Models: []string{"m1", "m2", "m3"}, StreamUsage: true}}, Limits: DefaultLimits})
-	rec := ask(h, "a", personaBody("o Bento", true))
+	rec := ask(h, "a", personaBody("o Otávio", true))
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"content":"ok"`) {
 		t.Fatalf("resposta = %d %s", rec.Code, rec.Body.String())
 	}
@@ -357,7 +357,7 @@ func TestProxyRetriesWithoutStreamOptions(t *testing.T) {
 	p.mu.Lock()
 	p.seen = nil
 	p.mu.Unlock()
-	ask(h, "a", personaBody("o Bento", true))
+	ask(h, "a", personaBody("o Otávio", true))
 	if got := strings.Join(p.models_(), ","); got != "m1" {
 		t.Errorf("segunda pergunta tentou %s; quer só m1, sem stream_options", got)
 	}
@@ -376,7 +376,7 @@ func TestProxyCapsAttempts(t *testing.T) {
 		provs = append(provs, Provider{Name: fmt.Sprintf("p%d", i), Upstream: f.start(t).URL, APIKey: "k", Models: models})
 	}
 	h := New(Config{Providers: provs, Limits: DefaultLimits})
-	rec := ask(h, "a", personaBody("a Luna", false))
+	rec := ask(h, "a", personaBody("a Lia", false))
 	total := 0
 	for _, f := range fakes {
 		total += len(f.models_())
@@ -511,15 +511,15 @@ func TestProxyRestsProviderNearLimit(t *testing.T) {
 		{Name: "groq", Upstream: groq.URL, APIKey: "k", Models: []string{"g1"}},
 		{Name: "local", Upstream: local.start(t).URL, APIKey: "k", Models: []string{"qwen"}},
 	}, Limits: DefaultLimits})
-	if rec := ask(h, "a", personaBody("o Bento", false)); !strings.Contains(rec.Body.String(), "groq") {
+	if rec := ask(h, "a", personaBody("o Otávio", false)); !strings.Contains(rec.Body.String(), "groq") {
 		t.Fatalf("primeira pergunta = %s", rec.Body.String())
 	}
-	if rec := ask(h, "a", personaBody("o Bento", false)); !strings.Contains(rec.Body.String(), "local") || groqCalls != 1 {
+	if rec := ask(h, "a", personaBody("o Otávio", false)); !strings.Contains(rec.Body.String(), "local") || groqCalls != 1 {
 		t.Errorf("com o Groq quase sem cota, a segunda pergunta deveria ir ao local (groq chamado %d vezes): %s", groqCalls, rec.Body.String())
 	}
 	// Sem o próximo provedor responder, o que está descansando ainda é tentado.
 	local.status = http.StatusServiceUnavailable
-	if rec := ask(h, "a", personaBody("o Bento", false)); !strings.Contains(rec.Body.String(), "groq") {
+	if rec := ask(h, "a", personaBody("o Otávio", false)); !strings.Contains(rec.Body.String(), "groq") {
 		t.Errorf("com o local fora, o Groq ainda responde: %s", rec.Body.String())
 	}
 }
@@ -566,8 +566,8 @@ func TestProxyRestsOnlyTheTiredModel(t *testing.T) {
 		{Name: "groq", Upstream: groq.URL, APIKey: "k", Models: []string{"g1", "g2"}},
 		{Name: "local", Upstream: local.start(t).URL, APIKey: "k", Models: []string{"qwen"}},
 	}, Limits: DefaultLimits})
-	ask(h, "a", personaBody("o Bento", false))
-	ask(h, "a", personaBody("o Bento", false))
+	ask(h, "a", personaBody("o Otávio", false))
+	ask(h, "a", personaBody("o Otávio", false))
 	if strings.Join(seen, ",") != "g1,g2" || len(local.models_()) != 0 {
 		t.Errorf("groq tentou %v, local %v; quer g1 e depois g2, sem o local", seen, local.models_())
 	}

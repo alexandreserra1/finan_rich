@@ -268,8 +268,8 @@ export function render({ server, params, ledger }) {
       ${head("Lembretes", "O aviso é do próprio celular: funciona sem internet.")}
       <label class="check"><input type="checkbox" data-action="reminders" ${remindersOn ? "checked" : ""}> Lembretes do time (às 9h)</label>
       <ul class="small muted team-reminders">
-        <li><b>Luna</b>: 2 dias antes do vencimento de cada dívida (cadastre o dia em Dívidas).</li>
-        <li><b>Otávio</b>: toda segunda, os achados da semana.</li>
+        <li><b>Otávio</b>: 2 dias antes do vencimento de cada dívida (cadastre o dia em Dívidas).</li>
+        <li><b>Lia</b>: toda segunda, os achados da semana.</li>
         <li><b>Tito</b>: no dia do salário, o balanço das metas.</li>
       </ul>
     </section>` : ""}

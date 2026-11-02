@@ -37,7 +37,7 @@ type AskRequest struct {
 	Today     string        `json:"today"` // AAAA-MM-DD
 	AI        AIConfig      `json:"ai"`
 	Anonymize bool          `json:"anonymize"`
-	Agent     string        `json:"agent"` // quem do time responde; vazio = Jade
+	Agent     string        `json:"agent"` // quem do time responde; vazio = Otávio
 }
 
 type ChatTurn struct {

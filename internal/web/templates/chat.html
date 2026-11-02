@@ -1,6 +1,6 @@
 {{define "content"}}
 <div class="page-head consultor-head">
-  <div class="consultor-id"><img class="face" data-agent-face src="/static/img/avatar-{{(index .Team 0).Animal}}.png" alt="" width="36" height="36"><div><h1>Consultor IA</h1>
+  <div class="consultor-id"><img class="face" data-agent-face src="/static/img/time/{{(index .Team 0).ID}}-mini.webp" alt="" width="36" height="36"><div><h1>Consultor IA</h1>
     {{if .Status.Ready}}<span class="ai-state" data-state="ok"><i></i>{{.AI.Preset.Name}} · {{.AI.Model}}{{if not .Local}} · na nuvem{{end}}</span>
     {{- else}}<span class="ai-state" data-state="none"><i></i>Sem IA agora</span>{{end}}</div></div>
   {{if .History}}
@@ -13,10 +13,10 @@
   {{template "aistatus" .}}
   <p class="small muted chat-where">{{if .Local}}A IA roda neste computador: nada sai daqui.{{else}}Na nuvem, nomes de lojas, dívidas e metas vão com apelidos.{{end}} O consultor vê seus números atuais a cada pergunta. <a href="/configuracoes">Trocar o modelo</a></p>
   <div class="team-pick" role="group" aria-label="Com quem do time falar">
-    {{range .Team}}<button type="button" class="team-member" data-agent="{{.ID}}" data-name="{{.Name}}" data-role="{{.Role}}" data-animal="{{.Animal}}" aria-pressed="false"><img class="face" src="/static/img/avatar-{{.Animal}}.png" alt="" width="40" height="40"><span><strong>{{.Name}}</strong><small>{{.Role}}</small></span></button>{{end}}
+    {{range .Team}}<button type="button" class="team-member" data-agent="{{.ID}}" data-name="{{.Name}}" data-role="{{.Role}}" aria-pressed="false"><img class="face" src="/static/img/time/{{.ID}}-mini.webp" alt="" width="40" height="40"><span><strong>{{.Name}}</strong><small>{{.Role}}</small></span></button>{{end}}
   </div>
   <div id="messages" class="messages">
-    {{range .History}}{{if eq .Role "assistant"}}<div class="msg assistant" data-raw="{{.Content}}"><span class="msg-who"><img class="face" src="/static/img/avatar-{{.Who.Animal}}.png" alt="" width="28" height="28">{{.Who.Name}} · {{.Who.Role}}</span>
+    {{range .History}}{{if eq .Role "assistant"}}<div class="msg assistant" data-raw="{{.Content}}"><span class="msg-who"><img class="face" src="/static/img/time/{{.Who.ID}}-mini.webp" alt="" width="28" height="28">{{.Who.Name}} · {{.Who.Role}}</span>
     {{- if .App}}<div class="md" data-md>{{.Lead}}</div>{{with .Numbers}}<details class="numbers" open><summary>Os números do app</summary><div class="md" data-md>{{.}}</div></details>{{end}}<p class="small muted app-answer">Resposta do app, sem IA.</p>
     {{- else}}{{with .Numbers}}<details class="numbers"><summary>Os números do app</summary><div class="md" data-md>{{.}}</div></details>{{end}}<div class="md" data-md>{{.Content}}</div>{{end}}{{with .Proposals}}<div class="proposals" data-proposals="{{jsonText .}}"></div>{{end}}</div>
     {{else}}<div class="msg {{.Role}}"><div class="md" data-md>{{.Content}}</div></div>

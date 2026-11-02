@@ -11,28 +11,30 @@ import (
 
 func TestAnswerAsPersona(t *testing.T) {
 	fake := &scriptedLLM{replies: []llm.Reply{{Text: "Ataque o cartão."}}}
-	q := Question{Text: "e agora?", Ledger: toolsLedger(), Today: time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC), Agent: "bento"}
+	q := Question{Text: "e agora?", Ledger: toolsLedger(), Today: time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC), Agent: "lia"}
 	if _, err := Answer(context.Background(), fake, q, func(string) {}, func(Proposal) {}); err != nil {
 		t.Fatal(err)
 	}
 	req := fake.asked[0]
-	if !strings.HasPrefix(req.System, PromptMarker) || !strings.Contains(req.System, "Você é o Bento") {
-		t.Errorf("instruções sem o marcador ou sem a voz do Bento:\n%s", req.System)
+	if !strings.HasPrefix(req.System, PromptMarker) || !strings.Contains(req.System, "Você é a Lia") || !strings.Contains(req.System, "o app se chama Rich") {
+		t.Errorf("instruções sem o marcador, sem a voz da Lia ou sem o nome Rich:\n%s", req.System)
 	}
 	var names []string
 	for _, tl := range req.Tools {
 		names = append(names, tl.Name)
 	}
-	if got := strings.Join(names, ","); got != "buscar_lancamentos,criar_divida,registrar_pagamento,simular_dividas" {
-		t.Errorf("ferramentas do Bento = %s", got)
+	if got := strings.Join(names, ","); got != "buscar_lancamentos,alterar_lancamento,apagar_lancamento,achados,comparar_meses" {
+		t.Errorf("ferramentas da Lia = %s", got)
 	}
 
-	// Sem personagem (ou desconhecido), fala a Jade, com todas as ferramentas.
-	fake = &scriptedLLM{replies: []llm.Reply{{Text: "Oi."}}}
-	q.Agent = "quem?"
-	Answer(context.Background(), fake, q, func(string) {}, func(Proposal) {})
-	if !strings.Contains(fake.asked[0].System, "Você é a Jade") || len(fake.asked[0].Tools) != len(NewTools(toolsLedger(), time.Now(), nil).Defs()) {
-		t.Errorf("Jade: %d ferramentas", len(fake.asked[0].Tools))
+	// Sem personagem, desconhecido ou de quem saiu do time: fala o Otávio, com as ferramentas dele.
+	for _, agent := range []string{"", "quem?", "bento"} {
+		fake = &scriptedLLM{replies: []llm.Reply{{Text: "Oi."}}}
+		q.Agent = agent
+		Answer(context.Background(), fake, q, func(string) {}, func(Proposal) {})
+		if !strings.Contains(fake.asked[0].System, "Você é o Otávio") || len(fake.asked[0].Tools) != len(allTools()) {
+			t.Errorf("%q: Otávio com %d ferramentas", agent, len(fake.asked[0].Tools))
+		}
 	}
 }
 
@@ -67,15 +69,13 @@ func TestLocalRequestAsPersona(t *testing.T) {
 // rápido (principalmente no modelo local) e menos chance de misturar assuntos.
 func TestSnapshotFor(t *testing.T) {
 	f := BuildFacts(evalLedger(), time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC))
-	full := SnapshotFor(f, "jade")
+	full := SnapshotFor(f, "otavio")
 	if full != Snapshot(f) {
-		t.Error("a Jade recebe o resumo inteiro")
+		t.Error("o Otávio recebe o resumo inteiro")
 	}
 	for agent, c := range map[string]struct{ has, hasNot []string }{
-		"bento":  {[]string{"Data de hoje", "## Mês atual", "## Dívidas", "## Diagnóstico das dívidas"}, []string{"## Gastos por estabelecimento", "## Metas do usuário"}},
-		"tito":   {[]string{"## Mês atual", "## Metas do usuário", "## Reserva de emergência"}, []string{"## Gastos por estabelecimento", "## Diagnóstico das dívidas"}},
-		"otavio": {[]string{"## Mês atual", "## Gastos por estabelecimento", "## Ritmo do mês"}, []string{"## Diagnóstico das dívidas", "## Metas do usuário"}},
-		"luna":   {[]string{"## Mês atual", "## Dívidas", "## Lançamentos que se repetem"}, []string{"## Gastos por estabelecimento", "## Metas do usuário"}},
+		"tito": {[]string{"## Mês atual", "## Metas do usuário", "## Reserva de emergência"}, []string{"## Gastos por estabelecimento", "## Diagnóstico das dívidas"}},
+		"lia":  {[]string{"## Mês atual", "## Gastos por estabelecimento", "## Ritmo do mês"}, []string{"## Diagnóstico das dívidas", "## Metas do usuário"}},
 	} {
 		s := SnapshotFor(f, agent)
 		for _, w := range c.has {

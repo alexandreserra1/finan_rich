@@ -135,7 +135,7 @@ Cada resposta de um provedor vira uma linha no log, para medir o custo por pesso
 personagem. Exemplo:
 
 ```
-ia {"provedor":"groq","modelo":"openai/gpt-oss-120b","status":200,"entrada":4120,"saida":310,"ms":1840,"personagem":"bento","aparelho":"3f9a0c12be47"}
+ia {"provedor":"groq","modelo":"openai/gpt-oss-120b","status":200,"entrada":4120,"saida":310,"ms":1840,"personagem":"otavio","aparelho":"3f9a0c12be47"}
 ```
 
 - `entrada` e `saida`: tokens do campo `usage` da resposta. No streaming, o intermediário pede
@@ -144,7 +144,7 @@ ia {"provedor":"groq","modelo":"openai/gpt-oss-120b","status":200,"entrada":4120
   informou (ou que foi uma tentativa que falhou e passou para o próximo).
 - `status`: o HTTP do provedor; `0` quando ele nem respondeu. Uma pergunta que pulou modelos
   tem uma linha por tentativa (ex.: um 429 e depois o 200).
-- `personagem`: o nome do personagem nas instruções ("Você é o Bento…"), `consultor` (sem
+- `personagem`: o nome do personagem nas instruções ("Você é o Otávio…"), `consultor` (sem
   personagem), `categorize` (categorização de extrato) ou `ping` (teste de conexão).
 - `aparelho`: um resumo (hash) do id do aparelho, que dá para contar pedidos por aparelho mas
   não volta ao id; vazio quando o pedido não tem id.

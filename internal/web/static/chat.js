@@ -7,17 +7,17 @@
   const input = form.elements.message;
   const button = form.querySelector("button");
   const team = [...document.querySelectorAll("[data-agent]")];
-  let agent = "jade"; // com quem a pessoa está falando (lembrado neste navegador)
+  let agent = "otavio"; // com quem a pessoa está falando (lembrado neste navegador)
   try { agent = localStorage.getItem("consultor-agente") || agent; } catch {}
 
-  const face = (animal, size) => {
+  const face = (id, size) => {
     const img = document.createElement("img");
-    Object.assign(img, { className: "face", src: "/static/img/avatar-" + animal + ".png", alt: "", width: size, height: size });
+    Object.assign(img, { className: "face", src: "/static/img/time/" + id + "-mini.webp", alt: "", width: size, height: size });
     return img;
   };
 
   function pick(id) {
-    if (!team.some((b) => b.dataset.agent === id)) id = "jade";
+    if (!team.some((b) => b.dataset.agent === id)) id = "otavio";
     agent = id;
     try { localStorage.setItem("consultor-agente", id); } catch {}
     let name = "";
@@ -26,7 +26,7 @@
       if (b.dataset.agent !== id) return;
       name = b.dataset.name;
       const head = document.querySelector("[data-agent-face]");
-      if (head) head.src = "/static/img/avatar-" + b.dataset.animal + ".png";
+      if (head) head.src = "/static/img/time/" + b.dataset.agent + "-mini.webp";
     });
     document.querySelectorAll(".suggestions [data-for]").forEach((b) => { b.hidden = b.dataset.for !== id; });
     input.placeholder = "Mensagem para " + name + "…";
@@ -39,7 +39,7 @@
     const b = team.find((x) => x.dataset.agent === id) || team[0];
     const tag = document.createElement("span");
     tag.className = "msg-who";
-    tag.append(face(b.dataset.animal, 28), b.dataset.name + " · " + b.dataset.role);
+    tag.append(face(b.dataset.agent, 28), b.dataset.name + " · " + b.dataset.role);
     return tag;
   }
 
@@ -184,7 +184,7 @@
     b.className = "small-btn secondary";
     b.textContent = "Perguntar para " + who.name;
     b.addEventListener("click", () => { pick(who.id); input.value = question; form.requestSubmit(); });
-    box.append(face(who.animal, 28), text, b);
+    box.append(face(who.id, 28), text, b);
     messages.appendChild(box);
   }
   // main.js (módulo) carrega depois deste script: espera para ligar os botões dos

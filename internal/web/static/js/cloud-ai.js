@@ -154,7 +154,7 @@ export async function presets() {
 }
 
 // ask pergunta à IA na nuvem: { answer, proposals }. Sempre anonimizado.
-export async function ask(ledger, history, question, agent = "jade") {
+export async function ask(ledger, history, question, agent = "otavio") {
   const cfg = await config();
   if (!ready(cfg)) throw new Error("configure a IA na nuvem em Ajustes do app");
   await loadAdvisor();
@@ -172,16 +172,16 @@ export async function ask(ledger, history, question, agent = "jade") {
 // prepared: a resposta pronta da sugestão, ou null se a pergunta precisa da IA.
 // offline: a resposta com as contas do personagem quando a IA não pôde responder.
 const appRequest = (ledger, question, agent) => JSON.stringify({ ledger, question, agent, today: today() });
-export async function prepared(ledger, question, agent = "jade") {
+export async function prepared(ledger, question, agent = "otavio") {
   await loadAdvisor();
   return unwrap(window.finanAdvisor.prepared(appRequest(ledger, question, agent))) || null;
 }
-export async function offline(ledger, question, agent = "jade") {
+export async function offline(ledger, question, agent = "otavio") {
   await loadAdvisor();
   return unwrap(window.finanAdvisor.offline(appRequest(ledger, question, agent)));
 }
 // numbers: as contas do personagem para mostrar na hora, enquanto a IA escreve ("" na pergunta pronta).
-export async function numbers(ledger, question, agent = "jade") {
+export async function numbers(ledger, question, agent = "otavio") {
   await loadAdvisor();
   return unwrap(window.finanAdvisor.numbers(appRequest(ledger, question, agent)))?.answer || "";
 }

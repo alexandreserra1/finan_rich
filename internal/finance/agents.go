@@ -8,35 +8,34 @@ import (
 	"github.com/alexandreserra1/finan_rich/internal/importer"
 )
 
-// Agent é um personagem do time do finan_rich. Cada um cuida de um assunto e
-// assina os avisos dele; a imagem fica em static/img/avatar-<Animal>.png.
+// Agent é um personagem do time da Rich. Cada um cuida de um assunto e assina
+// os avisos dele; o retrato fica em static/img/time/<ID>.webp (e <ID>-mini.webp,
+// o rosto pequeno).
 type Agent struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Role   string `json:"role"`
-	Animal string `json:"animal"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Role string `json:"role"`
 }
 
-// Team: Jade conversa sobre tudo e encaminha; os outros vigiam um assunto cada.
+// Team: Otávio organiza o mês e as dívidas (e conversa sobre tudo), Lia cuida
+// dos hábitos e do orçamento, Tito das metas e da reserva. O primeiro é o padrão:
+// id desconhecido ou de quem saiu do time (Jade, Bento, Luna) vira o Otávio.
 var Team = []Agent{
-	{"jade", "Jade", "Consultora", "pantera"},
-	{"bento", "Bento", "Dívidas", "urso"},
-	{"luna", "Luna", "Alertas", "raposa"},
-	{"tito", "Tito", "Metas", "texugo"},
-	{"otavio", "Otávio", "Análise", "coruja"},
+	{"otavio", "Otávio", "Organização e dívidas"},
+	{"lia", "Lia", "Hábitos e orçamento"},
+	{"tito", "Tito", "Metas e reserva"},
 }
 
-// agentKinds diz quem avisa cada tipo de alerta. Luna cuida do que tem data ou
-// teto (vencimento, orçamento, divisão do salário); Bento, de dívida que cresce;
-// Tito, das metas; Otávio, do gasto fora do padrão.
+// agentKinds diz quem avisa cada tipo de alerta. Otávio cuida do que vence e
+// das dívidas; Lia do orçamento, da divisão do salário e do gasto fora do padrão;
+// Tito das metas.
 var agentKinds = map[string]string{
-	"debt-due": "luna", "bucket-over": "luna", "budget-near": "luna", "budget-over": "luna",
-	"debt-growing": "bento",
-	"goal-late":    "tito", "goal-done": "tito",
-	"unusual": "otavio",
+	"debt-due": "otavio", "debt-growing": "otavio",
+	"bucket-over": "lia", "budget-near": "lia", "budget-over": "lia", "unusual": "lia",
+	"goal-late": "tito", "goal-done": "tito",
 }
 
-// agentFor devolve o personagem do tipo de alerta; tipo desconhecido fica com a Jade.
+// agentFor devolve o personagem do tipo de alerta; tipo desconhecido fica com o Otávio.
 func agentFor(kind string) Agent {
 	id := agentKinds[kind]
 	for _, a := range Team {
@@ -48,15 +47,16 @@ func agentFor(kind string) Agent {
 }
 
 // routes: palavras que indicam o assunto de cada personagem, na ordem de
-// prioridade (dívida antes de tudo). "x*" vale para palavras que começam com x.
+// prioridade (dívida e vencimento antes de tudo). "x*" vale para palavras que começam com x.
 var routes = []struct {
 	agent string
 	words []string
 }{
-	{"bento", []string{"divida*", "juros", "rotativo", "cheque especial", "emprestimo*", "financiamento*", "quitar", "devendo", "negociar"}},
+	{"otavio", []string{"divida*", "juros", "rotativo", "cheque especial", "emprestimo*", "financiamento*", "quitar", "devendo", "negociar",
+		"vence", "vencimento*", "fatura*", "boleto*", "atrasad*", "lembra*", "lembrete*"}},
 	{"tito", []string{"meta", "metas", "reserva", "guardar", "juntar", "poupar", "poupanca", "aposentadoria", "investir"}},
-	{"luna", []string{"vence", "vencimento*", "fatura*", "lembra*", "lembrete*", "orcamento*", "teto", "boleto*", "atrasad*"}},
-	{"otavio", []string{"gastei", "gasto*", "gastando", "assinatura*", "categoria*", "mes passado", "relatorio", "comparar", "analise"}},
+	{"lia", []string{"orcamento*", "teto", "gastei", "gasto*", "gastando", "assinatura*", "categoria*", "mes passado", "relatorio",
+		"comparar", "analise", "reduzir", "economizar", "cortar"}},
 }
 
 // Route diz quem do time cuida do assunto da pergunta ("" se nenhum em

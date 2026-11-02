@@ -220,10 +220,10 @@ func TestDriveNeedsUpload(t *testing.T) {
 func TestTeamAndRoute(t *testing.T) {
 	var team struct{ OK []map[string]string }
 	json.Unmarshal([]byte(Team()), &team)
-	if len(team.OK) != 5 || team.OK[1]["name"] != "Bento" || team.OK[1]["animal"] != "urso" {
+	if len(team.OK) != 3 || team.OK[1]["name"] != "Lia" || team.OK[1]["role"] != "Hábitos e orçamento" {
 		t.Errorf("time: %+v", team)
 	}
-	if got := Route("quanto pago de juros na dívida?"); got != `{"ok":"bento"}` {
+	if got := Route("quanto pago de juros na dívida?"); got != `{"ok":"otavio"}` {
 		t.Errorf("Route = %s", got)
 	}
 }

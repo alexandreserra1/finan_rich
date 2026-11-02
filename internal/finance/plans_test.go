@@ -100,9 +100,9 @@ func TestAlerts(t *testing.T) {
 		}
 	}
 	// Cada aviso vem assinado por quem do time cuida daquele assunto.
-	who := map[string]string{"debt-due": "Luna", "debt-growing": "Bento", "bucket-over": "Luna", "unusual": "Otávio"}
+	who := map[string]string{"debt-due": "Otávio", "debt-growing": "Otávio", "bucket-over": "Lia", "unusual": "Lia"}
 	for _, a := range Alerts(l, today) {
-		if want := who[a.Kind]; a.Agent.Name != want || a.Agent.Animal == "" || a.Agent.Role == "" {
+		if want := who[a.Kind]; a.Agent.Name != want || a.Agent.Role == "" {
 			t.Errorf("%s (%s): agente %+v, quer %s", a.Title, a.Kind, a.Agent, want)
 		}
 	}

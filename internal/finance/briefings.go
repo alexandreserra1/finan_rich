@@ -20,8 +20,8 @@ type Briefing struct {
 
 const maxBriefingLines = 3
 
-// Briefings junta o que Bento (dívidas), Tito (metas) e Otávio (gastos) têm
-// a dizer hoje. A Luna fala pelos avisos (Alerts). Quem não tem nada fica de fora.
+// Briefings junta o que Otávio (dívidas), Tito (metas) e Lia (gastos) têm a
+// dizer hoje. Os vencimentos ficam nos avisos (Alerts). Quem não tem nada fica de fora.
 func Briefings(l domain.Ledger, today time.Time) []Briefing {
 	out := []Briefing{}
 	add := func(agent, title, link, ask string, lines []string) {
@@ -32,9 +32,9 @@ func Briefings(l domain.Ledger, today time.Time) []Briefing {
 			out = append(out, Briefing{agentByID(agent), title, lines, link, ask})
 		}
 	}
-	add("bento", "Plano das dívidas", "/dividas", "Qual dívida devo pagar primeiro?", debtLines(l, today))
+	add("otavio", "Plano das dívidas", "/dividas", "Qual dívida devo pagar primeiro?", debtLines(l, today))
 	add("tito", "Suas metas", "/metas", "Minhas metas estão no ritmo?", goalLines(l, today))
-	add("otavio", "Achados do mês", "/analise", "Onde estou gastando demais este mês?", spendingLines(l, today))
+	add("lia", "Achados do mês", "/analise", "Onde estou gastando demais este mês?", spendingLines(l, today))
 	return out
 }
 

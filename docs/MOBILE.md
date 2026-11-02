@@ -199,8 +199,8 @@ A versão do app fica em `mobile/android/app/version.properties`: o workflow de 
   [jsQR](https://github.com/cozmo/jsQR) (Apache-2.0), em `js/qrscan.js`. Lê o QR dos Ajustes
   do computador (`http://…/parear?codigo=…`) e conecta. Sem bibliotecas fechadas (veja
   [LICENSES.md](LICENSES.md)).
-- **Lembretes do time**: `@capacitor/local-notifications` agenda, às 9h, a Luna 2 dias antes
-  do vencimento de cada dívida (todo mês), o Otávio toda segunda (se há lançamentos) e o Tito
+- **Lembretes do time**: `@capacitor/local-notifications` agenda, às 9h, o Otávio 2 dias antes
+  do vencimento de cada dívida (todo mês), a Lia toda segunda (se há lançamentos) e o Tito
   no dia do salário (se há metas). É o próprio Android/iOS que avisa, então funciona sem
   internet; o texto é fixo e a conta aparece ao abrir. Tocar no lembrete abre a tela dele.
   Liga e desliga em Ajustes do app (`js/native.js`).
