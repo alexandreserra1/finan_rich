@@ -15,11 +15,11 @@ export function monthNav(month) {
   </div>`;
 }
 
-// pageHead é o título da tela (com o "kicker" acima), com a navegação de mês e
-// os botões à direita quando houver.
-export function pageHead(title, month, { kicker = "", actions = "" } = {}) {
+// pageHead é o título da tela: a frase do design, com o "kicker" acima e a linha
+// de apoio (sub) embaixo quando houver; a navegação de mês e os botões à direita.
+export function pageHead(title, month, { kicker = "", actions = "", sub = "" } = {}) {
   return html`<div class="page-head">
-    <div class="title">${kicker ? html`<span class="kicker">${kicker}</span>` : ""}<h1>${title}</h1></div>
+    <div class="title">${kicker ? html`<span class="kicker">${kicker}</span>` : ""}<h1>${title}</h1>${sub ? html`<p class="sub">${sub}</p>` : ""}</div>
     ${month || actions ? html`<div class="actions">${month ? monthNav(month) : ""}${actions}</div>` : ""}
   </div>`;
 }
@@ -100,9 +100,11 @@ const QUIET = {
   lia: "Nada fora do padrão nos gastos deste mês. Seu cafezinho segue liberado.",
 };
 
-function metric(label, value, note, { primary = false, href = "" } = {}) {
-  const body = html`<span class="metric-top">${label}<span aria-hidden="true">${ARROW}</span></span><strong>${value}</strong><small>${note}</small>`;
-  return href ? html`<a class="card metric ${primary ? "primary" : ""}" href="${href}">${body}</a>` : html`<div class="card metric ${primary ? "primary" : ""}">${body}</div>`;
+// metric é um número da fileira do topo (Painel, Lançamentos, Contas, Análise); primary
+// é o cartão azul; cls pinta o valor (pos/neg); com href vira link.
+export function metric(label, value, note, { primary = false, href = "", cls = "", extra = "" } = {}) {
+  const body = html`<span class="metric-top">${label}${href ? html`<span aria-hidden="true">${ARROW}</span>` : ""}</span><strong class="${cls}">${value}</strong><small>${note}</small>`;
+  return href ? html`<a class="card metric ${primary ? "primary" : ""} ${extra}" href="${href}">${body}</a>` : html`<div class="card metric ${primary ? "primary" : ""} ${extra}">${body}</div>`;
 }
 
 export function render(ctx) {

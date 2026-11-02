@@ -186,7 +186,7 @@ export function render({ ledger, params }) {
   const newButton = html`<button type="button" data-action="new-debt">${PLUS}Nova dívida</button>`;
 
   if (!v.debts.length) {
-    return html`${pageHead("Dívidas", null, { kicker: "Plano para sair delas", actions: newButton })}
+    return html`${pageHead("Uma dívida de cada vez.", null, { sub: "Entenda os juros, compare caminhos e escolha seu próximo passo.", actions: newButton })}
       <section class="panel empty-state debt-empty">
         <span class="ok-tile" aria-hidden="true">${ICON.check}</span>
         <strong>Nenhuma dívida cadastrada. Ótimo sinal!</strong>
@@ -199,7 +199,7 @@ export function render({ ledger, params }) {
 
   const diagnosis = diagnosisPanel(c, v, ledger);
   return html`
-    ${pageHead("Dívidas", null, { kicker: "Plano para sair delas", actions: newButton })}
+    ${pageHead("Uma dívida de cada vez.", null, { sub: "Entenda os juros, compare caminhos e escolha seu próximo passo.", actions: newButton })}
     <section class="cards debt-kpis">
       <div class="card"><span>Total devido</span><strong>${m(v.totalCents)}</strong><span class="faint small">${v.debts.length} ${v.debts.length === 1 ? "dívida ativa" : "dívidas ativas"}</span></div>
       <div class="card"><span>Parcelas mínimas / mês</span><strong>${m(v.totalMinCents)}</strong>

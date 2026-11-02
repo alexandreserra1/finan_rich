@@ -124,7 +124,7 @@ try {
   await page.waitForSelector("td:has-text('Empréstimo')", { state: "detached" });
   await page.evaluate(() => window.finanSync());
   await page.reload();
-  await page.waitForSelector("h1:has-text('Dívidas')");
+  await page.waitForSelector("h1:has-text('Uma dívida de cada vez')");
   ok(await page.locator("td:has-text('Empréstimo')").count() === 0 && !(await records("debt")).some((d) => d.name === "Empréstimo"),
     "dívida apagada some aqui e no computador");
 

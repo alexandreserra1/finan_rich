@@ -209,7 +209,7 @@ try {
   // Com o relógio de uso dentro do prazo, abrir o site entra direto e renova a contagem.
   await b.evaluate(async () => (await import("/static/js/db.js")).setMeta("site-active", Date.now() - 20 * 60_000));
   await b.goto(`${SITE}/dividas`);
-  await b.waitForSelector("h1:has-text('Dívidas')", { timeout: 20000 });
+  await b.waitForSelector("h1:has-text('Uma dívida de cada vez')", { timeout: 20000 });
   ok(await b.evaluate(async () => Date.now() - (await (await import("/static/js/db.js")).getMeta("site-active", 0)) < 60_000), "abrir o site dentro do prazo renova a contagem de uso");
 
   // Com a página aberta e parada, a sessão vence sozinha e o Painel some.

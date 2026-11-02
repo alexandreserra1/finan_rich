@@ -22,7 +22,7 @@ export function render({ ledger, params }) {
   const shown = notes.filter(match);
 
   return html`
-    ${pageHead("Notas")}
+    ${pageHead("Ideias boas merecem ficar.", null, { sub: "Guarde planos, aprendizados e respostas do Consultor." })}
     <section class="panel">
       <h2>${editing ? "Editar nota" : "Nova nota"}</h2>
       <form data-form="note" class="note-form">

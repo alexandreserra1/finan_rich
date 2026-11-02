@@ -17,7 +17,7 @@ export function render({ ledger }) {
     .sort((a, b) => ORDER[a.bucket] - ORDER[b.bucket] || a.name.localeCompare(b.name, "pt-BR"));
 
   return html`
-    ${pageHead("Categorias")}
+    ${pageHead("Um plano que cabe na vida.", null, { sub: "Seu orçamento é uma intenção. O realizado vem dos lançamentos." })}
     <section class="panel">
       <h2>Divisão do salário</h2>
       <p class="muted">Quanto da renda do mês vai para cada grupo. A regra clássica é 50/30/20; ajuste à sua realidade (a soma precisa dar 100%).</p>

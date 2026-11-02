@@ -67,7 +67,7 @@ export function render({ ledger }) {
   for (const it of items) counts[it.status] = (counts[it.status] || 0) + 1;
   const m = finance.money;
   return html`
-    ${pageHead("Importar extrato")}
+    ${pageHead("Traga sua história financeira.", null, { sub: "Revise cada linha antes de transformar um arquivo em lançamentos." })}
     <section class="panel">
       <div class="panel-head">
         <h2>${state.fileName}</h2>
@@ -111,7 +111,7 @@ export function render({ ledger }) {
 // renderBank: as contas que vieram do Open Finance; escolhe uma para revisar.
 function renderBank() {
   return html`
-    ${pageHead("Importar extrato")}
+    ${pageHead("Traga sua história financeira.", null, { sub: "Revise cada linha antes de transformar um arquivo em lançamentos." })}
     <section class="panel">
       <div class="panel-head">
         <h2>Do banco (Open Finance)</h2>
@@ -126,7 +126,7 @@ function renderBank() {
 
 function renderUpload() {
   return html`
-    ${pageHead("Importar extrato")}
+    ${pageHead("Traga sua história financeira.", null, { sub: "Revise cada linha antes de transformar um arquivo em lançamentos." })}
     ${bankNotes.available() ? html`<section class="panel">
       <h2>Notificações do banco</h2>
       <p class="muted">Cada compra ou Pix que o app do banco avisar vira um lançamento para você conferir aqui. As notificações são lidas neste celular e não saem dele.</p>

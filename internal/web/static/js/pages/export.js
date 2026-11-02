@@ -15,7 +15,7 @@ export const needsData = false; // o backup também serve para restaurar num apa
 export function render({ month, ledger }) {
   const count = (list) => list.filter((r) => !r.deleted).length;
   return html`
-    ${pageHead("Exportar e backup")}
+    ${pageHead("Seus dados vão com você.", null, { sub: "Exporte relatórios ou guarde uma cópia para recuperar depois." })}
     <section class="panel">
       <h2>Exportar seus dados</h2>
       <p class="muted">Leve seus dados para o Excel, Google Planilhas, pandas, ou mande o relatório para alguém. Os arquivos são gerados neste aparelho, mesmo sem internet.</p>

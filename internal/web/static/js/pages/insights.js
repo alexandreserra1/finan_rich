@@ -4,7 +4,7 @@
 import * as finance from "../finance.js";
 import { barPct, html, today } from "../ui.js";
 import { chart } from "../charts.js";
-import { budgetBars, pageHead } from "./dashboard.js";
+import { budgetBars, metric, pageHead } from "./dashboard.js";
 import { bindNetWorth, netWorthPanel } from "./accounts.js";
 
 // compareWith: com o que comparar o mês ("passado" ou "media", fica no endereço).
@@ -86,20 +86,15 @@ export function render({ ledger, params }) {
     <button type="button" role="radio" data-compare="media" aria-checked="${mode === "media"}">Média 3 meses</button>
   </div>`;
   return html`
-    ${pageHead("Análise", null, { kicker: `${v.label} · dia ${v.day} de ${v.daysInMonth}`, actions: toggle })}
+    ${pageHead("Sua grana, vista de perto.", null, { kicker: `${v.label} · dia ${v.day} de ${v.daysInMonth}`, sub: "Estimativas transparentes e comparações que ajudam a decidir.", actions: toggle })}
 
-    <section class="cards ins-kpis">
-      <div class="card perday"><span>Pode gastar por dia</span>
-        <strong class="${v.freeCents < 0 ? "neg" : "pos"}">${v.freeCents < 0 ? m(0) : m(v.perDayCents)}</strong>
-        <span class="faint small">${v.freeCents < 0
-          ? html`o mês já passou ${m(-v.freeCents)} do que cabe`
-          : html`sobram ${m(v.freeCents)} até o fim do mês${v.incomeEstimated ? " (renda estimada pela média)" : ""}`}</span></div>
-      <div class="card"><span>Gastos variáveis até hoje</span><strong>${m(v.variableCents)}</strong>
-        <span class="small ${vsRef > 0 ? "neg" : "faint"}">${refDay ? `${m(Math.abs(vsRef))} ${vsRef > 0 ? "a mais" : "a menos"} que ${refText} até o dia ${v.day}` : `sem ${refText} para comparar`}</span></div>
-      <div class="card"><span>Projeção do mês</span><strong>${m(v.projectedCents)}</strong>
-        <span class="faint small">com ${m(v.fixedCents)} de contas fixas${v.lastMonthCents ? ` · mês passado: ${m(v.lastMonthCents)}` : ""}</span></div>
-      <div class="card"><span>Taxa de economia</span><strong class="${v.savingsPct < 0 ? "neg" : v.savingsPct >= v.savingsTargetPct ? "pos" : ""}">${v.incomeCents ? `${v.savingsPct}%` : "—"}</strong>
-        <span class="faint small">${v.incomeCents ? `média ${v.savingsAvgPct}% · meta da divisão ${v.savingsTargetPct}%` : "lance a renda do mês para calcular"}</span></div>
+    <section class="cards metricgrid ins-kpis">
+      ${metric("Pode gastar por dia", v.freeCents < 0 ? m(0) : m(v.perDayCents), v.freeCents < 0
+        ? `o mês já passou ${m(-v.freeCents)} do que cabe`
+        : `sobram ${m(v.freeCents)} até o fim do mês${v.incomeEstimated ? " (renda estimada pela média)" : ""}`, { extra: "perday", cls: v.freeCents < 0 ? "neg" : "" })}
+      ${metric("Gastos variáveis até hoje", m(v.variableCents), refDay ? `${m(Math.abs(vsRef))} ${vsRef > 0 ? "a mais" : "a menos"} que ${refText} até o dia ${v.day}` : `sem ${refText} para comparar`)}
+      ${metric("Projeção do mês", m(v.projectedCents), `com ${m(v.fixedCents)} de contas fixas${v.lastMonthCents ? ` · mês passado: ${m(v.lastMonthCents)}` : ""}`)}
+      ${metric("Taxa de economia", v.incomeCents ? `${v.savingsPct}%` : "—", v.incomeCents ? `média ${v.savingsAvgPct}% · meta da divisão ${v.savingsTargetPct}%` : "lance a renda do mês para calcular", { primary: true })}
     </section>
 
     <section class="panel">

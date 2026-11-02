@@ -3,7 +3,7 @@
 // recorrentes. Quem filtra, soma e valida é o Go (finance.*); aqui só desenha.
 import * as finance from "../finance.js";
 import { BUCKETS, closeModal, html, iconTile, newId, openModal, raw, shiftMonth, toast, today } from "../ui.js";
-import { PLUS, pageHead } from "./dashboard.js";
+import { PLUS, metric, pageHead } from "./dashboard.js";
 
 const ORDER = { renda: 0, necessidades: 1, desejos: 2, investimentos: 3 };
 
@@ -178,15 +178,14 @@ export function render({ ledger, month, params }) {
   const m = finance.money;
 
   return html`
-    ${pageHead("Lançamentos", month, { kicker: "Receitas e despesas", actions: html`
+    ${pageHead("Cada movimento conta.", month, { sub: "Entradas, saídas e a história do seu mês.", actions: html`
       <a class="btn secondary" href="/importar">${ICON.download}Importar extrato</a>
       <button type="button" data-action="new-tx">${PLUS}Novo lançamento</button>` })}
 
-    <section class="sum-strip ${filtering ? "filter-total" : ""}" role="status">
-      <div><span>${filtering ? "Encontrados" : "Lançamentos no mês"}</span><strong>${found.count}</strong></div>
-      <div><span>Entradas</span><strong class="pos">${m(found.inCents)}</strong></div>
-      <div><span>Saídas</span><strong>${m(found.outCents)}</strong></div>
-      <div><span>Saldo</span><strong class="${found.balanceCents < 0 ? "neg" : "pos"}">${m(found.balanceCents)}</strong></div>
+    <section class="cards metricgrid three ${filtering ? "filter-total" : ""}" role="status">
+      ${metric(filtering ? "Entradas encontradas" : `Entradas · ${finance.monthLabel(month)}`, m(found.inCents), filtering ? `${found.count} ${found.count === 1 ? "lançamento encontrado" : "lançamentos encontrados"}` : "Receitas registradas")}
+      ${metric(filtering ? "Saídas encontradas" : `Saídas · ${finance.monthLabel(month)}`, m(found.outCents), "Despesas e investimentos")}
+      ${metric("Saldo", m(found.balanceCents), "Entradas menos saídas", { primary: true })}
     </section>
 
     <section class="panel tx-card">

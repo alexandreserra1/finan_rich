@@ -212,7 +212,7 @@ export function render({ server, params, ledger }) {
     !device.isSite && ["#parear", "Computador"], ["#ia-nuvem", "Consultor IA"], !device.isSite && ["#open-finance", "Open Finance"],
     hasReminders() && ["#lembretes", "Lembretes"], ["#bloqueio", "Bloqueio"], ["#dados", "Seus dados"]].filter(Boolean);
   return html`
-    ${pageHead("Ajustes", null, { kicker: device.isSite ? "Este navegador" : "Este celular" })}
+    ${pageHead("Do seu jeito. Mesmo.", null, { kicker: device.isSite ? "Ajustes deste navegador" : "Ajustes deste celular", sub: "Aparência, dados, a IA e o que vai para onde, sem letra miúda." })}
     <div class="settings">
       <nav class="settings-index" aria-label="Seções de ajustes">
         ${index.map(([href, label, hidden]) => html`<a href="${href}" ${hidden ? "hidden" : ""}>${label}</a>`)}

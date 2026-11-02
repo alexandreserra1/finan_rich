@@ -3,7 +3,7 @@
 // finance.Accounts e finance.NetWorth (Go, pelo WebAssembly); aqui só desenha.
 import * as finance from "../finance.js";
 import { centsInput, closeModal, html, openModal, raw, today, toast } from "../ui.js";
-import { PLUS, pageHead } from "./dashboard.js";
+import { PLUS, metric, pageHead } from "./dashboard.js";
 import { chart } from "../charts.js";
 
 export const ACCOUNT_KINDS = { corrente: "Conta corrente", poupanca: "Poupança", carteira: "Carteira", cartao: "Cartão de crédito" };
@@ -120,7 +120,7 @@ export function render({ ledger }) {
   const m = finance.money;
   const v = finance.accounts(ledger, today());
   const newButton = html`<button type="button" data-action="new-account">${PLUS}Nova conta ou cartão</button>`;
-  const head = pageHead("Contas e cartões", null, { kicker: "Saldos, faturas e patrimônio", actions: newButton });
+  const head = pageHead("Um lugar para cada conta.", null, { sub: "Saldos, cartões e uma visão do seu patrimônio.", actions: newButton });
   if (!v.accounts.length) {
     return html`${head}
       <section class="acct-empty">
@@ -138,13 +138,10 @@ export function render({ ledger }) {
   const biggest = Math.max(1, ...plain.map((a) => Math.abs(a.balanceCents)));
   const net = finance.netWorth(ledger, today()).at(-1).netCents;
   return html`${head}
-    <section class="cards acct-kpis">
-      <div class="card"><span>Nas contas</span><strong class="${v.accountsCents < 0 ? "neg" : ""}">${m(v.accountsCents)}</strong>
-        <span class="faint small">${plain.length} ${plain.length === 1 ? "conta" : "contas"}, sem os cartões</span></div>
-      <div class="card"><span>Em aberto nos cartões</span><strong class="${v.cardsOpenCents > 0 ? "neg" : ""}">${m(v.cardsOpenCents)}</strong>
-        <span class="faint small">${cards.length} ${cards.length === 1 ? "cartão" : "cartões"}</span></div>
-      <div class="card hero"><span>Patrimônio</span><strong class="${net < 0 ? "neg" : ""}">${m(net)}</strong>
-        <span class="hero-label">contas − cartões em aberto − dívidas</span></div>
+    <section class="cards metricgrid three acct-kpis">
+      ${metric("Saldo das contas", m(v.accountsCents), `${plain.length} ${plain.length === 1 ? "conta" : "contas"}, sem os cartões`, { cls: v.accountsCents < 0 ? "neg" : "" })}
+      ${metric("Cartões em aberto", m(v.cardsOpenCents), `${cards.length} ${cards.length === 1 ? "cartão" : "cartões"}`)}
+      ${metric("Patrimônio líquido", m(net), "Contas − cartões − dívidas", { primary: true })}
     </section>
 
     ${cards.length ? html`<section class="panel">

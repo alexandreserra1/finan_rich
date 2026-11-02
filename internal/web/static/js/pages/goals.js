@@ -99,7 +99,7 @@ export function render({ ledger }) {
   const p = finance.goalsPage(ledger, today());
   const cats = ledger.categories.filter((c) => !c.deleted && c.bucket !== "renda").sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   const catNames = Object.fromEntries(cats.map((c) => [c.id, c.name]));
-  const head = pageHead("Metas", null, { kicker: "Juntar um valor até um prazo", actions: html`<button type="button" data-action="new-goal">${PLUS}Nova meta</button>` });
+  const head = pageHead("Dê um nome ao seu “um dia”.", null, { sub: "Metas possíveis, passos pequenos e espaço para recomeçar.", actions: html`<button type="button" data-action="new-goal">${PLUS}Nova meta</button>` });
 
   if (!p.goals.length) {
     return html`${head}
