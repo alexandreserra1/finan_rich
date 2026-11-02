@@ -91,9 +91,9 @@ try {
 
   // ---------- Orçamento por categoria ----------
   await page.goto(`${B}/categorias`);
-  const row = page.locator("tr:has-text('Restaurantes e delivery')");
-  await row.locator("input[name=budget]").fill("100");
-  await row.locator("button[type=submit]").click();
+  await page.click(".limit-row:has-text('Restaurantes e delivery') [data-edit]");
+  await page.fill("#category-modal input[name=budget]", "100");
+  await page.click("#category-modal button[type=submit]");
   await page.waitForSelector(".flash:has-text('Orçamento de Restaurantes e delivery: R$ 100,00 por mês.')");
   await page.evaluate(() => window.finanSync());
   ok((await records("category")).find((c) => c.name === "Restaurantes e delivery")?.budgetCents === 10000, "teto salvo na categoria e sincronizado");
@@ -160,9 +160,9 @@ try {
   ok(cleared.some((id) => id.startsWith("budget-near:")) && cleared.some((id) => id.startsWith("budget-over:")), "o que foi limpo vai na sincronização (some nos outros aparelhos)");
   // "Limpar tudo": um aviso novo (Mercado estourou) aparece e é limpo junto.
   await page.goto(`${B}/categorias`);
-  const market = page.locator("tr:has-text('Mercado')");
-  await market.locator("input[name=budget]").fill("100");
-  await market.locator("button[type=submit]").click();
+  await page.click(".limit-row:has-text('Mercado') [data-edit]");
+  await page.fill("#category-modal input[name=budget]", "100");
+  await page.click("#category-modal button[type=submit]");
   await page.waitForSelector(".flash:has-text('Orçamento de Mercado')");
   await openBell();
   await page.waitForSelector("#avisos .bell-item:has-text('Orçamento de Mercado')");
