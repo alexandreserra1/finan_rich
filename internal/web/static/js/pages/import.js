@@ -56,6 +56,11 @@ function categoryOptions(ledger, kind, selected) {
   return html`<option value="">Escolha…</option>${cats.map((c) => html`<option value="${c.id}" ${c.id === selected ? "selected" : ""}>${c.name}${income ? "" : ` · ${BUCKETS[c.bucket]}`}</option>`)}`;
 }
 
+// steps: os três passos do design (escolher, revisar, confirmar); o atual fica em destaque.
+const steps = (at) => html`<ol class="import-steps">${["Escolher origem", "Revisar lançamentos", "Confirmar resultado"].map((t, i) =>
+  html`<li class="${i + 1 === at ? "on" : i + 1 < at ? "done" : ""}" ${i + 1 === at ? html`aria-current="step"` : ""}><span>${i + 1}</span>${t}</li>`)}</ol>`;
+const head = (at) => html`${pageHead("Traga sua história financeira.", null, { sub: "Revise cada linha antes de transformar um arquivo em lançamentos." })}${steps(at)}`;
+
 export function render({ ledger }) {
   if (!state) return renderUpload();
   if (state.bank) return renderBank();
@@ -67,7 +72,7 @@ export function render({ ledger }) {
   for (const it of items) counts[it.status] = (counts[it.status] || 0) + 1;
   const m = finance.money;
   return html`
-    ${pageHead("Traga sua história financeira.", null, { sub: "Revise cada linha antes de transformar um arquivo em lançamentos." })}
+    ${head(2)}
     <section class="panel">
       <div class="panel-head">
         <h2>${state.fileName}</h2>
@@ -111,7 +116,7 @@ export function render({ ledger }) {
 // renderBank: as contas que vieram do Open Finance; escolhe uma para revisar.
 function renderBank() {
   return html`
-    ${pageHead("Traga sua história financeira.", null, { sub: "Revise cada linha antes de transformar um arquivo em lançamentos." })}
+    ${head(1)}
     <section class="panel">
       <div class="panel-head">
         <h2>Do banco (Open Finance)</h2>
@@ -126,37 +131,52 @@ function renderBank() {
 
 function renderUpload() {
   return html`
-    ${pageHead("Traga sua história financeira.", null, { sub: "Revise cada linha antes de transformar um arquivo em lançamentos." })}
-    ${bankNotes.available() ? html`<section class="panel">
-      <h2>Notificações do banco</h2>
-      <p class="muted">Cada compra ou Pix que o app do banco avisar vira um lançamento para você conferir aqui. As notificações são lidas neste celular e não saem dele.</p>
-      <div class="row-actions">
-        <button type="button" data-action="bank-notes">Revisar notificações</button>
-        <button type="button" class="secondary" data-action="bank-notes-allow">Permitir ler as notificações</button>
-      </div>
-    </section>` : ""}
-    <section class="panel">
-      <h2>Direto do banco</h2>
-      <p class="muted">Com o Open Finance configurado em Ajustes (Meu Pluggy, grátis), os lançamentos vêm do banco sem arquivo.</p>
-      <form data-form="openfinance" class="extra-form">
-        <label>Desde <input type="date" name="from" value="${shiftMonth(today().slice(0, 7), -1)}-01" required></label>
-        <button type="submit">Buscar do banco</button>
-      </form>
+    ${head(1)}
+    <section class="import-cols">
+      <section class="panel import-file">
+        <div class="drop-zone">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 15v6h16v-6"/></svg>
+          <strong>Escolha o extrato ou a fatura para revisar</strong>
+          <span class="muted small">OFX, CSV ou fatura em PDF, lidos neste aparelho. O arquivo não vai para a internet.</span>
+          <label class="button file-button primary-file">Escolher arquivo <input type="file" name="statement" accept=".ofx,.qfx,.csv,.txt,.pdf,text/csv,application/x-ofx,application/pdf" class="visually-hidden"></label>
+        </div>
+        <details class="banks">
+          <summary>Onde encontro o extrato no meu banco?</summary>
+          <ul class="small">
+            <li><strong>Nubank</strong>: no app, Conta → Extrato → ícone de compartilhar → OFX ou CSV. Fatura do cartão: no site (app.nubank.com.br) → Cartão → Exportar fatura.</li>
+            <li><strong>Itaú, Bradesco, Banco do Brasil, Santander, Caixa</strong>: no internet banking, Extrato → Exportar / Salvar como → OFX (Money) ou CSV/Excel.</li>
+            <li><strong>Inter, C6, PicPay, Mercado Pago</strong>: no app, Extrato → Exportar → CSV, OFX ou Excel (salve como CSV).</li>
+            <li><strong>Fatura do cartão em PDF</strong> (quando o banco só oferece PDF): escolha o PDF da fatura. As compras são lidas do texto; confira as datas e os valores antes de importar. PDF com senha também funciona (a senha não é guardada).</li>
+            <li>Planilha própria: salve como CSV com colunas de <em>data</em>, <em>descrição</em> e <em>valor</em> (gastos negativos ou uma coluna <em>tipo</em>).</li>
+          </ul>
+        </details>
+      </section>
+      <section class="panel import-why">
+        <h2 class="big-h2">Você escolhe o que entra.</h2>
+        <dl>
+          <div><dt>Sem duplicar sua história</dt><dd>O que já foi importado, o que parece lançado à mão e os pagamentos de fatura vêm desmarcados.</dd></div>
+          <div><dt>Categorias com contexto</dt><dd>A Rich sugere a categoria pela descrição e pelo seu histórico, e aprende com as suas correções. Revise antes de confirmar.</dd></div>
+          <div><dt>Importação por iniciativa sua</dt><dd>Nada entra sozinho: cada arquivo, busca no banco ou notificação passa pela sua revisão.</dd></div>
+        </dl>
+      </section>
     </section>
-    <section class="panel">
-      <h2>Traga os lançamentos do banco</h2>
-      <p class="muted">Exporte o extrato da conta ou a fatura do cartão no app ou site do banco e escolha o arquivo aqui. A Rich sugere a categoria de cada lançamento, aprende com as suas correções e avisa o que já foi importado. O arquivo é lido neste aparelho e não vai para a internet.</p>
-      <label class="button file-button primary-file">Escolher arquivo (OFX, CSV ou fatura em PDF)… <input type="file" name="statement" accept=".ofx,.qfx,.csv,.txt,.pdf,text/csv,application/x-ofx,application/pdf" class="visually-hidden"></label>
-      <details class="banks">
-        <summary>Onde encontro o extrato no meu banco?</summary>
-        <ul class="small">
-          <li><strong>Nubank</strong>: no app, Conta → Extrato → ícone de compartilhar → OFX ou CSV. Fatura do cartão: no site (app.nubank.com.br) → Cartão → Exportar fatura.</li>
-          <li><strong>Itaú, Bradesco, Banco do Brasil, Santander, Caixa</strong>: no internet banking, Extrato → Exportar / Salvar como → OFX (Money) ou CSV/Excel.</li>
-          <li><strong>Inter, C6, PicPay, Mercado Pago</strong>: no app, Extrato → Exportar → CSV, OFX ou Excel (salve como CSV).</li>
-          <li><strong>Fatura do cartão em PDF</strong> (quando o banco só oferece PDF): escolha o PDF da fatura. As compras são lidas do texto; confira as datas e os valores antes de importar. PDF com senha também funciona (a senha não é guardada).</li>
-          <li>Planilha própria: salve como CSV com colunas de <em>data</em>, <em>descrição</em> e <em>valor</em> (gastos negativos ou uma coluna <em>tipo</em>).</li>
-        </ul>
-      </details>
+    <section class="import-cols">
+      <section class="panel">
+        <h2>Direto do banco</h2>
+        <p class="muted">Com o Open Finance configurado em Ajustes (Meu Pluggy, grátis), os lançamentos vêm do banco sem arquivo.</p>
+        <form data-form="openfinance" class="bank-form">
+          <label class="field">Desde <input type="date" name="from" value="${shiftMonth(today().slice(0, 7), -1)}-01" required></label>
+          <button type="submit" class="secondary">Buscar do banco</button>
+        </form>
+      </section>
+      ${bankNotes.available() ? html`<section class="panel">
+        <h2>Notificações do banco</h2>
+        <p class="muted">Cada compra ou Pix que o app do banco avisar vira um lançamento para você conferir aqui. As notificações são lidas neste celular e não saem dele.</p>
+        <div class="row-actions">
+          <button type="button" data-action="bank-notes">Revisar notificações</button>
+          <button type="button" class="secondary" data-action="bank-notes-allow">Permitir ler as notificações</button>
+        </div>
+      </section>` : ""}
     </section>`;
 }
 
