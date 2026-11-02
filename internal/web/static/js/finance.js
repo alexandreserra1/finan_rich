@@ -69,4 +69,5 @@ export const briefings = (ledger, day) => unwrap(window.finan.briefings(JSON.str
 // Tela Metas: as metas e as somas do topo; a prévia da janela; o que gravar ao guardar dinheiro.
 export const goalsPage = (ledger, day) => unwrap(window.finan.goalsPage(JSON.stringify(ledger), day));
 export const goalPlan = (remainingCents, deadline, day) => unwrap(window.finan.goalPlan(remainingCents, deadline, day));
+export const debtPayment = (ledger, debtId, cents, day) => unwrap(window.finan.debtPayment(JSON.stringify(ledger), debtId, cents, day));
 export const contribution = (goal, cents, day) => unwrap(window.finan.contribution(JSON.stringify(goal), cents, day));

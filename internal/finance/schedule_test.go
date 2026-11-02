@@ -118,3 +118,22 @@ func TestPayoffScheduleYears(t *testing.T) {
 		t.Errorf("primeira parcela %d, última %d", s.Calendar[0].Payments[0], last)
 	}
 }
+
+func TestDebtPayment(t *testing.T) {
+	d := domain.Debt{Meta: meta("d1"), Name: "Cartão", BalanceCents: 320000}
+	l := domain.Ledger{Categories: []domain.Category{{Meta: meta("mer"), Name: "Mercado"}}}
+	paid, tx := DebtPayment(l, d, 50000, "2026-10-15")
+	if paid.BalanceCents != 270000 || paid.ID != "d1" || tx != nil || d.BalanceCents != 320000 {
+		t.Errorf("sem a categoria, só baixa o saldo: %+v %+v", paid, tx)
+	}
+	l.Categories = append(l.Categories, domain.Category{Meta: meta("pd"), Name: domain.DebtPaymentCategory})
+	paid, tx = DebtPayment(l, d, 400000, "2026-10-15")
+	if paid.BalanceCents != 0 || tx == nil || tx.CategoryID != "pd" || tx.Kind != domain.KindSaida || tx.AmountCents != 400000 ||
+		tx.Description != "Pagamento: Cartão" || tx.Date != "2026-10-15" || tx.ID != "" {
+		t.Errorf("com a categoria, lança o gasto e o saldo não fica negativo: %+v %+v", paid, tx)
+	}
+	l.Categories[1].Deleted = true
+	if _, tx = DebtPayment(l, d, 50000, "2026-10-15"); tx != nil {
+		t.Errorf("categoria apagada não recebe o gasto: %+v", tx)
+	}
+}

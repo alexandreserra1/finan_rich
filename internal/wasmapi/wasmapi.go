@@ -207,6 +207,29 @@ func Contribution(goalJSON string, cents int64, date string) string {
 	return reply(map[string]any{"type": typ, "record": rec}, nil)
 }
 
+// DebtPayment diz o que gravar ao pagar parte de uma dívida: [{type, record}],
+// a dívida com o saldo novo e, se houver a categoria, o gasto lançado nela.
+func DebtPayment(ledgerJSON, debtID string, cents int64, date string) string {
+	var l domain.Ledger
+	if err := json.Unmarshal([]byte(ledgerJSON), &l); err != nil {
+		return reply(nil, err)
+	}
+	if cents <= 0 {
+		return reply(nil, errors.New("informe quanto pagou"))
+	}
+	for _, d := range l.ActiveDebts() {
+		if d.ID == debtID {
+			paid, tx := finance.DebtPayment(l, d, cents, date)
+			out := []map[string]any{{"type": domain.TypeDebt, "record": paid}}
+			if tx != nil {
+				out = append(out, map[string]any{"type": domain.TypeTransaction, "record": tx})
+			}
+			return reply(out, nil)
+		}
+	}
+	return reply(nil, errors.New("dívida não encontrada"))
+}
+
 // RecurringDue devolve os lançamentos que as recorrências devem gerar.
 func RecurringDue(ledgerJSON, today string) string {
 	l, day, err := planInput(ledgerJSON, today)

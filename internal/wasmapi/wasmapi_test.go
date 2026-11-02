@@ -244,3 +244,19 @@ func TestGoalsPageAndContribution(t *testing.T) {
 		t.Errorf("valor zero = %s", got)
 	}
 }
+
+func TestDebtPayment(t *testing.T) {
+	l := `{"categories":[{"id":"pd","updatedAt":1,"name":"Pagamento de dívidas","bucket":"necessidades"}],"debts":[{"id":"d","updatedAt":1,"name":"Cartão","balanceCents":1000}]}`
+	if got := DebtPayment(l, "d", 300, "2026-10-10"); !strings.Contains(got, `"balanceCents":700`) || !strings.Contains(got, `"categoryId":"pd"`) {
+		t.Errorf("DebtPayment = %s", got)
+	}
+	for _, c := range []struct {
+		id    string
+		cents int64
+		want  string
+	}{{"d", 0, "informe quanto pagou"}, {"x", 300, "dívida não encontrada"}} {
+		if got := DebtPayment(l, c.id, c.cents, "2026-10-10"); !strings.Contains(got, c.want) {
+			t.Errorf("DebtPayment(%s, %d) = %s", c.id, c.cents, got)
+		}
+	}
+}

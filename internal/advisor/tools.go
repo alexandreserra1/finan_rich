@@ -517,23 +517,21 @@ func (t *Tools) payDebt(debtName, value, date string) (Proposal, []Proposal, err
 	if err != nil {
 		return Proposal{}, nil, err
 	}
-	paid := d
-	paid.BalanceCents = max(0, d.BalanceCents-v)
+	if date == "" {
+		date = t.today.Format(domain.DateLayout)
+	}
+	paid, tx := finance.DebtPayment(t.ledger, d, v, date)
 	paid.UpdatedAt = max(t.today.UnixMilli(), d.UpdatedAt+1)
 	label := fmt.Sprintf("Pagamento de %s em %s: saldo %s → %s", money.Format(v), d.Name, money.Format(d.BalanceCents), money.Format(paid.BalanceCents))
 	debt, err := proposal(ActionEdit, domain.TypeDebt, paid, label)
 	if err != nil {
 		return Proposal{}, nil, err
 	}
-	catID, err := t.category("Pagamento de dívidas", domain.KindSaida)
-	if err != nil {
-		return debt, nil, nil // sem essa categoria, só baixa o saldo
+	if tx == nil {
+		return debt, nil, nil // sem a categoria "Pagamento de dívidas", só baixa o saldo
 	}
-	if date == "" {
-		date = t.today.Format(domain.DateLayout)
-	}
-	tx := domain.Transaction{Meta: t.meta(), Kind: domain.KindSaida, Description: "Pagamento: " + d.Name, AmountCents: v, CategoryID: catID, Date: date}
-	spend, err := proposal(ActionCreate, domain.TypeTransaction, tx, "Novo gasto: "+t.txLabel(tx))
+	tx.Meta = t.meta()
+	spend, err := proposal(ActionCreate, domain.TypeTransaction, *tx, "Novo gasto: "+t.txLabel(*tx))
 	if err != nil {
 		return Proposal{}, nil, err
 	}

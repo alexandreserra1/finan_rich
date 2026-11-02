@@ -85,7 +85,7 @@ try {
     await page.fill("input[name=min_payment]", "300");
     await page.fill("input[name=due_day]", String(due.getDate()));
     await page.click("form[data-form=debt] button[type=submit]");
-    await page.waitForSelector("td:has-text('Cartão')");
+    await page.waitForSelector(".debt-item:has-text('Cartão')");
     await page.goto(`${B}/`);
     await page.locator("[data-bell]:visible").click();
     await page.waitForSelector("#avisos .bell-item.warn:has-text('Cartão vence em 2 dias')", { timeout: 10000 });
@@ -102,7 +102,13 @@ try {
   await page.fill("input[name=rate]", "5");
   await page.fill("input[name=min_payment]", "100");
   await page.click("form[data-form=debt] button[type=submit]");
-  await page.waitForSelector("td:has-text('Empréstimo')");
+  await page.waitForSelector(".debt-item:has-text('Empréstimo')");
+  // Registrar pagamento: baixa o saldo e lança o gasto em "Pagamento de dívidas".
+  await page.fill(".debt-item:has-text('Empréstimo') [data-pay] input", "250");
+  await page.press(".debt-item:has-text('Empréstimo') [data-pay] input", "Enter");
+  await page.waitForSelector(".debt-item:has-text('Empréstimo') .numberbig:has-text('R$ 750,00')");
+  ok(await page.evaluate(async () => (await (await import("/static/js/db.js")).loadLedger()).transactions.some((t) => t.description === "Pagamento: Empréstimo" && t.amountCents === 25000)),
+    "registrar pagamento baixa o saldo (R$ 1.000 → R$ 750) e lança o gasto");
   await page.evaluate(() => window.finanSync());
   ok((await records("debt")).some((d) => d.name === "Empréstimo"), "dívida nova sincronizou");
   // Plano: uma frase com o que pagar primeiro e em quantos meses; pagar a mais encurta.
@@ -119,13 +125,13 @@ try {
     return m && Number(m[1] || 0) * 12 + Number(m[2] || 0) < b;
   }, before);
   ok(true, `pagando R$ 200 a mais o plano encurta (${before} → ${await months()} meses)`);
-  await page.click("tr:has-text('Empréstimo') td.primary"); // abre a edição
+  await page.click(".debt-item:has-text('Empréstimo') [data-edit]"); // abre a edição
   await page.click("#debt-modal [data-action=delete-editing]");
-  await page.waitForSelector("td:has-text('Empréstimo')", { state: "detached" });
+  await page.waitForSelector(".debt-item:has-text('Empréstimo')", { state: "detached" });
   await page.evaluate(() => window.finanSync());
   await page.reload();
   await page.waitForSelector("h1:has-text('Uma dívida de cada vez')");
-  ok(await page.locator("td:has-text('Empréstimo')").count() === 0 && !(await records("debt")).some((d) => d.name === "Empréstimo"),
+  ok(await page.locator(".debt-item:has-text('Empréstimo')").count() === 0 && !(await records("debt")).some((d) => d.name === "Empréstimo"),
     "dívida apagada some aqui e no computador");
 
   // Meta com categoria de aportes.

@@ -171,3 +171,16 @@ func simulate(order []domain.Debt, extraCents int64, rollover bool) Schedule {
 	}
 	return s
 }
+
+// DebtPayment é pagar parte de uma dívida (tela Dívidas e o consultor): o saldo
+// baixa, sem ficar negativo, e o valor vira um gasto na categoria "Pagamento de
+// dívidas" (sem id: quem grava cria). Sem essa categoria, só baixa o saldo.
+func DebtPayment(l domain.Ledger, d domain.Debt, cents int64, date string) (domain.Debt, *domain.Transaction) {
+	d.BalanceCents = max(0, d.BalanceCents-cents)
+	for _, c := range l.Categories {
+		if !c.Deleted && c.Name == domain.DebtPaymentCategory {
+			return d, &domain.Transaction{Kind: domain.KindSaida, Description: "Pagamento: " + d.Name, AmountCents: cents, CategoryID: c.ID, Date: date}
+		}
+	}
+	return d, nil
+}

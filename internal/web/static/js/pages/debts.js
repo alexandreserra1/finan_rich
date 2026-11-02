@@ -5,7 +5,7 @@
 // finance.Diagnose (Go): aqui só desenha.
 import * as finance from "../finance.js";
 import { centsInput, closeModal, html, openModal, raw, ratePct, shiftMonth, toast, today } from "../ui.js";
-import { PLUS, pageHead } from "./dashboard.js";
+import { PLUS, metric, pageHead } from "./dashboard.js";
 import { chart } from "../charts.js";
 
 // horizon é até onde o gráfico vai: o fim do plano, ou do "só o mínimo" se ele
@@ -74,7 +74,8 @@ function debtChart(v) {
   }, `Saldo das dívidas mês a mês: seguindo o plano ${v.plan.ok ? `zera em ${v.plan.months} meses` : "não zera"}; só no mínimo ${v.minOnly.ok ? `zera em ${v.minOnly.months} meses` : "não zera"}.`)}</div>`;
 }
 
-// planPanel diz em poucas linhas o que fazer, com o valor que dá para pagar a mais.
+// planPanel: "Seu plano de saída" (design Rich). O valor a mais em cima, a frase
+// do plano, os números (total por mês, prazo, juros e economia), o gráfico e o calendário.
 function planPanel(v, c) {
   const m = finance.money;
   const monthly = v.totalMinCents + v.extraCents;
@@ -82,26 +83,31 @@ function planPanel(v, c) {
   const saved = v.minOnly.interestCents - v.plan.interestCents;
   return html`
     <section class="panel debt-plan">
-      <div class="panel-head"><h2>Seu plano</h2><span class="faint small">Método avalanche: o extra vai para a de maior juros</span></div>
-      ${v.plan.ok
-        ? html`<p class="plan-lead">${v.debts.length > 1 ? html`Pague primeiro <b>${first}</b>. ` : ""}Pagando <b class="num">${m(monthly)}</b> por mês, você ${v.debts.length > 1 ? "sai das dívidas" : html`quita <b>${first}</b>`} em
-            <b class="accent">${duration(v.plan.months)}</b> (${whenLabel(v.plan.months)}) e paga ${m(v.plan.interestCents)} de juros.</p>
-          ${v.plan.paidOff.length > 1 ? html`<p class="small muted">${v.plan.paidOff.length} dívidas: a primeira acaba em ${whenLabel(v.plan.paidOff[0].month)}, a última em ${whenLabel(v.plan.months)}.</p>` : ""}
-          ${v.minOnly.ok
-            ? saved > 0 ? html`<p class="notice ok compare"><span>Só no mínimo seriam <b>${duration(v.minOnly.months)}</b> e ${m(v.minOnly.interestCents)} de juros.</span>
-                <span class="pos"><b>Você economiza ${m(saved)}</b>${v.minOnly.months > v.plan.months ? ` e sai ${duration(v.minOnly.months - v.plan.months)} antes` : ""}.</span></p>` : ""
-            : html`<p class="notice warn">Só no mínimo as dívidas não acabam: os juros passam do que você paga.</p>`}`
-        : html`<p class="notice warn">Com ${m(monthly)} por mês as dívidas não acabam: os juros passam do que você paga. Aumente o valor abaixo, ou converse com o banco sobre trocar por uma dívida mais barata.</p>`}
+      <div class="panel-head"><div><h2>Seu plano de saída</h2><p class="faint small">Estratégia: maiores juros primeiro</p></div><span class="plan-badge">Simulação</span></div>
       <form data-form="extra" class="extra-form">
-        <label class="field"><span>Quanto dá para pagar <b>a mais</b> por mês</span>
+        <label class="field"><span>Além dos mínimos, quanto pode separar por mês?</span>
           <span class="money-field"><span>R$</span><input name="extra" inputmode="decimal" value="${c.typed ? centsInput(c.typed) : ""}" placeholder="0,00" autocomplete="off"></span></label>
         <input type="range" name="slider" min="0" max="${SLIDER_MAX / 100}" step="50" value="${Math.min(c.typed, SLIDER_MAX) / 100}" aria-label="Valor a mais por mês, em reais">
       </form>
-      ${c.cuts ? html`<p class="small muted">Mais ${m(c.cuts)} dos cortes marcados.</p>` : ""}
+      ${v.plan.ok
+        ? html`<p class="plan-lead">${v.debts.length > 1 ? html`Pague primeiro <b>${first}</b>. ` : ""}Pagando <b class="num">${m(monthly)}</b> por mês, você ${v.debts.length > 1 ? "sai das dívidas" : html`quita <b>${first}</b>`} em
+            <b>${duration(v.plan.months)}</b> (${whenLabel(v.plan.months)}) e paga ${m(v.plan.interestCents)} de juros.</p>
+          ${v.plan.paidOff.length > 1 ? html`<p class="small muted plan-count">${v.plan.paidOff.length} dívidas: a primeira acaba em ${whenLabel(v.plan.paidOff[0].month)}, a última em ${whenLabel(v.plan.months)}.</p>` : ""}`
+        : html`<p class="notice warn">Com ${m(monthly)} por mês as dívidas não acabam: os juros passam do que você paga. Aumente o valor acima, ou converse com o banco sobre trocar por uma dívida mais barata.</p>`}
+      <div class="cards metricgrid plan-figs">
+        ${metric("Total mensal", m(monthly), c.cuts ? `mínimos + extra + ${m(c.cuts)} dos cortes` : "mínimos + extra")}
+        ${metric("Prazo estimado", v.plan.ok ? duration(v.plan.months) : "sem fim", v.plan.ok ? `até ${whenLabel(v.plan.months)}` : "os juros passam do que você paga")}
+      </div>
+      ${v.plan.ok ? html`<dl class="plan-rows">
+        <div><dt>Juros no plano</dt><dd class="num">${m(v.plan.interestCents)}</dd></div>
+        ${v.minOnly.ok && saved > 0 ? html`<div class="plan-save"><dt>Economia versus só mínimos<small>só no mínimo seriam ${duration(v.minOnly.months)} e ${m(v.minOnly.interestCents)} de juros${v.minOnly.months > v.plan.months ? `; você sai ${duration(v.minOnly.months - v.plan.months)} antes` : ""}</small></dt><dd class="num pos">${m(saved)}</dd></div>` : ""}
+      </dl>
+      ${v.minOnly.ok ? "" : html`<p class="notice warn">Só no mínimo as dívidas não acabam: os juros passam do que você paga.</p>`}` : ""}
       ${debtChart(v)}
       ${v.plan.paidOff.length > 1 ? html`<h3 class="order-title">Ordem para quitar</h3>
         <ol class="paid-off">${v.plan.paidOff.map((p) => html`<li><strong>${p.name}</strong><span class="faint small">zera em ${whenLabel(p.month)}</span></li>`)}</ol>` : ""}
       ${v.plan.ok ? calendarTable(v) : ""}
+      <p class="faint tiny">Simular não registra pagamentos. Use “Registrar pagamento” só para um pagamento já feito.</p>
     </section>`;
 }
 
@@ -130,23 +136,44 @@ function diagnosisPanel(c, v, ledger) {
   if (!diag.costliest && !diag.levers.length) return "";
   const base = c.cuts ? finance.debts(ledger, c.typed).plan : null;
   return html`<section class="panel diagnosis">
-    <h2>Onde está o problema</h2>
+    <div class="panel-head"><div><h2>Ajustes que podem ajudar</h2><p class="faint small">Cortes opcionais para esta simulação</p></div></div>
     <ul class="diag-facts">
       ${diag.costliest ? html`<li class="neg-dot"><span><b>${diag.costliest.name}</b> é a dívida mais cara: ${m(diag.costliest.monthlyInterestCents)} de juros por mês (${ratePct(diag.costliest.monthlyRateBp)} ao mês).</span></li>` : ""}
       ${diag.topCategory ? html`<li class="warn-dot"><span>O que mais pesou em ${diag.monthLabel}: <b>${diag.topCategory.name}</b>, ${m(diag.topCategory.cents)} (${diag.topCategory.sharePct}% dos gastos).</span></li>` : ""}
     </ul>
-    ${diag.levers.length ? html`<div class="levers-head"><h3>Onde dá para guardar</h3>
-        <span class="faint small">Marque o que dá para fazer: o valor vai para as dívidas e o plano se refaz.</span></div>
-      <ul class="levers">${diag.levers.map((l) => html`<li><label class="lever ${c.ids.has(l.id) ? "on" : ""}">
+    ${diag.levers.length ? html`<ul class="levers">${diag.levers.map((l) => html`<li><label class="lever ${c.ids.has(l.id) ? "on" : ""}">
         <input type="checkbox" data-lever="${l.id}" ${c.ids.has(l.id) ? "checked" : ""}>
         <span class="lever-body">
-          <span class="lever-top"><strong>${l.title}</strong><span class="num">${m(l.monthlyCents)}/mês</span></span>
+          <span class="lever-top"><strong>${l.title}</strong><span class="num">+ ${m(l.monthlyCents)}/mês</span></span>
           <span class="muted small">${l.text}</span>
           ${l.ends ? html`<span class="pos small">Sozinho, já faz as dívidas terem fim.</span>`
             : l.monthsSooner > 0 ? html`<span class="pos small">Sozinho: sai ${duration(l.monthsSooner)} antes e paga ${m(l.interestSavedCents)} a menos de juros.</span>` : ""}
         </span>
       </label></li>`)}</ul>
-      ${c.cuts ? html`<p class="notice ok">Com o que você marcou, vão <b>${m(c.cuts)}</b> a mais por mês para as dívidas${base?.ok && v.plan.ok && base.months > v.plan.months ? `: sai ${duration(base.months - v.plan.months)} antes e paga ${m(base.interestCents - v.plan.interestCents)} a menos de juros` : !base?.ok && v.plan.ok ? ": com isso as dívidas passam a ter fim" : ""}.</p>` : ""}` : ""}
+      ${c.cuts ? html`<p class="notice ok">Com o que você marcou, vão <b>${m(c.cuts)}</b> a mais por mês para as dívidas${base?.ok && v.plan.ok && base.months > v.plan.months ? `: sai ${duration(base.months - v.plan.months)} antes e paga ${m(base.interestCents - v.plan.interestCents)} a menos de juros` : !base?.ok && v.plan.ok ? ": com isso as dívidas passam a ter fim" : ""}.</p>` : ""}
+      <p class="faint tiny">Marque o que dá para fazer: o valor vai para as dívidas e o plano se refaz. Marcar um corte não altera seus lançamentos nem o orçamento.</p>` : ""}
+  </section>`;
+}
+
+// startPanel: "Seu ponto de partida" (design Rich), uma dívida por bloco, com o
+// "Registrar pagamento" (baixa o saldo e lança o gasto, finance.DebtPayment).
+function startPanel(v, income) {
+  const m = finance.money;
+  return html`<section class="panel debt-start">
+    <div class="panel-head"><div><h2>Seu ponto de partida</h2><p class="faint small">Valores informados manualmente</p></div></div>
+    ${v.debts.map((d) => html`<article class="debt-item">
+      <div class="debt-item-top"><h3>${d.name}</h3><button type="button" class="link plain" data-edit="${d.id}" aria-label="Editar ${d.name}">Editar</button></div>
+      ${d.creditor || d.dueDay ? html`<span class="faint small">${[d.creditor, d.dueDay ? `vence dia ${d.dueDay}` : ""].filter(Boolean).join(" · ")}</span>` : ""}
+      <div class="debt-item-figs"><strong class="numberbig">${m(d.balanceCents)}</strong><span class="goal-chip ${d.monthlyRateBp > 800 ? "neg" : "plain"}">${ratePct(d.monthlyRateBp)} a.m.</span></div>
+      <span class="small muted">Mínimo ${m(d.minPaymentCents)} · juros de ${m(d.monthlyInterestCents)} por mês</span>
+      <span class="small ${d.payable ? "faint" : "neg"}">${d.payable ? `Só no mínimo: ${duration(d.months)} e ${m(d.interestCents)} de juros`
+        : d.minPaymentCents ? "O mínimo não cobre os juros: a dívida cresce" : "Informe o pagamento mínimo"}</span>
+      <form class="money-field debt-pay" data-pay="${d.id}">
+        <span>R$</span><input name="amount" inputmode="decimal" placeholder="0,00" aria-label="Valor pago em ${d.name}" autocomplete="off">
+        <button type="submit" class="small-btn secondary">Registrar pagamento</button>
+      </form>
+    </article>`)}
+    <p class="debt-total small muted">Total devido <b class="num">${m(v.totalCents)}</b> · mínimos de ${m(v.totalMinCents)} por mês${income ? ` (${Math.round((v.totalMinCents * 100) / income)}% da renda)` : ""} · juros de <b class="num neg">${m(v.monthlyInterestCents)}</b> por mês</p>
   </section>`;
 }
 
@@ -183,7 +210,7 @@ export function render({ ledger, params }) {
   const m = finance.money;
   const cards = ledger.accounts.some((a) => a.kind === "cartao" && !a.deleted) ? finance.accounts(ledger, today()).cardsOpenCents : 0;
   const income = finance.dashboard(ledger, today().slice(0, 7)).inCents;
-  const newButton = html`<button type="button" data-action="new-debt">${PLUS}Nova dívida</button>`;
+  const newButton = html`<button type="button" data-action="new-debt">${PLUS}Cadastrar dívida</button>`;
 
   if (!v.debts.length) {
     return html`${pageHead("Uma dívida de cada vez.", null, { sub: "Entenda os juros, compare caminhos e escolha seu próximo passo.", actions: newButton })}
@@ -197,41 +224,17 @@ export function render({ ledger, params }) {
       ${debtForm()}`;
   }
 
-  const diagnosis = diagnosisPanel(c, v, ledger);
   return html`
     ${pageHead("Uma dívida de cada vez.", null, { sub: "Entenda os juros, compare caminhos e escolha seu próximo passo.", actions: newButton })}
-    <section class="cards debt-kpis">
-      <div class="card"><span>Total devido</span><strong>${m(v.totalCents)}</strong><span class="faint small">${v.debts.length} ${v.debts.length === 1 ? "dívida ativa" : "dívidas ativas"}</span></div>
-      <div class="card"><span>Parcelas mínimas / mês</span><strong>${m(v.totalMinCents)}</strong>
-        <span class="faint small">${income ? `${Math.round((v.totalMinCents * 100) / income)}% da sua renda` : "lance o salário para ver quanto da renda vai para elas"}</span></div>
-      <div class="card interest"><span>Juros gerados / mês</span><strong class="neg">${m(v.monthlyInterestCents)}</strong><span class="faint small">dinheiro que não abate nada</span></div>
-    </section>
-
-    <section class="debt-row ${diagnosis ? "" : "solo"}">
-      ${diagnosis}
+    ${cards > 0 ? cardsNotice(cards, m) : ""}
+    <section class="debt-cols">
+      <div class="debt-side">
+        ${startPanel(v, income)}
+        ${diagnosisPanel(c, v, ledger)}
+      </div>
       ${planPanel(v, c)}
     </section>
-    ${cards > 0 ? cardsNotice(cards, m) : ""}
-
-    <section class="panel debt-list">
-      <div class="panel-head"><h2>Suas dívidas</h2><span class="faint small">Toque numa dívida para editar</span></div>
-      <div class="table-wrap"><table class="debt-table">
-        <thead><tr><th>Dívida</th><th class="num">Saldo</th><th class="num">Juros a.m.</th><th class="num">Mínimo</th><th>Só pagando o mínimo</th></tr></thead>
-        <tbody>
-          ${v.debts.map((d) => html`<tr class="debt-row-item" data-edit="${d.id}" tabindex="0">
-            <td class="primary"><strong>${d.name}</strong><span class="faint small">${[d.creditor, d.dueDay ? `vence dia ${d.dueDay}` : ""].filter(Boolean).join(" · ")}</span></td>
-            <td data-label="Saldo" class="num strong">${m(d.balanceCents)}</td>
-            <td data-label="Juros a.m." class="num ${d.monthlyRateBp > 800 ? "neg strong" : ""}">${ratePct(d.monthlyRateBp)}</td>
-            <td data-label="Mínimo" class="num">${m(d.minPaymentCents)}</td>
-            <td data-label="Só o mínimo">${d.payable
-              ? `${duration(d.months)} · ${m(d.interestCents)} de juros`
-              : d.minPaymentCents ? html`<span class="neg">Não cobre os juros: a dívida cresce</span>` : html`<span class="muted">informe o pagamento</span>`}</td>
-          </tr>`)}
-        </tbody>
-      </table></div>
-    </section>
-
-    <a class="btn secondary" href="/chat">${ICON.chat}Tirar dúvidas com o consultor IA</a>
+    <a class="btn secondary" href="/chat">${ICON.chat}Tirar dúvidas com o Otávio</a>
     ${debtForm()}`;
 }
 
@@ -267,11 +270,20 @@ export function bind(root, ctx) {
     openModal(modal, trigger);
   };
   root.querySelectorAll('[data-action="new-debt"]').forEach((b) => b.addEventListener("click", () => open(null, b)));
-  root.querySelectorAll("tr[data-edit]").forEach((row) => {
-    const edit = () => open(ctx.ledger.debts.find((x) => x.id === row.dataset.edit), row);
-    row.addEventListener("click", edit);
-    row.addEventListener("keydown", (e) => { if (e.key === "Enter") edit(); });
-  });
+  root.querySelectorAll("[data-edit]").forEach((b) => b.addEventListener("click", () => open(ctx.ledger.debts.find((x) => x.id === b.dataset.edit), b)));
+  root.querySelectorAll("[data-pay]").forEach((pay) => pay.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const d = ctx.ledger.debts.find((x) => x.id === pay.dataset.pay);
+    try {
+      const cents = pay.elements.amount.value.trim() ? finance.parseMoney(pay.elements.amount.value) : 0;
+      const items = finance.debtPayment(ctx.ledger, d.id, cents, today());
+      for (const [i, { type, record }] of items.entries()) {
+        await ctx.save(type, record, `Pagamento de ${finance.money(cents)} registrado em ${d.name}.`, { rerender: i === items.length - 1 });
+      }
+    } catch (err) {
+      ctx.error(err);
+    }
+  }));
   const wanted = ctx.ledger.debts.find((d) => d.id === ctx.params.get("editar") && !d.deleted);
   if (wanted) open(wanted);
 

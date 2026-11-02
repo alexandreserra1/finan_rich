@@ -74,7 +74,7 @@ try {
   async function open(extraCents = 0) {
     await page.goto(`${B}/dividas${extraCents ? `?extra=${extraCents}` : ""}`);
     await page.waitForSelector(".debt-plan", { timeout: 20000 });
-    await page.waitForFunction((n) => document.querySelectorAll("tbody tr td.primary, .cards-mobile tbody tr").length >= n, current.length);
+    await page.waitForFunction((n) => document.querySelectorAll(".debt-item").length >= n, current.length);
     return page.evaluate(async (extra) => {
       const finance = await import("/static/js/finance.js");
       const ledger = await (await import("/static/js/db.js")).loadLedger();
@@ -85,7 +85,8 @@ try {
         v,
         lead: document.querySelector(".plan-lead")?.textContent.replace(/\s+/g, " ").trim() || "",
         notices: [...document.querySelectorAll(".debt-plan .notice")].map((n) => n.textContent.replace(/\s+/g, " ").trim()),
-        counts: document.querySelector(".debt-plan .small.muted")?.textContent.replace(/\s+/g, " ").trim() || "",
+        counts: document.querySelector(".plan-count")?.textContent.replace(/\s+/g, " ").trim() || "",
+        save: document.querySelector(".plan-save")?.textContent.replace(/\s+/g, " ").trim() || "",
         order: [...document.querySelectorAll(".paid-off li")].map((li) => li.textContent.replace(/\s+/g, " ").trim()),
         months: cal ? cal.querySelectorAll("tbody tr:not(.year-row)").length : 0,
         years: cal ? [...cal.querySelectorAll("tbody tr.year-row")].map((r) => Number(r.textContent)) : [],
@@ -114,7 +115,7 @@ try {
   ok(JSON.stringify(s.years) === JSON.stringify(years), `anos no calendário: ${s.years.join(", ")}`);
   ok(s.firstRow[0] === monthAhead(1).label.replace(/ de \d{4}$/, "") && s.firstRow[4].includes(brl(s.v.totalMinCents)), `1º mês do calendário (${s.firstRow[0]}) paga ${s.firstRow[4]} (a soma dos mínimos)`);
   const saved = s.v.minOnly.interestCents - s.v.plan.interestCents;
-  ok(saved > 0 && s.notices[0].includes(brl(saved)), `economia contra só o mínimo: ${s.notices[0]}`);
+  ok(saved > 0 && s.save.includes(brl(saved)), `economia contra só o mínimo: ${s.save}`);
 
   // 2. O mesmo com R$ 500 a mais por mês: acaba antes e paga menos juros.
   const before = s.v.plan;
@@ -122,7 +123,7 @@ try {
   summary("três dívidas, R$ 500 a mais", s);
   ok(s.v.plan.months < before.months && s.v.plan.interestCents < before.interestCents && s.firstRow[4].includes(brl(s.v.totalMinCents + 50000)),
     `R$ 500 a mais: ${duration(before.months)} → ${duration(s.v.plan.months)}, juros ${brl(before.interestCents)} → ${brl(s.v.plan.interestCents)}`);
-  ok(s.v.minOnly.months > s.v.plan.months && s.notices[0].includes(`sai ${duration(s.v.minOnly.months - s.v.plan.months)} antes`), `quanto antes sai: ${s.notices[0]}`);
+  ok(s.v.minOnly.months > s.v.plan.months && s.save.includes(`sai ${duration(s.v.minOnly.months - s.v.plan.months)} antes`), `quanto antes sai: ${s.save}`);
 
   // 3. Rotativo em que o mínimo não cobre os juros: só no mínimo nunca acaba.
   await setDebts([{ name: "Rotativo", balanceCents: 300000, monthlyRateBp: 1250, minPaymentCents: 10000 }]);
