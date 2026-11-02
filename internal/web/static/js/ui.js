@@ -144,3 +144,17 @@ export function toast(message, undo) {
   document.body.append(box);
   setTimeout(() => box.remove(), undo ? 4500 : 3500);
 }
+
+// tilt: o cartão ilustrativo da Rich acompanha o mouse (só enfeite: sem toque e sem
+// "menos movimento" ligado). Página de entrada e Contas.
+export function tilt(card) {
+  if (!card || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  card.addEventListener("pointermove", (e) => {
+    if (e.pointerType === "touch") return;
+    const r = card.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
+    card.style.setProperty("--rx", `${(-y * 7).toFixed(2)}deg`);
+    card.style.setProperty("--ry", `${(x * 9).toFixed(2)}deg`);
+    card.style.setProperty("--light", `${(50 + x * 32).toFixed(1)}%`);
+  });
+  card.addEventListener("pointerleave", () => ["--rx", "--ry", "--light"].forEach((p) => card.style.removeProperty(p)));
+}

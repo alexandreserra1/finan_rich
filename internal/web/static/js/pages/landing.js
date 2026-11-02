@@ -5,7 +5,7 @@
 // O conteúdo aparece logo de cara: o movimento ao rolar é só enfeite (sem buracos se a
 // página carregar devagar ou com "menos movimento" ligado).
 import * as device from "../device.js";
-import { html, raw, toString } from "../ui.js";
+import { html, raw, tilt, toString } from "../ui.js";
 
 export const needsData = false;
 
@@ -213,7 +213,6 @@ export function render() {
 
 export function bind(root) {
   document.body.classList.add("landing-mode");
-  const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // "Na prática": abas com setas do teclado (padrão de abas acessíveis).
   const panel = root.querySelector("[data-panel]");
@@ -245,16 +244,5 @@ export function bind(root) {
     });
   });
 
-  // Cartão que acompanha o mouse (só enfeite; sem "menos movimento" nem toque).
-  const card = root.querySelector("[data-tilt]");
-  if (card && !calm) {
-    card.addEventListener("pointermove", (e) => {
-      if (e.pointerType === "touch") return;
-      const r = card.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
-      card.style.setProperty("--rx", `${(-y * 7).toFixed(2)}deg`);
-      card.style.setProperty("--ry", `${(x * 9).toFixed(2)}deg`);
-      card.style.setProperty("--light", `${(50 + x * 32).toFixed(1)}%`);
-    });
-    card.addEventListener("pointerleave", () => ["--rx", "--ry", "--light"].forEach((p) => card.style.removeProperty(p)));
-  }
+  tilt(root.querySelector("[data-tilt]")); // o cartão acompanha o mouse
 }

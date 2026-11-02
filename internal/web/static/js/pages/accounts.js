@@ -2,7 +2,7 @@
 // cartão (pelo dia de fechamento) e o patrimônio mês a mês. As contas são de
 // finance.Accounts e finance.NetWorth (Go, pelo WebAssembly); aqui só desenha.
 import * as finance from "../finance.js";
-import { centsInput, closeModal, html, openModal, raw, today, toast } from "../ui.js";
+import { centsInput, closeModal, html, openModal, raw, tilt, today, toast } from "../ui.js";
 import { PLUS, metric, pageHead } from "./dashboard.js";
 import { chart } from "../charts.js";
 
@@ -15,8 +15,11 @@ const ICON = {
   poupanca: svg("M19 7c-1-2-3.5-3-7-3-5 0-8 2.5-8 6.5 0 2 1 3.7 2.5 4.8V19h3v-2h5v2h3v-3.2c1-.7 1.8-1.7 2.2-2.8H21v-4h-1.8c-.3-.7-.7-1.4-1.2-2zM15 9h.01"),
   carteira: svg("M20 7H5a2 2 0 0 1 0-4h13v4M3 5v14a2 2 0 0 0 2 2h15V7M16 14h.01"),
   chevron: svg("M9 18l6-6-6-6"),
+  pencil: svg("M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4"),
   close: svg("M18 6L6 18M6 6l12 12"),
 };
+
+const CHIP = raw('<svg class="rc-chip" viewBox="0 0 52 40" aria-hidden="true"><rect x="1" y="1" width="50" height="38" rx="8" fill="#dac994" stroke="#b4a16a"/><path d="M18 1v11H1m50 0H34V1M18 39V28H1m50 0H34v11M18 12h16v16H18zM1 20h17m16 0h17" fill="none" stroke="#998752"/></svg>');
 
 const ddmm = (date) => `${date.slice(8, 10)}/${date.slice(5, 7)}`;
 // signedInput mostra centavos com sinal no campo ("-350,00").
@@ -135,7 +138,6 @@ export function render({ ledger }) {
   }
   const cards = v.accounts.filter((a) => a.kind === "cartao");
   const plain = v.accounts.filter((a) => a.kind !== "cartao");
-  const biggest = Math.max(1, ...plain.map((a) => Math.abs(a.balanceCents)));
   const net = finance.netWorth(ledger, today()).at(-1).netCents;
   return html`${head}
     <section class="cards metricgrid three acct-kpis">
@@ -144,29 +146,35 @@ export function render({ ledger }) {
       ${metric("Patrimônio líquido", m(net), "Contas − cartões − dívidas", { primary: true })}
     </section>
 
-    ${cards.length ? html`<section class="panel">
-      <div class="panel-head"><h2>Cartões</h2></div>
-      <div class="card-list">${cards.map((a) => html`<div class="account card-row">
-        <button type="button" class="card-tile" data-edit="${a.id}" aria-label="Editar ${a.name}">
-          <span class="card-tile-top"><strong>${a.name}</strong><span class="card-chip" aria-hidden="true"></span></span>
-          <span class="card-tile-open">${a.balanceCents < 0 ? `${m(-a.balanceCents)} em aberto` : m(a.balanceCents)}</span>
-          <span class="card-tile-days">fecha dia ${a.closingDay} · vence dia ${a.dueDay}</span>
+    ${cards.map((a) => html`<section class="credit-account account">
+      <div class="credit-stage">
+        <button type="button" class="rich-card card-tile" data-tilt data-edit="${a.id}" aria-label="Editar ${a.name}">
+          <span class="card-orbits" aria-hidden="true"></span>
+          <span class="rc-top"><span class="rc-logo">rich<span>✳</span></span><span class="rc-tag">${a.name}</span></span>
+          <span class="rc-chiprow" aria-hidden="true">${CHIP}</span>
+          <span class="rc-number" aria-hidden="true"><span>••••</span><span>••••</span><span>••••</span><span>••••</span></span>
+          <span class="rc-bottom"><span class="card-tile-open">${a.balanceCents < 0 ? `${m(-a.balanceCents)} em aberto` : `${m(a.balanceCents)} de crédito`}</span><span class="rc-mark" aria-hidden="true">✳</span></span>
         </button>
+      </div>
+      <div class="credit-info">
+        <div class="row"><span class="eyebrow">Sua carteira · cartão</span><button type="button" class="iconbtn" data-edit="${a.id}" aria-label="Editar ${a.name}">${ICON.pencil}</button></div>
+        <h2>${a.name}</h2>
+        <span class="small muted">Valor em aberto</span>
+        <strong class="numberbig">${m(Math.max(0, -a.balanceCents))}</strong>
+        <div class="card-dates"><div><small>FECHAMENTO</small><b>Dia ${a.closingDay}</b></div><div><small>VENCIMENTO</small><b>Dia ${a.dueDay}</b></div></div>
         ${a.current ? html`<div class="invoices">${invoiceBlock("Fatura atual", a.current, m)}${invoiceBlock("Próxima", a.next, m)}</div>` : ""}
-      </div>`)}</div>
-      <p class="notice warn">Pague a fatura inteira para não cair no rotativo, o juro mais caro do país. Se não der, fale com o Otávio no Consultor.</p>
-    </section>` : ""}
+        <p class="faint tiny">Cartão ilustrativo: a Rich não emite cartões. O valor vem dos lançamentos feitos neste cartão. Pague a fatura inteira para não cair no rotativo; se não der, fale com o Otávio no Consultor.</p>
+      </div>
+    </section>`)}
 
-    ${plain.length ? html`<section class="panel">
-      <div class="panel-head"><h2>Contas</h2><span class="faint small">Toque numa conta para editar</span></div>
-      <ul class="plain acct-list">${plain.map((a) => html`<li><button type="button" class="account acct-row" data-edit="${a.id}">
-        <span class="icon-tile" style="--c: var(--accent); --s: 40px">${ICON[a.kind]}</span>
-        <span class="acct-name"><strong>${a.name}</strong><small class="muted">${ACCOUNT_KINDS[a.kind]}</small></span>
-        <span class="acct-balance"><strong class="${a.balanceCents < 0 ? "neg" : ""}">${m(a.balanceCents)}</strong>
-          <span class="bar"><span style="width: ${Math.round((Math.abs(a.balanceCents) * 100) / biggest)}%"></span></span></span>
-        <span class="acct-chevron">${ICON.chevron}</span>
-      </button></li>`)}</ul>
-    </section>` : ""}
+    ${plain.length ? html`<section class="acct-grid">${plain.map((a) => html`<button type="button" class="account acct-card" data-edit="${a.id}">
+      <span class="row"><span class="badge">${ACCOUNT_KINDS[a.kind]}</span><span class="acct-pencil">${ICON.pencil}</span></span>
+      <span class="bank-symbol">${ICON[a.kind]}</span>
+      <strong class="acct-name">${a.name}</strong>
+      <strong class="numberbig ${a.balanceCents < 0 ? "neg" : ""}">${m(a.balanceCents)}</strong>
+      <span class="small muted">Saldo inicial: ${m(ledger.accounts.find((x) => x.id === a.id)?.initialCents || 0)}</span>
+      <span class="account-foot"><span>Saldo pelos lançamentos</span><span aria-hidden="true">↗</span></span>
+    </button>`)}</section>` : ""}
 
     ${netWorthPanel(ledger)}
     ${accountForm()}`;
@@ -174,6 +182,7 @@ export function render({ ledger }) {
 
 export function bind(root, ctx) {
   bindNetWorth(root);
+  root.querySelectorAll("[data-tilt]").forEach(tilt);
   const modal = root.querySelector("#account-modal");
   const form = root.querySelector('[data-form="account"]');
   const f = form.elements;
