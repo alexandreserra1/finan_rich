@@ -2,9 +2,9 @@
 // gastar por dia, onde o dinheiro foi, onde dá para economizar e a taxa de
 // economia. As contas são de finance.Insights (Go, pelo WebAssembly); aqui só desenha.
 import * as finance from "../finance.js";
-import { barPct, html, today } from "../ui.js";
+import { barPct, html, iconTile, today } from "../ui.js";
 import { chart } from "../charts.js";
-import { budgetBars, metric, pageHead } from "./dashboard.js";
+import { metric, pageHead, spendingRing } from "./dashboard.js";
 import { bindNetWorth, netWorthPanel } from "./accounts.js";
 
 // compareWith: com o que comparar o mês ("passado" ou "media", fica no endereço).
@@ -57,6 +57,20 @@ function categoryBars(v, m) {
   })}</ul>`;
 }
 
+// limitList: cada teto com o gasto do mês e quanto já foi usado (avisa a partir de 80%, como o Painel).
+function limitList(budgets, m) {
+  return html`<ul class="limit-list">${budgets.map((b) => {
+    const level = b.usedPct >= 100 ? "over" : b.usedPct >= 80 ? "near" : "";
+    return html`<li>
+      <span class="limit-top"><span>${b.name}</span><strong class="num ${level === "over" ? "neg" : ""}">${m(b.spentCents)}</strong></span>
+      <span class="bar"><span class="${level}" style="width: ${Math.min(b.usedPct, 100)}%"></span></span>
+      <span class="limit-top faint tiny"><span>Teto ${m(b.budgetCents)}</span><span>${b.usedPct}% usado</span></span>
+    </li>`;
+  })}</ul>`;
+}
+
+const dmy = (d) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
+
 // rateColumns: a taxa de economia de cada mês, com a linha da meta.
 function rateColumns(v) {
   const target = v.savingsTargetPct || 20;
@@ -85,6 +99,8 @@ export function render({ ledger, params }) {
     <button type="button" role="radio" data-compare="passado" aria-checked="${mode === "passado"}">Mês passado</button>
     <button type="button" role="radio" data-compare="media" aria-checked="${mode === "media"}">Média 3 meses</button>
   </div>`;
+  const month = finance.dashboard(ledger, today().slice(0, 7));
+  const cats = Object.fromEntries(ledger.categories.map((c) => [c.id, c]));
   return html`
     ${pageHead("Sua grana, vista de perto.", null, { kicker: `${v.label} · dia ${v.day} de ${v.daysInMonth}`, sub: "Estimativas transparentes e comparações que ajudam a decidir.", actions: toggle })}
 
@@ -92,9 +108,23 @@ export function render({ ledger, params }) {
       ${metric("Pode gastar por dia", v.freeCents < 0 ? m(0) : m(v.perDayCents), v.freeCents < 0
         ? `o mês já passou ${m(-v.freeCents)} do que cabe`
         : `sobram ${m(v.freeCents)} até o fim do mês${v.incomeEstimated ? " (renda estimada pela média)" : ""}`, { extra: "perday", cls: v.freeCents < 0 ? "neg" : "" })}
-      ${metric("Gastos variáveis até hoje", m(v.variableCents), refDay ? `${m(Math.abs(vsRef))} ${vsRef > 0 ? "a mais" : "a menos"} que ${refText} até o dia ${v.day}` : `sem ${refText} para comparar`)}
+      ${metric("Gastos variáveis até hoje", m(v.variableCents), "sem investimentos e contas fixas")}
       ${metric("Projeção do mês", m(v.projectedCents), `com ${m(v.fixedCents)} de contas fixas${v.lastMonthCents ? ` · mês passado: ${m(v.lastMonthCents)}` : ""}`)}
       ${metric("Taxa de economia", v.incomeCents ? `${v.savingsPct}%` : "—", v.incomeCents ? `média ${v.savingsAvgPct}% · meta da divisão ${v.savingsTargetPct}%` : "lance a renda do mês para calcular", { primary: true })}
+    </section>
+    <p class="tip info ins-compare">${refDay
+      ? html`<b>Comparação com ${refText}:</b> até o dia ${v.day}, ${m(refDay)} de gastos variáveis. Neste mês, ${m(Math.abs(vsRef))} ${vsRef > 0 ? "a mais" : "a menos"}. `
+      : html`<b>Sem ${refText} para comparar ainda.</b> `}Projeções são estimativas; lançamentos que faltam mudam o resultado.</p>
+
+    <section class="ins-row">
+      <section class="panel">
+        <div class="panel-head"><div><h2>Seu mapa de gastos</h2><p class="faint small">${v.label}</p></div></div>
+        ${spendingRing(month)}
+      </section>
+      <section class="panel">
+        <div class="panel-head"><div><h2>Categorias e seus limites</h2><p class="faint small">Planejado contra realizado</p></div><a class="small" href="/categorias">Ajustar tetos</a></div>
+        ${v.budgets.length ? limitList(v.budgets, m) : html`<p class="empty">Nenhuma categoria com teto. <a href="/categorias">Definir tetos</a></p>`}
+      </section>
     </section>
 
     <section class="panel">
@@ -104,7 +134,7 @@ export function render({ ledger, params }) {
 
     <section class="ins-row">
       <section class="panel">
-        <div class="panel-head"><h2>Onde dá para economizar</h2><a class="small" href="/chat">Falar com o Otávio</a></div>
+        <div class="panel-head"><h2>Onde dá para economizar</h2><a class="small" href="/chat?agente=lia">Falar com a Lia</a></div>
         ${v.savings.length ? html`<ul class="savings">
           ${v.savings.map((s) => html`<li class="saving ${s.kind}">
             <div class="saving-top"><strong>${s.title}</strong>${!s.monthlyCents ? "" : s.kind === "ritmo"
@@ -115,46 +145,47 @@ export function render({ ledger, params }) {
         </ul>` : html`<p class="muted">Nada fora do normal neste mês. Bom sinal!</p>`}
       </section>
       <section class="panel">
-        <div class="panel-head"><h2>Categorias contra a média</h2><span class="faint small">traço = média dos 3 meses anteriores</span></div>
+        <div class="panel-head"><div><h2>Categorias em relação à média</h2><p class="faint small">traço = média dos 3 meses anteriores</p></div></div>
         ${v.categories.length ? categoryBars(v, m) : html`<p class="empty">Nenhum gasto neste mês ainda.</p>`}
       </section>
     </section>
 
-    ${v.budgets.length ? html`<section class="panel">
-      <div class="panel-head"><h2>Orçamentos por categoria</h2><a class="small" href="/categorias">Ajustar tetos</a></div>
-      ${budgetBars(v.budgets)}
-    </section>` : ""}
-
     <section class="ins-row">
       <section class="panel" id="gastei">
-        <div class="panel-head"><h2>Gastei onde</h2><span class="faint small">este mês</span></div>
-        ${v.places.length ? html`<ul class="hbars">
-          ${v.places.slice(0, 10).map((p) => html`<li>
-            <span class="label">${p.name} <small class="muted">${p.count}×</small></span>
-            <span class="track"><span class="fill place" style="width: ${barPct(p.cents, maxPlace)}%"></span></span>
-            <span class="value">${m(p.cents)} <small class="muted">${p.sharePct}%</small></span>
-          </li>`)}
-        </ul>` : html`<p class="empty">Nenhum gasto neste mês ainda.</p>`}
+        <div class="panel-head"><div><h2>Estabelecimentos e frequência</h2><p class="faint small">Descrições parecidas são agrupadas</p></div></div>
+        ${v.places.length ? html`<div class="table-wrap"><table class="places">
+          <thead><tr><th>Descrição</th><th class="num">Vezes</th><th class="num">Total</th><th class="num">% das saídas</th></tr></thead>
+          <tbody>${v.places.slice(0, 12).map((p) => html`<tr>
+            <td><span class="place-name">${p.name}</span><span class="track"><span class="fill place" style="width: ${barPct(p.cents, maxPlace)}%"></span></span></td>
+            <td class="num">${p.count}</td><td class="num">${m(p.cents)}</td><td class="num">${p.sharePct}%</td>
+          </tr>`)}</tbody>
+        </table></div>` : html`<p class="empty">Nenhum gasto neste mês ainda.</p>`}
       </section>
       <section class="panel">
-        <div class="panel-head"><h2>Taxa de economia por mês</h2><span class="faint small">sobra + investido ÷ renda</span></div>
-        ${rateColumns(v)}
-      </section>
-    </section>
-
-    <section class="ins-row">
-      ${v.subscriptions.length ? html`<section class="panel">
-        <div class="panel-head"><h2>Assinaturas e contas fixas</h2></div>
-        <ul class="plain subs">${v.subscriptions.map((s) => html`<li class="row">
+        <div class="panel-head"><div><h2>Assinaturas e compromissos fixos</h2><p class="faint small">o que cobra todo mês, com o total no ano</p></div></div>
+        ${v.subscriptions.length ? html`<ul class="plain subs">${v.subscriptions.map((s) => html`<li class="row">
           <span>${s.name}${s.registered ? "" : "*"}</span>
           <span class="num"><strong>${m(s.monthlyCents)}/mês</strong><small class="muted">${m(s.yearlyCents)}/ano</small></span>
         </li>`)}</ul>
-        ${v.subscriptions.some((s) => !s.registered) ? html`<p class="small muted">* achada nos lançamentos (cobra todo mês, mas não está cadastrada como recorrente).</p>` : ""}
-      </section>` : ""}
-      ${v.biggest.length ? html`<section class="panel">
-        <div class="panel-head"><h2>Maiores gastos do mês</h2></div>
-        <ul class="plain">${v.biggest.map((t) => html`<li class="row"><span>${t.description} <small class="muted">${t.date.slice(8)}/${t.date.slice(5, 7)}</small></span><strong class="num">${m(t.amountCents)}</strong></li>`)}</ul>
-      </section>` : ""}
+        ${v.subscriptions.some((s) => !s.registered) ? html`<p class="small muted">* achada nos lançamentos (cobra todo mês, mas não está cadastrada como recorrente).</p>` : ""}`
+        : html`<p class="empty">Nenhuma cobrança mensal encontrada.</p>`}
+      </section>
+    </section>
+
+    ${v.biggest.length ? html`<section class="panel">
+      <div class="panel-head"><div><h2>Maiores gastos do mês</h2><p class="faint small">investimentos lançados como saída também contam</p></div></div>
+      <div class="table-wrap"><table class="tx-table">
+        <thead><tr><th>Descrição / categoria</th><th class="tx-date">Data</th><th class="num">Valor</th></tr></thead>
+        <tbody>${v.biggest.map((t) => html`<tr>
+          <td><span class="tx-main">${iconTile(cats[t.categoryId], t.kind, 32)}<span class="tx-text"><span class="tx-desc">${t.description}</span><span class="tx-sub faint">${cats[t.categoryId]?.name || "Sem categoria"}</span></span></span></td>
+          <td class="tx-date">${dmy(t.date)}</td><td class="num amount">− ${m(t.amountCents)}</td>
+        </tr>`)}</tbody>
+      </table></div>
+    </section>` : ""}
+
+    <section class="panel">
+      <div class="panel-head"><div><h2>Economia, mês a mês</h2><p class="faint small">(sobra do mês + investimentos) ÷ entradas</p></div></div>
+      ${rateColumns(v)}
     </section>
     ${netWorthPanel(ledger)}`;
 }

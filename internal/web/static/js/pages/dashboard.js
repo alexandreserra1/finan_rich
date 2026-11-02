@@ -27,24 +27,6 @@ export function pageHead(title, month, { kicker = "", actions = "", sub = "" } =
 export const PLUS = raw('<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>');
 
 
-// budgetBars mostra quanto já foi usado de cada orçamento (Painel e Análise).
-export function budgetBars(budgets) {
-  const m = finance.money;
-  const level = (b) => (b.usedPct >= 100 ? "over" : b.usedPct >= 80 ? "near" : "");
-  return html`<div class="buckets budgets">
-    ${budgets.map((b) => html`<div class="bucket b-${b.bucket}">
-      <div class="row"><strong>${b.name}</strong><span class="small ${level(b) ? "neg" : "muted"}">${b.usedPct}%</span></div>
-      <div class="bar"><span style="width: ${Math.min(b.usedPct, 100)}%" class="${level(b)}"></span></div>
-      <div class="row small">
-        <span>${m(b.spentCents)} de ${m(b.budgetCents)}</span>
-        ${b.remainingCents < 0
-          ? html`<span class="neg">estourou ${m(-b.remainingCents)}</span>`
-          : html`<span class="muted">resta ${m(b.remainingCents)}</span>`}
-      </div>
-    </div>`)}
-  </div>`;
-}
-
 const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const DAY = 864e5;
 const isoDay = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -107,6 +89,22 @@ export function metric(label, value, note, { primary = false, href = "", cls = "
   return href ? html`<a class="card metric ${primary ? "primary" : ""} ${extra}" href="${href}">${body}</a>` : html`<div class="card metric ${primary ? "primary" : ""} ${extra}">${body}</div>`;
 }
 
+// spendingRing: a rosca das saídas do mês por categoria (Painel e Análise); v é o finance.dashboard do mês.
+const DONUT = ["accent", "lilac", "desejos", "pink", "faint"];
+export function spendingRing(v) {
+  const m = finance.money;
+  const top = v.categories.slice(0, 5);
+  return top.length ? html`<div class="ringbox">
+    ${chart({
+      key: "categorias", type: "doughnut", height: 150, size: 150, cutout: "72%",
+      labels: top.map((c) => c.name),
+      series: [{ name: "Saídas", data: top.map((c) => c.spentCents), colors: top.map((_, i) => DONUT[i]) }],
+      center: { value: m(v.outCents), text: "em saídas" },
+    }, `Saídas do mês por categoria: ${top.map((c) => `${c.name} ${m(c.spentCents)}`).join(", ")}.`)}
+    <ul class="catlegend">${top.map((c, i) => html`<li><i class="sq" style="--c: var(--${DONUT[i]})"></i><span>${c.name}</span><b class="num">${c.sharePct}%</b></li>`)}</ul>
+  </div>` : html`<p class="empty">Nenhuma saída neste mês. <a href="/lancamentos?novo=1">Lançar um gasto</a></p>`;
+}
+
 export function render(ctx) {
   if (welcome.show(ctx)) return welcome.render(ctx);
   const { ledger, month } = ctx;
@@ -152,8 +150,6 @@ export function render(ctx) {
       <span>Saídas <b>${m(t.outCents)}</b></span>
       <span>Saldo <b class="${t.balanceCents < 0 ? "neg" : "pos"}">${t.balanceCents > 0 ? "+" : ""}${m(t.balanceCents)}</b></span>`;
   };
-  const top = v.categories.slice(0, 5);
-  const DONUT = ["accent", "lilac", "desejos", "pink", "faint"];
   const briefOf = new Map(briefs.map((b) => [b.agent.id, b]));
 
   return html`
@@ -212,15 +208,7 @@ export function render(ctx) {
 
       <div class="panel">
         <div class="panel-head"><div><h2>Para onde a grana foi</h2><span class="faint small">${finance.monthLabel(month)}</span></div><a class="small" href="/analise">Ver análise ${ARROW}</a></div>
-        ${top.length ? html`<div class="ringbox">
-          ${chart({
-            key: "categorias", type: "doughnut", height: 150, size: 150, cutout: "72%",
-            labels: top.map((c) => c.name),
-            series: [{ name: "Saídas", data: top.map((c) => c.spentCents), colors: top.map((_, i) => DONUT[i]) }],
-            center: { value: m(v.outCents), text: "em saídas" },
-          }, `Saídas do mês por categoria: ${top.map((c) => `${c.name} ${m(c.spentCents)}`).join(", ")}.`)}
-          <ul class="catlegend">${top.map((c, i) => html`<li><i class="sq" style="--c: var(--${DONUT[i]})"></i><span>${c.name}</span><b class="num">${c.sharePct}%</b></li>`)}</ul>
-        </div>` : html`<p class="empty">Nenhuma saída neste mês. <a href="/lancamentos?novo=1">Lançar um gasto</a></p>`}
+        ${spendingRing(v)}
       </div>
     </section>
 

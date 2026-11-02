@@ -145,7 +145,7 @@ try {
   ok((await page.textContent("#atencao")).includes("Restaurantes e delivery: R$ 10,00 acima do teto"), "aviso e \"O que pede atenção\" quando o orçamento estoura");
   await page.goto(`${B}/analise`);
   await page.waitForSelector(".pace-chart canvas");
-  ok(/Orçamentos por categoria[\s\S]*R\$ 110,00 de R\$ 100,00/.test(await page.textContent("main")), "Análise mostra os orçamentos");
+  ok(/Categorias e seus limites[\s\S]*R\$ 110,00[\s\S]*Teto R\$ 100,00/.test(await page.textContent("main")), "Análise mostra os orçamentos");
 
   // O aviso leva aos lançamentos da categoria e sai da lista.
   await page.goto(`${B}/`);

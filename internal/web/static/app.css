@@ -217,12 +217,7 @@ main {
 @media (min-width: 721px) { .cards.has-hero { grid-template-columns: 2fr 1fr 1fr; } }
 
 /* Cor padrão para itens sem grupo (ex.: "Sem categoria"); :where() não pesa, então .b-* sempre vence. */
-:where(.bucket, .tag, .fill) { --c: var(--muted); }
-/* Divisão do salário */
-.buckets { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .75rem; }
-.bucket { background: color-mix(in srgb, var(--c) 7%, var(--surface-2)); border: 1px solid color-mix(in srgb, var(--c) 18%, transparent); border-radius: 14px; padding: .9rem 1rem; display: flex; flex-direction: column; gap: .45rem; }
-.bucket strong { display: flex; align-items: center; gap: .5rem; }
-.bucket strong::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: var(--c); flex: none; }
+:where(.tag, .fill) { --c: var(--muted); }
 .bar { height: 6px; background: var(--track); border-radius: 99px; overflow: hidden; }
 .bar span { display: block; height: 100%; background: var(--c); border-radius: 99px; transition: width .7s cubic-bezier(.2, .8, .2, 1); }
 .bar span.over { background: var(--neg); }
@@ -231,15 +226,18 @@ main {
 .tag { display: inline-flex; align-items: center; gap: .4rem; padding: .1rem .6rem; border-radius: 999px; font-size: .8rem; font-weight: 500; white-space: nowrap;
        background: color-mix(in srgb, var(--c, var(--muted)) 14%, transparent); color: color-mix(in srgb, var(--c, var(--muted)) 62%, var(--text)); }
 
-/* Gastos por categoria */
-.hbars { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
-.hbars li { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: center; font-size: 13px; }
-.hbars .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hbars .track { grid-column: 1 / -1; grid-row: 2; height: 6px; background: var(--track); border-radius: 99px; overflow: hidden; }
-.hbars.slim .track { height: 4px; }
-.hbars .fill { display: block; height: 100%; background: var(--c, var(--accent)); border-radius: 99px; transform-origin: left; }
-.hbars .value { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.hbars .value small { margin-left: 4px; }
+/* Análise (design Rich): estabelecimentos, limites e a faixa de comparação. */
+.places td { vertical-align: middle; }
+.place-name { display: block; font-size: 13px; }
+.places .track { display: block; height: 4px; margin-top: 6px; max-width: 220px; background: var(--track); border-radius: 99px; overflow: hidden; }
+.places .fill { display: block; height: 100%; background: var(--primary); border-radius: 99px; }
+.limit-list { list-style: none; margin: 0; padding: 0; }
+.limit-list li { display: flex; flex-direction: column; gap: 8px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.limit-list li:last-child { border-bottom: 0; }
+.limit-top { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.limit-list .bar span { --c: var(--primary); }
+.tip.info { background: var(--lilac); color: var(--primary-hi); }
+.tip.ins-compare { margin: 0 0 18px; }
 
 /* Gráficos (js/charts.js, Chart.js): a tela põe a legenda e a dica em HTML. */
 .chart-head { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
@@ -297,7 +295,6 @@ main {
 .rate-labels { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 10px; margin-top: 6px; text-align: center; font-size: 12px; }
 .rate-labels span { display: flex; flex-direction: column; align-items: center; }
 .rate-labels .num { text-align: center; }
-.hbars .fill.place { --c: var(--accent-2); }
 .subs .num { display: grid; justify-items: end; white-space: nowrap; font-variant-numeric: tabular-nums; }
 ul.plain { list-style: none; padding: 0; margin: 0; display: grid; gap: .5rem; }
 ul.plain .row strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
