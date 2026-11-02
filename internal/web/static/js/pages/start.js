@@ -15,14 +15,17 @@ const BENEFITS = [
 
 export function render(ctx) {
   return html`<section class="start">
-    <div class="start-main">
+    <div class="start-story">
       <a class="brand" href="/" aria-label="Rich, voltar ao início">rich<span>✳</span></a>
+      <h1>Mais espaço<br>para a vida.<br><em>Menos aperto.</em></h1>
+      <div class="start-photo" aria-hidden="true"><img src="/static/img/rich-hero.webp" alt="" width="230" height="280"><span>✳</span></div>
+      <p>Seu dinheiro não precisa ser um mistério. Um passo de cada vez, a gente organiza essa conversa.</p>
+    </div>
+    <div class="start-main">
       <div class="start-body">
-        <div class="start-intro">
-          <span class="start-pill"><span aria-hidden="true"></span>Grátis e de código aberto</span>
-          <h1>Suas finanças, no seu controle.</h1>
-          <p class="start-lead">Gastos, dívidas, metas e um time com IA que conversa sobre os seus números.</p>
-        </div>
+        <span class="eyebrow">Seu próximo capítulo</span>
+        <h2>Um bom lugar<br>pra fazer planos.</h2>
+        <p class="start-lead">Entre com a sua conta Google, sem senha nova. Grátis e de código aberto.</p>
         ${ctx?.expired ? html`<p class="notice warn login-note">Você ficou um tempo sem usar, então saiu da conta para proteger seus dados. Entre de novo para continuar.</p>` : ""}
         <div class="start-google" hidden>
           <button type="button" class="google" data-action="google"><span class="g" aria-hidden="true">G</span><span data-label>Entrar com Google</span></button>
@@ -31,11 +34,10 @@ export function render(ctx) {
         <ul class="start-benefits">
           ${BENEFITS.map(([svg, text]) => html`<li>${svg}<span>${text}</span></li>`)}
         </ul>
+        <p class="small faint">Prefere instalar? Há o <a href="https://github.com/alexandreserra1/finan_rich/releases/latest" rel="noopener">app Android e o programa do computador</a>.</p>
+        <div class="start-foot"><a href="/">← Voltar ao site</a>
+          <button type="button" class="iconbtn" data-theme-toggle aria-label="Trocar o tema"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path data-theme-icon d=""/></svg></button></div>
       </div>
-      <p class="small faint">Prefere instalar? Há o <a href="https://github.com/alexandreserra1/finan_rich/releases/latest" rel="noopener">app Android e o programa do computador</a>.</p>
-    </div>
-    <div class="start-art" aria-hidden="true">
-      <div class="start-art-mark"><img src="/static/img/brand-mark.png" alt="" width="256" height="256"><i></i></div>
     </div>
   </section>`;
 }

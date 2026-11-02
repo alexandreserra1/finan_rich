@@ -33,8 +33,8 @@ navegador / app ──login (código + PKCE)──▶ Google ──volta──�
   `drive.appdata` (não sensíveis para o Google).
 - **O site só funciona com conta.** O computador de quem abre o site pode ser de outra pessoa:
   sem login, nenhuma tela do app aparece (nem digitando o endereço, nem com dados antigos no
-  navegador); o endereço de dentro do app vira o login, e `/` mostra a landing. O ícone da
-  pantera leva à landing sem login e ao Painel com login. A sessão do site vence após 30
+  navegador); o endereço de dentro do app vira o login, e `/` mostra a landing. A marca
+  "rich✳" leva à landing sem login e ao Painel com login. A sessão do site vence após 30
   minutos sem usar (clique ou tecla; `google.IDLE_MS`): a tela vira o login com um aviso, e os
   dados e a conta continuam ligados até a pessoa tocar em Sair. O login pede para escolher a
   conta (`prompt=select_account`), para o Google não entrar sozinho na conta de quem estava

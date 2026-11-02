@@ -23,7 +23,7 @@
     document.querySelectorAll("[data-theme-label]").forEach((el) => { el.textContent = dark ? "Tema claro" : "Tema escuro"; });
     document.querySelectorAll("[data-theme-icon]").forEach((el) => el.setAttribute("d", dark ? SUN : MOON));
   };
-  window.finanTheme = { get };
+  window.finanTheme = { get, apply }; // main.js chama apply depois de desenhar cada tela (ícone do botão de tema)
   media.addEventListener("change", apply);
   // Qualquer campo data-theme-pick da tela troca o tema (Ajustes no computador e no app).
   document.addEventListener("change", (e) => {

@@ -13,7 +13,7 @@ const APP_ROUTES = ["/", "/lancamentos", "/dividas", "/categorias", "/notas", "/
 APP_ROUTES.push("/contas");
 const PRECACHE = [
   ...APP_ROUTES, "/offline",
-  "/static/app.css", "/static/app.js", "/static/chat.js", "/static/settings.js", "/static/favicon.svg", "/static/img/brand-mark.png", "/static/img/time/otavio-mini.webp", "/static/img/time/lia-mini.webp", "/static/img/time/tito-mini.webp", "/static/img/time/otavio.webp", "/static/img/time/lia.webp", "/static/img/time/tito.webp", "/static/vendor/rich-fonts/DMSans-Variable.woff2", "/static/vendor/rich-fonts/Manrope-Variable.woff2",
+  "/static/app.css", "/static/app.js", "/static/chat.js", "/static/settings.js", "/static/favicon.svg", "/static/img/time/otavio-mini.webp", "/static/img/time/lia-mini.webp", "/static/img/time/tito-mini.webp", "/static/img/time/otavio.webp", "/static/img/time/lia.webp", "/static/img/time/tito.webp", "/static/vendor/rich-fonts/DMSans-Variable.woff2", "/static/vendor/rich-fonts/Manrope-Variable.woff2",
   "/static/icons/icon-192.png", "/static/finance.wasm",
   "/static/js/main.js", "/static/js/db.js", "/static/js/sync.js", "/static/js/finance.js", "/static/js/ui.js", "/static/js/bell.js",
   "/static/js/device.js", "/static/js/pages/device.js", "/static/js/pages/advisor.js",

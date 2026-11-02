@@ -44,10 +44,10 @@ try {
   ok(await page.locator("body.landing-mode").count() === 1 && await page.locator(".tabs").isHidden(), "primeira visita mostra a landing, sem o menu");
   ok(await page.getAttribute(".lp-hero a.lp-cta", "href") === "/?entrar=1", "Começar agora leva ao login");
   ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), "landing cabe na largura do celular");
-  ok(await page.locator(".lp-agent").count() === 5, "landing mostra o time");
+  ok(await page.locator(".lp-agent").count() === 3, "landing mostra o time (Otávio, Lia e Tito)");
   ok(await page.evaluate(() => window.__shellBefore) === "hidden", "o menu do app não pisca antes da landing");
   ok(await page.evaluate(() => { const s = document.querySelector(".lp-faq"), w = s.querySelector(".lp-wrap"), q = s.querySelector("summary");
-    return getComputedStyle(w).position === "static" && getComputedStyle(w).backgroundColor === "rgba(0, 0, 0, 0)" && getComputedStyle(q).color === "rgb(21, 32, 27)"; }),
+    return getComputedStyle(w).position === "static" && getComputedStyle(w).backgroundColor === "rgba(0, 0, 0, 0)" && getComputedStyle(q).color === "rgb(34, 35, 35)"; }),
     "estilos do app não vazam na landing (dúvidas com fundo claro e texto escuro)");
 
   ok(await page.locator('[data-action="solo"]').count() === 0 && !/Usar sem conta/.test(await page.innerText("main")), "a landing não oferece uso sem conta");
@@ -78,7 +78,7 @@ try {
     await page.waitForSelector(".landing, .start", { timeout: 20000 });
     const url = new URL(page.url());
     const visible = await page.evaluate(() => ["nav.tabs", "header.top", "#sync-status"].filter((q) => document.querySelector(q)?.checkVisibility({ visibilityProperty: true })));
-    if (visible.length || !/^\/(\?entrar=1)?$/.test(url.pathname + url.search) || await page.locator(".cards, .tx-card, table").count()) leaked.push(path);
+    if (visible.length || !/^\/(\?entrar=1)?$/.test(url.pathname + url.search) || await page.locator(".cards, .tx-card, table:not(.lp-compare)").count()) leaked.push(path);
   }
   ok(leaked.length === 0, `sem login, nenhum endereço do app abre, mesmo com dados no navegador (vazou: ${leaked})`);
 

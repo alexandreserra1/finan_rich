@@ -171,6 +171,7 @@ function render(message) {
     if (view === start) document.body.classList.add("login-mode"); // login sem o menu do app
     root.innerHTML = `<p id="flash" hidden></p>` + toString(view.render(ctx));
     view.bind(root, ctx);
+    window.finanTheme?.apply();
     return;
   }
   if (!ledger.categories.length && page.needsData !== false && device.isSite) {
@@ -196,6 +197,7 @@ function render(message) {
     else a.removeAttribute("aria-current");
   });
   updateCrumb();
+  window.finanTheme?.apply();
   if (message) flash(message);
 }
 

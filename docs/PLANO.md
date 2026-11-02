@@ -108,8 +108,27 @@ nunca deixe a pessoa sem resposta.
 - [x] Avisos no sininho do cabeçalho, com "Limpar tudo" sincronizado entre aparelhos.
 - [x] Testes também no motor do Safari (WebKit): PDF corrigido; trava ao recarregar o Painel
   a conferir no iPhone.
-- [ ] Redesenho do Painel (o Alexandre desenha no Claude Design; depois implementar aqui).
+- [x] Redesenho do Painel (o Alexandre desenhou; implementado na seção E).
 - [x] Análise de segurança (30/10/2026): sem falhas conhecidas nas dependências nem segredos no
   histórico; corrigido o `<option>` montado com nome do Ollama. A decidir: limite de pedidos do
   intermediário na Vercel (detalhes em `passo-a-passo.md`, 2.4).
 - [x] Resposta pronta marcada ao recarregar e "Usar <modelo já baixado>" no aviso do computador.
+
+## E. Marca Rich e o novo design (01/11/2026)
+
+O Alexandre refez a página de entrada e o painel (`docs/rich-mais-recente`, protótipo com dados
+falsos). Do protótipo veio o visual e os textos; as contas continuam as do Go.
+
+- [x] Time de três: Otávio (organização e dívidas, atende primeiro), Lia (hábitos e
+  orçamento) e Tito (metas e reserva), com os retratos da campanha. Regras, avisos, resumos,
+  lembretes, respostas prontas e a voz de cada um mudaram juntos, em Go.
+- [x] Nome "Rich" em tudo que a pessoa vê (por dentro continua finan_rich, para não quebrar
+  as atualizações); ícone ✳ creme sobre cobalto; fontes DM Sans e Manrope embutidas; paleta do
+  design nos temas claro e escuro (teste de contraste aprovado).
+- [x] Esqueleto: menu lateral com seções, barra do topo no computador (caminho, tema, avisos e
+  "+ Novo lançamento"), barra de baixo no celular com "Mais".
+- [x] Painel e Consultor no formato do design.
+- [x] Página de entrada do site e login no design; prévia do link (WhatsApp e redes) com
+  imagem própria; seções "Grátis de verdade", "Segurança" e "Baixe"; rodapé completo; nada
+  fica escondido esperando a rolagem.
+- [ ] Domínio próprio: a prévia do link aponta para `finan-rich-ia.vercel.app` até lá.
