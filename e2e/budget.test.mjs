@@ -113,8 +113,8 @@ try {
   await add("Padaria Açúcar", "35", "Restaurantes e delivery · Desejos");
   await add("Pão de Açúcar", "120", "Mercado · Necessidades");
   await page.goto(`${B}/`);
-  await page.waitForSelector("#orcamentos");
-  ok((await page.textContent("#orcamentos")).includes("R$ 80,00 de R$ 100,00"), "Painel mostra quanto já foi usado do orçamento");
+  await page.waitForSelector("#atencao");
+  ok((await page.textContent("#atencao")).includes("R$ 80,00 de R$ 100,00"), "o Painel mostra em \"O que pede atenção\" o orçamento a 80%");
   // Os avisos ficam no sininho do cabeçalho (no computador, ao lado da marca).
   const bell = page.locator("[data-bell]:visible");
   const openBell = async () => { if (await page.locator("#avisos").isHidden()) await bell.click(); };
@@ -138,18 +138,18 @@ try {
   await page.waitForSelector(".tx-card");
   await add("iFood lanche", "30", "Restaurantes e delivery · Desejos");
   await page.goto(`${B}/`);
-  await page.waitForSelector("#orcamentos");
+  await page.waitForSelector("#atencao");
   await openBell();
   ok(await page.locator("#avisos .bell-item").count() === 1 && await page.isVisible("#avisos .bell-item.danger:has-text('Orçamento de Restaurantes e delivery estourou')"),
     "o aviso de 80% saiu ao ser tocado; o de orçamento estourado é outro e aparece");
-  ok((await page.textContent("#orcamentos")).includes("estourou R$ 10,00"), "aviso e barra quando o orçamento estoura");
+  ok((await page.textContent("#atencao")).includes("Restaurantes e delivery: R$ 10,00 acima do teto"), "aviso e \"O que pede atenção\" quando o orçamento estoura");
   await page.goto(`${B}/analise`);
   await page.waitForSelector(".pace-chart canvas");
   ok(/Orçamentos por categoria[\s\S]*R\$ 110,00 de R\$ 100,00/.test(await page.textContent("main")), "Análise mostra os orçamentos");
 
   // O aviso leva aos lançamentos da categoria e sai da lista.
   await page.goto(`${B}/`);
-  await page.waitForSelector("#orcamentos");
+  await page.waitForSelector("#atencao");
   await openBell();
   await page.click("#avisos .bell-item:has-text('estourou') .bell-main");
   await page.waitForSelector(".filter-total");

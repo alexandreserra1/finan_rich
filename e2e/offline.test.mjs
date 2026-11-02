@@ -95,7 +95,7 @@ try {
   await addTransaction(page, "Aluguel", "1.400");
   await waitStatus(page, "ok");
   await page.click("nav.tabs a[href='/']");
-  await page.waitForSelector("text=Divisão do salário");
+  await page.waitForSelector(".dash-kpis");
   ok((await page.textContent(".cards")).includes("R$ 3.100,00"), "painel calculado no aparelho (saldo R$ 3.100,00)");
 
   // Instala o app (service worker) e fecha o servidor.

@@ -9,8 +9,8 @@ func TestTeam(t *testing.T) {
 	var ids []string
 	for _, a := range Team {
 		ids = append(ids, a.ID)
-		if a.Name == "" || a.Role == "" {
-			t.Errorf("%+v sem nome ou papel", a)
+		if a.Name == "" || a.Role == "" || a.Quote == "" {
+			t.Errorf("%+v sem nome, papel ou frase", a)
 		}
 	}
 	if got := strings.Join(ids, ","); got != "otavio,lia,tito" {

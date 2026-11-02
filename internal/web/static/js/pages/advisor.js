@@ -28,8 +28,6 @@ const face = (a, size) => html`<img class="face" src="/static/img/time/${a.id}-m
 
 const md = (text) => raw(window.Finan?.markdown ? window.Finan.markdown(text) : text.replace(/</g, "&lt;"));
 
-// Ícone dos cartões de sugestão (balão de conversa, traço do resto do app).
-const ASK_ICON = "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z";
 const SEND_ICON = "M12 19V5M5 12l7-7 7 7";
 const icon = (d, size = 18) => html`<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"></path></svg>`;
 
@@ -52,39 +50,55 @@ function aiState() {
   return ["ok", chat.model + (chat.local ? " · dentro do celular" : chat.cloud ? " · na nuvem" : " · no computador")];
 }
 
-function head(me) {
+const TRASH = "M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6";
+
+function head() {
+  return html`<div class="page-head consultor-head"><div class="title"><h1>Seu dinheiro tem com quem conversar.</h1>
+    <p class="sub">Um time para ajudar a transformar números em próximos passos.</p></div></div>`;
+}
+
+// chatTop: quem está conversando, o estado da IA e o "Nova conversa".
+function chatTop(me) {
   const [state, text] = chat.setup ? ["none", "Nenhuma IA configurada"] : aiState();
-  return html`<div class="page-head consultor-head">
-    <div class="consultor-id">${face(me, 36)}<div><h1>Consultor IA</h1><span class="ai-state" data-state="${state}"><i></i>${text}</span></div></div>
-    ${chat.history?.length ? html`<button type="button" class="secondary small-btn" data-action="clear">Nova conversa</button>` : ""}</div>`;
+  return html`<div class="chat-top"><div class="consultor-id">${face(me, 58)}<div><h2>${me.name}</h2><span class="ai-state" data-state="${state}"><i></i>${me.role} · ${text}</span></div></div>
+    ${chat.history?.length ? html`<button type="button" class="iconbtn" data-action="clear" aria-label="Nova conversa com ${me.name}" title="Nova conversa">${icon(TRASH)}</button>` : ""}</div>`;
+}
+
+function teamColumn(me) {
+  return html`<aside class="panel specialists">
+    <div class="team-pick" role="group" aria-label="Com quem do time falar">
+      ${team.map((a) => html`<button type="button" class="team-member" data-agent="${a.id}" aria-pressed="${a.id === me.id}">${face(a, 42)}<span><strong>${a.name}</strong><small>${a.role}</small></span></button>`)}
+    </div>
+    <p class="faint tiny team-note">Personagens virtuais com retratos gerados por IA. As contas são do app; a IA explica e aconselha.</p>
+  </aside>`;
 }
 
 export function render() {
-  if (!chat) return html`<section class="panel"><h2>Consultor IA</h2><p class="muted loading">Abrindo o consultor…</p></section>`;
+  if (!chat) return html`<section class="panel"><h2>Consultor</h2><p class="muted loading">Abrindo o consultor…</p></section>`;
   const me = member(agentId);
   if (chat.setup) {
-    return html`${head(me)}<section class="chat">
+    return html`${head()}<div class="chat-layout">${teamColumn(me)}<section class="panel chat">${chatTop(me)}
       <div class="notice warn ai-setup"><strong>O consultor precisa de uma IA para funcionar.</strong>
       Para usar sem computador, escolha uma IA na nuvem (há opções grátis) em
       <a href="/configuracoes#ia-nuvem">Ajustes → Consultor sem computador</a>. Ou conecte este celular a um computador com a Rich.
-      <span class="small muted">O resto do app funciona normalmente sem IA.</span></div></section>`;
+      <span class="small muted">O resto do app funciona normalmente sem IA.</span></div></section></div>`;
   }
   return html`
-    ${head(me)}
-    <section class="chat">
+    ${head()}
+    <div class="chat-layout">
+    ${teamColumn(me)}
+    <section class="panel chat">
+      ${chatTop(me)}
       ${chat.problem ? html`<p class="notice warn">${chat.problem}</p>` : chat.local
         ? html`<p class="small muted chat-where">Usando ${chat.model} dentro deste celular: nada sai do aparelho, nem precisa de internet. É uma IA pequena: responde mais devagar, erra mais e não lança nada por você.</p>`
         : chat.cloud
         ? html`<p class="small muted chat-where">Usando ${chat.model} na nuvem, direto deste celular. Nomes de lojas, dívidas e metas vão com apelidos, e as notas não vão; a IA vê só valores, datas e categorias.</p>`
         : html`<p class="small muted chat-where">Usando ${chat.model} no computador. O consultor vê seus números, metas e notas a cada pergunta.</p>`}
-      <div class="team-pick" role="group" aria-label="Com quem do time falar">
-        ${team.map((a) => html`<button type="button" class="team-member" data-agent="${a.id}" aria-pressed="${a.id === me.id}">${face(a, 40)}<span><strong>${a.name}</strong><small>${a.role}</small></span></button>`)}
-      </div>
       <div class="messages">
         ${!chat.history.length && !chat.busy ? html`<div class="chat-empty">
-          <h2>Pergunte sobre o seu dinheiro.</h2>
-          <p>${me.name} vê seus lançamentos, dívidas, metas e notas. As contas são feitas pelo app; a IA interpreta e aconselha. Para lançar algo, vem um cartão e você confirma.</p>
-          <div class="suggestions">${(SUGGESTIONS[me.id] || SUGGESTIONS.otavio).map((s) => html`<button type="button" data-suggest="${s}">${icon(ASK_ICON)}<span>${s}</span></button>`)}</div>
+          <h2>Vamos dar um próximo passo?</h2>
+          <p class="quote">“${me.quote}”</p>
+          <p class="small muted">${me.name} vê seus lançamentos, dívidas, metas e notas. As contas são feitas pelo app; a IA interpreta e aconselha. Para lançar algo, vem um cartão e você confirma.</p>
         </div>` : ""}
         ${chat.history.map((m, i) => m.role === "user" ? html`<div class="msg user">${md(m.content)}</div>` : html`<div class="msg assistant">
           <span class="msg-who">${face(member(m.agent), 28)}${member(m.agent).name} · ${member(m.agent).role}</span>${answerBody(m, i)}
@@ -102,14 +116,16 @@ export function render() {
         ${chat.suggest && !chat.busy ? html`<div class="handoff">${face(member(chat.suggest.agent), 28)}<span>Isso é com ${member(chat.suggest.agent).name} (${member(chat.suggest.agent).role}).</span>
           <button type="button" class="small-btn secondary" data-handoff>Perguntar para ${member(chat.suggest.agent).name}</button></div>` : ""}
       </div>
+      ${chat.busy ? "" : html`<div class="suggestions">${(SUGGESTIONS[me.id] || SUGGESTIONS.otavio).map((s) => html`<button type="button" data-suggest="${s}">${s}</button>`)}</div>`}
       <form data-form="ask" class="chat-form">
         <div class="composer">
-          <textarea name="message" rows="1" placeholder="Mensagem para ${me.name}…" aria-label="Mensagem para ${me.name}" required ${chat.busy ? "disabled" : ""}>${chat.draft || ""}</textarea>
+          <textarea name="message" rows="1" placeholder="Qual é o seu próximo plano? Fale com ${me.name}…" aria-label="Mensagem para ${me.name}" required ${chat.busy ? "disabled" : ""}>${chat.draft || ""}</textarea>
           <button type="submit" class="send" aria-label="Enviar" ${chat.busy ? "disabled" : ""}>${icon(SEND_ICON, 16)}</button>
         </div>
-        <p class="composer-hint"><span class="desk-only">Enter envia · Shift+Enter quebra a linha · </span>Confira os números antes de seguir um plano.</p>
+        <p class="composer-hint"><span class="desk-only">Enter envia · Shift+Enter quebra a linha · </span>O cálculo aparece primeiro. Nada é lançado sem você confirmar.</p>
       </form>
-    </section>`;
+    </section>
+    </div>`;
 }
 
 // limitNotice: acabou o grátis do finan_rich; o caminho para a chave grátis da própria pessoa.

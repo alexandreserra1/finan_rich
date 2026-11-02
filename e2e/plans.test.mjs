@@ -171,8 +171,9 @@ try {
   await page.click("form[data-form=transaction] button[type=submit]");
   await page.waitForSelector("td:has-text('Poupança')");
   await page.goto(`${B}/`);
-  await page.waitForSelector(".goal:has-text('Reserva')");
-  ok((await page.textContent(".goal")).includes("R$ 1.750,00 de R$ 6.000,00 · 29%"), `meta no painel soma o já guardado e os aportes (${await page.textContent(".goal")})`);
+  await page.waitForSelector(".goalrow:has-text('Reserva')");
+  const goalRow = (await page.textContent(".goalrow:has-text('Reserva')")).replace(/\s+/g, " ");
+  ok(goalRow.includes("29%") && goalRow.includes("R$ 1.750,00") && goalRow.includes("de R$ 6.000,00"), `meta no painel soma o já guardado e os aportes (${goalRow})`);
   await page.evaluate(() => window.finanSync());
   ok((await records("goal")).length === 1, "meta sincronizou");
 

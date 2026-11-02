@@ -1,20 +1,27 @@
 {{define "content"}}
-<div class="page-head consultor-head">
-  <div class="consultor-id"><img class="face" data-agent-face src="/static/img/time/{{(index .Team 0).ID}}-mini.webp" alt="" width="36" height="36"><div><h1>Consultor IA</h1>
-    {{if .Status.Ready}}<span class="ai-state" data-state="ok"><i></i>{{.AI.Preset.Name}} · {{.AI.Model}}{{if not .Local}} · na nuvem{{end}}</span>
-    {{- else}}<span class="ai-state" data-state="none"><i></i>Sem IA agora</span>{{end}}</div></div>
-  {{if .History}}
-  <form method="post" action="/chat/limpar" data-confirm="Apagar toda a conversa?">
-    <button class="secondary small-btn" type="submit">Nova conversa</button>
-  </form>
-  {{end}}
-</div>
-<section class="chat">
+{{$me := index .Team 0}}
+<div class="page-head consultor-head"><div class="title"><h1>Seu dinheiro tem com quem conversar.</h1>
+  <p class="sub">Um time para ajudar a transformar números em próximos passos.</p></div></div>
+<div class="chat-layout">
+<aside class="panel specialists">
+  <div class="team-pick" role="group" aria-label="Com quem do time falar">
+    {{range .Team}}<button type="button" class="team-member" data-agent="{{.ID}}" data-name="{{.Name}}" data-role="{{.Role}}" data-quote="{{.Quote}}" aria-pressed="false"><img class="face" src="/static/img/time/{{.ID}}-mini.webp" alt="" width="42" height="42"><span><strong>{{.Name}}</strong><small>{{.Role}}</small></span></button>{{end}}
+  </div>
+  <p class="faint tiny team-note">Personagens virtuais com retratos gerados por IA. As contas são do app; a IA explica e aconselha.</p>
+</aside>
+<section class="panel chat">
+  <div class="chat-top">
+    <div class="consultor-id"><img class="face" data-agent-face src="/static/img/time/{{$me.ID}}-mini.webp" alt="" width="58" height="58"><div><h2 data-agent-name>{{$me.Name}}</h2>
+      {{if .Status.Ready}}<span class="ai-state" data-state="ok"><i></i><span data-agent-role>{{$me.Role}}</span> · {{.AI.Preset.Name}} · {{.AI.Model}}{{if not .Local}} · na nuvem{{end}}</span>
+      {{- else}}<span class="ai-state" data-state="none"><i></i><span data-agent-role>{{$me.Role}}</span> · Sem IA agora</span>{{end}}</div></div>
+    {{if .History}}
+    <form method="post" action="/chat/limpar" data-confirm="Apagar toda a conversa?">
+      <button class="iconbtn" type="submit" aria-label="Nova conversa" title="Nova conversa"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></svg></button>
+    </form>
+    {{end}}
+  </div>
   {{template "aistatus" .}}
   <p class="small muted chat-where">{{if .Local}}A IA roda neste computador: nada sai daqui.{{else}}Na nuvem, nomes de lojas, dívidas e metas vão com apelidos.{{end}} O consultor vê seus números atuais a cada pergunta. <a href="/configuracoes">Trocar o modelo</a></p>
-  <div class="team-pick" role="group" aria-label="Com quem do time falar">
-    {{range .Team}}<button type="button" class="team-member" data-agent="{{.ID}}" data-name="{{.Name}}" data-role="{{.Role}}" aria-pressed="false"><img class="face" src="/static/img/time/{{.ID}}-mini.webp" alt="" width="40" height="40"><span><strong>{{.Name}}</strong><small>{{.Role}}</small></span></button>{{end}}
-  </div>
   <div id="messages" class="messages">
     {{range .History}}{{if eq .Role "assistant"}}<div class="msg assistant" data-raw="{{.Content}}"><span class="msg-who"><img class="face" src="/static/img/time/{{.Who.ID}}-mini.webp" alt="" width="28" height="28">{{.Who.Name}} · {{.Who.Role}}</span>
     {{- if .App}}<div class="md" data-md>{{.Lead}}</div>{{with .Numbers}}<details class="numbers" open><summary>Os números do app</summary><div class="md" data-md>{{.}}</div></details>{{end}}<p class="small muted app-answer">Resposta do app, sem IA.</p>
@@ -23,21 +30,23 @@
     {{end}}{{end}}
     {{if not .History}}
     <div class="chat-empty">
-      <h2>Pergunte sobre o seu dinheiro.</h2>
-      <p>O time vê seus lançamentos, dívidas, metas e notas. As contas são feitas pelo app; a IA interpreta e aconselha. Para lançar algo, vem um cartão e você confirma.</p>
-      <div class="suggestions">
-        {{range .Team}}{{$id := .ID}}{{range index $.Suggestions .ID}}<button type="button" data-for="{{$id}}" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>{{.}}</span></button>{{end}}{{end}}
-      </div>
+      <h2>Vamos dar um próximo passo?</h2>
+      <p class="quote" data-agent-quote>“{{$me.Quote}}”</p>
+      <p class="small muted">O time vê seus lançamentos, dívidas, metas e notas. As contas são feitas pelo app; a IA interpreta e aconselha. Para lançar algo, vem um cartão e você confirma.</p>
     </div>
     {{end}}
   </div>
+  <div class="suggestions">
+    {{range .Team}}{{$id := .ID}}{{range index $.Suggestions .ID}}<button type="button" data-for="{{$id}}" hidden>{{.}}</button>{{end}}{{end}}
+  </div>
   <form id="chat-form" class="chat-form">
     <div class="composer">
-      <textarea name="message" rows="1" placeholder="Pergunte sobre dívidas, gastos, metas…" required></textarea>
+      <textarea name="message" rows="1" placeholder="Qual é o seu próximo plano? Fale com {{$me.Name}}…" required></textarea>
       <button type="submit" class="send" aria-label="Enviar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
     </div>
-    <p class="composer-hint"><span class="desk-only">Enter envia · Shift+Enter quebra a linha · </span>Confira os números antes de seguir um plano.</p>
+    <p class="composer-hint"><span class="desk-only">Enter envia · Shift+Enter quebra a linha · </span>O cálculo aparece primeiro. Nada é lançado sem você confirmar.</p>
   </form>
 </section>
+</div>
 {{end}}
 {{define "scripts"}}<script src="/static/chat.js"></script>{{end}}

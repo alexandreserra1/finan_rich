@@ -27,9 +27,13 @@
       name = b.dataset.name;
       const head = document.querySelector("[data-agent-face]");
       if (head) head.src = "/static/img/time/" + b.dataset.agent + "-mini.webp";
+      // O cabeçalho da conversa mostra quem está falando (nome, papel e a frase dele).
+      document.querySelectorAll("[data-agent-name]").forEach((el) => { el.textContent = b.dataset.name; });
+      document.querySelectorAll("[data-agent-role]").forEach((el) => { el.textContent = b.dataset.role; });
+      document.querySelectorAll("[data-agent-quote]").forEach((el) => { el.textContent = "“" + b.dataset.quote + "”"; });
     });
     document.querySelectorAll(".suggestions [data-for]").forEach((b) => { b.hidden = b.dataset.for !== id; });
-    input.placeholder = "Mensagem para " + name + "…";
+    input.placeholder = "Qual é o seu próximo plano? Fale com " + name + "…";
     input.setAttribute("aria-label", input.placeholder);
     document.querySelector(".handoff")?.remove();
   }

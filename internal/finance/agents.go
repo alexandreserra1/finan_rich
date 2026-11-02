@@ -12,18 +12,19 @@ import (
 // os avisos dele; o retrato fica em static/img/time/<ID>.webp (e <ID>-mini.webp,
 // o rosto pequeno).
 type Agent struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Role string `json:"role"`
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Role  string `json:"role"`
+	Quote string `json:"quote"` // a frase do personagem (Consultor, site)
 }
 
 // Team: Otávio organiza o mês e as dívidas (e conversa sobre tudo), Lia cuida
 // dos hábitos e do orçamento, Tito das metas e da reserva. O primeiro é o padrão:
 // id desconhecido ou de quem saiu do time (Jade, Bento, Luna) vira o Otávio.
 var Team = []Agent{
-	{"otavio", "Otávio", "Organização e dívidas"},
-	{"lia", "Lia", "Hábitos e orçamento"},
-	{"tito", "Tito", "Metas e reserva"},
+	{"otavio", "Otávio", "Organização e dívidas", "Vamos colocar as contas na mesa. E um plano no lugar da preocupação."},
+	{"lia", "Lia", "Hábitos e orçamento", "Seu cafezinho não é o vilão. Vamos entender o que realmente pesa?"},
+	{"tito", "Tito", "Metas e reserva", "Um dia é uma ideia. Com um plano, pode virar uma data."},
 }
 
 // agentKinds diz quem avisa cada tipo de alerta. Otávio cuida do que vence e
