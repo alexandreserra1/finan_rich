@@ -136,7 +136,8 @@ func (s *Server) Routes() http.Handler {
 
 	// Telas de dados: o servidor entrega só o "casco"; o aparelho monta a tela
 	// com os dados guardados nele (funciona offline) e sincroniza com /api/sync.
-	for path, page := range map[string]string{"/{$}": "dashboard", "/lancamentos": "transactions", "/dividas": "debts", "/categorias": "categories", "/notas": "notes", "/exportar": "export", "/importar": "import", "/metas": "goals", "/analise": "insights"} {
+	// O Consultor também é montado lá (js/pages/advisor.js), conversando por /api/chat.
+	for path, page := range map[string]string{"/{$}": "dashboard", "/lancamentos": "transactions", "/dividas": "debts", "/categorias": "categories", "/notas": "notes", "/exportar": "export", "/importar": "import", "/metas": "goals", "/analise": "insights", "/chat": "chat"} {
 		mux.HandleFunc("GET "+path, s.appShell(page))
 	}
 	mux.HandleFunc("GET /contas", s.appShell("accounts"))
@@ -152,10 +153,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/parear", s.apiPair)
 	mux.HandleFunc("POST /configuracoes/parear", s.startPairing)
 	mux.HandleFunc("POST /configuracoes/aparelhos/remover", s.removeDevice)
-
-	mux.HandleFunc("GET /chat", s.chat)
-	mux.HandleFunc("POST /chat/enviar", s.chatSend)
-	mux.HandleFunc("POST /chat/limpar", s.chatClear)
 
 	mux.HandleFunc("GET /configuracoes", s.settings)
 	mux.HandleFunc("POST /configuracoes", s.saveSettings)

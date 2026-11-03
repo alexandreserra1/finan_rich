@@ -23,12 +23,8 @@ type chatEntry struct {
 	Agent     string             `json:"agent,omitempty"`   // quem do time respondeu
 	Numbers   string             `json:"numbers,omitempty"` // as contas do app mostradas antes da resposta
 	// App: resposta do app, sem IA (a pronta, ou a que termina com os números do cartão).
-	App bool          `json:"app,omitempty"`
-	Who finance.Agent `json:"-"` // quem respondeu, com nome e imagem (página do computador)
+	App bool `json:"app,omitempty"`
 }
-
-// Lead é o texto da resposta sem IA antes dos números (que a página mostra no cartão).
-func (e chatEntry) Lead() string { return strings.TrimSuffix(e.Content, e.Numbers) }
 
 // member devolve o personagem pelo id; vazio, desconhecido ou de quem saiu do time é o Otávio.
 func member(id string) finance.Agent {
@@ -51,8 +47,7 @@ func (s *Server) chatHistory(ctx context.Context) ([]chatEntry, error) {
 	for i, m := range history {
 		out[i] = chatEntry{Role: m.Role, Content: m.Content, Numbers: m.Numbers}
 		if m.Role == store.RoleAssistant {
-			out[i].Who = member(m.Agent)
-			out[i].Agent = out[i].Who.ID
+			out[i].Agent = member(m.Agent).ID
 			// Resposta do app: a pronta (depende só da pergunta e de quem respondeu)
 			// ou a sem IA, que termina com os mesmos números do cartão.
 			prepared := i > 0 && history[i-1].Role == store.RoleUser && advisor.Prepared(advisor.Question{Agent: m.Agent, Text: history[i-1].Content})
@@ -75,35 +70,10 @@ func (s *Server) chatHistory(ctx context.Context) ([]chatEntry, error) {
 	return out, nil
 }
 
-func (s *Server) chat(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	history, err := s.chatHistory(ctx)
-	if err != nil {
-		serverError(w, err)
-		return
-	}
-	ai, err := s.aiSettings(ctx)
-	if err != nil {
-		serverError(w, err)
-		return
-	}
-	s.render(w, r, "chat", map[string]any{"History": history, "AI": ai, "Status": s.aiStatus(ctx, ai), "Local": llm.IsLocal(ai.Config), "Team": finance.Team, "Suggestions": advisor.Suggestions})
-}
-
-func (s *Server) chatClear(w http.ResponseWriter, r *http.Request) {
-	err := s.store.ClearChat(r.Context())
-	redirect(w, r, "/chat", "Conversa apagada.", err)
-}
-
-// chatSend responde em SSE: {"text": "..."} a cada pedaço, {"proposal": {...}}
-// a cada lançamento que a IA propõe (a tela mostra com um botão para aprovar),
-// {"error": "..."} em caso de falha e {"done": true} ao final.
-func (s *Server) chatSend(w http.ResponseWriter, r *http.Request) {
-	s.answer(w, r, r.FormValue("message"), r.FormValue("agent"))
-}
-
-// answer responde à pergunta em SSE e grava a conversa (tela do navegador e
-// app do celular usam o mesmo caminho).
+// answer responde à pergunta em SSE e grava a conversa: {"numbers": "..."} com as
+// contas do app, {"text": "..."} a cada pedaço, {"proposal": {...}} a cada mudança
+// que a IA propõe (a tela mostra com um botão para confirmar), {"app": {...}} na
+// resposta sem IA, {"error": "..."} em caso de falha e {"done": true} ao final.
 func (s *Server) answer(w http.ResponseWriter, r *http.Request, question, agent string) {
 	agent = member(agent).ID // só ids do time chegam à IA e ao banco
 	question = strings.TrimSpace(question)
@@ -175,20 +145,26 @@ func (s *Server) answer(w http.ResponseWriter, r *http.Request, question, agent 
 		fail(err)
 		return
 	}
-	// O assunto é de outro do time: a tela oferece perguntar para ele.
-	if other := finance.Route(question); other != "" && other != agent {
-		sse.Send(map[string]any{"suggest": member(other)})
-	}
 	sse.Done()
 }
 
-// ---- API do consultor para o app do celular (JSON, com o token do aparelho) ----
+// ---- API do Consultor (js/pages/advisor.js): no computador pelo navegador, no app com o token ----
 
 type chatInfo struct {
 	History []chatEntry `json:"history"`
 	Model   string      `json:"model"`
 	Ready   bool        `json:"ready"`
 	Problem string      `json:"problem,omitempty"`
+	Local   bool        `json:"local"`         // a IA roda neste computador: nada sai dele
+	Use     *useModel   `json:"use,omitempty"` // o modelo falta no Ollama, mas há outros já baixados
+}
+
+// useModel é o que vai no "Usar …" do aviso do Consultor no computador
+// (POST /configuracoes com volta=/chat): trocar para um modelo já baixado.
+type useModel struct {
+	Preset  string   `json:"preset"`
+	BaseURL string   `json:"baseURL"`
+	Models  []string `json:"models"`
 }
 
 // apiChatHistory devolve a conversa e se a IA está pronta.
@@ -205,11 +181,15 @@ func (s *Server) apiChatHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	st := s.aiStatus(ctx, ai)
-	info := chatInfo{History: append([]chatEntry{}, history...), Model: ai.Preset.Name + " · " + ai.Model, Ready: st.Ready, Problem: st.Problem}
+	info := chatInfo{History: append([]chatEntry{}, history...), Model: ai.Preset.Name + " · " + ai.Model, Ready: st.Ready, Problem: st.Problem, Local: llm.IsLocal(ai.Config)}
+	// Só o navegador troca a IA; com o token do celular, o endereço do Ollama não sai daqui.
+	if _, phone := bearerToken(r); !phone && len(st.Alternatives) > 0 {
+		info.Use = &useModel{Preset: ai.Preset.ID, BaseURL: ai.BaseURL, Models: st.Alternatives}
+	}
 	writeJSON(w, http.StatusOK, info)
 }
 
-// apiChatSend recebe {"message": "..."} e responde em SSE, como /chat/enviar.
+// apiChatSend recebe {"message": "...", "agent": "..."} e responde em SSE (veja answer).
 func (s *Server) apiChatSend(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Message string `json:"message"`

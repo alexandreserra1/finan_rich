@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/advisor"
+	"github.com/alexandreserra1/finan_rich/internal/auth"
 	"github.com/alexandreserra1/finan_rich/internal/domain"
 	"github.com/alexandreserra1/finan_rich/internal/llm"
 	"github.com/alexandreserra1/finan_rich/internal/store"
@@ -119,6 +120,10 @@ func TestPagesRender(t *testing.T) {
 	if _, body := a.get("/dividas"); !strings.Contains(body, `data-page="debts"`) || !strings.Contains(body, "/static/js/main.js") {
 		t.Errorf("casco da tela de dívidas: %.400s", body)
 	}
+	// O Consultor do computador é a mesma tela do app (js/pages/advisor.js).
+	if _, body := a.get("/chat"); !strings.Contains(body, `data-page="chat"`) || strings.Contains(body, "/static/chat.js") {
+		t.Errorf("casco do Consultor: %.400s", body)
+	}
 }
 
 // seed grava um lançamento e uma dívida pelo mesmo caminho da sincronização.
@@ -149,6 +154,42 @@ func (a *app) postJSON(path string, body any) (int, map[string]any) {
 	var out map[string]any
 	json.NewDecoder(resp.Body).Decode(&out)
 	return resp.StatusCode, out
+}
+
+// ask faz uma pergunta ao Consultor (POST /api/chat) e devolve os eventos SSE.
+func (a *app) ask(message, agent string) string {
+	a.t.Helper()
+	b, _ := json.Marshal(map[string]string{"message": message, "agent": agent})
+	resp, err := http.Post(a.srv.URL+"/api/chat", "application/json", bytes.NewReader(b))
+	if err != nil {
+		a.t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	return string(body)
+}
+
+// chatInfo lê o que a tela do Consultor recebe (GET /api/chat): conversa e estado da IA.
+func (a *app) chatInfo() map[string]any {
+	a.t.Helper()
+	resp, err := http.Get(a.srv.URL + "/api/chat")
+	if err != nil {
+		a.t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var v map[string]any
+	json.NewDecoder(resp.Body).Decode(&v)
+	return v
+}
+
+// chatMessage é a mensagem i da conversa, como a tela do Consultor recebe.
+func (a *app) chatMessage(i int) map[string]any {
+	a.t.Helper()
+	h, _ := a.chatInfo()["history"].([]any)
+	if i >= len(h) {
+		a.t.Fatalf("a conversa tem %d mensagens, sem a %d", len(h), i)
+	}
+	return h[i].(map[string]any)
 }
 
 func TestSyncAPI(t *testing.T) {
@@ -191,45 +232,38 @@ func TestSyncAPI(t *testing.T) {
 
 func TestBlocksCrossOriginPost(t *testing.T) {
 	a := newApp(t, fakeOllama(t).URL)
-	if code, _ := a.post("/chat/limpar", nil, "Origin", "http://evil.example"); code != http.StatusForbidden {
+	if code, _ := a.post("/api/chat/limpar", nil, "Origin", "http://evil.example"); code != http.StatusForbidden {
 		t.Errorf("Origin estranho = %d", code)
 	}
-	if code, _ := a.post("/chat/limpar", nil, "Sec-Fetch-Site", "cross-site"); code != http.StatusForbidden {
+	if code, _ := a.post("/api/chat/limpar", nil, "Sec-Fetch-Site", "cross-site"); code != http.StatusForbidden {
 		t.Errorf("Sec-Fetch-Site cross-site = %d", code)
 	}
-	if code, _ := a.post("/chat/limpar", nil, "Origin", a.srv.URL); code != http.StatusSeeOther {
+	if code, _ := a.post("/api/chat/limpar", nil, "Origin", a.srv.URL); code != http.StatusOK {
 		t.Errorf("mesma origem = %d", code)
 	}
 }
 
 func TestChatStreamsAndSaves(t *testing.T) {
 	a := newApp(t, fakeOllama(t).URL)
-	code, body := a.post("/chat/enviar", url.Values{"message": {"Qual dívida pago primeiro?"}})
-	if code != http.StatusOK || !strings.Contains(body, `"text":"Pague o cartão."`) || !strings.Contains(body, `"done":true`) {
-		t.Fatalf("SSE = %d %s", code, body)
+	body := a.ask("Qual dívida pago primeiro?", "")
+	if !strings.Contains(body, `"text":"Pague o cartão."`) || !strings.Contains(body, `"done":true`) {
+		t.Fatalf("SSE = %s", body)
 	}
 	msgs, _ := a.st.ListChat(context.Background())
 	if len(msgs) != 2 || msgs[0].Content != "Qual dívida pago primeiro?" || msgs[1].Content != "Pague o cartão." || msgs[1].Agent != "otavio" {
 		t.Errorf("histórico = %+v", msgs)
 	}
-	if strings.Contains(body, `"suggest"`) {
-		t.Errorf("dívida é com o próprio Otávio (o padrão): nada de sugerir outro: %s", body)
-	}
-
-	// Com a Lia escolhida, a resposta fica dela e o assunto de dívida sugere o Otávio;
-	// personagem desconhecido ou de quem saiu do time vira o Otávio.
-	_, body = a.post("/chat/enviar", url.Values{"message": {"Qual dívida pago primeiro?"}, "agent": {"lia"}})
-	if !strings.Contains(body, `"suggest":{"id":"otavio"`) {
-		t.Errorf("assunto de dívida com a Lia: deveria sugerir o Otávio: %s", body)
-	}
-	a.post("/chat/enviar", url.Values{"message": {"oi"}, "agent": {"<script>"}})
-	a.post("/chat/enviar", url.Values{"message": {"oi"}, "agent": {"bento"}})
+	// Com a Lia escolhida, a resposta fica dela; personagem desconhecido ou de quem
+	// saiu do time vira o Otávio. (Passar para outro do time a tela decide com o finance.wasm.)
+	a.ask("Qual dívida pago primeiro?", "lia")
+	a.ask("oi", "<script>")
+	a.ask("oi", "bento")
 	msgs, _ = a.st.ListChat(context.Background())
 	if msgs[3].Agent != "lia" || msgs[5].Agent != "otavio" || msgs[7].Agent != "otavio" {
 		t.Errorf("quem respondeu = %q, %q, %q", msgs[3].Agent, msgs[5].Agent, msgs[7].Agent)
 	}
-	if _, page := a.get("/chat"); !strings.Contains(page, "Lia · Hábitos e orçamento") || !strings.Contains(page, `data-agent="tito"`) || !strings.Contains(page, "/static/img/time/lia-mini.webp") {
-		t.Error("a página do chat deveria mostrar quem respondeu, com o rosto, e o time para escolher")
+	if m := a.chatMessage(3); m["agent"] != "lia" {
+		t.Errorf("a tela do Consultor deveria saber quem respondeu: %v", m)
 	}
 }
 
@@ -237,21 +271,21 @@ func TestChatWhenOllamaOffline(t *testing.T) {
 	off := fakeOllama(t)
 	off.Close()
 	a := newApp(t, off.URL)
-	if _, body := a.get("/chat"); !strings.Contains(body, "O Ollama não está rodando") {
-		t.Error("página do chat deveria explicar como instalar o Ollama")
+	if info := a.chatInfo(); info["ready"] != false || !strings.Contains(fmt.Sprint(info["problem"]), "Ollama não encontrado") {
+		t.Errorf("o Consultor deveria avisar que o Ollama não está rodando: %v", info)
 	}
 	// Sem IA, o personagem responde com as contas do app e diz por que a IA falhou.
-	_, body := a.post("/chat/enviar", url.Values{"message": {"oi"}})
+	body := a.ask("oi", "")
 	if !strings.Contains(body, `"app":{`) || !strings.Contains(body, "A IA não respondeu agora") || !strings.Contains(body, "ollama.com") || strings.Contains(body, `"limit":true`) {
 		t.Errorf("SSE = %s", body)
 	}
 	if msgs, _ := a.st.ListChat(context.Background()); len(msgs) != 2 || !strings.HasPrefix(msgs[1].Content, advisor.OfflineNotice) {
 		t.Errorf("a resposta sem IA fica na conversa: %+v", msgs)
 	}
-	// Ao recarregar, a resposta sem IA mostra os números abertos, sem repetir no texto.
-	_, page := a.get("/chat")
-	if !strings.Contains(page, `<details class="numbers" open>`) || strings.Count(page, "data-md>**Resumo de") != 1 || strings.Count(page, "Resumo de") != 2 /* o cartão e o data-raw da nota */ || !strings.Contains(page, "Resposta do app, sem IA.") {
-		t.Errorf("a resposta sem IA deveria voltar com o cartão aberto:\n%s", page)
+	// Ao recarregar, a resposta sem IA volta marcada como do app e termina com os números
+	// (a tela mostra o cartão aberto no lugar deles, sem repetir).
+	if m := a.chatMessage(1); m["app"] != true || !strings.Contains(fmt.Sprint(m["numbers"]), "Resumo de") || !strings.HasSuffix(fmt.Sprint(m["content"]), fmt.Sprint(m["numbers"])) {
+		t.Errorf("a resposta sem IA deveria voltar com os números: %v", m)
 	}
 }
 
@@ -265,23 +299,20 @@ func TestChatPreparedSkipsAI(t *testing.T) {
 	}))
 	t.Cleanup(ollama.Close)
 	a := newApp(t, ollama.URL)
-	if _, page := a.get("/chat"); !strings.Contains(page, `data-for="otavio"`) || !strings.Contains(page, "Qual dívida devo pagar primeiro?") {
-		t.Error("a página deveria ter as sugestões de cada personagem")
-	}
-	_, body := a.post("/chat/enviar", url.Values{"message": {"Qual dívida devo pagar primeiro?"}, "agent": {"otavio"}})
+	body := a.ask("Qual dívida devo pagar primeiro?", "otavio")
 	if !strings.Contains(body, `"app":{`) || strings.Contains(body, "A IA não respondeu") || !strings.Contains(body, "Nenhuma dívida") || strings.Contains(body, `"numbers"`) {
 		t.Errorf("SSE = %s", body)
 	}
 	// Ao recarregar, a resposta pronta continua marcada como do app (sem cartão vazio).
-	if _, page := a.get("/chat"); !strings.Contains(page, "Resposta do app, sem IA.") || strings.Contains(page, `class="numbers"`) {
-		t.Errorf("a resposta pronta deveria voltar marcada como do app:\n%s", page)
+	if m := a.chatMessage(1); m["app"] != true || m["numbers"] != nil {
+		t.Errorf("a resposta pronta deveria voltar marcada como do app: %v", m)
 	}
 }
 
 // Os números do app chegam antes da IA, num evento próprio (a tela mostra na hora).
 func TestChatSendsNumbersFirst(t *testing.T) {
 	a := newApp(t, fakeOllama(t).URL)
-	_, body := a.post("/chat/enviar", url.Values{"message": {"O que eu faço com o meu dinheiro este mês?"}})
+	body := a.ask("O que eu faço com o meu dinheiro este mês?", "")
 	numbers, text := strings.Index(body, `"numbers":"`), strings.Index(body, `"text":"Pague o cartão."`)
 	if numbers < 0 || text < 0 || numbers > text || !strings.Contains(body, "Resumo de") {
 		t.Errorf("SSE = %s", body)
@@ -289,21 +320,9 @@ func TestChatSendsNumbersFirst(t *testing.T) {
 	if msgs, _ := a.st.ListChat(context.Background()); len(msgs) != 2 || msgs[1].Content != "Pague o cartão." || !strings.Contains(msgs[1].Numbers, "Resumo de") {
 		t.Errorf("a resposta da IA e os números ficam na conversa, separados: %+v", msgs)
 	}
-	// Ao recarregar, o cartão volta recolhido, em cima da resposta.
-	_, page := a.get("/chat")
-	card, answer := strings.Index(page, `<details class="numbers"><summary>Os números do app</summary>`), strings.Index(page, "data-md>Pague o cartão.")
-	if card < 0 || answer < card || !strings.Contains(page, "Resumo de") {
-		t.Errorf("a página do chat deveria mostrar o cartão dos números salvo:\n%s", page)
-	}
-	resp, err := http.Get(a.srv.URL + "/api/chat")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
-	var info struct{ History []map[string]any }
-	json.NewDecoder(resp.Body).Decode(&info)
-	if n, _ := info.History[1]["numbers"].(string); !strings.Contains(n, "Resumo de") || info.History[1]["app"] != nil {
-		t.Errorf("o app do celular também recebe os números: %+v", info.History)
+	// Ao recarregar, a tela do Consultor recebe os números separados da resposta da IA.
+	if m := a.chatMessage(1); !strings.Contains(fmt.Sprint(m["numbers"]), "Resumo de") || m["app"] != nil || m["content"] != "Pague o cartão." {
+		t.Errorf("a tela do Consultor também recebe os números: %v", m)
 	}
 }
 
@@ -341,7 +360,7 @@ func TestChatFreeLimit(t *testing.T) {
 	srv := httptest.NewServer(s.Routes())
 	t.Cleanup(srv.Close)
 	a := &app{t: t, srv: srv, st: st}
-	if _, body := a.post("/chat/enviar", url.Values{"message": {"e a moto?"}}); !strings.Contains(body, `"limit":true`) || !strings.Contains(body, "A IA não respondeu agora") {
+	if body := a.ask("e a moto?", ""); !strings.Contains(body, `"limit":true`) || !strings.Contains(body, "A IA não respondeu agora") {
 		t.Errorf("SSE = %s", body)
 	}
 }
@@ -414,17 +433,9 @@ func TestCategorizeAPI(t *testing.T) {
 
 func TestChatAPI(t *testing.T) {
 	a := newApp(t, fakeOllama(t).URL)
-	getInfo := func() map[string]any {
-		resp, err := http.Get(a.srv.URL + "/api/chat")
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer resp.Body.Close()
-		var v map[string]any
-		json.NewDecoder(resp.Body).Decode(&v)
-		return v
-	}
-	if info := getInfo(); info["ready"] != true || len(info["history"].([]any)) != 0 {
+	getInfo := a.chatInfo
+	// Ollama: a IA roda no computador (a tela diz que nada sai dele).
+	if info := getInfo(); info["ready"] != true || info["local"] != true || len(info["history"].([]any)) != 0 {
 		t.Fatalf("info = %v", info)
 	}
 	b, _ := json.Marshal(map[string]string{"message": "Quanto gastei com iFood?"})
@@ -462,12 +473,12 @@ func TestChatProposalsAreSaved(t *testing.T) {
 	}))
 	t.Cleanup(ollama.Close)
 	a := newApp(t, ollama.URL)
-	_, body := a.post("/chat/enviar", url.Values{"message": {"lança 30 do cinema"}})
+	body := a.ask("lança 30 do cinema", "")
 	if !strings.Contains(body, `"proposal":{"action":"criar","type":"transaction"`) || !strings.Contains(body, "Deixei pronto") {
 		t.Fatalf("SSE = %s", body)
 	}
-	if _, page := a.get("/chat"); !strings.Contains(page, `data-proposals="[{&#34;action&#34;:&#34;criar&#34;`) || strings.Contains(page, "&#34;applied&#34;:true") {
-		t.Fatalf("a proposta deveria ficar na conversa, ainda não feita: %s", page)
+	if p, _ := a.chatMessage(1)["proposals"].([]any); len(p) != 1 || p[0].(map[string]any)["action"] != "criar" || p[0].(map[string]any)["applied"] == true {
+		t.Fatalf("a proposta deveria ficar na conversa, ainda não feita: %v", p)
 	}
 	// A pessoa confirma: o aparelho grava o registro proposto e sincroniza.
 	msgs, _ := a.st.ListChat(context.Background())
@@ -505,6 +516,9 @@ func TestCategorizeCloudSendsOnlyKeys(t *testing.T) {
 	resp, err := noRedirect.PostForm(a.srv.URL+"/configuracoes", url.Values{"preset": {"ollama-cloud"}, "model": {"qwen3.5:cloud"}, "base_url": {ollama.URL}})
 	if err != nil || resp.StatusCode != http.StatusSeeOther {
 		t.Fatalf("salvar IA: %v %v", err, resp)
+	}
+	if info := a.chatInfo(); info["local"] != false {
+		t.Errorf("o Consultor deveria dizer que a IA é na nuvem: %v", info)
 	}
 	if code, res := a.postJSON("/api/categorizar", map[string]any{"items": []map[string]string{
 		{"description": "PIX ENVIADO 123.456.789-00 FARMACIA SAO JOAO", "kind": "saida"},
@@ -576,9 +590,27 @@ func TestChatOffersInstalledModel(t *testing.T) {
 	}))
 	t.Cleanup(ollama.Close)
 	a := newApp(t, ollama.URL) // configurado com qwen3:4b, que não está baixado
-	_, page := a.get("/chat")
-	if !strings.Contains(page, "Falta baixar o modelo qwen3:4b") || !strings.Contains(page, `value="qwen2.5:7b-instruct"`) || !strings.Contains(page, `name="volta" value="/chat"`) || strings.Contains(page, "nomic-embed") || strings.Contains(page, "bge-m3") {
-		t.Fatalf("o aviso deveria oferecer o modelo já baixado:\n%s", page)
+	// A tela do Consultor recebe o que vai no "Usar …" (POST /configuracoes com volta=/chat).
+	info := a.chatInfo()
+	use, _ := info["use"].(map[string]any)
+	if !strings.Contains(fmt.Sprint(info["problem"]), "qwen3:4b") || use["preset"] != "ollama" || use["baseURL"] != ollama.URL || fmt.Sprint(use["models"]) != "[qwen2.5:7b-instruct]" {
+		t.Fatalf("o aviso deveria oferecer o modelo já baixado (sem os de vetores): %v", info)
+	}
+	// O celular pareado não troca a IA: o endereço do Ollama não vai para o token.
+	if _, err := a.st.CreateDevice(context.Background(), "Celular", auth.HashToken("token-do-celular")); err != nil {
+		t.Fatal(err)
+	}
+	req, _ := http.NewRequest(http.MethodGet, a.srv.URL+"/api/chat", nil)
+	req.Header.Set("Authorization", "Bearer token-do-celular")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var phone map[string]any
+	json.NewDecoder(resp.Body).Decode(&phone)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK || phone["problem"] == nil || phone["use"] != nil {
+		t.Errorf("com o token, o aviso vai sem o \"Usar …\": %d %v", resp.StatusCode, phone)
 	}
 	if _, loc := a.post("/configuracoes", url.Values{"preset": {"ollama"}, "base_url": {ollama.URL}, "model": {"qwen2.5:7b-instruct"}, "volta": {"/chat"}}); !strings.HasPrefix(loc, "/chat?msg=") {
 		t.Errorf("depois de trocar, volta ao Consultor: %s", loc)
@@ -586,7 +618,7 @@ func TestChatOffersInstalledModel(t *testing.T) {
 	if _, loc := a.post("/configuracoes", url.Values{"preset": {"ollama"}, "base_url": {ollama.URL}, "model": {"qwen2.5:7b-instruct"}, "volta": {"https://evil.example"}}); !strings.HasPrefix(loc, "/configuracoes?msg=") {
 		t.Errorf("volta só para telas conhecidas: %s", loc)
 	}
-	if _, page := a.get("/chat"); strings.Contains(page, "Falta baixar") || !strings.Contains(page, "qwen2.5:7b-instruct") {
-		t.Errorf("com o modelo trocado, a IA fica pronta:\n%s", page)
+	if info := a.chatInfo(); info["ready"] != true || info["use"] != nil || !strings.Contains(fmt.Sprint(info["model"]), "qwen2.5:7b-instruct") {
+		t.Errorf("com o modelo trocado, a IA fica pronta: %v", info)
 	}
 }

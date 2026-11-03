@@ -593,7 +593,7 @@ try {
   await desk.waitForSelector(".proposal");
   const before = await desk.locator(".proposal").count(); // os da conversa do celular também aparecem aqui
   await desk.fill("textarea[name=message]", "Lança 30 reais de cinema");
-  await desk.click("#chat-form button");
+  await desk.click("form[data-form=ask] button");
   await desk.waitForFunction((n) => document.querySelectorAll(".proposal").length > n, before, { timeout: 20000 });
   const fresh = desk.locator(".proposal >> nth=-1");
   await fresh.locator("button").click();
@@ -603,7 +603,7 @@ try {
   ok(await desk.locator(".msg.assistant >> nth=-1 >> .msg-who").textContent() === "Otávio · Organização e dívidas" && await desk.locator(".team-member").count() === 3,
     "no computador, o chat mostra o time e quem respondeu");
   await desk.fill("textarea[name=message]", "Por que demora tanto?");
-  await desk.click("#chat-form button");
+  await desk.click("form[data-form=ask] button");
   await desk.waitForSelector(".msg.pending .numbers:has-text('Os números do app'):has-text('Resumo de')", { timeout: 10000 });
   ok(!(await desk.textContent(".messages")).includes("Resposta demorada") && await desk.locator(".msg.pending .thinking").count() === 1,
     "no computador, os números do app chegam antes da resposta da IA");
@@ -612,7 +612,7 @@ try {
     "no computador, a resposta da IA chega embaixo do cartão dos números");
   await desk.click(".team-member[data-agent=lia]");
   await desk.fill("textarea[name=message]", "Quanto ainda posso gastar?");
-  await desk.click("#chat-form button");
+  await desk.click("form[data-form=ask] button");
   await desk.waitForFunction(() => { const m = [...document.querySelectorAll(".msg.assistant")].at(-1); return m && !m.classList.contains("pending") && m.querySelector(".msg-who")?.textContent.includes("Lia"); }, null, { timeout: 20000 });
   ok(await desk.locator(".msg.assistant >> nth=-1 >> .app-answer").count() === 1, "no computador, a pergunta pronta vem marcada como resposta do app");
   await desk.reload();
@@ -621,6 +621,14 @@ try {
     "no computador, a resposta fica da Lia e a escolha é lembrada");
   ok(await desk.locator(".msg.assistant:has-text('Resposta demorada') >> details.numbers:not([open]):has-text('Resumo de')").count() === 1,
     "no computador, ao recarregar, o cartão dos números volta recolhido em cima da resposta");
+  // Falta o modelo no Ollama: o aviso oferece o que já está baixado e volta pronto ao Consultor.
+  await form("/configuracoes", { preset: "ollama", base_url: `http://127.0.0.1:${OLLAMA_PORT}`, model: "qwen3:4b" });
+  await desk.goto(`${B}/chat`);
+  await desk.click(".notice.warn:has-text('O modelo qwen3:4b ainda não foi baixado') button:has-text('Usar qwen3.5:9b')");
+  await desk.waitForSelector(".flash.ok:has-text('Configuração da IA salva.')");
+  await desk.waitForSelector("form[data-form=ask]");
+  ok(await desk.locator(".notice.warn").count() === 0 && (await desk.textContent(".ai-state")).includes("qwen3.5:9b") && (await desk.textContent(".chat-where")).includes("A IA roda neste computador"),
+    "no computador, sem o modelo, o Consultor oferece usar o já baixado e volta com a IA pronta");
 
   // Open Finance no app sem computador: o Client Secret vai para o cofre do
   // sistema (falso aqui) e a busca sai do próprio celular direto para a Pluggy.
