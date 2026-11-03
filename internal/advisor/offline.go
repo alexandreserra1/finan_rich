@@ -30,8 +30,8 @@ type Reply struct {
 	AIError   error
 }
 
-// Suggestions são as perguntas sugeridas de cada personagem (a tela do
-// computador usa estas; o app tem a mesma lista em js/pages/advisor.js).
+// Suggestions são as perguntas sugeridas de cada personagem. A tela do Consultor
+// tem a mesma lista em js/pages/advisor.js (conferida em TestSuggestionsMatchApp).
 var Suggestions = map[string][]string{
 	"otavio": {"Como foi meu mês?", "Qual dívida devo pagar primeiro?", "O que vence esta semana?"},
 	"lia":    {"Onde estou gastando demais este mês?", "Quanto ainda posso gastar?", "Como reduzir meus gastos?"},

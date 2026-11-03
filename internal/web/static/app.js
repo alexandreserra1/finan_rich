@@ -5,6 +5,11 @@ window.Finan = (function () {
   async function postSSE(url, body, onEvent) {
     const res = await fetch(url, { method: "POST", body });
     if (!res.ok) throw new Error((await res.text()) || res.statusText);
+    return readSSE(res, onEvent);
+  }
+
+  // readSSE lê os eventos de uma resposta conforme eles chegam (o Consultor usa direto).
+  async function readSSE(res, onEvent) {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buf = "";
@@ -126,7 +131,7 @@ window.Finan = (function () {
     if (!confirm(form.dataset.confirm)) e.preventDefault();
   }));
 
-  return { postSSE, markdown };
+  return { postSSE, readSSE, markdown };
 })();
 
 // Menu "Mais" (celular): abre a lateral com todas as telas; fecha no Esc, ao tocar

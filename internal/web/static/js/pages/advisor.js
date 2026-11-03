@@ -1,4 +1,5 @@
-// Consultor IA no app do celular. Duas formas:
+// Consultor IA, a mesma tela no computador, no app do celular e no site.
+// No computador (navegador), fala sempre com a IA dele pela /api/chat. No app:
 // - pelo computador pareado (a IA roda lá; precisa estar ao alcance);
 // - pela nuvem, direto do celular, com os nomes anonimizados (cloud-ai.js);
 // - dentro do celular, sem internet e sem nada sair do aparelho (local-ai.js).
@@ -6,13 +7,13 @@ import * as cloud from "../cloud-ai.js";
 import * as db from "../db.js";
 import * as finance from "../finance.js";
 import * as local from "../local-ai.js";
-import { endpoint } from "../device.js";
+import { endpoint, isApp } from "../device.js";
 import { applyProposal, proposalButton, proposalKind, saveNote } from "../notes-save.js";
 import { html, raw } from "../ui.js";
 
 export const needsData = false;
 
-let chat = null; // { history: [{role, content, proposals, agent}], suggest, model, ready, problem, busy, error, cloud, local }
+let chat = null; // { history: [{role, content, proposals, agent}], suggest, model, ready, problem, busy, error, cloud, local, aiLocal, use }
 
 // O time: cada personagem aconselha do seu jeito (internal/advisor/personas.go).
 const SUGGESTIONS = {
@@ -47,6 +48,7 @@ function answerBody(m, i) {
 function aiState() {
   if (chat.offline) return ["off", "Sem conexão com o computador"];
   if (chat.problem) return ["none", "Sem IA agora"];
+  if (!isApp) return ["ok", chat.model + (chat.aiLocal ? "" : " · na nuvem")];
   return ["ok", chat.model + (chat.local ? " · dentro do celular" : chat.cloud ? " · na nuvem" : " · no computador")];
 }
 
@@ -89,7 +91,7 @@ export function render() {
     ${teamColumn(me)}
     <section class="panel chat">
       ${chatTop(me)}
-      ${chat.problem ? html`<p class="notice warn">${chat.problem}</p>` : chat.local
+      ${!isApp ? deskNotes() : chat.problem ? html`<p class="notice warn">${chat.problem}</p>` : chat.local
         ? html`<p class="small muted chat-where">Usando ${chat.model} dentro deste celular: nada sai do aparelho, nem precisa de internet. É uma IA pequena: responde mais devagar, erra mais e não lança nada por você.</p>`
         : chat.cloud
         ? html`<p class="small muted chat-where">Usando ${chat.model} na nuvem, direto deste celular. Nomes de lojas, dívidas e metas vão com apelidos, e as notas não vão; a IA vê só valores, datas e categorias.</p>`
@@ -128,11 +130,24 @@ export function render() {
     </div>`;
 }
 
+// deskNotes: no computador, o aviso da IA que não está pronta (com o "Usar …" de um
+// modelo já baixado; baixar e instalar ficam nos Ajustes) e onde a IA roda.
+function deskNotes() {
+  const use = chat.use;
+  return html`${chat.problem ? html`<div class="notice warn"><strong>${chat.problem}</strong>
+      ${use ? html`<p class="small">Ou use um que já está neste computador, sem baixar nada:</p>
+      <div class="row-actions">${use.models.map((m) => html`<form method="post" action="/configuracoes"><input type="hidden" name="preset" value="${use.preset}"><input type="hidden" name="base_url" value="${use.baseURL}"><input type="hidden" name="model" value="${m}"><input type="hidden" name="volta" value="/chat"><button type="submit" class="secondary">Usar ${m}</button></form>`)}</div>` : ""}
+      <p class="small">Para resolver, abra os <a href="/configuracoes#ia">Ajustes</a>.</p></div>` : ""}
+    <p class="small muted chat-where">${chat.aiLocal ? "A IA roda neste computador: nada sai daqui." : "Na nuvem, nomes de lojas, dívidas e metas vão com apelidos."} O consultor vê seus números atuais a cada pergunta. <a href="/configuracoes">Trocar o modelo</a></p>`;
+}
+
 // limitNotice: acabou o grátis do finan_rich; o caminho para a chave grátis da própria pessoa.
 function limitNotice() {
   return chat.cloud
     ? html`<p class="notice warn">O grátis da Rich chegou ao limite por agora. Para seguir com IA, use sua própria chave grátis (o Gemini dá uma de graça) em
       <a href="/configuracoes#ia-nuvem">Ajustes → Consultor sem computador</a>.</p>`
+    : !isApp
+    ? html`<p class="notice warn">O grátis da Rich chegou ao limite por agora. Para seguir com IA, use sua própria chave grátis (o Gemini dá uma de graça) em <a href="/configuracoes#ia">Ajustes</a>.</p>`
     : html`<p class="notice warn">O grátis da Rich chegou ao limite por agora. Para seguir com IA, use sua própria chave grátis nos Ajustes do computador.</p>`;
 }
 
@@ -149,13 +164,14 @@ async function loadChat(ctx) {
 }
 
 async function openChat(ctx) {
+  // No computador (isApp falso), a IA é sempre a dele: vai direto para a /api/chat.
   // A IA dentro do celular, quando ligada, vale sobre as outras: nada sai do aparelho.
-  if (await local.ready().catch(() => false)) {
+  if (isApp && await local.ready().catch(() => false)) {
     chat = { history: await cloud.loadChat(), model: local.MODEL.name, ready: true, problem: "", busy: false, error: "", cloud: true, local: true };
     ctx.rerender();
     return;
   }
-  const cfg = await cloud.config().catch(() => null);
+  const cfg = isApp ? await cloud.config().catch(() => null) : null;
   if (cloud.ready(cfg) && (cfg.enabled || !ctx.server)) {
     const history = await cloud.loadChat();
     for (const m of history) {
@@ -165,7 +181,7 @@ async function openChat(ctx) {
     ctx.rerender();
     return;
   }
-  if (!ctx.server) {
+  if (isApp && !ctx.server) {
     chat = { setup: true };
     ctx.rerender();
     return;
@@ -174,10 +190,12 @@ async function openChat(ctx) {
     const res = await call("/api/chat");
     const body = await res.json();
     if (!res.ok) throw new Error(body.error || res.statusText);
-    chat = { history: body.history, model: body.model, ready: body.ready, problem: body.problem || "", busy: false, error: "" };
+    chat = { history: body.history, model: body.model, ready: body.ready, problem: body.problem || "", busy: false, error: "", aiLocal: body.local, use: body.use };
   } catch (err) {
     const offline = err instanceof TypeError;
-    chat = { history: [], model: "", ready: false, offline, problem: offline ? "Sem conexão com o computador. O consultor funciona quando o celular estiver no mesmo Wi-Fi e a Rich aberta lá." : err.message, busy: false, error: "" };
+    const noLink = isApp ? "Sem conexão com o computador. O consultor funciona quando o celular estiver no mesmo Wi-Fi e a Rich aberta lá."
+      : "Sem conexão com a Rich. Confira se ela está aberta no computador e recarregue a página.";
+    chat = { history: [], model: "", ready: false, offline, problem: offline ? noLink : err.message, busy: false, error: "" };
   }
   ctx.rerender();
 }
@@ -202,7 +220,8 @@ async function ask(ctx, question) {
   chat.scroll = true; // cada redesenho desta pergunta mostra o fim da conversa
   ctx.rerender();
   // Os números do app aparecem na hora; a resposta da IA chega embaixo deles.
-  chat.numbers = await cloud.numbers(ctx.ledger, question, agent).catch(() => "");
+  // No computador, eles vêm do servidor, no primeiro evento da resposta.
+  chat.numbers = isApp ? await cloud.numbers(ctx.ledger, question, agent).catch(() => "") : "";
   if (chat.numbers) ctx.rerender();
   try {
     if (chat.cloud) {
@@ -228,23 +247,23 @@ async function ask(ctx, question) {
       ctx.rerender();
       return;
     }
-    await window.finanSync?.(); // a IA vê os lançamentos mais recentes deste celular
+    await window.finanSync?.(); // a IA vê os lançamentos mais recentes deste aparelho
     const res = await call("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: question, agent }) });
-    // A resposta vem em eventos "data: {...}" (no app, chega tudo de uma vez).
-    const text = await res.text();
-    if (!res.ok) throw new Error(JSON.parse(text || "{}").error || res.statusText);
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText);
     let answer = "";
     let app = null; // resposta do app, sem IA: { text, reason, limit }
     const proposals = []; // lançamentos que a IA propôs: entram só com o "Adicionar"
-    for (const line of text.split("\n")) {
-      if (!line.startsWith("data: ")) continue;
-      const ev = JSON.parse(line.slice(6));
-      if (ev.error) throw new Error(ev.error);
-      if (ev.text) answer += ev.text;
+    // A resposta vem em eventos "data: {...}", mostrados conforme chegam (no app, chega tudo de uma vez).
+    await window.Finan.readSSE(res, (ev) => {
+      if (ev.text) showPartial((answer += ev.text));
       if (ev.proposal) proposals.push(ev.proposal);
       if (ev.app) app = ev.app;
-      if (ev.numbers && !chat.numbers) chat.numbers = ev.numbers;
-    }
+      if (ev.numbers && !chat.numbers) {
+        chat.numbers = ev.numbers;
+        ctx.rerender();
+      }
+    });
+    chat.partial = "";
     chat.history.push(assistantMessage(app ? { answer: app.text, proposals, app: true, aiError: app.reason, limit: app.limit } : { answer, proposals }, agent, chat.numbers));
     suggestHandoff(question, agent);
   } catch (err) {
@@ -252,7 +271,7 @@ async function ask(ctx, question) {
     // TypeError: fetch daqui; "network error": fetch do Go (IA na nuvem) que caiu no meio.
     const reason = err instanceof TypeError || /network error/.test(err.message) ? (chat.cloud ? "sem internet" : "sem conexão com o computador") : err.message;
     // Sem IA, o personagem responde com as contas do app (só onde há o advisor.wasm: app e site).
-    const reply = await cloud.offline(ctx.ledger, question, agent).catch(() => null);
+    const reply = isApp ? await cloud.offline(ctx.ledger, question, agent).catch(() => null) : null;
     if (!chat.cloud && err instanceof TypeError) chat.offline = true;
     if (reply) {
       chat.history.push(assistantMessage({ ...reply, aiError: reason }, agent, chat.numbers));
@@ -260,6 +279,7 @@ async function ask(ctx, question) {
     } else {
       chat.history.pop();
       chat.error = reason;
+      chat.draft = question; // a pergunta não foi salva: volta para a caixa, para tentar de novo
     }
   }
   chat.busy = false;
@@ -281,10 +301,13 @@ function suggestHandoff(question, agent) {
   chat.suggest = other && other !== agent ? { agent: other, question } : null;
 }
 
+// pick troca quem responde. O que já estava escrito continua na caixa (lido só
+// agora: a pessoa pode ter digitado enquanto a escolha era guardada).
 async function pick(ctx, agent) {
   agentId = agent;
   chat.suggest = null;
   await db.setMeta(AGENT_KEY, agent).catch(() => {});
+  chat.draft = document.querySelector('[data-form="ask"] [name=message]')?.value || "";
   ctx.rerender();
 }
 
@@ -325,7 +348,7 @@ export function bind(root, ctx) {
     const box = form.elements.message;
     box.addEventListener("input", () => { box.style.height = "auto"; box.style.height = `${Math.min(box.scrollHeight, 160)}px`; });
   }
-  if (chat.draft) { // a pergunta do Painel, pronta para enviar ou mudar
+  if (chat.draft) { // a pergunta do Painel (ou a que já estava escrita), pronta para enviar ou mudar
     const box = form.elements.message;
     box.dispatchEvent(new Event("input"));
     box.focus();

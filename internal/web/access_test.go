@@ -108,7 +108,7 @@ func TestPhoneMustLogin(t *testing.T) {
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/entrar?volta=%2Fdividas" {
 		t.Fatalf("celular sem login: %d %s", rec.Code, rec.Header().Get("Location"))
 	}
-	if rec := a.do("POST", "/chat/limpar", phone, url.Values{}); rec.Code != http.StatusUnauthorized {
+	if rec := a.do("POST", "/api/chat/limpar", phone, url.Values{}); rec.Code != http.StatusUnauthorized {
 		t.Errorf("POST sem login = %d", rec.Code)
 	}
 	for _, path := range []string{"/entrar", "/manifest.webmanifest", "/sw.js", "/offline", "/static/app.css", "/static/icons/icon-192.png"} {

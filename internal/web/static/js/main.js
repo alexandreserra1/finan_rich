@@ -2,11 +2,11 @@
 // - em todas: sincronização em segundo plano e indicador de status;
 // - nas telas de dados (Painel, Lançamentos, Dívidas, Categorias): monta a tela
 //   com os dados guardados no aparelho, que funcionam sem conexão.
-// No app do celular (Capacitor), Ajustes e Consultor também são telas daqui.
+// - no Consultor: monta a conversa, que vem do computador (/api/chat) ou, no app, da nuvem.
+// No app do celular (Capacitor), Ajustes também é tela daqui.
 import * as db from "./db.js";
 import * as device from "./device.js";
 import "./lock.js"; // app do celular: pede digital/rosto ou senha para abrir
-import { applyProposal, proposalButton, proposalKind, saveNote } from "./notes-save.js";
 import { onReminderTap, scheduleReminders } from "./native.js";
 import * as finance from "./finance.js";
 import * as charts from "./charts.js";
@@ -30,9 +30,9 @@ import * as landing from "./pages/landing.js";
 import * as google from "./google.js";
 import * as oauthPage from "./pages/oauth.js";
 
-const ROUTES = { "/": dashboard, "/lancamentos": transactions, "/dividas": debts, "/categorias": categories, "/notas": notes, "/exportar": exportPage, "/importar": importPage, "/metas": goals, "/analise": insights };
+const ROUTES = { "/": dashboard, "/lancamentos": transactions, "/dividas": debts, "/categorias": categories, "/notas": notes, "/exportar": exportPage, "/importar": importPage, "/metas": goals, "/analise": insights, "/chat": advisor };
 ROUTES["/contas"] = accounts;
-if (device.isApp) Object.assign(ROUTES, { "/configuracoes": devicePage, "/chat": advisor, "/oauth": oauthPage });
+if (device.isApp) Object.assign(ROUTES, { "/configuracoes": devicePage, "/oauth": oauthPage });
 
 const root = document.getElementById("app");
 let ledger = null;
@@ -82,12 +82,8 @@ window.addEventListener("finan-sync", async (e) => {
   if (e.detail.notice) flash(e.detail.notice, "err"); // ex.: categoria apagada aqui, mas usada em outro aparelho
 });
 
-// O chat chama isto antes de perguntar, para a IA ver os dados mais recentes.
+// O Consultor chama isto antes de perguntar, para a IA ver os dados mais recentes.
 window.finanSync = () => sync.sync();
-// E isto para guardar uma resposta em Notas.
-window.finanSaveNote = saveNote;
-// E isto para aplicar o que o consultor propôs (depois do toque no botão).
-window.finanProposal = { apply: applyProposal, button: proposalButton, kind: proposalKind };
 
 // Ao sair da conta (acesso ao computador pela rede), apaga os dados deste
 // aparelho, mas só depois de tudo o que foi feito aqui chegar ao computador:
@@ -311,7 +307,7 @@ if (root) {
       root.innerHTML = `<p class="notice warn">Não foi possível iniciar o app: ${String(err.message || err).replace(/</g, "&lt;")}</p>`;
     });
 } else if (document.querySelector("[data-bell]")) {
-  // Telas do servidor (Consultor e Ajustes no computador): as regras só para o sininho.
+  // Telas do servidor (Ajustes no computador): as regras só para o sininho.
   finance.load().then(load).catch(() => {});
 }
 

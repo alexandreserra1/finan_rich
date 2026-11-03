@@ -121,8 +121,13 @@ aparelho                                      servidor
 
 ### 4. Consultor IA
 
-1. `static/chat.js` sincroniza primeiro (`window.finanSync()`), para o servidor ter os dados
-   mais recentes, e envia a pergunta para `POST /chat/enviar`.
+1. A tela do Consultor (`js/pages/advisor.js`, a mesma no computador e no app) sincroniza
+   primeiro (`window.finanSync()`), para o servidor ter os dados mais recentes, e envia a
+   pergunta para `POST /api/chat` (no app, com o token). A resposta volta em eventos SSE
+   (`numbers`, `text`, `proposal`, `app`, `done`), mostrados conforme chegam. `GET /api/chat`
+   traz a conversa e o estado da IA: se está pronta, o motivo quando não está, se roda no
+   próprio computador (`local`) e, com o modelo faltando no Ollama, os já baixados para o
+   "Usar …" do aviso (`use`, que grava pelo `POST /configuracoes` e volta ao Consultor).
 2. `web/chat.go` carrega o `Ledger` do banco, calcula os fatos (`advisor.BuildFacts`) e monta
    o retrato em texto (`advisor.Snapshot`): juros de cada dívida, sobra livre, reserva,
    pontos de atenção. **As contas vão prontas**, porque modelos pequenos erram aritmética.
@@ -140,8 +145,7 @@ aparelho                                      servidor
    de aconselhar e recebe só as ferramentas da área dele (a Lia, por exemplo, só busca, analisa e
    corrige lançamentos). Sem personagem, ou com o id de quem saiu do time (Jade, Bento, Luna),
    fala o Otávio, que atende primeiro e usa todas. Depois da resposta, `finance.Route` olha o assunto da pergunta e, se for de outro
-   do time, a tela oferece perguntar para ele (evento SSE `suggest` no computador; no app,
-   pelo `finance.wasm`). A resposta guarda quem respondeu (coluna `agent` em `chat_messages`).
+   do time, a tela oferece perguntar para ele (`finance.route`, pelo `finance.wasm`). A resposta guarda quem respondeu (coluna `agent` em `chat_messages`).
    O laço pede ferramentas até 4 vezes por pergunta. Ferramentas usam o formato nativo de cada
    provedor (Ollama, OpenAI-compatível, Anthropic); se o modelo não aceitar ferramentas, o
    consultor pergunta de novo sem elas.
@@ -406,7 +410,7 @@ Código Go:
 | `tailscale.go` | Detecta o Tailscale e o endereço `https://` deste computador. |
 | `aiconfig.go` | Lê e grava a configuração da IA; verifica se o Ollama e o modelo estão prontos. |
 | `settings.go` | Tela de Ajustes, testar conexão, baixar modelo. |
-| `chat.go` | Tela do consultor e envio de perguntas (SSE); `GET/POST /api/chat` e `/api/chat/limpar` para o app do celular (token). |
+| `chat.go` | API do Consultor: `GET /api/chat` (conversa e estado da IA), `POST /api/chat` (pergunta, resposta em SSE) e `POST /api/chat/limpar`. No computador pelo navegador; no app, com o token. |
 | `sse.go` | Envio de Server-Sent Events. |
 | `redirect.go` | Redirecionamento com mensagem (padrão POST/redirect/GET). |
 | `generate.go` | `//go:generate` que cria `static/finance.wasm`. |
@@ -418,8 +422,8 @@ Templates (`templates/`, renderizados no servidor; arquivos com `_` são parciai
 |---|---|
 | `_layout.html` | Estrutura comum: metas do PWA, topo com indicador de sincronização, menu (abas no rodapé no celular), ícones. |
 | `_aistatus.html` | Avisos de Ollama ausente ou modelo não baixado, com o botão de baixar. |
-| `app.html` | Casco das telas de dados (`<div id="app">`), preenchido pelo JavaScript. |
-| `chat.html`, `settings.html`, `login.html` | Telas que dependem do servidor. |
+| `app.html` | Casco das telas de dados e do Consultor (`<div id="app">`), preenchido pelo JavaScript. |
+| `settings.html`, `login.html` | Telas que dependem do servidor. |
 | `pair.html` | Página aberta pelo QR code de pareamento: leva ao app ou explica como instalá-lo. |
 
 Arquivos do navegador (`static/`):
@@ -444,10 +448,11 @@ Arquivos do navegador (`static/`):
 | `js/pdftext.js` | Extrai o texto de PDFs com o pdf.js (carregado só quando preciso), linha por linha, com suporte a senha. |
 | `vendor/pdfjs/` | pdf.js 6.3 (Mozilla, Apache-2.0), build legacy, embutido para funcionar offline. |
 | `js/pages/goals.js` | Metas: criar, editar, apagar; cartões de progresso (também usados no painel). |
-| `js/notes-save.js` | Salva uma resposta do consultor como nota (usado pelo chat do navegador e do app). |
+| `js/notes-save.js` | Salva uma resposta do consultor como nota e grava o que ele propôs (depois do toque no botão). |
 | `js/native.js` | Só no app do celular: leitor de QR e lembretes do time (vencimentos, achados da semana, balanço das metas). |
 | `js/exporter.js` | Entrega o arquivo gerado: download no navegador; no app do celular, salva e abre o menu de compartilhar (plugins Filesystem e Share do Capacitor). |
-| `js/pages/device.js`, `js/pages/advisor.js` | Só no app do celular: Ajustes (pareamento, QR, lembretes) e Consultor (conversa pela `/api/chat`). |
+| `js/pages/advisor.js` | Consultor, no computador, no app e no site: o time, a conversa pela `/api/chat` (no app, também pela nuvem ou dentro do celular), os cartões de confirmar e "Os números do app". |
+| `js/pages/device.js` | Só no app do celular: Ajustes (pareamento, QR, lembretes). |
 
 Cada tela exporta `render(ctx)` (devolve o HTML) e, se tiver formulário, `bind(root, ctx)`
 (liga os eventos). O `ctx` traz os dados (`ledger`), o mês, os parâmetros da URL e as ações
@@ -457,8 +462,8 @@ Cada tela exporta `render(ctx)` (devolve o HTML) e, se tiver formulário, `bind(
 |---|---|
 | `js/wasm_exec.js` | Gerado: o "runtime" do Go para WebAssembly (copiado do Go instalado). |
 | `finance.wasm` | Gerado: as regras em Go compiladas. |
-| `app.js` | Utilitários das telas do servidor: SSE, markdown do chat, botão de baixar modelo, botão "Instalar app", registro do service worker. |
-| `chat.js`, `settings.js` | Comportamento das telas de chat e de Ajustes. |
+| `app.js` | Utilitários de todas as telas: SSE (`postSSE`, `readSSE`), markdown do Consultor, botão de baixar modelo, botão "Instalar app", registro do service worker. |
+| `settings.js` | Comportamento da tela de Ajustes. |
 | `sw.js` | Service worker: guarda casco, scripts e `.wasm`; abre offline. |
 | `manifest.webmanifest`, `icons/`, `favicon.svg` | Instalação como app (PWA). |
 | `offline.html` | Mostrada quando uma tela que precisa do servidor é aberta sem conexão. |
