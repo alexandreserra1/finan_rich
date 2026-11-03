@@ -10,7 +10,8 @@ import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 
 const BIN = process.env.SITE_BIN || "../dist/finansite";
-const PORT = 18095, TOKEN_PORT = 18096;
+const OFF = Number(process.env.PORT_OFFSET || 0); // PORT_OFFSET=100: roda ao lado de outra cópia do repositório
+const PORT = 18095 + OFF, TOKEN_PORT = 18096 + OFF;
 const SITE = `http://127.0.0.1:${PORT}`;
 let failures = 0;
 const ok = (cond, msg) => {

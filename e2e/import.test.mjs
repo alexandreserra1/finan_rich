@@ -13,7 +13,8 @@ import { join } from "node:path";
 
 const BIN = process.env.FINANRICH_BIN || "../dist/finanrich";
 const TESTDATA = "../internal/importer/testdata";
-const PORT = 18087;
+const OFF = Number(process.env.PORT_OFFSET || 0); // PORT_OFFSET=100: roda ao lado de outra cópia do repositório
+const PORT = 18087 + OFF;
 const B = `http://127.0.0.1:${PORT}`;
 const dataDir = mkdtempSync(join(tmpdir(), "finan-e2e-import-"));
 let failures = 0;
@@ -29,7 +30,7 @@ const openTx = async (page) => {
 };
 
 // Pluggy falsa (Open Finance): uma conta com dois lançamentos.
-const PLUGGY_PORT = 18088;
+const PLUGGY_PORT = 18088 + OFF;
 const pluggy = createServer((req, res) => {
   res.setHeader("Content-Type", "application/json");
   const url = new URL(req.url, "http://x");

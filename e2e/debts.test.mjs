@@ -13,7 +13,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const BIN = process.env.FINANRICH_BIN || "../dist/finanrich";
-const PORT = 18089;
+const OFF = Number(process.env.PORT_OFFSET || 0); // PORT_OFFSET=100: roda ao lado de outra cópia do repositório
+const PORT = 18089 + OFF;
 const B = `http://127.0.0.1:${PORT}`;
 const dataDir = mkdtempSync(join(tmpdir(), "finan-e2e-debts-"));
 let failures = 0;
@@ -38,8 +39,8 @@ const pluggy = createServer((req, res) => {
   if (url.pathname === "/auth") return res.end('{"apiKey":"k"}');
   if (url.pathname === "/accounts") return res.end('{"results":[{"id":"cc","type":"BANK","name":"Conta corrente","number":"98765"}]}');
   res.end(JSON.stringify({ next: null, results: bank.map((t) => ({ ...t, status: "POSTED" })) }));
-}).listen(18090);
-const server = spawn(BIN, ["-data", dataDir, "-no-browser", "-addr", `127.0.0.1:${PORT}`], { stdio: "ignore", env: { ...process.env, FINAN_PLUGGY_URL: "http://127.0.0.1:18090" } });
+}).listen(18090 + OFF);
+const server = spawn(BIN, ["-data", dataDir, "-no-browser", "-addr", `127.0.0.1:${PORT}`], { stdio: "ignore", env: { ...process.env, FINAN_PLUGGY_URL: `http://127.0.0.1:${18090 + OFF}` } });
 for (let i = 0; i < 100; i++) {
   try { if ((await fetch(`${B}/healthz`)).ok) break; } catch {}
   await new Promise((r) => setTimeout(r, 100));

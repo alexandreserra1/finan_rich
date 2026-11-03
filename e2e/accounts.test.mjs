@@ -9,7 +9,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const BIN = process.env.FINANRICH_BIN || "../dist/finanrich";
-const PORT = 18083;
+const OFF = Number(process.env.PORT_OFFSET || 0); // PORT_OFFSET=100: roda ao lado de outra cópia do repositório
+const PORT = 18083 + OFF;
 const B = `http://127.0.0.1:${PORT}`;
 const dataDir = mkdtempSync(join(tmpdir(), "finan-e2e-accounts-"));
 let failures = 0;

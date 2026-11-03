@@ -15,10 +15,11 @@ import { extname, join, normalize } from "node:path";
 
 const BIN = process.env.FINANRICH_BIN || "../dist/finanrich";
 const WWW = process.env.APP_WWW || "../mobile/www";
-const PORT = 18098;
-const APP_PORT = 18097;
-const OLLAMA_PORT = 18083;
-const CLOUD_PORT = 18082;
+const OFF = Number(process.env.PORT_OFFSET || 0); // PORT_OFFSET=100: roda ao lado de outra cópia do repositório
+const PORT = 18098 + OFF;
+const APP_PORT = 18097 + OFF;
+const OLLAMA_PORT = 18083 + OFF;
+const CLOUD_PORT = 18082 + OFF;
 const B = `http://127.0.0.1:${PORT}`;
 const APP = `http://127.0.0.1:${APP_PORT}`;
 const dataDir = mkdtempSync(join(tmpdir(), "finan-e2e-app-"));
@@ -235,7 +236,7 @@ try {
   ok(true, "sem computador, o app funciona só no celular (categorias criadas no aparelho)");
 
   // Consultor sem computador: IA na nuvem, chave cifrada, nomes anonimizados.
-  await page.evaluate(async () => (await import("/static/js/db.js")).setMeta("cloud-ai", { preset: "groq", baseUrl: "http://127.0.0.1:18082" })); // a nuvem falsa
+  await page.evaluate(async (port) => (await import("/static/js/db.js")).setMeta("cloud-ai", { preset: "groq", baseUrl: `http://127.0.0.1:${port}` }), CLOUD_PORT); // a nuvem falsa
   await page.goto(`${APP}/configuracoes`);
   await page.waitForSelector("form[data-form=cloud-ai]", { timeout: 20000 });
   const cloudForm = "form[data-form=cloud-ai]";
@@ -288,11 +289,11 @@ try {
     `internet caindo no meio do chat: resposta sem IA, sem "Pensando…" e sem resposta pela metade`);
 
   // O grátis do finan_rich no limite: resposta sem IA e o caminho para a chave grátis da pessoa.
-  await page.evaluate(async () => { // a configuração com a chave fica guardada no próprio app (a chave cifrada não passa bem pelo teste)
+  await page.evaluate(async (port) => { // a configuração com a chave fica guardada no próprio app (a chave cifrada não passa bem pelo teste)
     const db = await import("/static/js/db.js");
     await db.setMeta("cloud-ai-antes", await db.getMeta("cloud-ai"));
-    await db.setMeta("cloud-ai", { preset: "finan", model: "auto", baseUrl: "http://127.0.0.1:18082" });
-  });
+    await db.setMeta("cloud-ai", { preset: "finan", model: "auto", baseUrl: `http://127.0.0.1:${port}` });
+  }, CLOUD_PORT);
   await page.goto(`${APP}/chat`);
   await page.waitForSelector("form[data-form=ask]", { timeout: 20000 });
   await page.fill("textarea[name=message]", "Acabou o limite do grátis?");
