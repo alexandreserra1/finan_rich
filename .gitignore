@@ -16,7 +16,5 @@
 # Mapa do código (graphify), gerado
 graphify-out/
 
-# Chaves de provedor de IA no computador (scripts/finanlocal.sh guarda fora do repositório; isto é só por garantia)
+# Chaves de provedor de IA no computador (só por garantia: nunca vão para o repositório)
 *.key
-local.key
-.finanlocal*

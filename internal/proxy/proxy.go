@@ -60,7 +60,6 @@ type Provider struct {
 	Models      []string // preferidos, em ordem
 	OnlyFree    bool     // OpenRouter: só modelos ":free" (os outros cobram)
 	StreamUsage bool     // aceita stream_options.include_usage (tokens no fim do streaming)
-	NoTools     bool     // manda sem as ferramentas (modelo local pequeno escreve o pedido como texto)
 }
 
 // Modelos abertos do Groq com ferramentas; cada um tem a sua cota grátis.
@@ -69,11 +68,7 @@ type Provider struct {
 const defaultModels = "openai/gpt-oss-120b,qwen/qwen3.8-27b,openai/gpt-oss-20b"
 
 // defaultProviders é a ordem padrão de FINAN_PROVIDERS.
-const defaultProviders = "groq,gemini,cerebras,openrouter,cloudflare,local"
-
-// defaultLocalModel: o Qwen 7B acertou 17 de 17 na avaliação do time (igual à
-// nuvem), com uns 25 s por chamada num Mac M1 Pro; o 1,5B ficou em 13 de 17.
-const defaultLocalModel = "qwen2.5:7b-instruct"
+const defaultProviders = "groq,gemini,cerebras,openrouter,cloudflare"
 
 // presets: os provedores grátis no formato OpenAI. Os modelos preferidos vêm
 // primeiro; depois, os outros de conversa que o /models do provedor listar.
@@ -88,9 +83,6 @@ var presets = map[string]Provider{
 	// Cloudflare não tem /models no formato OpenAI: fica a lista daqui (modelos
 	// com ferramentas em developers.cloudflare.com/workers-ai/models).
 	"cloudflare": {Upstream: "https://api.cloudflare.com/client/v4/accounts/%s/ai/v1", Models: []string{"@cf/zai-org/glm-4.7-flash"}},
-	// Um computador que empresta a IA (Ollama atrás do cmd/finanlocal e de um
-	// túnel). Sem cota de tokens; uma pergunta por vez. Endereço em FINAN_LOCAL_URL.
-	"local": {StreamUsage: true, NoTools: true}, // o Ollama manda o usage no fim do streaming quando pedido
 }
 
 // ConfigFromEnv lê a configuração das variáveis de ambiente (Cloud Run e Vercel).
@@ -100,11 +92,8 @@ var presets = map[string]Provider{
 //	GEMINI_API_KEY       chave do Gemini (Google AI Studio)
 //	CEREBRAS_API_KEY     chave da Cerebras
 //	OPENROUTER_API_KEY   chave do OpenRouter (só modelos grátis)
-//	FINAN_LOCAL_URL      endereço de um computador que empresta a IA (cmd/finanlocal), ex.: https://mac.rede.ts.net/v1
-//	FINAN_LOCAL_KEY      a chave combinada com esse computador
-//	FINAN_LOCAL_MODEL    o modelo dele (padrão qwen2.5:7b-instruct)
 //	CLOUDFLARE_API_TOKEN e CLOUDFLARE_ACCOUNT_ID: Workers AI
-//	FINAN_PROVIDERS      ordem de tentativa (padrão: groq,gemini,cerebras,openrouter,cloudflare,local)
+//	FINAN_PROVIDERS      ordem de tentativa (padrão: groq,gemini,cerebras,openrouter,cloudflare)
 //	FINAN_PROXY_MODELS   modelos do Groq em ordem, separados por vírgula
 //	FINAN_PROXY_UPSTREAM API do Groq (padrão: https://api.groq.com/openai/v1)
 //	GOOGLE_CLIENT_ID     login com Google (ID do cliente "Aplicativo da Web")
@@ -122,14 +111,13 @@ func ConfigFromEnv() (Config, error) {
 		"cerebras":   os.Getenv("CEREBRAS_API_KEY"),
 		"openrouter": os.Getenv("OPENROUTER_API_KEY"),
 		"cloudflare": os.Getenv("CLOUDFLARE_API_TOKEN"),
-		"local":      os.Getenv("FINAN_LOCAL_KEY"),
 	}
 	account := os.Getenv("CLOUDFLARE_ACCOUNT_ID")
 	var providers []Provider
 	for _, name := range strings.Split(env("FINAN_PROVIDERS", defaultProviders), ",") {
 		name = strings.TrimSpace(name)
 		p, ok := presets[name]
-		if !ok || keys[name] == "" || name == "cloudflare" && account == "" || name == "local" && os.Getenv("FINAN_LOCAL_URL") == "" ||
+		if !ok || keys[name] == "" || name == "cloudflare" && account == "" ||
 			slices.ContainsFunc(providers, func(q Provider) bool { return q.Name == name }) {
 			continue
 		}
@@ -140,14 +128,11 @@ func ConfigFromEnv() (Config, error) {
 			p.Models = strings.Split(env("FINAN_PROXY_MODELS", defaultModels), ",")
 		case "cloudflare":
 			p.Upstream = fmt.Sprintf(p.Upstream, url.PathEscape(account))
-		case "local":
-			p.Upstream = os.Getenv("FINAN_LOCAL_URL")
-			p.Models = strings.Split(env("FINAN_LOCAL_MODEL", defaultLocalModel), ",")
 		}
 		providers = append(providers, p)
 	}
 	if len(providers) == 0 {
-		return Config{}, errors.New("falta a chave de algum provedor de IA (GROQ_API_KEY, GEMINI_API_KEY, CEREBRAS_API_KEY, OPENROUTER_API_KEY ou CLOUDFLARE_API_TOKEN com CLOUDFLARE_ACCOUNT_ID, ou FINAN_LOCAL_URL com FINAN_LOCAL_KEY)")
+		return Config{}, errors.New("falta a chave de algum provedor de IA (GROQ_API_KEY, GEMINI_API_KEY, CEREBRAS_API_KEY, OPENROUTER_API_KEY ou CLOUDFLARE_API_TOKEN com CLOUDFLARE_ACCOUNT_ID)")
 	}
 	return Config{
 		Providers:          providers,
@@ -369,26 +354,11 @@ func (h *handler) chat(w http.ResponseWriter, r *http.Request) {
 			if strings.Contains(model, "gpt-oss") {
 				body["reasoning_effort"] = json.RawMessage(`"low"`) // menos tokens de raciocínio: sobra cota grátis
 			}
-			tools, choice, msgsRaw := body["tools"], body["tool_choice"], body["messages"]
-			if p.NoTools {
-				delete(body, "tools")
-				delete(body, "tool_choice")
-				body["messages"] = withoutToolsPrompt(msgsRaw)
-			}
 			delete(body, "stream_options")
 			if withUsage {
 				body["stream_options"] = json.RawMessage(`{"include_usage":true}`) // tokens no último evento
 			}
 			payload, _ := json.Marshal(body)
-			if p.NoTools { // o próximo provedor recebe o pedido inteiro
-				body["messages"] = msgsRaw
-				if tools != nil {
-					body["tools"] = tools
-				}
-				if choice != nil {
-					body["tool_choice"] = choice
-				}
-			}
 			req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, strings.TrimRight(p.Upstream, "/")+"/chat/completions", bytes.NewReader(payload))
 			if err != nil {
 				fail(w, http.StatusInternalServerError, err.Error())
@@ -670,23 +640,4 @@ func lastLive(rest []attempt, skip map[string]bool) bool {
 		}
 	}
 	return true
-}
-
-// withoutToolsPrompt tira das instruções o trecho que descreve as ferramentas
-// (vem no fim, a partir de "Ferramentas:"), para o provedor que vai sem elas.
-func withoutToolsPrompt(raw json.RawMessage) json.RawMessage {
-	var msgs []map[string]any
-	if json.Unmarshal(raw, &msgs) != nil || len(msgs) == 0 || msgs[0]["role"] != "system" {
-		return raw
-	}
-	if text, ok := msgs[0]["content"].(string); ok {
-		if i := strings.Index(text, "\n\nFerramentas:\n"); i >= 0 {
-			msgs[0]["content"] = text[:i]
-		}
-	}
-	out, err := json.Marshal(msgs)
-	if err != nil {
-		return raw
-	}
-	return out
 }
