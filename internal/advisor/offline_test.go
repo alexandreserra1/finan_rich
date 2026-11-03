@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/domain"
 	"github.com/alexandreserra1/finan_rich/internal/finance"
@@ -149,7 +150,7 @@ func TestAnswerFallsBackWhenAIFails(t *testing.T) {
 }
 
 func TestOverLimit(t *testing.T) {
-	if !OverLimit(fmt.Errorf("x: %w", &llm.APIError{Status: 429})) || OverLimit(&llm.APIError{Status: 500}) || OverLimit(errors.New("429")) {
+	if !OverLimit(fmt.Errorf("x: %w", &llm.APIError{Status: 429})) || !OverLimit(&llm.APIError{Status: 413}) || OverLimit(&llm.APIError{Status: 500}) || OverLimit(errors.New("429")) {
 		t.Error("OverLimit")
 	}
 }
@@ -196,5 +197,23 @@ func TestTeamAsksArePrepared(t *testing.T) {
 	}
 	if len(briefs) < 2 {
 		t.Errorf("o teste precisa dos resumos do time: %+v", briefs)
+	}
+}
+
+// "Quero juntar X até <mês>" é uma meta nova (não "guardar X por mês"), e
+// "guardei X" é um aporte que já aconteceu: o Tito sem IA não confunde.
+func TestTitoReadsNewGoalAndSavedMoney(t *testing.T) {
+	nov := Question{Ledger: teamLedger(), Today: time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC), Agent: "tito"}
+	nov.Text = "Quero juntar 3.000 para trocar de carro até julho de 2027"
+	got := Offline(nov)
+	wantAll(t, "meta nova", got, "R$ 3.000,00 até julho de 2027", "R$ 333,34 por mês", "9 meses")
+	if strings.Contains(got, "Guardando R$ 3.000,00 por mês") {
+		t.Errorf("leu R$ 3.000 como valor por mês:\n%s", got)
+	}
+	nov.Text = "Guardei 200 na viagem"
+	got = Offline(nov)
+	wantAll(t, "aporte", got, "Registrar aporte")
+	if strings.Contains(got, "Guardando R$ 200,00 por mês") {
+		t.Errorf("leu o aporte como valor por mês:\n%s", got)
 	}
 }

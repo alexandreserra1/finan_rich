@@ -174,6 +174,7 @@ try {
   await page.goto(`${B}/lancamentos`);
   await page.waitForSelector(".tx-card");
   await add("Pão de Açúcar antigo", "50", "Mercado · Necessidades", `${prevMonth}-10`);
+  ok(await page.locator(".flash:has-text('Lançamento salvo.')").count() === 1, "lançamento de outro mês: a tela vai para o mês dele e mantém o aviso de salvo");
   await page.goto(`${B}/lancamentos`);
   await page.waitForSelector("form[data-form=filter]");
   await page.fill("input[name=busca]", "ACUCAR");

@@ -3,7 +3,7 @@ package finance
 // EmergencyFund é a reserva de emergência recomendada: de 3 (mínimo) a 6 meses
 // (ideal) do gasto mensal médio.
 type EmergencyFund struct {
-	AvgMonthlyOutCents int64 // gasto médio por mês
+	AvgMonthlyOutCents int64 // gasto médio por mês (sem o que foi para investimentos)
 	MinCents           int64 // 3 meses de gastos
 	IdealCents         int64 // 6 meses de gastos
 	MonthlySavingCents int64 // quanto sobra por mês em média
@@ -22,7 +22,7 @@ func PlanEmergencyFund(months []Totals, pendingDebtCents int64) EmergencyFund {
 			continue
 		}
 		n++
-		totalOut += m.OutCents
+		totalOut += m.OutCents - m.InvestedCents
 		totalBalance += m.BalanceCents
 	}
 	if n == 0 {

@@ -2,6 +2,7 @@ package finance
 
 import (
 	"fmt"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -105,6 +106,7 @@ const (
 	frequentMin     = 8    // compras em 30 dias
 	frequentTicket  = 6000 // tíquete médio até R$ 60
 	paceOverPct     = 10   // ritmo 10% acima do mês passado
+	paceMinDay      = 7    // antes disso, poucos dias não dizem o ritmo: o resto do mês segue a média
 	subsTolerance   = 15   // assinatura: valor varia até 15% entre meses
 )
 
@@ -151,14 +153,19 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 		}
 		spendByMonth[mk] += t.AmountCents
 		add(byCat, t.CategoryID, mk, t.AmountCents)
-		key, name := importer.PlaceKey(t.Description)
-		add(byPlace, key, mk, t.AmountCents)
-		if placeCount[key] == nil {
-			placeCount[key], placeNames[key] = map[string]int{}, map[string]int{}
+		// Pagamento de dívida é compromisso, não escolha do dia a dia: conta como
+		// fixo e não vira "estabelecimento".
+		debtPayment := cats[t.CategoryID].Name == domain.DebtPaymentCategory
+		if !debtPayment {
+			key, _ := importer.PlaceKey(t.Description)
+			add(byPlace, key, mk, t.AmountCents)
+			if placeCount[key] == nil {
+				placeCount[key], placeNames[key] = map[string]int{}, map[string]int{}
+			}
+			placeCount[key][mk]++
+			placeNames[key][t.Description]++
 		}
-		placeCount[key][mk]++
-		placeNames[key][name]++
-		fixed := strings.HasPrefix(t.ID, "rec-")
+		fixed := strings.HasPrefix(t.ID, "rec-") || debtPayment
 		switch {
 		case mk == m.Key():
 			monthSpends = append(monthSpends, t)
@@ -196,7 +203,6 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 		dueCents += r.AmountCents
 	}
 	v.FixedCents += dueCents
-	v.ProjectedCents = v.VariableCents*int64(days)/int64(day) + v.FixedCents + futureCents
 
 	// Médias dos 3 meses anteriores (só os meses com algum lançamento).
 	months := 0
@@ -228,6 +234,12 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 			v.Avg3Pace[i] /= int64(months)
 		}
 	}
+	// Projeção: o variável no ritmo de até hoje; nos primeiros dias, o resto do
+	// mês segue a média dos meses anteriores (dois dias de gasto vezes 15 assusta à toa).
+	v.ProjectedCents = v.VariableCents*int64(days)/int64(day) + v.FixedCents + futureCents
+	if day < paceMinDay && months > 0 {
+		v.ProjectedCents = v.VariableCents + v.Avg3Pace[days-1] - v.Avg3Pace[day-1] + v.FixedCents + futureCents
+	}
 	savingsRates(&v, l, m)
 
 	// Quanto ainda cabe no mês (o "pode gastar" do PocketGuard).
@@ -251,7 +263,7 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 		}
 		name := "Outros"
 		if key != "" {
-			name = mostUsed(placeNames[key])
+			name = placeName(placeNames[key])
 		}
 		v.Places = append(v.Places, PlaceRow{Name: name, Cents: byMonth[m.Key()], Count: placeCount[key][m.Key()],
 			SharePct: pct(byMonth[m.Key()], total), Avg3Cents: avg(byMonth)})
@@ -294,7 +306,7 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 	for key, r := range recent {
 		if r[0] >= frequentMin && r[1]/r[0] <= frequentTicket {
 			c := cats[placeCats[key]]
-			v.Savings = append(v.Savings, Saving{Kind: "frequente", Title: mostUsed(placeNames[key]), MonthlyCents: r[1] / 2, Category: c.Name, Bucket: c.Bucket,
+			v.Savings = append(v.Savings, Saving{Kind: "frequente", Title: placeName(placeNames[key]), MonthlyCents: r[1] / 2, Category: c.Name, Bucket: c.Bucket,
 				Text: fmt.Sprintf("%d compras em 30 dias, %s no total (média de %s). Cortar pela metade economiza %s por mês.",
 					r[0], money.Format(r[1]), money.Format(r[1]/r[0]), money.Format(r[1]/2))})
 		}
@@ -309,7 +321,7 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 	}
 
 	// Ritmo acima do mês passado.
-	if v.LastMonthCents > 0 && v.ProjectedCents*100 > v.LastMonthCents*(100+paceOverPct) {
+	if day >= paceMinDay && v.LastMonthCents > 0 && v.ProjectedCents*100 > v.LastMonthCents*(100+paceOverPct) {
 		d := v.ProjectedCents - v.LastMonthCents
 		v.Savings = append(v.Savings, Saving{Kind: "ritmo", Title: "Gastando mais rápido que no mês passado", MonthlyCents: d,
 			Text: fmt.Sprintf("No ritmo atual, o mês fecha em %s, %s a mais que o mês passado.", money.Format(v.ProjectedCents), money.Format(d))})
@@ -370,7 +382,7 @@ func subscriptions(l domain.Ledger, m domain.Month, cats map[string]domain.Categ
 		if amounts[0]*100 < median*(100-subsTolerance) || amounts[len(amounts)-1]*100 > median*(100+subsTolerance) {
 			continue
 		}
-		out = append(out, Subscription{Name: mostUsed(names[key]), MonthlyCents: median, YearlyCents: 12 * median, Bucket: cats[placeCats[key]].Bucket})
+		out = append(out, Subscription{Name: placeName(names[key]), MonthlyCents: median, YearlyCents: 12 * median, Bucket: cats[placeCats[key]].Bucket})
 	}
 	sort.Slice(out, func(i, j int) bool { return less(out[i].MonthlyCents, out[j].MonthlyCents, out[i].Name, out[j].Name) })
 	return out
@@ -429,6 +441,26 @@ func placeCategories(l domain.Ledger) map[string]string {
 		out[key] = mostUsed(c)
 	}
 	return out
+}
+
+var installmentSuffix = regexp.MustCompile(`\s*\(\d+/\d+\)$`)
+
+// placeName é o nome de um lugar a partir das descrições dele: escrito sempre
+// igual ("Pão de Açúcar"), o nome inteiro; no extrato do cartão ("UBER *TRIP"),
+// o que vem antes do "*"; de jeitos diferentes ("IFOOD *PIZZA", "iFood
+// lanche"), só a primeira palavra, que é o estabelecimento.
+func placeName(descs map[string]int) string {
+	top := mostUsed(descs)
+	name := installmentSuffix.ReplaceAllString(top, "") // "Notebook (2/3)" → "Notebook"
+	if i := strings.IndexByte(name, '*'); i > 0 {
+		name = strings.TrimSpace(name[:i])
+	}
+	for d := range descs {
+		if f := strings.Fields(name); len(f) > 0 && importer.DescKey(d) != importer.DescKey(top) {
+			return f[0]
+		}
+	}
+	return name
 }
 
 func mostUsed(names map[string]int) string {

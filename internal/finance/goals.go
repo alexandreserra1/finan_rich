@@ -93,6 +93,6 @@ func GoalsPage(l domain.Ledger, today time.Time) GoalsOverview {
 			p.InvestPlannedCents = b.PlannedCents
 		}
 	}
-	p.ReserveCents = PlanEmergencyFund(RecentTotals(l, m, 6), 0).MinCents
+	p.ReserveCents = PlanEmergencyFund(ClosedTotals(l, m, 6), 0).MinCents
 	return p
 }

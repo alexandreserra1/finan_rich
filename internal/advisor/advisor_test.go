@@ -183,3 +183,38 @@ func TestLocalRequest(t *testing.T) {
 		t.Errorf("estabelecimentos = %d, want %d", n, maxLocalMerchants)
 	}
 }
+
+// No começo do mês, antes do salário cair, o resumo não pode dizer que a
+// pessoa estourou a divisão nem que "não sobra nada": a renda só ainda não entrou.
+func TestSnapshotBeforeSalary(t *testing.T) {
+	cat := func(id, name, bucket string) domain.Category {
+		return domain.Category{Meta: domain.Meta{ID: id, UpdatedAt: 1}, Name: name, Bucket: bucket}
+	}
+	tx := func(id, kind, cat, date string, cents int64) domain.Transaction {
+		return domain.Transaction{Meta: domain.Meta{ID: id, UpdatedAt: 1}, Kind: kind, Description: id, AmountCents: cents, CategoryID: cat, Date: date}
+	}
+	l := domain.Ledger{
+		Categories: []domain.Category{cat("sal", "Salário", domain.BucketRenda), cat("mer", "Mercado", domain.BucketNecessidades),
+			cat("inv", "Investimentos", domain.BucketInvestimentos), cat("pd", domain.DebtPaymentCategory, domain.BucketNecessidades)},
+		Transactions: []domain.Transaction{
+			tx("s", domain.KindEntrada, "sal", "2026-10-05", 680000),
+			tx("m", domain.KindSaida, "mer", "2026-10-08", 436235),
+			tx("i", domain.KindSaida, "inv", "2026-10-07", 120000),
+			tx("n", domain.KindSaida, "mer", "2026-11-01", 104000),
+			tx("p", domain.KindSaida, "pd", "2026-11-02", 30000),
+		},
+		Recurring: []domain.Recurring{{Meta: domain.Meta{ID: "r", UpdatedAt: 1}, Kind: domain.KindEntrada, Description: "Salário", AmountCents: 600000, CategoryID: "sal", Day: 5, Start: "2026-11"}},
+		Debts:     []domain.Debt{{Meta: domain.Meta{ID: "d", UpdatedAt: 1}, Name: "Cartão", BalanceCents: 280000, MonthlyRateBP: 1200, MinPaymentCents: 25000}},
+	}
+	s := Snapshot(BuildFacts(l, time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC)))
+	for _, bad := range []string{"passou R$", "é preciso cortar gastos", "Hoje não sobra dinheiro"} {
+		if strings.Contains(s, bad) {
+			t.Errorf("antes do salário, o resumo diz %q:\n%s", bad, s)
+		}
+	}
+	for _, want := range []string{"a renda deste mês ainda não entrou", "Gasto médio por mês: R$ 4.362,35"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("faltou %q:\n%s", want, s)
+		}
+	}
+}

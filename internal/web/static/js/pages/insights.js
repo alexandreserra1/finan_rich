@@ -110,7 +110,8 @@ export function render({ ledger, params }) {
         : `sobram ${m(v.freeCents)} até o fim do mês${v.incomeEstimated ? " (renda estimada pela média)" : ""}`, { extra: "perday", cls: v.freeCents < 0 ? "neg" : "" })}
       ${metric("Gastos variáveis até hoje", m(v.variableCents), "sem investimentos e contas fixas")}
       ${metric("Projeção do mês", m(v.projectedCents), `com ${m(v.fixedCents)} de contas fixas${v.lastMonthCents ? ` · mês passado: ${m(v.lastMonthCents)}` : ""}`)}
-      ${metric("Taxa de economia", v.incomeCents ? `${v.savingsPct}%` : "—", v.incomeCents ? `média ${v.savingsAvgPct}% · meta da divisão ${v.savingsTargetPct}%` : "lance a renda do mês para calcular", { primary: true })}
+      ${metric("Taxa de economia", v.incomeCents && !v.incomeEstimated ? `${v.savingsPct}%` : "—", v.incomeCents && !v.incomeEstimated
+        ? `média ${v.savingsAvgPct}% · meta da divisão ${v.savingsTargetPct}%` : `a renda deste mês ainda não entrou${v.savingsAvgPct ? ` · média ${v.savingsAvgPct}%` : ""}`, { primary: true })}
     </section>
     <p class="tip info ins-compare">${refDay
       ? html`<b>Comparação com ${refText}:</b> até o dia ${v.day}, ${m(refDay)} de gastos variáveis. Neste mês, ${m(Math.abs(vsRef))} ${vsRef > 0 ? "a mais" : "a menos"}. `

@@ -2,6 +2,7 @@ package finance
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -51,5 +52,16 @@ func TestDiagnoseEmpty(t *testing.T) {
 	d := Diagnose(domain.Ledger{}, time.Date(2026, 10, 15, 0, 0, 0, 0, time.UTC))
 	if d.Costliest != nil || d.TopCategory != nil || len(d.Levers) != 0 {
 		t.Errorf("vazio = %+v", d)
+	}
+}
+
+// Com um mês fechado só, o texto fala no singular.
+func TestDiagnoseOneClosedMonth(t *testing.T) {
+	l := ledger(tx(domain.KindEntrada, "sal", 600000, "2026-10-05"), tx(domain.KindSaida, "mer", 100000, "2026-10-06"))
+	l.Debts = []domain.Debt{{Meta: domain.Meta{ID: "d", UpdatedAt: 1}, Name: "Cartão", BalanceCents: 100000, MonthlyRateBP: 1000, MinPaymentCents: 20000}}
+	for _, lv := range Diagnose(l, time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC)).Levers {
+		if lv.Kind == "sobra" && !strings.HasPrefix(lv.Text, "No último mês sobraram R$ 5.000,00") {
+			t.Errorf("texto = %q", lv.Text)
+		}
 	}
 }

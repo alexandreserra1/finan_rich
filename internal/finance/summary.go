@@ -131,11 +131,12 @@ func summarize(l domain.Ledger, in func(date string) bool) Summary {
 
 // Totals são os totais de um mês.
 type Totals struct {
-	Month        domain.Month `json:"-"`
-	Key          string       `json:"month"` // "2026-10"
-	InCents      int64        `json:"inCents"`
-	OutCents     int64        `json:"outCents"`
-	BalanceCents int64        `json:"balanceCents"`
+	Month         domain.Month `json:"-"`
+	Key           string       `json:"month"` // "2026-10"
+	InCents       int64        `json:"inCents"`
+	OutCents      int64        `json:"outCents"`
+	BalanceCents  int64        `json:"balanceCents"`
+	InvestedCents int64        `json:"investedCents"` // das saídas, quanto foi para Investimentos
 }
 
 // YearTotals devolve entradas e saídas de cada um dos 12 meses do ano.
@@ -145,6 +146,7 @@ func YearTotals(l domain.Ledger, year int) []Totals {
 		out[i].Month = domain.NewMonth(year, time.Month(i+1))
 		out[i].Key = out[i].Month.Key()
 	}
+	cats := l.CategoryIndex()
 	for _, t := range l.Transactions { // soma: a ordem não importa (ActiveTransactions copia e ordena tudo)
 		if t.Deleted {
 			continue
@@ -158,12 +160,24 @@ func YearTotals(l domain.Ledger, year int) []Totals {
 			m.InCents += t.AmountCents
 		} else {
 			m.OutCents += t.AmountCents
+			if cats[t.CategoryID].Bucket == domain.BucketInvestimentos {
+				m.InvestedCents += t.AmountCents
+			}
 		}
 	}
 	for i := range out {
 		out[i].BalanceCents = out[i].InCents - out[i].OutCents
 	}
 	return out
+}
+
+// ClosedTotals são os meses fechados com movimento (os n antes de m), para
+// médias que o mês pela metade distorceria; conta nova, só com o mês m, usa ele.
+func ClosedTotals(l domain.Ledger, m domain.Month, n int) []Totals {
+	if closed := RecentTotals(l, m.Prev(), n-1); len(closed) > 0 {
+		return closed
+	}
+	return RecentTotals(l, m, 0)
 }
 
 // RecentTotals devolve os meses com movimento entre (m - n meses) e m, inclusive.

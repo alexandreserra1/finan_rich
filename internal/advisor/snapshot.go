@@ -29,7 +29,7 @@ func BuildFacts(l domain.Ledger, today time.Time) Facts {
 	}
 	return Facts{
 		Today: today, Month: sum, Recent: recent, Debts: debts, Plan: plan,
-		Emergency: finance.PlanEmergencyFund(all, plan.PendingMinCents),
+		Emergency: finance.PlanEmergencyFund(finance.ClosedTotals(l, m, 6), plan.PendingMinCents), // o mês pela metade distorce a média
 		Notes:     notes,
 		Goals:     finance.Goals(l, today),
 		Recurring: l.ActiveRecurring(),
@@ -89,13 +89,21 @@ func Snapshot(f Facts) string {
 	fmt.Fprintf(&b, "## Mês atual (%s)\n", sum.Month.Label())
 	fmt.Fprintf(&b, "- Entradas: %s\n- Saídas lançadas: %s\n- Sobra do mês (entradas - saídas lançadas): %s\n",
 		brl(sum.InCents), brl(sum.OutCents), brl(sum.BalanceCents()))
-	b.WriteString("\nDivisão do salário (planejado x realizado):\n")
-	for _, l := range sum.Buckets {
-		fmt.Fprintf(&b, "- %s: meta %d%% = %s; gasto %s (%d%% da meta); ", l.Bucket, l.Pct, brl(l.PlannedCents), brl(l.SpentCents), l.UsedPct())
-		if l.RemainingCents() < 0 {
-			fmt.Fprintf(&b, "passou %s da meta\n", brl(-l.RemainingCents()))
-		} else {
-			fmt.Fprintf(&b, "ainda cabem %s\n", brl(l.RemainingCents()))
+	if sum.InCents == 0 { // começo do mês: sem renda, toda meta seria R$ 0 e qualquer gasto "passaria"
+		spent := make([]string, len(sum.Buckets))
+		for i, l := range sum.Buckets {
+			spent[i] = l.Bucket + " " + brl(l.SpentCents)
+		}
+		fmt.Fprintf(&b, "\nDivisão do salário: a renda deste mês ainda não entrou, então ainda não dá para comparar com a meta. Gasto por grupo até agora: %s.\n", strings.Join(spent, ", "))
+	} else {
+		b.WriteString("\nDivisão do salário (planejado x realizado):\n")
+		for _, l := range sum.Buckets {
+			fmt.Fprintf(&b, "- %s: meta %d%% = %s; gasto %s (%d%% da meta); ", l.Bucket, l.Pct, brl(l.PlannedCents), brl(l.SpentCents), l.UsedPct())
+			if l.RemainingCents() < 0 {
+				fmt.Fprintf(&b, "passou %s da meta\n", brl(-l.RemainingCents()))
+			} else {
+				fmt.Fprintf(&b, "ainda cabem %s\n", brl(l.RemainingCents()))
+			}
 		}
 	}
 	if len(sum.Categories) > 0 {
@@ -180,7 +188,7 @@ func Snapshot(f Facts) string {
 		}
 	}
 
-	writeMonthPlan(&b, f.Plan)
+	writeMonthPlan(&b, f.Plan, f.Month.InCents == 0)
 
 	if len(f.Goals) > 0 {
 		b.WriteString("\n## Metas do usuário\n")
@@ -286,7 +294,7 @@ func clip(s string, n int) string {
 }
 
 // writeMonthPlan descreve para onde vai o dinheiro do mês, com as contas feitas.
-func writeMonthPlan(b *strings.Builder, p finance.MonthPlan) {
+func writeMonthPlan(b *strings.Builder, p finance.MonthPlan, noIncome bool) {
 	if p.PendingMinCents == 0 && p.Target == nil {
 		return
 	}
@@ -296,6 +304,10 @@ func writeMonthPlan(b *strings.Builder, p finance.MonthPlan) {
 		fmt.Fprintf(b, "- Pagamentos de dívidas já lançados: %s\n", brl(p.DebtPaidCents))
 	}
 	fmt.Fprintf(b, "- Parcelas mínimas que ainda faltam pagar este mês (não estão nas saídas): %s\n", brl(p.PendingMinCents))
+	if noIncome {
+		b.WriteString("- A renda deste mês ainda não entrou: a sobra livre do mês ainda não dá para calcular\n")
+		return
+	}
 	fmt.Fprintf(b, "- Sobra livre depois de pagar as parcelas mínimas: %s - %s = %s\n",
 		brl(p.SurplusCents), brl(p.PendingMinCents), brl(p.FreeCents))
 	switch {

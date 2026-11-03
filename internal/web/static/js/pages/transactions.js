@@ -316,7 +316,10 @@ export function bind(root, ctx) {
       } else {
         await ctx.save("transaction", base, "Lançamento salvo.");
       }
-      if (!base.date.startsWith(ctx.month)) ctx.go(`/lancamentos?mes=${base.date.slice(0, 7)}`);
+      if (!base.date.startsWith(ctx.month)) {
+        ctx.go(`/lancamentos?mes=${base.date.slice(0, 7)}`);
+        ctx.flash(parts > 1 ? `Compra parcelada em ${parts}x salva.` : "Lançamento salvo."); // trocar de mês redesenha a tela e apagaria o aviso
+      }
     } catch (err) {
       ctx.error(err);
     }

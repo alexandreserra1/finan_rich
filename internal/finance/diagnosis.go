@@ -60,8 +60,12 @@ func Diagnose(l domain.Ledger, today time.Time) Diagnosis {
 			sum += t.BalanceCents
 		}
 		if avg := sum / int64(len(recent)); avg > 0 {
+			text := fmt.Sprintf("Nos últimos %d meses sobraram em média %s por mês", len(recent), money.Format(avg))
+			if len(recent) == 1 {
+				text = "No último mês sobraram " + money.Format(avg)
+			}
 			d.Levers = append(d.Levers, Lever{Kind: "sobra", Title: "Sobra dos últimos meses", MonthlyCents: avg,
-				Text: fmt.Sprintf("Nos últimos %d meses sobraram em média %s por mês (entradas menos saídas). Pôr parte disso nas dívidas acelera o plano.", len(recent), money.Format(avg))})
+				Text: text + " (entradas menos saídas). Pôr parte disso nas dívidas acelera o plano."})
 		}
 	}
 

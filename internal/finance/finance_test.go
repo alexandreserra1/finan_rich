@@ -151,6 +151,30 @@ func TestPlanEmergencyFund(t *testing.T) {
 	if PlanEmergencyFund(nil, 0) != (EmergencyFund{}) {
 		t.Error("sem dados deve ser zero")
 	}
+	// Investir não é gasto: a reserva cobre o custo de vida.
+	if inv := PlanEmergencyFund([]Totals{{InCents: 450000, OutCents: 400000, InvestedCents: 50000, BalanceCents: 50000}}, 0); inv.AvgMonthlyOutCents != 350000 {
+		t.Errorf("investimento contou como gasto: %+v", inv)
+	}
+}
+
+// A reserva sugerida usa os meses fechados: o mês corrente ainda está pela
+// metade (o salário pode nem ter entrado) e puxaria a média para baixo.
+func TestReserveUsesClosedMonths(t *testing.T) {
+	l := ledger(
+		tx(domain.KindEntrada, "sal", 680000, "2026-10-05"),
+		tx(domain.KindSaida, "mor", 436235, "2026-10-06"),
+		tx(domain.KindSaida, "inv", 120000, "2026-10-07"),
+		tx(domain.KindSaida, "mer", 134000, "2026-11-01"),
+	)
+	got := GoalsPage(l, time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC)).ReserveCents
+	if got != 3*436235 {
+		t.Errorf("reserva = %d, want %d (3 x os gastos de outubro, sem o investimento)", got, 3*436235)
+	}
+	// Conta nova, só com o mês corrente: usa o que tem.
+	l = ledger(tx(domain.KindSaida, "mer", 100000, "2026-11-01"))
+	if got := GoalsPage(l, time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC)).ReserveCents; got != 300000 {
+		t.Errorf("conta nova: reserva = %d, want 300000", got)
+	}
 }
 
 func TestPlanMonth(t *testing.T) {

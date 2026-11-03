@@ -38,7 +38,11 @@ func insightsLedger() domain.Ledger {
 	}
 	tx("sal-out", domain.KindEntrada, "Salário", 500000, "sal", "2026-10-05")
 	for i := 1; i <= 10; i++ {
-		tx(fmt.Sprintf("if-out-%d", i), domain.KindSaida, "iFood pedido", 5000, "res", fmt.Sprintf("2026-10-%02d", i))
+		desc := "iFood pedido"
+		if i > 8 {
+			desc = "IFOOD *LANCHE" // o mesmo lugar escrito de outro jeito: o nome fica só "iFood"
+		}
+		tx(fmt.Sprintf("if-out-%d", i), domain.KindSaida, desc, 5000, "res", fmt.Sprintf("2026-10-%02d", i))
 	}
 	tx("nf-out", domain.KindSaida, "NETFLIX.COM", 5590, "laz", "2026-10-10")
 	tx("uber", domain.KindSaida, "Uber *Trip", 2500, "tra", "2026-10-12")
@@ -64,6 +68,9 @@ func TestInsights(t *testing.T) {
 	check("por dia", v.PerDayCents, (500000-100000-58090-150000)/17)
 	if len(v.Pace) != 15 || v.Pace[14] != 58090 || v.Pace[0] != 5000 || len(v.LastPace) != 30 {
 		t.Errorf("ritmo = %v (mês passado %d dias)", v.Pace, len(v.LastPace))
+	}
+	if len(v.Places) != 3 || v.Places[2].Name != "Uber" { // "Uber *Trip": no extrato do cartão, a loja vem antes do "*"
+		t.Errorf("lugares = %+v", v.Places)
 	}
 	if len(v.Places) != 3 || v.Places[0].Name != "iFood" || v.Places[0].Cents != 50000 || v.Places[0].Count != 10 || v.Places[0].Avg3Cents != 30000 {
 		t.Errorf("lugares = %+v", v.Places)
@@ -133,5 +140,52 @@ func TestInsightsAvgPaceAndSavingsRate(t *testing.T) {
 	}
 	if v.SavingsPct != 88 || v.SavingsAvgPct != 62 || v.SavingsTargetPct != 20 {
 		t.Errorf("taxa = %d, média = %d, meta = %d", v.SavingsPct, v.SavingsAvgPct, v.SavingsTargetPct)
+	}
+}
+
+// Começo do mês (dia 2): dois dias não dizem como o mês fecha. A projeção segue
+// a média dos meses anteriores para o resto do mês, não sugere "ritmo", e o
+// pagamento de dívida é fixo (nem ritmo, nem estabelecimento).
+func TestInsightsEarlyMonth(t *testing.T) {
+	m := func(id string) domain.Meta { return domain.Meta{ID: id, UpdatedAt: 1} }
+	l := domain.Ledger{Categories: []domain.Category{
+		{Meta: m("sal"), Name: "Salário", Bucket: domain.BucketRenda},
+		{Meta: m("mer"), Name: "Mercado", Bucket: domain.BucketNecessidades},
+		{Meta: m("pd"), Name: domain.DebtPaymentCategory, Bucket: domain.BucketNecessidades},
+	}}
+	tx := func(id, kind, desc string, cents int64, cat, date string) {
+		l.Transactions = append(l.Transactions, domain.Transaction{Meta: m(id), Kind: kind, Description: desc, AmountCents: cents, CategoryID: cat, Date: date})
+	}
+	tx("s", domain.KindEntrada, "Salário", 600000, "sal", "2026-10-05")
+	tx("o1", domain.KindSaida, "Pão de Açúcar", 10000, "mer", "2026-10-01") // outubro: R$ 100 no dia 1 e R$ 2.900 no resto
+	tx("o2", domain.KindSaida, "Pão de Açúcar", 290000, "mer", "2026-10-20")
+	tx("n1", domain.KindSaida, "Pão de Açúcar", 64000, "mer", "2026-11-01")
+	tx("n2", domain.KindSaida, "Pagamento: Cartão", 30000, "pd", "2026-11-02")
+	tx("p1", domain.KindSaida, "Notebook (1/3)", 40000, "mer", "2026-10-20")
+	tx("p2", domain.KindSaida, "Notebook (2/3)", 40000, "mer", "2026-11-20") // parcela agendada para depois de hoje
+
+	v := Insights(l, time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC))
+	if v.VariableCents != 64000 || v.FixedCents != 30000 {
+		t.Errorf("variável %d, fixo %d: o pagamento de dívida é fixo", v.VariableCents, v.FixedCents)
+	}
+	// R$ 640 até hoje + o que outubro gastou depois do dia 2 (R$ 2.900 + a parcela
+	// de R$ 400) + fixos + a parcela agendada de novembro.
+	if want := int64(64000 + 290000 + 40000 + 30000 + 40000); v.ProjectedCents != want {
+		t.Errorf("projeção = %d, want %d", v.ProjectedCents, want)
+	}
+	for _, s := range v.Savings {
+		if s.Kind == "ritmo" {
+			t.Errorf("no dia 2 não dá para falar de ritmo: %+v", s)
+		}
+	}
+	for _, p := range v.Places {
+		if p.Cents == 30000 {
+			t.Errorf("pagamento de dívida virou estabelecimento: %+v", p)
+		}
+	}
+	// Sempre escrito igual, o lugar aparece com o nome inteiro (não só "Pão");
+	// a compra parcelada, sem o "(2/3)".
+	if len(v.Places) != 2 || v.Places[0].Name != "Pão de Açúcar" || v.Places[1].Name != "Notebook" {
+		t.Errorf("estabelecimentos = %+v", v.Places)
 	}
 }

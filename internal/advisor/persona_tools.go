@@ -3,6 +3,7 @@ package advisor
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -366,6 +367,29 @@ func questionMoney(q string) string {
 
 var daysRe = regexp.MustCompile(`(\d+)\s*dias`)
 
+// savedRe: o verbo no passado ("guardei", "juntei") diz que o dinheiro já foi guardado.
+var savedRe = regexp.MustCompile(`\b(guardei|juntei|depositei|apliquei|coloquei|separei)\b`)
+
+var monthRe = regexp.MustCompile(`\b(janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)(?:\s*(?:de|/)?\s*(\d{4}))?\b`)
+
+// questionMonth: o mês citado na pergunta (já sem acentos), "AAAA-MM"; sem o
+// ano, a próxima vez que esse mês chega (o atual conta). "" se não tiver mês.
+func questionMonth(q string, today time.Time) string {
+	m := monthRe.FindStringSubmatch(q)
+	if m == nil {
+		return ""
+	}
+	names := []string{"janeiro", "fevereiro", "marco", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"}
+	month := slices.Index(names, m[1]) + 1
+	year := today.Year()
+	if m[2] != "" {
+		year, _ = strconv.Atoi(m[2])
+	} else if month < int(today.Month()) {
+		year++
+	}
+	return fmt.Sprintf("%04d-%02d", year, month)
+}
+
 // prefetch é a conta principal do personagem para esta pergunta ("" quando o
 // assunto é o mês todo: o retrato já tem os números).
 func prefetch(agent string, t *Tools, question string) string {
@@ -405,9 +429,35 @@ func prefetch(agent string, t *Tools, question string) string {
 		if len(named) > 0 {
 			goals = named
 		}
+		value, until := questionMoney(question), questionMonth(q, t.today)
+		// "Quero juntar 3.000 até julho": meta nova, com o prazo da pergunta.
+		if until != "" && value != "" && len(named) == 0 {
+			if cents, err := money.Parse(value); err == nil && cents > 0 {
+				months, per, late := finance.GoalPlan(cents, until, t.today)
+				if !late {
+					return fmt.Sprintf("Para juntar %s até %s: guarde %s por mês durante %s. Crie a meta na tela Metas (ou peça aqui) para acompanhar.",
+						money.Format(cents), domain.ParseMonth(until).Label(), money.Format(per), finance.Meses(months))
+				}
+			}
+		}
+		// "Guardei 200": o dinheiro já foi guardado; não é um valor por mês.
+		saved := value != "" && savedRe.MatchString(q)
+		if saved {
+			value = ""
+		}
+		if len(named) == 0 {
+			until = "" // o prazo citado vale para a meta citada
+		}
 		var out []string
 		for _, g := range goals {
-			out = append(out, t.simulateGoal(g, "", questionMoney(question)))
+			if until != "" {
+				out = append(out, t.simulateGoal(g, until, ""))
+			} else {
+				out = append(out, t.simulateGoal(g, "", value))
+			}
+		}
+		if saved {
+			out = append(out, "Para somar esse dinheiro na meta, use \"Registrar aporte\" no cartão dela, na tela Metas.")
 		}
 		return strings.Join(out, "\n\n")
 	case "lia":
