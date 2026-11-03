@@ -99,7 +99,11 @@ func Offline(q Question) string {
 	case "otavio":
 		switch otavioTopic(q.Text) {
 		case "dividas":
-			return "**Plano das dívidas**\n\n" + bullets(prefetch(id, t, q.Text))
+			plan := "**Plano das dívidas**\n\n" + bullets(prefetch(id, t, q.Text))
+			if strings.Contains(fold(q.Text), "paguei") { // o pagamento já aconteceu: falta registrar
+				return "Para baixar o saldo, use \"Registrar pagamento\" no cartão da dívida, na tela Dívidas.\n\n" + plan
+			}
+			return plan
 		case "vencimentos":
 			return bullets(prefetch(id, t, q.Text))
 		}
@@ -123,7 +127,7 @@ func otavioTopic(text string) string {
 			return "vencimentos"
 		}
 	}
-	if finance.Route(text) == "otavio" || strings.Contains(f, "pagar") || strings.Contains(f, "a mais") {
+	if finance.Route(text) == "otavio" || strings.Contains(f, "pagar") || strings.Contains(f, "paguei") || strings.Contains(f, "a mais") {
 		return "dividas"
 	}
 	return ""
@@ -162,6 +166,9 @@ func titoOffline(t *Tools, q Question) string {
 	}
 	if len(parts) == 0 {
 		return "Nenhuma meta em andamento. Crie uma na tela Metas e eu digo quanto guardar por mês."
+	}
+	if savedRe.MatchString(fold(q.Text)) && questionMoney(q.Text) != "" { // "guardei 200": falta registrar
+		parts = append([]string{"Para somar esse dinheiro na meta, use \"Registrar aporte\" no cartão dela, na tela Metas."}, parts...)
 	}
 	return strings.Join(parts, "\n\n")
 }

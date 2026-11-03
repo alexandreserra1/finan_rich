@@ -456,9 +456,6 @@ func prefetch(agent string, t *Tools, question string) string {
 				out = append(out, t.simulateGoal(g, "", value))
 			}
 		}
-		if saved {
-			out = append(out, "Para somar esse dinheiro na meta, use \"Registrar aporte\" no cartão dela, na tela Metas.")
-		}
 		return strings.Join(out, "\n\n")
 	case "lia":
 		return t.findings() + "\n\n" + t.compareMonths("", "")

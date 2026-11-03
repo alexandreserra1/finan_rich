@@ -126,3 +126,30 @@ func TestSnapshotFor(t *testing.T) {
 		t.Logf("%s: %d de %d bytes", agent, len(s), len(full))
 	}
 }
+
+// Achados da IA grátis na auditoria: a meta "juntar 3.000 até julho" saiu com o
+// valor por mês como total, e a IA inventou botões. A ferramenta e as
+// instruções dizem o que é o valor e quais botões existem.
+func TestPromptsNameRealActions(t *testing.T) {
+	var goal string
+	for _, d := range allTools() {
+		if d.Name == "criar_meta" {
+			b, _ := json.Marshal(d)
+			goal = string(b)
+		}
+	}
+	if !strings.Contains(goal, "total") || !strings.Contains(goal, "não o valor por mês") {
+		t.Errorf("criar_meta não explica que o valor é o total: %s", goal)
+	}
+	for _, want := range []string{"Registrar pagamento", "Registrar aporte", "Nunca invente botões"} {
+		if !strings.Contains(SystemPrompt, want) {
+			t.Errorf("instruções sem %q", want)
+		}
+	}
+	if !strings.Contains(persona("lia").Voice, "Otávio") || !strings.Contains(persona("lia").Voice, "dívida") {
+		t.Error("a Lia não passa dívidas para o Otávio")
+	}
+	if !strings.Contains(persona("tito").Voice, "registrar_aporte") {
+		t.Error("o Tito não sabe quando usar registrar_aporte")
+	}
+}

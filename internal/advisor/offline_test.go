@@ -217,3 +217,9 @@ func TestTitoReadsNewGoalAndSavedMoney(t *testing.T) {
 		t.Errorf("leu o aporte como valor por mês:\n%s", got)
 	}
 }
+
+// "Paguei X na dívida" sem IA: o Otávio aponta onde registrar e mostra o plano.
+func TestOtavioReadsPayment(t *testing.T) {
+	got := Offline(offlineQ("otavio", "Paguei 200 reais no Cartão hoje"))
+	wantAll(t, "pagamento", got, "Registrar pagamento", "Cartão → Empréstimo")
+}

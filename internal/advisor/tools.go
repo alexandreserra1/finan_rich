@@ -111,7 +111,7 @@ func baseTools() []llm.Tool {
 		tool("criar_meta", "Prepara uma meta de economia para o usuário confirmar.",
 			`{"type":"object","properties":{
 				"nome":{"type":"string","description":"ex.: Viagem, Reserva de emergência"},
-				"valor":{"type":"string","description":"quanto juntar, em reais"},
+				"valor":{"type":"string","description":"o total que a pessoa quer juntar, em reais (ex.: 3000 em \"juntar 3 mil até julho\"); não o valor por mês"},
 				"prazo":{"type":"string","description":"AAAA-MM (opcional)"},
 				"ja_guardado":{"type":"string","description":"quanto já tem guardado, em reais (opcional)"}},
 				"required":["nome","valor"]}`),
