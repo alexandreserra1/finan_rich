@@ -87,7 +87,7 @@ async function round() {
   }
   state.pending = (await pending()).length;
   state.notice = notices.join(" ");
-  state.message = unsupported.size ? "Atualize a Rich do computador para sincronizar as notas." : "";
+  state.message = unsupported.size ? `Atualize a Rich do computador para sincronizar ${[...unsupported].map((t) => ({ note: "as notas", transfer: "as transferências" })[t] || "tudo").join(" e ")}.` : "";
   return changed;
 }
 

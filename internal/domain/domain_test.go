@@ -215,3 +215,34 @@ func TestAccountValidate(t *testing.T) {
 		t.Errorf("conta = %s, %v", data, err)
 	}
 }
+
+func TestTransferValidate(t *testing.T) {
+	ok := Transfer{Meta: Meta{ID: "t", UpdatedAt: 1}, FromAccountID: "a", ToAccountID: "b", AmountCents: 100, Date: "2026-10-05"}
+	if err := ok.Validate(); err != nil {
+		t.Fatalf("válida: %v", err)
+	}
+	for name, mut := range map[string]func(*Transfer){
+		"mesma conta":     func(x *Transfer) { x.ToAccountID = "a" },
+		"sem origem":      func(x *Transfer) { x.FromAccountID = "" },
+		"sem destino":     func(x *Transfer) { x.ToAccountID = "" },
+		"valor zero":      func(x *Transfer) { x.AmountCents = 0 },
+		"data inválida":   func(x *Transfer) { x.Date = "ontem" },
+		"conta enorme":    func(x *Transfer) { x.FromAccountID = strings.Repeat("x", 65) },
+		"descrição longa": func(x *Transfer) { x.Description = strings.Repeat("x", 121) },
+	} {
+		bad := ok
+		mut(&bad)
+		if bad.Validate() == nil {
+			t.Errorf("%s: deveria ser recusada", name)
+		}
+	}
+	gone := Transfer{Meta: Meta{ID: "t", UpdatedAt: 2, Deleted: true}}
+	if err := gone.Validate(); err != nil {
+		t.Errorf("apagada vale sem os campos: %v", err)
+	}
+	// Passa pelo mesmo caminho da sincronização.
+	raw := []byte(`{"id":"t","updatedAt":1,"fromAccountId":"a","toAccountId":"b","amountCents":100,"date":"2026-10-05","extra":"x"}`)
+	if meta, data, err := DecodeRecord(TypeTransfer, raw); err != nil || meta.ID != "t" || strings.Contains(string(data), "extra") {
+		t.Errorf("DecodeRecord = %+v %s %v", meta, data, err)
+	}
+}

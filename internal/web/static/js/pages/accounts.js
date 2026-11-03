@@ -17,6 +17,8 @@ const ICON = {
   chevron: svg("M9 18l6-6-6-6"),
   pencil: svg("M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4"),
   close: svg("M18 6L6 18M6 6l12 12"),
+  swap: svg("M7 7h13M16 3l4 4-4 4M17 17H4M8 13l-4 4 4 4"),
+  trash: svg("M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"),
 };
 
 const CHIP = raw('<svg class="rc-chip" viewBox="0 0 52 40" aria-hidden="true"><rect x="1" y="1" width="50" height="38" rx="8" fill="#dac994" stroke="#b4a16a"/><path d="M18 1v11H1m50 0H34V1M18 39V28H1m50 0H34v11M18 12h16v16H18zM1 20h17m16 0h17" fill="none" stroke="#998752"/></svg>');
@@ -25,12 +27,15 @@ const ddmm = (date) => `${date.slice(8, 10)}/${date.slice(5, 7)}`;
 // signedInput mostra centavos com sinal no campo ("-350,00").
 const signedInput = (c) => (c < 0 ? "-" : "") + centsInput(Math.abs(c));
 
-function invoiceBlock(title, inv, m) {
-  return html`<div class="invoice ${inv.closed ? "closed" : ""}">
+// invoiceBlock é uma fatura; a fechada e ainda não paga ganha o "Pagar fatura".
+function invoiceBlock(title, inv, m, cardId) {
+  const due = inv.closed && !inv.paid && inv.totalCents > inv.paidCents;
+  return html`<div class="invoice ${inv.closed ? "closed" : ""} ${inv.paid ? "paid" : ""}">
     <div class="invoice-top"><span>${title} · <strong>${inv.label}</strong></span>
-      <span class="goal-chip ${inv.closed ? "warn" : "plain"}">${inv.closed ? "Fechada · pagar" : "Aberta"}</span></div>
+      <span class="goal-chip ${inv.paid ? "pos" : inv.closed ? "warn" : "plain"}">${inv.paid ? "Paga" : inv.closed ? "Fechada · pagar" : "Aberta"}</span></div>
     <strong class="invoice-total">${m(inv.totalCents)}</strong>
-    <span class="small muted">${inv.closed ? "fechou" : "fecha"} ${ddmm(inv.closingDate)} · vence ${ddmm(inv.dueDate)}</span>
+    <span class="small muted">${inv.closed ? "fechou" : "fecha"} ${ddmm(inv.closingDate)} · vence ${ddmm(inv.dueDate)}${inv.paidCents && !inv.paid ? ` · pago ${m(inv.paidCents)}` : ""}</span>
+    ${due ? html`<button type="button" class="small-btn invoice-pay" data-pay-invoice="${cardId}" data-amount="${inv.totalCents - inv.paidCents}" data-label="${inv.label}">Pagar fatura</button>` : ""}
     ${inv.items.length ? html`<details class="invoice-items"><summary>${inv.items.length} ${inv.items.length === 1 ? "lançamento" : "lançamentos"}${ICON.chevron}</summary>
       <ul class="plain">${inv.items.map((t) => html`<li class="row"><span>${t.description} <small class="muted">${ddmm(t.date)}</small></span>
         <span class="${t.kind === "entrada" ? "pos" : ""}">${t.kind === "entrada" ? "−" : ""}${m(t.amountCents)}</span></li>`)}</ul>
@@ -87,6 +92,31 @@ export function bindNetWorth(root) {
   });
 }
 
+// transferForm: mandar dinheiro de uma conta para outra (também é o "Pagar fatura").
+function transferForm(accounts) {
+  const opts = (sel) => accounts.map((a) => html`<option value="${a.id}" ${a.id === sel ? "selected" : ""}>${a.name}</option>`);
+  return html`<div class="modal" id="transfer-modal" hidden>
+    <div class="modal-scrim" data-close></div>
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="transfer-title">
+      <form data-form="transfer" class="modal-form" novalidate>
+        <div class="modal-head"><h2 id="transfer-title">Transferir entre contas</h2><button type="button" class="icon-btn" data-close aria-label="Fechar">${ICON.close}</button></div>
+        <label class="field">Valor
+          <span class="amount-field"><span>R$</span><input name="amount" inputmode="decimal" placeholder="0,00" autocomplete="off" autofocus></span>
+          <span class="field-error" data-error="amount" hidden></span></label>
+        <div class="field-grid">
+          <label class="field">De <select name="from">${opts(accounts.find((a) => a.kind !== "cartao")?.id)}</select></label>
+          <label class="field">Para <select name="to">${opts(accounts.find((a) => a.kind === "cartao")?.id)}</select></label>
+          <label class="field">Data <input type="date" name="date" value="${today()}"></label>
+          <label class="field">Descrição <input name="description" maxlength="120" placeholder="Ex.: Pagamento da fatura" autocomplete="off"></label>
+        </div>
+        <span class="field-error" data-error="to" hidden></span>
+        <p class="small muted">Transferência não é gasto nem entrada: só muda o saldo das duas contas. No cartão, pagar a fatura tira o valor do "em aberto" (o gasto já contou na compra).</p>
+        <div class="modal-foot"><span class="spacer"></span><button type="button" class="secondary" data-close>Cancelar</button><button type="submit">Transferir</button></div>
+      </form>
+    </div>
+  </div>`;
+}
+
 function accountForm() {
   return html`<div class="modal" id="account-modal" hidden>
     <div class="modal-scrim" data-close></div>
@@ -139,6 +169,8 @@ export function render({ ledger }) {
   const cards = v.accounts.filter((a) => a.kind === "cartao");
   const plain = v.accounts.filter((a) => a.kind !== "cartao");
   const net = finance.netWorth(ledger, today()).at(-1).netCents;
+  const names = Object.fromEntries(ledger.accounts.map((a) => [a.id, a.name]));
+  const transfers = (ledger.transfers || []).filter((t) => !t.deleted).sort((a, b) => b.date.localeCompare(a.date) || b.updatedAt - a.updatedAt).slice(0, 8);
   return html`${head}
     <section class="cards metricgrid three acct-kpis">
       ${metric("Saldo das contas", m(v.accountsCents), `${plain.length} ${plain.length === 1 ? "conta" : "contas"}, sem os cartões`, { cls: v.accountsCents < 0 ? "neg" : "" })}
@@ -153,7 +185,7 @@ export function render({ ledger }) {
           <span class="rc-top"><span class="rc-logo">rich<span>✳</span></span><span class="rc-tag">${a.name}</span></span>
           <span class="rc-chiprow" aria-hidden="true">${CHIP}</span>
           <span class="rc-number" aria-hidden="true"><span>••••</span><span>••••</span><span>••••</span><span>••••</span></span>
-          <span class="rc-bottom"><span class="card-tile-open">${a.balanceCents < 0 ? `${m(-a.balanceCents)} em aberto` : `${m(a.balanceCents)} de crédito`}</span><span class="rc-mark" aria-hidden="true">✳</span></span>
+          <span class="rc-bottom"><span class="card-tile-open">${a.balanceCents < 0 ? `${m(-a.balanceCents)} em aberto` : a.balanceCents > 0 ? `${m(a.balanceCents)} de crédito` : "Nada em aberto"}</span><span class="rc-mark" aria-hidden="true">✳</span></span>
         </button>
       </div>
       <div class="credit-info">
@@ -162,7 +194,7 @@ export function render({ ledger }) {
         <span class="small muted">Valor em aberto</span>
         <strong class="numberbig">${m(Math.max(0, -a.balanceCents))}</strong>
         <div class="card-dates"><div><small>FECHAMENTO</small><b>Dia ${a.closingDay}</b></div><div><small>VENCIMENTO</small><b>Dia ${a.dueDay}</b></div></div>
-        ${a.current ? html`<div class="invoices">${invoiceBlock("Fatura atual", a.current, m)}${invoiceBlock("Próxima", a.next, m)}</div>` : ""}
+        ${a.current ? html`<div class="invoices">${invoiceBlock("Fatura atual", a.current, m, a.id)}${invoiceBlock("Próxima", a.next, m, a.id)}</div>` : ""}
         <p class="faint tiny">Cartão ilustrativo: a Rich não emite cartões. O valor vem dos lançamentos feitos neste cartão. Pague a fatura inteira para não cair no rotativo; se não der, fale com o Otávio no Consultor.</p>
       </div>
     </section>`)}
@@ -176,8 +208,18 @@ export function render({ ledger }) {
       <span class="account-foot"><span>Saldo pelos lançamentos</span><span aria-hidden="true">↗</span></span>
     </button>`)}</section>` : ""}
 
+    ${v.accounts.length > 1 ? html`<section class="panel transfers">
+      <div class="panel-head"><div><h2>Transferências</h2><p class="faint small">Entre as suas contas: não contam como gasto nem como entrada.</p></div>
+        <button type="button" class="secondary" data-action="new-transfer">${ICON.swap}Transferir</button></div>
+      ${transfers.length ? html`<ul class="plain transfer-list">${transfers.map((t) => html`<li class="row">
+        <span><strong>${t.description || "Transferência"}</strong><small class="muted">${ddmm(t.date)} · ${names[t.fromAccountId] || "conta apagada"} → ${names[t.toAccountId] || "conta apagada"}</small></span>
+        <span class="row"><strong class="num">${m(t.amountCents)}</strong><button type="button" class="icon-btn danger" data-delete-transfer="${t.id}" aria-label="Apagar a transferência de ${m(t.amountCents)}">${ICON.trash}</button></span>
+      </li>`)}</ul>` : html`<p class="empty">Nenhuma transferência ainda. Use para pagar a fatura do cartão ou mandar dinheiro para a poupança.</p>`}
+    </section>` : ""}
+
     ${netWorthPanel(ledger)}
-    ${accountForm()}`;
+    ${accountForm()}
+    ${v.accounts.length > 1 ? transferForm(v.accounts) : ""}`;
 }
 
 export function bind(root, ctx) {
@@ -258,4 +300,51 @@ export function bind(root, ctx) {
     await ctx.remove("account", a);
     toast("Os lançamentos continuam, só sem conta.", () => ctx.save("account", { ...a, deleted: false }, "Conta de volta."));
   });
+  bindTransfers(root, ctx);
+}
+
+// bindTransfers: a janela de transferir (aberta pelo "Transferir" ou pelo
+// "Pagar fatura", já com o cartão e o valor) e o apagar com "Desfazer".
+function bindTransfers(root, ctx) {
+  const modal = root.querySelector("#transfer-modal");
+  if (!modal) return;
+  const form = modal.querySelector('[data-form="transfer"]');
+  const f = form.elements;
+  const open = (trigger, preset = {}) => {
+    form.reset();
+    form.querySelectorAll("[data-error]").forEach((el) => { el.hidden = true; });
+    f.date.value = today();
+    if (preset.to) f.to.value = preset.to;
+    if (preset.amountCents) f.amount.value = centsInput(preset.amountCents);
+    if (preset.description) f.description.value = preset.description;
+    if (f.from.value === f.to.value) f.from.value = [...f.from.options].find((o) => o.value !== f.to.value)?.value || "";
+    form.querySelector("#transfer-title").textContent = preset.title || "Transferir entre contas";
+    openModal(modal, trigger);
+  };
+  root.querySelectorAll('[data-action="new-transfer"]').forEach((b) => b.addEventListener("click", () => open(b)));
+  root.querySelectorAll("[data-pay-invoice]").forEach((b) => b.addEventListener("click", () => open(b, {
+    to: b.dataset.payInvoice, amountCents: Number(b.dataset.amount), description: `Pagamento da fatura de ${b.dataset.label}`, title: "Pagar fatura",
+  })));
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errors = {};
+    let cents = 0;
+    try { cents = finance.parseMoney(f.amount.value); } catch {}
+    if (!(cents > 0)) errors.amount = "Valor inválido. Use o formato 1.234,56.";
+    if (f.from.value === f.to.value) errors.to = "Escolha contas diferentes para a origem e o destino.";
+    form.querySelectorAll("[data-error]").forEach((el) => { el.hidden = !errors[el.dataset.error]; el.textContent = errors[el.dataset.error] || ""; });
+    if (Object.keys(errors).length) return;
+    try {
+      closeModal(modal);
+      await ctx.save("transfer", { fromAccountId: f.from.value, toAccountId: f.to.value, amountCents: cents, date: f.date.value || today(),
+        description: f.description.value.trim() || undefined }, `Transferência de ${finance.money(cents)} salva.`);
+    } catch (err) {
+      ctx.error(err);
+    }
+  });
+  root.querySelectorAll("[data-delete-transfer]").forEach((b) => b.addEventListener("click", async () => {
+    const t = ctx.ledger.transfers.find((x) => x.id === b.dataset.deleteTransfer);
+    await ctx.remove("transfer", t);
+    toast("Transferência apagada.", () => ctx.save("transfer", { ...t, deleted: false }, "Transferência de volta."));
+  }));
 }

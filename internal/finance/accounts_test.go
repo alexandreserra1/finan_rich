@@ -187,3 +187,58 @@ func TestNetWorth(t *testing.T) {
 		t.Errorf("outubro = %+v", p)
 	}
 }
+
+// Pagar a fatura é uma transferência do banco para o cartão: o banco diminui, o
+// "em aberto" do cartão cai, a fatura fica paga, e o Painel (entradas, saídas,
+// orçamentos) não muda, porque o gasto já foi contado na compra.
+func TestTransfersPayTheInvoice(t *testing.T) {
+	l := accountsLedger()
+	before := Dashboard(l, domain.ParseMonth("2026-10"))
+	// Paga R$ 125 no dia 2, antes de outubro fechar (dia 3): cobre a de setembro
+	// (R$ 25, a mais antiga) e a de outubro (R$ 100). Manda R$ 50 para a carteira.
+	l.Accounts = append(l.Accounts, domain.Account{Meta: meta("wallet"), Name: "Carteira", Kind: domain.AccountCarteira})
+	l.Transfers = []domain.Transfer{
+		{Meta: meta("t1"), FromAccountID: "bank", ToAccountID: "card", AmountCents: 12500, Date: "2026-10-02", Description: "Pagamento da fatura"},
+		{Meta: meta("t2"), FromAccountID: "bank", ToAccountID: "wallet", AmountCents: 5000, Date: "2026-10-05"},
+		{Meta: meta("t3"), FromAccountID: "bank", ToAccountID: "wallet", AmountCents: 99999, Date: "2026-11-20"}, // agendada: ainda não conta
+		{Meta: domain.Meta{ID: "t4", UpdatedAt: 1, Deleted: true}, FromAccountID: "bank", ToAccountID: "wallet", AmountCents: 77777, Date: "2026-10-01"},
+	}
+	v := Accounts(l, day("2026-10-05"))
+	byID := map[string]AccountView{}
+	for _, a := range v.Accounts {
+		byID[a.ID] = a
+	}
+	if b := byID["bank"].BalanceCents; b != 130000-12500-5000 {
+		t.Errorf("banco = %d", b)
+	}
+	if w := byID["wallet"].BalanceCents; w != 5000 {
+		t.Errorf("carteira = %d", w)
+	}
+	card := byID["card"]
+	if card.BalanceCents != -3000 || v.CardsOpenCents != 3000 {
+		t.Errorf("cartão em aberto = %d (%d)", card.BalanceCents, v.CardsOpenCents)
+	}
+	// O pagamento abate a dívida mais antiga primeiro: setembro e outubro pagas; novembro não.
+	if !card.Current.Paid || card.Current.PaidCents != 10000 || card.Current.TotalCents != 10000 {
+		t.Errorf("fatura de outubro = %+v", card.Current)
+	}
+	if card.Next.Paid || card.Next.PaidCents != 0 {
+		t.Errorf("fatura de novembro = %+v", card.Next)
+	}
+	// Pagando só R$ 100, a de setembro (mais antiga) leva R$ 25: outubro fica com R$ 75 pagos.
+	l.Transfers[0].AmountCents = 10000
+	for _, a := range Accounts(l, day("2026-10-05")).Accounts {
+		if a.ID == "card" && (a.Current.Paid || a.Current.PaidCents != 7500) {
+			t.Errorf("pagamento parcial de outubro = %+v", a.Current)
+		}
+	}
+	l.Transfers[0].AmountCents = 12500
+	// Patrimônio: transferir entre as próprias contas não muda nada.
+	nw := NetWorth(l, day("2026-10-05"))
+	if p := nw[11]; p.AccountsCents-p.CardsCents != 130000-15500 {
+		t.Errorf("patrimônio mudou com transferência: %+v", p)
+	}
+	if after := Dashboard(l, domain.ParseMonth("2026-10")); after.InCents != before.InCents || after.OutCents != before.OutCents {
+		t.Errorf("Painel mudou: antes %d/%d, depois %d/%d", before.InCents, before.OutCents, after.InCents, after.OutCents)
+	}
+}

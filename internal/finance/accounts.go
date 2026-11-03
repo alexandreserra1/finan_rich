@@ -34,6 +34,8 @@ type InvoiceView struct {
 	DueDate     string               `json:"dueDate"`
 	TotalCents  int64                `json:"totalCents"` // compras − estornos e créditos
 	Closed      bool                 `json:"closed"`     // já fechou (só falta pagar)
+	PaidCents   int64                `json:"paidCents"`  // quanto desta fatura já foi pago (os pagamentos cobrem primeiro as mais antigas)
+	Paid        bool                 `json:"paid"`       // fechou e o pago cobre o total
 	Items       []domain.Transaction `json:"items"`      // do mais recente ao mais antigo
 }
 
@@ -52,21 +54,22 @@ type AccountsView struct {
 	CardsOpenCents int64         `json:"cardsOpenCents"` // em aberto nos cartões
 }
 
-// Accounts calcula o saldo de cada conta até hoje e, nos cartões, a fatura
+// Accounts calcula o saldo de cada conta até hoje (lançamentos e transferências)
+// e, nos cartões, a fatura
 // atual (a primeira que ainda não venceu, aberta ou fechada) e a próxima.
 func Accounts(l domain.Ledger, today time.Time) AccountsView {
 	today = time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.UTC)
 	v := AccountsView{Accounts: []AccountView{}}
-	txs := l.ActiveTransactions()
+	txs, transfers := l.ActiveTransactions(), l.ActiveTransfers()
 	for _, a := range l.ActiveAccounts() {
-		av := AccountView{Account: a, BalanceCents: balanceAt(a, txs, today.Format(domain.DateLayout))}
+		av := AccountView{Account: a, BalanceCents: balanceAt(a, txs, transfers, today.Format(domain.DateLayout))}
 		if a.Kind == domain.AccountCartao {
 			open := InvoiceMonth(a, today)
 			cur := open.Prev()
 			if invoiceDue(a, cur).Before(today) {
 				cur = open
 			}
-			av.Current, av.Next = invoice(a, txs, cur, today), invoice(a, txs, cur.Next(), today)
+			av.Current, av.Next = invoice(a, txs, transfers, cur, today), invoice(a, txs, transfers, cur.Next(), today)
 			v.CardsOpenCents -= av.BalanceCents
 		} else {
 			v.AccountsCents += av.BalanceCents
@@ -84,18 +87,30 @@ func signed(t domain.Transaction) int64 {
 	return -t.AmountCents
 }
 
-// balanceAt é o saldo inicial mais os lançamentos da conta até a data (inclusive).
-func balanceAt(a domain.Account, txs []domain.Transaction, date string) int64 {
+// balanceAt é o saldo inicial mais os lançamentos e as transferências da conta
+// até a data (inclusive).
+func balanceAt(a domain.Account, txs []domain.Transaction, transfers []domain.Transfer, date string) int64 {
 	total := a.InitialCents
 	for _, t := range txs {
 		if t.AccountID == a.ID && t.Date <= date {
 			total += signed(t)
 		}
 	}
+	for _, t := range transfers {
+		if t.Date > date {
+			continue
+		}
+		if t.ToAccountID == a.ID {
+			total += t.AmountCents
+		}
+		if t.FromAccountID == a.ID {
+			total -= t.AmountCents
+		}
+	}
 	return total
 }
 
-func invoice(card domain.Account, txs []domain.Transaction, m domain.Month, today time.Time) *InvoiceView {
+func invoice(card domain.Account, txs []domain.Transaction, transfers []domain.Transfer, m domain.Month, today time.Time) *InvoiceView {
 	closing := m.Day(card.ClosingDay)
 	v := &InvoiceView{
 		Month: m.Key(), Label: m.Label(), Items: []domain.Transaction{},
@@ -108,6 +123,28 @@ func invoice(card domain.Account, txs []domain.Transaction, m domain.Month, toda
 			v.Items = append(v.Items, t)
 		}
 	}
+	// Como no banco, o pagamento abate primeiro o que é mais antigo (o "em aberto"
+	// ao cadastrar e as faturas anteriores); o que sobra vai para esta.
+	owedBefore := -card.InitialCents
+	for _, t := range txs {
+		if t.AccountID == card.ID && InvoiceMonth(card, t.Day()).Before(m.Time) {
+			owedBefore -= signed(t)
+		}
+	}
+	var paid int64
+	for _, t := range transfers {
+		if t.Date > today.Format(domain.DateLayout) {
+			continue
+		}
+		if t.ToAccountID == card.ID {
+			paid += t.AmountCents
+		}
+		if t.FromAccountID == card.ID {
+			paid -= t.AmountCents
+		}
+	}
+	v.PaidCents = min(max(paid-owedBefore, 0), max(v.TotalCents, 0))
+	v.Paid = v.Closed && v.TotalCents > 0 && v.PaidCents >= v.TotalCents
 	return v
 }
 
@@ -124,7 +161,7 @@ type NetWorthPoint struct {
 // NetWorth é o patrimônio mês a mês nos últimos 12 meses (o atual até hoje):
 // saldos das contas, menos o que está em aberto nos cartões, menos as dívidas.
 func NetWorth(l domain.Ledger, today time.Time) []NetWorthPoint {
-	txs := l.ActiveTransactions()
+	txs, transfers := l.ActiveTransactions(), l.ActiveTransfers()
 	var debts int64
 	// shortcut: a dívida só guarda o saldo atual, então ele vale para os 12 meses;
 	// guardar o histórico do saldo se a pessoa pedir a curva das dívidas.
@@ -142,7 +179,7 @@ func NetWorth(l domain.Ledger, today time.Time) []NetWorthPoint {
 		}
 		p := NetWorthPoint{Month: m.Key(), Label: m.Short(), DebtsCents: debts}
 		for _, a := range accounts {
-			b := balanceAt(a, txs, end.Format(domain.DateLayout))
+			b := balanceAt(a, txs, transfers, end.Format(domain.DateLayout))
 			if a.Kind == domain.AccountCartao {
 				p.CardsCents -= b
 			} else {

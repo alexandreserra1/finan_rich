@@ -44,11 +44,11 @@ function all(store) {
 export async function loadLedger() {
   const db = await open();
   const rows = await all(db.transaction("records").objectStore("records"));
-  const ledger = { categories: [], transactions: [], debts: [], prefs: [], notes: [], goals: [], recurring: [], accounts: [] };
+  const ledger = { categories: [], transactions: [], debts: [], prefs: [], notes: [], goals: [], recurring: [], accounts: [], transfers: [] };
   const lists = {
     category: ledger.categories, transaction: ledger.transactions, debt: ledger.debts, pref: ledger.prefs,
     note: ledger.notes, goal: ledger.goals, recurring: ledger.recurring,
-    account: ledger.accounts,
+    account: ledger.accounts, transfer: ledger.transfers,
   };
   for (const row of rows) lists[row.type]?.push(row.record);
   return ledger;

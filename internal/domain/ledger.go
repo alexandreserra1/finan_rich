@@ -18,6 +18,7 @@ type Ledger struct {
 	Goals        []Goal        `json:"goals"`
 	Recurring    []Recurring   `json:"recurring"`
 	Accounts     []Account     `json:"accounts"`
+	Transfers    []Transfer    `json:"transfers"`
 }
 
 // CategoryIndex dá acesso às categorias por ID, inclusive apagadas: um
@@ -106,6 +107,17 @@ func (l Ledger) ActiveRecurring() []Recurring {
 	for _, r := range l.Recurring {
 		if !r.Deleted {
 			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// ActiveTransfers devolve as transferências não apagadas.
+func (l Ledger) ActiveTransfers() []Transfer {
+	out := make([]Transfer, 0, len(l.Transfers))
+	for _, t := range l.Transfers {
+		if !t.Deleted {
+			out = append(out, t)
 		}
 	}
 	return out

@@ -769,6 +769,15 @@ button.google .g { display: inline-grid; place-items: center; width: 26px; heigh
 .acct-empty-art { position: relative; min-height: 240px; border: 1px dashed var(--border-2); border-radius: 16px; overflow: hidden; }
 .acct-empty-art .card-tile { position: absolute; width: 44%; left: 18%; top: 16%; cursor: default; transform: rotate(-6deg); }
 .acct-empty-art .card-tile.back { left: 36%; top: 26%; transform: rotate(4deg); opacity: .7; }
+/* Transferências e pagar fatura. */
+.invoice-pay { align-self: flex-start; margin-top: 6px; }
+.invoice.paid .invoice-total { color: var(--muted); }
+.transfer-list li { padding: 12px 0; border-bottom: 1px solid var(--border); gap: 12px; }
+.transfer-list li:last-child { border-bottom: 0; }
+.transfer-list li > span:first-child { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.transfer-list li > span:first-child strong { white-space: normal; overflow-wrap: anywhere; }
+.transfer-list small { overflow-wrap: anywhere; }
+.transfer-list li > span:last-child { gap: 6px; flex: none; }
 .networth .chart-head strong { font-size: 1.3rem; font-variant-numeric: tabular-nums; }
 
 /* Bloqueio do app do celular (js/lock.js): nada aparece por baixo da tela de bloqueio. */

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"path/filepath"
 	"testing"
 	"time"
@@ -384,5 +385,23 @@ func TestPhoneDefaultsMergeIntoComputer(t *testing.T) {
 		if tx.ID == "t2" && tx.CategoryID != mercado {
 			t.Errorf("lançamento tardio = %+v", tx)
 		}
+	}
+}
+
+func TestTransfersSync(t *testing.T) {
+	ctx := context.Background()
+	s := newTestStore(t)
+	pay := domain.Transfer{Meta: domain.Meta{ID: "p1", UpdatedAt: 10}, FromAccountID: "bank", ToAccountID: "card", AmountCents: 96000, Date: "2026-11-05", Description: "Pagamento da fatura"}
+	if n, err := s.ApplyChanges(ctx, []Change{change(t, TypeTransfer, pay)}); n != 1 || err != nil {
+		t.Fatalf("transferência: n=%d err=%v", n, err)
+	}
+	l, err := s.Ledger(ctx)
+	if err != nil || len(l.ActiveTransfers()) != 1 || l.Transfers[0].AmountCents != 96000 || l.Transfers[0].ToAccountID != "card" {
+		t.Fatalf("Ledger = %+v (%v)", l.Transfers, err)
+	}
+	bad := pay
+	bad.ID, bad.ToAccountID = "p2", "bank"
+	if _, err := s.ApplyChanges(ctx, []Change{change(t, TypeTransfer, bad)}); !errors.Is(err, ErrInvalidChange) {
+		t.Errorf("transferência para a mesma conta deveria ser recusada: %v", err)
 	}
 }

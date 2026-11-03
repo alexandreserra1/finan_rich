@@ -109,6 +109,26 @@ try {
   await page.click("[data-nw-toggle]");
   ok(await page.isVisible("[data-nw-table] tbody tr >> nth=0") && await page.isHidden("[data-nw-chart]"), "patrimônio em tabela");
 
+  // Transferir do Itaú para o cartão: o banco diminui, o "em aberto" zera e o Painel não muda.
+  const dash = () => page.evaluate(async () => { const f = await import("/static/js/finance.js"); const d = f.dashboard(await (await import("/static/js/db.js")).loadLedger(), (await import("/static/js/ui.js")).today().slice(0, 7)); return `${d.inCents}/${d.outCents}`; });
+  const beforeDash = await dash();
+  await page.click("[data-action=new-transfer]");
+  await page.waitForSelector("#transfer-modal .modal-panel");
+  await page.fill("#transfer-modal input[name=amount]", "333,34");
+  await page.selectOption("#transfer-modal select[name=from]", { label: "Itaú" });
+  await page.selectOption("#transfer-modal select[name=to]", { label: "Cartão Nubank" });
+  await page.click("form[data-form=transfer] button[type=submit]");
+  await page.waitForSelector(".transfer-list li:has-text('R$ 333,34')");
+  ok((await page.textContent(".account:has-text('Itaú')")).includes("R$ 1.166,66") && (await page.textContent(".account:has-text('Cartão Nubank') .card-tile")).includes("Nada em aberto"),
+    "transferir para o cartão: o Itaú cai para R$ 1.166,66 e o cartão fica sem nada em aberto");
+  ok(await dash() === beforeDash, "a transferência não mexe nas entradas e saídas do Painel");
+  await page.evaluate(() => window.finanSync());
+  ok((await records("transfer")).some((t) => t.amountCents === 33334 && t.toAccountId === cardId), "a transferência sincronizou com o computador");
+  await page.click(".transfer-list li:has-text('R$ 333,34') [data-delete-transfer]");
+  await page.waitForSelector(".transfer-list li:has-text('R$ 333,34')", { state: "detached" });
+  ok((await page.textContent(".account:has-text('Itaú')")).includes("R$ 1.500,00"), "apagar a transferência devolve o saldo");
+
+
   // Patrimônio na Análise: 1.500 − 333,34.
   await page.goto(`${B}/analise`);
   await page.waitForSelector(".networth");
@@ -133,6 +153,32 @@ try {
   ok((await records("transaction")).some((t) => t.description.includes("SUPERMERCADO") && t.accountId === itauId), "lançamento importado entra na conta escolhida");
   await importOFX("A2", "PADARIA");
   ok(await page.inputValue("select[data-action=account]") === itauId, "o próximo extrato da mesma conta já vem com ela escolhida");
+
+  // Pagar fatura: um cartão que fecha dia 1 e vence dia 28 tem a fatura do mês fechada (do dia 2 ao 27).
+  if (now.getDate() >= 2 && now.getDate() <= 27) {
+    const first = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
+    await page.evaluate(async (first) => {
+      const db = await import("/static/js/db.js");
+      const f = await import("/static/js/finance.js");
+      const l = await db.loadLedger();
+      const stamp = Date.now();
+      await db.saveManyLocal([
+        { type: "account", record: f.validate("account", { id: "cartao-dia-1", updatedAt: stamp, name: "Cartão Inter", kind: "cartao", initialCents: 0, closingDay: 1, dueDay: 28 }) },
+        { type: "transaction", record: f.validate("transaction", { id: "compra-dia-1", updatedAt: stamp, kind: "saida", description: "Mercado", amountCents: 42000, categoryId: l.categories.find((c) => c.bucket !== "renda").id, date: first, accountId: "cartao-dia-1" }) },
+      ]);
+    }, first);
+    await page.goto(`${B}/contas`);
+    await page.waitForSelector(".account:has-text('Cartão Inter') [data-pay-invoice]");
+    await page.click(".account:has-text('Cartão Inter') [data-pay-invoice]");
+    await page.waitForSelector("#transfer-modal .modal-panel");
+    ok(await page.inputValue("#transfer-modal input[name=amount]") === "420,00" && await page.textContent("#transfer-title") === "Pagar fatura", "Pagar fatura abre a transferência com o valor da fatura");
+    await page.selectOption("#transfer-modal select[name=from]", { label: "Itaú" });
+    await page.click("form[data-form=transfer] button[type=submit]");
+    await page.waitForSelector(".account:has-text('Cartão Inter') .invoice .goal-chip:text-is('Paga')");
+    ok(await page.locator(".account:has-text('Cartão Inter') [data-pay-invoice]").count() === 0, "fatura paga: o selo vira Paga e o botão some");
+  } else {
+    ok(true, "pagar fatura pela tela: pulado nos dias 1, 28 a 31 (o cartão de teste não tem fatura fechada)");
+  }
 
   // Celular (320 px): sem rolagem para o lado.
   await page.setViewportSize({ width: 320, height: 700 });

@@ -34,8 +34,9 @@ func sampleLedger() domain.Ledger {
 			tx("t4", domain.KindSaida, "mor", "Aluguel", 140000, "2026-09-06"),
 			{Meta: domain.Meta{ID: "apagado", UpdatedAt: 5, Deleted: true}, Kind: domain.KindSaida, Description: "não exportar", AmountCents: 1, CategoryID: "laz", Date: "2026-10-01"},
 		},
-		Debts: []domain.Debt{{Meta: meta("d1"), Name: "Cartão", Creditor: "Banco", BalanceCents: 400000, MonthlyRateBP: 1250, MinPaymentCents: 60000, DueDay: 10}},
-		Notes: []domain.Note{{Meta: meta("n1"), Title: "Meta de 2027!", Body: "Juntar R$ 5.000 para a reserva.\nCortar delivery (ação já começou) 🙂", Pinned: true}},
+		Debts:     []domain.Debt{{Meta: meta("d1"), Name: "Cartão", Creditor: "Banco", BalanceCents: 400000, MonthlyRateBP: 1250, MinPaymentCents: 60000, DueDay: 10}},
+		Notes:     []domain.Note{{Meta: meta("n1"), Title: "Meta de 2027!", Body: "Juntar R$ 5.000 para a reserva.\nCortar delivery (ação já começou) 🙂", Pinned: true}},
+		Transfers: []domain.Transfer{{Meta: meta("tr1"), FromAccountID: "banco", ToAccountID: "cartao", AmountCents: 96000, Date: "2026-10-10", Description: "Pagamento da fatura"}},
 	}
 }
 
@@ -191,8 +192,8 @@ func TestBackupRoundTrip(t *testing.T) {
 	for _, r := range recs {
 		count[r.Type]++
 	}
-	// 3 categorias, 4 lançamentos (o apagado fica de fora), 1 dívida, 1 nota.
-	if count["category"] != 3 || count["transaction"] != 4 || count["debt"] != 1 || count["note"] != 1 {
+	// 3 categorias, 4 lançamentos (o apagado fica de fora), 1 dívida, 1 nota, 1 transferência.
+	if count["category"] != 3 || count["transaction"] != 4 || count["debt"] != 1 || count["note"] != 1 || count["transfer"] != 1 {
 		t.Errorf("registros no backup = %v", count)
 	}
 	for _, bad := range []string{`{}`, `nada`, `{"app":"finan_rich","version":99}`,

@@ -16,6 +16,7 @@ const (
 	TypeGoal        = "goal"
 	TypeRecurring   = "recurring"
 	TypeAccount     = "account"
+	TypeTransfer    = "transfer"
 )
 
 // ErrInvalidRecord indica um registro com tipo ou conteúdo inválido.
@@ -57,6 +58,9 @@ func DecodeRecord(typ string, raw []byte) (Meta, []byte, error) {
 	case TypeAccount:
 		var r Account
 		err, meta, v = json.Unmarshal(raw, &r), r.Meta, &r
+	case TypeTransfer:
+		var r Transfer
+		err, meta, v = json.Unmarshal(raw, &r), r.Meta, &r
 	default:
 		return meta, nil, fmt.Errorf("%w: tipo %q", ErrInvalidRecord, typ)
 	}
@@ -88,6 +92,8 @@ func metaOf(v validator) Meta {
 	case *Recurring:
 		return r.Meta
 	case *Account:
+		return r.Meta
+	case *Transfer:
 		return r.Meta
 	}
 	return Meta{}

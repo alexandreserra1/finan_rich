@@ -100,6 +100,18 @@ type Account struct {
 	DueDay       int    `json:"dueDay,omitempty"`     // só cartão: dia de vencimento
 }
 
+// Transfer é dinheiro que passa de uma conta para outra (pagar a fatura do
+// cartão, mandar para a poupança). Não é gasto nem entrada: o gasto do cartão já
+// foi contado na compra. Só muda o saldo das duas contas.
+type Transfer struct {
+	Meta
+	FromAccountID string `json:"fromAccountId"`
+	ToAccountID   string `json:"toAccountId"`
+	AmountCents   int64  `json:"amountCents"`
+	Date          string `json:"date"`                  // AAAA-MM-DD
+	Description   string `json:"description,omitempty"` // ex.: "Pagamento da fatura"
+}
+
 // Note é uma anotação livre do usuário (metas, combinados, lembretes...).
 // Sincroniza como os outros registros e o consultor de IA também lê.
 type Note struct {
@@ -253,6 +265,28 @@ func (a Account) Validate() error {
 		}
 	default:
 		return fmt.Errorf("tipo de conta inválido: %q", a.Kind)
+	}
+	return nil
+}
+
+func (t Transfer) Validate() error {
+	if err := t.validate(); err != nil || t.Deleted {
+		return err
+	}
+	if t.FromAccountID == "" || t.ToAccountID == "" || len(t.FromAccountID) > 64 || len(t.ToAccountID) > 64 {
+		return errors.New("escolha a conta de origem e a de destino")
+	}
+	if t.FromAccountID == t.ToAccountID {
+		return errors.New("a origem e o destino precisam ser contas diferentes")
+	}
+	if t.AmountCents <= 0 {
+		return errors.New("informe o valor da transferência")
+	}
+	if _, err := time.Parse(DateLayout, t.Date); err != nil {
+		return errors.New("data inválida")
+	}
+	if len([]rune(t.Description)) > 120 {
+		return errors.New("descrição muito longa (máximo 120 caracteres)")
 	}
 	return nil
 }

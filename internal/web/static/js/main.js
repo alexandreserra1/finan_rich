@@ -146,7 +146,7 @@ function context(path, params) {
 const listOf = (type) => ({
   category: ledger.categories, transaction: ledger.transactions, debt: ledger.debts, pref: ledger.prefs,
   note: ledger.notes, goal: ledger.goals, recurring: ledger.recurring,
-  account: ledger.accounts,
+  account: ledger.accounts, transfer: ledger.transfers,
 })[type];
 function upsert(list, record) {
   const i = list.findIndex((r) => r.id === record.id);
