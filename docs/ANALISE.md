@@ -17,16 +17,22 @@ Tela **Análise** (`/analise`, link no Painel e no menu do computador): responde
 
 ## Regras (`internal/finance/insights.go`)
 
-- **Fixos x variáveis**: fixo é o lançamento gerado por recorrência (ID `rec-…`); o resto é
-  variável. Investimentos não contam como gasto.
+- **Fixos x variáveis**: fixo é o lançamento gerado por recorrência (ID `rec-…`) e o
+  pagamento de dívida (categoria "Pagamento de dívidas"); o resto é variável. Investimentos
+  não contam como gasto.
 - **Ritmo**: gasto variável acumulado por dia neste mês e no mês passado. Projeção do mês =
   variável até hoje ÷ dias corridos × dias do mês + fixos do mês (os que já caíram e os que
-  ainda vão cair).
+  ainda vão cair) + o que está agendado para depois de hoje (parcelas). Nos primeiros 6 dias,
+  poucos dias não dizem o ritmo: o resto do mês segue a média dos 3 meses anteriores, e a
+  sugestão de "ritmo" só aparece a partir do dia 7.
 - **Pode gastar por dia**: renda do mês (ou a média dos 3 meses anteriores, se ainda não
   entrou) − investimento planejado (percentual da divisão) − gastos do mês − recorrentes que
   ainda vão cair, dividido pelos dias que faltam (contando hoje). Nunca negativo.
 - **Onde foi**: por lugar (iFood, Uber… reconhecido pela descrição, como no consultor) e por
-  categoria, com a fatia de cada um e a comparação com a média de 3 meses.
+  categoria, com a fatia de cada um e a comparação com a média de 3 meses. O nome do lugar é a
+  descrição inteira quando ela vem sempre igual ("Pão de Açúcar"), o que vem antes do "*" no
+  extrato do cartão ("UBER *TRIP" → "UBER") e só a primeira palavra quando o mesmo lugar vem
+  escrito de jeitos diferentes; sem o "(2/3)" das parcelas. Pagamento de dívida não é lugar.
 - **Onde economizar** (cada item com a economia estimada por mês, maior primeiro):
   - categoria acima da média de 3 meses (pelo menos 25% e R$ 50 a mais): economia = diferença;
   - lugar com 8 compras ou mais em 30 dias e tíquete médio até R$ 60: economia = metade;

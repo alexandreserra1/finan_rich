@@ -373,6 +373,16 @@ func TestAPIErrorHints(t *testing.T) {
 	}
 }
 
+// O erro aparece na tela: sem o ID da conta do provedor nem endereços, e o 413
+// (pedido maior que a cota por minuto da IA grátis) em palavras do dia a dia.
+func TestAPIErrorHidesProviderDetails(t *testing.T) {
+	groq := "Request too large for model `qwen/qwen3.8-27b` in organization `org_01kh8wd3hze72bstw7hsxe8zy3` service tier `on_demand` on tokens per minute (TPM): Limit 7000, Requested 7076. Upgrade at https://console.groq.com/settings/billing"
+	got := (&APIError{Status: 413, Message: groq}).Error()
+	if strings.Contains(got, "org_01kh8") || strings.Contains(got, "https://") || !strings.Contains(got, "IA grátis está cheia") {
+		t.Errorf("413 = %q", got)
+	}
+}
+
 // Conexão que cai no meio não pode virar "resposta completa" pela metade.
 func TestOpenAICutStreamIsError(t *testing.T) {
 	srv := server(t, nil, func(w http.ResponseWriter, r *http.Request) {

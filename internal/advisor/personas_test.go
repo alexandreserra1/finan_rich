@@ -2,6 +2,7 @@ package advisor
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -32,8 +33,39 @@ func TestAnswerAsPersona(t *testing.T) {
 		fake = &scriptedLLM{replies: []llm.Reply{{Text: "Oi."}}}
 		q.Agent = agent
 		Answer(context.Background(), fake, q, func(string) {}, func(Proposal) {})
-		if !strings.Contains(fake.asked[0].System, "Você é o Otávio") || len(fake.asked[0].Tools) != len(allTools()) {
+		if !strings.Contains(fake.asked[0].System, "Você é o Otávio") || len(fake.asked[0].Tools) != len(persona("otavio").Tools) {
 			t.Errorf("%q: Otávio com %d ferramentas", agent, len(fake.asked[0].Tools))
+		}
+	}
+}
+
+// A IA grátis (Groq) recusa pedido maior que a cota por minuto do modelo (7 mil
+// tokens no menor): as ferramentas de cada um do time precisam caber com folga.
+func TestPersonaToolsFitFreeQuota(t *testing.T) {
+	for _, id := range []string{"otavio", "lia", "tito"} {
+		tools := NewTools(toolsLedger(), time.Now(), nil)
+		tools.only = persona(id).Tools
+		defs, _ := json.Marshal(tools.Defs())
+		if len(defs) > 4100 {
+			t.Errorf("%s: ferramentas com %d caracteres (até 4100)", id, len(defs))
+		}
+	}
+	// Com ferramentas, o Otávio busca nos lançamentos: a lista de estabelecimentos
+	// (assunto da Lia) fica fora do pedido dele.
+	fake := &scriptedLLM{replies: []llm.Reply{{Text: "Oi."}}}
+	Answer(context.Background(), fake, Question{Text: "oi", Ledger: teamLedger(), Today: teamDay}, func(string) {}, func(Proposal) {})
+	if msg := fake.asked[0].Messages[len(fake.asked[0].Messages)-1].Content; strings.Contains(msg, "## Gastos por estabelecimento") || !strings.Contains(msg, "## Dívidas") {
+		t.Errorf("pedido do Otávio:\n%s", msg)
+	}
+	tools := NewTools(toolsLedger(), time.Now(), nil)
+	tools.only = persona("otavio").Tools
+	var names []string
+	for _, tl := range tools.Defs() {
+		names = append(names, tl.Name)
+	}
+	for _, want := range []string{"simular_dividas", "proximos_vencimentos", "registrar_pagamento", "criar_divida", "criar_meta", "propor_lancamento", "alterar_lancamento", "buscar_lancamentos"} {
+		if !strings.Contains(","+strings.Join(names, ",")+",", ","+want+",") {
+			t.Errorf("Otávio sem %s: %v", want, names)
 		}
 	}
 }

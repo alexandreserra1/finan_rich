@@ -33,8 +33,9 @@ celular (anonimiza) ──HTTPS──> intermediário (Vercel, chaves em variáv
 - O modelo e o tamanho máximo da resposta são escolhidos no servidor.
 - O intermediário pergunta ao Groq quais modelos existem (`/models`, guardado por 1 hora) e usa,
   na ordem, os da lista de `internal/proxy` que ainda estão lá e depois os outros de conversa
-  (até 6). Quando um modelo esgota a cota grátis (429), cai ou foi desligado (400/404), tenta o
-  próximo: no Groq cada modelo tem a sua cota. Assim um modelo desligado pelo Groq não derruba o
+  (até 6). Quando um modelo esgota a cota grátis (429), o pedido não cabe na cota por minuto
+  dele (413), ele cai ou foi desligado (400/404), tenta o próximo: no Groq cada modelo tem a
+  sua cota. Assim um modelo desligado pelo Groq não derruba o
   consultor nem pede versão nova do app. A lista pode ser trocada pela variável
   `FINAN_PROXY_MODELS`.
 - Os `gpt-oss` vêm primeiro e vão com `reasoning_effort: low` (menos tokens de raciocínio,

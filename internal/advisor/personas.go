@@ -17,14 +17,16 @@ type Persona struct {
 }
 
 var personas = []Persona{
-	// O Otávio atende primeiro (é o padrão): usa todas as ferramentas, e a voz manda aprofundar com o colega.
-	{ID: "otavio", Voice: `Quem fala:
+	// O Otávio atende primeiro (é o padrão): dívidas, vencimentos e os cartões de
+	// lançar, corrigir, pagar e criar meta; o resto ele passa ao colega. Todas as 13
+	// ferramentas não cabem na cota por minuto da IA grátis (TestPersonaToolsFitFreeQuota).
+	{ID: "otavio", Tools: []string{"buscar_lancamentos", "propor_lancamento", "alterar_lancamento", "apagar_lancamento", "simular_dividas", "proximos_vencimentos", "registrar_pagamento", "criar_divida", "criar_meta"}, Voice: `Quem fala:
 Você é o Otávio, do time da Rich: cuida da organização do mês e das dívidas. Calmo, organizado, sempre com números ("Vamos colocar as contas na mesa. E um plano no lugar da preocupação.").
 - Método: primeiro o retrato do mês (entrou, saiu, sobrou), depois o maior problema e uma próxima jogada clara. Pergunta vaga: faça uma pergunta curta antes de dar um plano.
 - Dívidas: ordene pela taxa de juros (a mais cara primeiro) e diga em que mês a pessoa fica livre de todas. Para saber quanto um valor extra por mês adianta, use simular_dividas com o valor, nunca a conta de cabeça; ela já traz a outra ordem (a menor dívida primeiro), para quem precisa de vitória rápida.
 - Rotativo e cheque especial são emergência: diga isso sem rodeio.
 - Vencimentos e faturas: chame proximos_vencimentos (padrão 10 dias; "esta semana" = 7, "este mês" = 31) e responda curto: o que vence, quanto e quando.
-- Lançar, corrigir ou apagar: proponha e a pessoa confirma no cartão do app.
+- Lançar, corrigir ou apagar um lançamento, registrar o pagamento de uma dívida, cadastrar dívida ou criar meta: proponha e a pessoa confirma no cartão do app. Guardar dinheiro numa meta é com o Tito.
 - O time: Lia cuida de hábitos, gastos e orçamentos; Tito de metas e reserva. Quando o assunto for deles, responda o essencial e diga que eles podem aprofundar.`},
 
 	{ID: "lia", Tools: []string{"buscar_lancamentos", "achados", "comparar_meses", "alterar_lancamento", "apagar_lancamento"}, Voice: `Quem fala:
@@ -63,6 +65,18 @@ func systemFor(agent string) string { return SystemPrompt + "\n\n" + persona(age
 var sections = map[string][]string{
 	"tito": {"Mês atual", "Metas do usuário", "Reserva de emergência", "Plano do mês", "Últimos meses", "Pontos de atenção"},
 	"lia":  {"Mês atual", "Últimos meses", "Ritmo do mês", "Gastos por estabelecimento", "Lançamentos que se repetem", "Orçamentos por categoria", "Pontos de atenção"},
+}
+
+// withoutSection tira do resumo a seção que começa com o título dado.
+func withoutSection(snapshot, title string) string {
+	parts := strings.Split(snapshot, "\n## ")
+	out := parts[:1]
+	for _, p := range parts[1:] {
+		if !strings.HasPrefix(p, title) {
+			out = append(out, p)
+		}
+	}
+	return strings.Join(out, "\n## ")
 }
 
 // SnapshotFor é o resumo só com as seções do personagem: prompt menor (o

@@ -17,6 +17,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -159,8 +160,12 @@ type APIError struct {
 	Message string
 }
 
+// providerDetails: o ID da conta no provedor e endereços não dizem nada a
+// quem usa o app (e a conta do intermediário grátis não é da pessoa).
+var providerDetails = regexp.MustCompile(` in organization ` + "`[^`]*`" + `|\borg_[A-Za-z0-9]+|https?://\S+`)
+
 func (e *APIError) Error() string {
-	msg := fmt.Sprintf("provedor de IA respondeu %d: %s", e.Status, e.Message)
+	msg := fmt.Sprintf("provedor de IA respondeu %d: %s", e.Status, strings.TrimSpace(providerDetails.ReplaceAllString(e.Message, "")))
 	if e.Message == "" {
 		msg = fmt.Sprintf("erro HTTP %d do provedor de IA", e.Status)
 	}
@@ -178,6 +183,8 @@ func (e *APIError) hint() string {
 		return "a chave da IA foi recusada: confira se copiou a chave inteira ou gere outra"
 	case e.Status == http.StatusTooManyRequests:
 		return "o limite grátis da IA acabou por agora: espere um pouco ou tente amanhã"
+	case e.Status == http.StatusRequestEntityTooLarge: // Groq: o pedido passou da cota por minuto do modelo
+		return "a IA grátis está cheia neste minuto: tente de novo daqui a pouco"
 	case e.Status == http.StatusServiceUnavailable:
 		return "a IA está muito ocupada agora: tente de novo em alguns minutos"
 	}

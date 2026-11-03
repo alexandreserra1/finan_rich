@@ -439,16 +439,19 @@ func (h *handler) chat(w http.ResponseWriter, r *http.Request) {
 				withUsage = false
 				continue
 			}
-			// Cota grátis deste modelo acabou, ele está fora ou foi desligado
-			// (400/404 de modelo aposentado): tenta o próximo.
+			// Cota grátis deste modelo acabou, o pedido não cabe na cota dele (413),
+			// ele está fora ou foi desligado (400/404 de modelo aposentado): tenta o próximo.
 			break
 		}
 	}
 	fail(w, http.StatusBadGateway, "nenhum provedor de IA respondeu")
 }
 
+// retryable: vale tentar outro modelo. 413 no Groq é o pedido maior que a cota
+// por minuto daquele modelo; outro, com cota maior, ainda atende.
 func retryable(status int) bool {
-	return status == http.StatusBadRequest || status == http.StatusNotFound || status == http.StatusTooManyRequests || status >= 500
+	return status == http.StatusBadRequest || status == http.StatusNotFound || status == http.StatusRequestEntityTooLarge ||
+		status == http.StatusTooManyRequests || status >= 500
 }
 
 func badKey(status int) bool {

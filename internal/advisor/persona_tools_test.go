@@ -116,9 +116,10 @@ func TestPersonaToolSets(t *testing.T) {
 			t.Errorf("a voz de %s não diz quando usar %s", c.agent, c.want)
 		}
 	}
-	// O Otávio atende primeiro: todas as ferramentas, e a voz diz quando usar as de dívida e vencimento.
-	if persona("otavio").Tools != nil || !strings.Contains(persona("otavio").Voice, "simular_dividas") || !strings.Contains(persona("otavio").Voice, "proximos_vencimentos") {
-		t.Error("o Otávio usa todas as ferramentas e explica as dele")
+	// O Otávio atende primeiro: a voz diz quando usar as de dívida e vencimento
+	// (a lista dele está em TestPersonaToolsFitFreeQuota).
+	if !strings.Contains(persona("otavio").Voice, "simular_dividas") || !strings.Contains(persona("otavio").Voice, "proximos_vencimentos") {
+		t.Error("a voz do Otávio não explica as ferramentas dele")
 	}
 	for _, name := range []string{"simular_dividas", "simular_meta", "achados", "comparar_meses", "proximos_vencimentos"} {
 		found := false

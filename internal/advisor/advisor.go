@@ -185,7 +185,13 @@ func Answer(ctx context.Context, p llm.Provider, q Question, onText func(string)
 		proposals = append(proposals, pr)
 		onProposal(pr)
 	})
-	answer, err := Ask(ctx, p, q.Agent, history, text, withPrefetch(SnapshotFor(BuildFacts(ledger, q.Today), q.Agent), q.Agent, tools, text), tools, emit)
+	snapshot := SnapshotFor(BuildFacts(ledger, q.Today), q.Agent)
+	if persona(q.Agent).ID == "otavio" {
+		// Com ferramentas ele busca nos lançamentos; a lista de lugares (assunto da
+		// Lia) faria o pedido passar da cota por minuto da IA grátis.
+		snapshot = withoutSection(snapshot, "Gastos por estabelecimento")
+	}
+	answer, err := Ask(ctx, p, q.Agent, history, text, withPrefetch(snapshot, q.Agent, tools, text), tools, emit)
 	if err == nil && answer == "" {
 		err = errors.New("a IA não devolveu resposta")
 	}

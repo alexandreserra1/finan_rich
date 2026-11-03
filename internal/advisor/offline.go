@@ -58,10 +58,11 @@ func Prepared(q Question) bool {
 	return false
 }
 
-// OverLimit diz se a IA recusou por limite de uso (HTTP 429).
+// OverLimit diz se a IA recusou por limite de uso: 429, ou 413 do Groq (o
+// pedido passou da cota por minuto do modelo).
 func OverLimit(err error) bool {
 	var apiErr *llm.APIError
-	return errors.As(err, &apiErr) && apiErr.Status == 429
+	return errors.As(err, &apiErr) && (apiErr.Status == 429 || apiErr.Status == 413)
 }
 
 // Fallback é a resposta quando a IA falhou com err: o aviso e as contas do

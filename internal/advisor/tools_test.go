@@ -201,7 +201,7 @@ func TestAskWithTools(t *testing.T) {
 	second := fake.asked[1]
 	last := second.Messages[len(second.Messages)-1]
 	if len(fake.asked) != 2 || last.Role != llm.RoleTool || !strings.Contains(last.Content, "R$ 82,30") ||
-		len(second.Tools) != len(allTools()) || !strings.Contains(second.System, "propor_lancamento") {
+		len(second.Tools) != len(persona("otavio").Tools) || !strings.Contains(second.System, "propor_lancamento") {
 		t.Errorf("segunda rodada = %+v", second)
 	}
 }

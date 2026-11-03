@@ -48,6 +48,11 @@ func fakeGroq(t *testing.T, seen *[]map[string]any) *httptest.Server {
 			fmt.Fprint(w, `{"error":{"message":"model not found","code":"model_not_found"}}`)
 			return
 		}
+		if body["model"] == "pequeno" { // como o Groq responde quando o pedido passa da cota por minuto do modelo
+			w.WriteHeader(http.StatusRequestEntityTooLarge)
+			fmt.Fprint(w, `{"error":{"message":"Request too large for model on tokens per minute (TPM): Limit 7000, Requested 7076","code":"rate_limit_exceeded"}}`)
+			return
+		}
 		if body["model"] == "sem-cota" {
 			w.WriteHeader(http.StatusTooManyRequests)
 			fmt.Fprint(w, `{"error":{"message":"rate limit"}}`)
@@ -112,6 +117,17 @@ func TestProxySkipsRetiredModels(t *testing.T) {
 	h := New(Config{Upstream: fakeGroq(t, &seen).URL, APIKey: "chave-do-servidor", Models: []string{"aposentado", "sumiu", "llama"}, Limits: DefaultLimits})
 	rec := ask(h, "aparelho-1", appBody("x", 100))
 	if rec.Code != http.StatusOK || len(seen) != 3 || seen[2]["model"] != "llama" {
+		t.Fatalf("resposta %d, modelos tentados %d: %s", rec.Code, len(seen), rec.Body.String())
+	}
+}
+
+// Pedido maior que a cota por minuto de um modelo (413 do Groq): outro modelo,
+// com cota maior, ainda atende.
+func TestProxySkipsModelTooSmallForRequest(t *testing.T) {
+	var seen []map[string]any
+	h := New(Config{Upstream: fakeGroq(t, &seen).URL, APIKey: "chave-do-servidor", Models: []string{"pequeno", "llama"}, Limits: DefaultLimits})
+	rec := ask(h, "aparelho-1", appBody("x", 100))
+	if rec.Code != http.StatusOK || len(seen) != 2 || seen[1]["model"] != "llama" {
 		t.Fatalf("resposta %d, modelos tentados %d: %s", rec.Code, len(seen), rec.Body.String())
 	}
 }
