@@ -431,60 +431,6 @@ func TestUsageFromRealGroqResponses(t *testing.T) {
 	}
 }
 
-// O computador de casa como provedor (cmd/finanlocal atrás de um túnel): entra
-// por último na ordem padrão, só com endereço e chave, e o modelo padrão é o
-// Qwen 7B (17 de 17 na avaliação do time, igual à nuvem).
-func TestConfigFromEnvLocal(t *testing.T) {
-	for _, k := range []string{"GROQ_API_KEY", "GEMINI_API_KEY", "CEREBRAS_API_KEY", "OPENROUTER_API_KEY", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "FINAN_PROVIDERS", "FINAN_LOCAL_URL", "FINAN_LOCAL_KEY", "FINAN_LOCAL_MODEL"} {
-		t.Setenv(k, "")
-	}
-	t.Setenv("GROQ_API_KEY", "g")
-	t.Setenv("FINAN_LOCAL_KEY", "segredo") // sem o endereço fica de fora
-	if cfg, _ := ConfigFromEnv(); len(cfg.Providers) != 1 {
-		t.Errorf("local sem endereço entrou: %+v", cfg.Providers)
-	}
-	t.Setenv("FINAN_LOCAL_URL", "https://meu-mac.exemplo.ts.net/v1")
-	cfg, err := ConfigFromEnv()
-	if err != nil || len(cfg.Providers) != 2 {
-		t.Fatalf("%v %+v", err, cfg.Providers)
-	}
-	if p := cfg.Providers[1]; p.Name != "local" || p.Upstream != "https://meu-mac.exemplo.ts.net/v1" || p.APIKey != "segredo" || strings.Join(p.Models, ",") != "qwen2.5:7b-instruct" || !p.StreamUsage || !p.NoTools {
-		t.Errorf("local = %+v", p)
-	}
-	t.Setenv("FINAN_LOCAL_MODEL", "qwen2.5:1.5b-instruct")
-	t.Setenv("FINAN_PROVIDERS", "local,groq")
-	if cfg, _ := ConfigFromEnv(); cfg.Providers[0].Name != "local" || cfg.Providers[0].Models[0] != "qwen2.5:1.5b-instruct" {
-		t.Errorf("ordem e modelo trocados por variável: %+v", cfg.Providers)
-	}
-	// Só o computador de casa, sem nenhuma chave de nuvem, também serve.
-	t.Setenv("GROQ_API_KEY", "")
-	if cfg, err := ConfigFromEnv(); err != nil || len(cfg.Providers) != 1 {
-		t.Errorf("só local: %v %+v", err, cfg.Providers)
-	}
-}
-
-// O modelo local pequeno escreve o pedido de ferramenta como texto em vez de
-// chamá-la (visto com o Qwen 7B no caminho completo). Para ele o pedido vai
-// sem as ferramentas: as contas prontas do Go já estão nos dados, e o prompt
-// fica menor (mais rápido).
-func TestProxyLocalWithoutTools(t *testing.T) {
-	captureLog(t)
-	local := &fakeProvider{key: "k", models: []string{"qwen2.5:7b-instruct"}}
-	h := New(Config{Providers: []Provider{{Name: "local", Upstream: local.start(t).URL, APIKey: "k", Models: []string{"qwen2.5:7b-instruct"}, NoTools: true}}, Limits: DefaultLimits})
-	body := `{"stream":false,"tools":[{"type":"function","function":{"name":"simular_dividas"}}],"tool_choice":"auto","messages":[{"role":"system","content":` + jsonString(advisor.SystemPrompt) + `},{"role":"user","content":"oi"}]}`
-	if rec := ask(h, "a", body); rec.Code != http.StatusOK {
-		t.Fatalf("resposta = %d %s", rec.Code, rec.Body.String())
-	}
-	if _, has := local.seen[0]["tools"]; has {
-		t.Error("o modelo local recebeu as ferramentas")
-	}
-	if _, has := local.seen[0]["tool_choice"]; has {
-		t.Error("o modelo local recebeu tool_choice")
-	}
-}
-
-func jsonString(s string) string { b, _ := json.Marshal(s); return string(b) }
-
 // Troca antecipada: quando o provedor avisa nos cabeçalhos que está quase sem
 // cota (x-ratelimit-remaining-*), as próximas perguntas vão direto para o
 // próximo provedor até a hora de voltar (x-ratelimit-reset-*), sem esperar o
@@ -506,21 +452,21 @@ func TestProxyRestsProviderNearLimit(t *testing.T) {
 		fmt.Fprint(w, `{"choices":[{"message":{"content":"groq"}}]}`)
 	}))
 	t.Cleanup(groq.Close)
-	local := &fakeProvider{key: "k", models: []string{"qwen"}, reply: `{"choices":[{"message":{"content":"local"}}]}`, ctype: "application/json"}
+	gemini := &fakeProvider{key: "k", models: []string{"gm1"}, reply: `{"choices":[{"message":{"content":"gemini"}}]}`, ctype: "application/json"}
 	h := New(Config{Providers: []Provider{
 		{Name: "groq", Upstream: groq.URL, APIKey: "k", Models: []string{"g1"}},
-		{Name: "local", Upstream: local.start(t).URL, APIKey: "k", Models: []string{"qwen"}},
+		{Name: "gemini", Upstream: gemini.start(t).URL, APIKey: "k", Models: []string{"gm1"}},
 	}, Limits: DefaultLimits})
 	if rec := ask(h, "a", personaBody("o Otávio", false)); !strings.Contains(rec.Body.String(), "groq") {
 		t.Fatalf("primeira pergunta = %s", rec.Body.String())
 	}
-	if rec := ask(h, "a", personaBody("o Otávio", false)); !strings.Contains(rec.Body.String(), "local") || groqCalls != 1 {
-		t.Errorf("com o Groq quase sem cota, a segunda pergunta deveria ir ao local (groq chamado %d vezes): %s", groqCalls, rec.Body.String())
+	if rec := ask(h, "a", personaBody("o Otávio", false)); !strings.Contains(rec.Body.String(), "gemini") || groqCalls != 1 {
+		t.Errorf("com o Groq quase sem cota, a segunda pergunta deveria ir ao Gemini (groq chamado %d vezes): %s", groqCalls, rec.Body.String())
 	}
 	// Sem o próximo provedor responder, o que está descansando ainda é tentado.
-	local.status = http.StatusServiceUnavailable
+	gemini.status = http.StatusServiceUnavailable
 	if rec := ask(h, "a", personaBody("o Otávio", false)); !strings.Contains(rec.Body.String(), "groq") {
-		t.Errorf("com o local fora, o Groq ainda responde: %s", rec.Body.String())
+		t.Errorf("com o Gemini fora, o Groq ainda responde: %s", rec.Body.String())
 	}
 }
 
@@ -561,31 +507,14 @@ func TestProxyRestsOnlyTheTiredModel(t *testing.T) {
 		fmt.Fprint(w, `{"choices":[{"message":{"content":"ok"}}]}`)
 	}))
 	t.Cleanup(groq.Close)
-	local := &fakeProvider{key: "k", models: []string{"qwen"}}
+	gemini := &fakeProvider{key: "k", models: []string{"gm1"}}
 	h := New(Config{Providers: []Provider{
 		{Name: "groq", Upstream: groq.URL, APIKey: "k", Models: []string{"g1", "g2"}},
-		{Name: "local", Upstream: local.start(t).URL, APIKey: "k", Models: []string{"qwen"}},
+		{Name: "gemini", Upstream: gemini.start(t).URL, APIKey: "k", Models: []string{"gm1"}},
 	}, Limits: DefaultLimits})
 	ask(h, "a", personaBody("o Otávio", false))
 	ask(h, "a", personaBody("o Otávio", false))
-	if strings.Join(seen, ",") != "g1,g2" || len(local.models_()) != 0 {
-		t.Errorf("groq tentou %v, local %v; quer g1 e depois g2, sem o local", seen, local.models_())
-	}
-}
-
-// Sem as ferramentas, o trecho das instruções que as descreve também sai (o
-// modelo local mandava a pessoa "usar a ferramenta simular_meta").
-func TestProxyLocalDropsToolsPrompt(t *testing.T) {
-	captureLog(t)
-	local := &fakeProvider{key: "k", models: []string{"qwen"}}
-	h := New(Config{Providers: []Provider{{Name: "local", Upstream: local.start(t).URL, APIKey: "k", Models: []string{"qwen"}, NoTools: true}}, Limits: DefaultLimits})
-	system := advisor.SystemPrompt + "\n\nQuem fala:\nVocê é o Tito.\n\nFerramentas:\n- simular_meta: calcula a meta."
-	b, _ := json.Marshal(map[string]any{"stream": false, "tools": []any{map[string]any{"type": "function"}},
-		"messages": []map[string]string{{"role": "system", "content": system}, {"role": "user", "content": "oi"}}})
-	ask(h, "a", string(b))
-	msgs := local.seen[0]["messages"].([]any)
-	got := msgs[0].(map[string]any)["content"].(string)
-	if strings.Contains(got, "Ferramentas:") || strings.Contains(got, "simular_meta") || !strings.Contains(got, "Você é o Tito.") {
-		t.Errorf("instruções para o local:\n%s", got)
+	if strings.Join(seen, ",") != "g1,g2" || len(gemini.models_()) != 0 {
+		t.Errorf("groq tentou %v, gemini %v; quer g1 e depois g2, sem o Gemini", seen, gemini.models_())
 	}
 }

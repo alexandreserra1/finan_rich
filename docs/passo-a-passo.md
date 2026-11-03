@@ -82,8 +82,7 @@ app do celular continuam sem conta (o aparelho é da pessoa).
 
 Tokens e chaves nunca vão para log nem URL (registro de tokens do intermediário guarda só
 números; ver [IA-GRATIS.md](IA-GRATIS.md)). Rotas OAuth com limite por IP. Upload do extrato com
-tamanho máximo. Chave do computador local fora do repositório (`scripts/finanlocal.sh`, e
-`.gitignore` com `*.key`).
+tamanho máximo. Chaves fora do repositório (`.gitignore` com `*.key`).
 
 ### 2.4 Análise de segurança de 30/10/2026
 
@@ -218,10 +217,10 @@ login/Drive e aparelhos reais ainda precisam de medição própria.
   resposta da IA, ou aberto quando a resposta foi do app, sem IA. O app do celular recebe os
   mesmos números pelo `/api/chat`, e o cartão que a pessoa abriu ou fechou continua assim
   quando a tela é redesenhada. Testes em `internal/web/web_test.go` e `e2e/app.test.mjs`.
-- **Configuração externa:** o Tailscale está instalado e conectado no Mac (29/10/2026). O
-  `scripts/finanlocal.sh` agora acha o comando dentro do app do Tailscale. Faltam: rodar o
-  script no Terminal, aprovar o HTTPS e o Funnel no link que ele mostra, pôr
-  `FINAN_LOCAL_URL`/`FINAN_LOCAL_KEY` na Vercel, e configurar `GOOGLE_*` (ver [GOOGLE.md](GOOGLE.md)). A correção da identidade dos
+- **Configuração externa:** o Tailscale está instalado e conectado no Mac (29/10/2026). Falta
+  configurar `GOOGLE_*` (ver [GOOGLE.md](GOOGLE.md)). O computador como IA do intermediário
+  (`scripts/finanlocal.sh`, `FINAN_LOCAL_*`) foi removido em 03/11/2026: sem uso; a IA grátis
+  usa só provedores na nuvem. A correção da identidade dos
   commits já foi publicada, conforme o registro da sessão anterior; não repetir o force push.
 
 ## Safari (motor WebKit), 29/10/2026

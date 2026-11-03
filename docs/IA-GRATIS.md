@@ -126,9 +126,8 @@ O Groq informa em cada resposta quanto falta da cota daquele modelo
 (`x-ratelimit-remaining-requests` por dia e `x-ratelimit-remaining-tokens` por minuto). Quando
 sobram menos de 20 pedidos no dia ou menos de 6 mil tokens no minuto (uma pergunta), aquele
 modelo vai para o fim da fila até a hora informada em `x-ratelimit-reset-*`, e as próximas
-perguntas vão para o próximo modelo ou provedor (o computador local por último), sem esperar o
-429. Um 429 com `retry-after` faz o mesmo. A pessoa não vê a troca; só a resposta pode demorar
-mais quando cai no computador local. Se todos os outros falharem, o modelo cansado ainda é tentado.
+perguntas vão para o próximo modelo ou provedor, sem esperar o 429. Um 429 com `retry-after`
+faz o mesmo. A pessoa não vê a troca. Se todos os outros falharem, o modelo cansado ainda é tentado.
 
 ## Registro de tokens por pedido
 
@@ -199,34 +198,6 @@ grátis.
 Trocar a chave do Groq: `printf '%s' "NOVA" | gcloud secrets versions add groq-api-key --data-file=-`
 e rode o script de novo. Ver uso e erros: *Cloud Run → finanproxy → Registros*.
 
-## Seu computador como provedor (sem cota de tokens)
+## Seu computador como provedor (removido)
 
-Um computador com o Ollama pode emprestar a IA ao intermediário: entra por último na ordem
-padrão (`local` em `FINAN_PROVIDERS`), sem cota de tokens, uma pergunta por vez. Medido num Mac
-M1 Pro com o `qwen2.5:7b-instruct`: de 13 a 35 s por pergunta (com o resumo só das seções de cada
-personagem; o Consultor mostra "Os números do app" na hora, e a IA escreve a explicação embaixo). Ele vai **sem as ferramentas**
-(modelo pequeno escrevia o pedido como texto); as contas prontas do Go já vão nos dados.
-
-**Jeito rápido:** instale o Tailscale (App Store ou versão standalone) e entre com a sua conta;
-depois rode `scripts/finanlocal.sh` no Terminal (o comando `tailscale` não precisa estar no
-PATH: o script usa o que vem dentro do app). Na primeira vez, o Tailscale mostra um link para
-liberar o HTTPS e o Funnel na sua rede: abra, aprove, e o script continua sozinho. Ele gera a chave em `~/.config/finan_rich/local.key` (fora
-do repositório), compila o porteiro, deixa o Ollama e o porteiro ligando sozinhos ao entrar no
-Mac, abre o túnel, mostra o endereço e copia a chave para a área de transferência (nunca mostra
-na tela). Falta só pôr as duas variáveis na Vercel. `scripts/finanlocal.sh --off` desliga tudo.
-
-Passo a passo à mão:
-
-1. `ollama pull qwen2.5:7b-instruct` e `OLLAMA_CONTEXT_LENGTH=8192 ollama serve`.
-2. Gere uma senha longa (`openssl rand -base64 32`) e guarde **fora do repositório**.
-3. `FINAN_LOCAL_KEY=<senha> go run ./cmd/finanlocal`: o porteiro escuta só neste computador
-   (`127.0.0.1:11435`), pede a senha, só deixa passar a conversa e sempre com o modelo escolhido
-   (o Ollama não tem senha; nunca exponha a porta 11434).
-4. Túnel com endereço fixo e grátis: Tailscale Funnel (`tailscale funnel 11435`), que dá
-   `https://<computador>.<rede>.ts.net`.
-5. Na Vercel: `FINAN_LOCAL_URL` = `https://<computador>.<rede>.ts.net/v1` e `FINAN_LOCAL_KEY` =
-   a mesma senha; Redeploy. Só o computador, sem nenhuma chave de nuvem, também funciona.
-
-Nunca vão para o GitHub: a senha, o endereço do túnel e o `dist/finanlocal` (a pasta `dist/` é
-ignorada). Com o computador desligado, o intermediário passa para o próximo provedor ou a tela
-mostra a resposta sem IA.
+Removido em 03/11/2026: nunca foi usado; a IA grátis usa só provedores na nuvem.
