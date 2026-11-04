@@ -183,16 +183,6 @@ try {
   await waitHealthy();
 
   const ctx = await browser.newContext({ ...devices["Pixel 7"] });
-  await ctx.addInitScript(() => {
-    const cancellations = new WeakSet();
-    const cancel = ReadableStreamDefaultReader.prototype.cancel;
-    ReadableStreamDefaultReader.prototype.cancel = function (...args) {
-      const result = Reflect.apply(cancel, this, args);
-      cancellations.add(result);
-      return result;
-    };
-    window.addEventListener("unhandledrejection", (event) => console.error("diagnóstico de cancelamento:", cancellations.has(event.promise), event.reason?.message));
-  });
   const page = await ctx.newPage();
   const errors = [];
   const logs = [];
@@ -231,6 +221,7 @@ try {
 
   // Usar só no celular: cria as categorias no aparelho e já dá para lançar.
   await page.goto(`${APP}/configuracoes`);
+  await page.waitForSelector("form[data-form=cloud-ai]");
   await page.click("[data-action=solo]");
   await page.waitForSelector("form[data-form=transaction]", { state: "attached", timeout: 20000 });
   // Primeiro uso também só no celular: o Painel guia em vez de ficar vazio.
@@ -302,7 +293,6 @@ try {
   ok(await page.locator(".msg.pending").count() === 0 && !(await page.textContent(".messages")).includes("Metade da resp") && !savedChat.includes("Metade da resp") &&
     (await page.textContent(".msg.assistant >> nth=-1")).includes("Resumo de"),
     `internet caindo no meio do chat: resposta sem IA, sem "Pensando…" e sem resposta pela metade`);
-  console.log(logs.filter((entry) => entry.includes("diagnóstico de cancelamento")).join("\n"));
 
   // O grátis do finan_rich no limite: resposta sem IA e o caminho para a chave grátis da pessoa.
   await page.evaluate(async (port) => { // a configuração com a chave fica guardada no próprio app (a chave cifrada não passa bem pelo teste)
@@ -790,6 +780,15 @@ try {
   const h1 = await box.evaluate((input) => input.getBoundingClientRect().height);
   ok(h1 > h0 + 20, `sem field-sizing (Safari), a caixa do Consultor cresce com o texto (${h0} → ${h1})`);
   await safariCtx.close();
+
+  const errorCtx = await browser.newContext();
+  const errorPage = await errorCtx.newPage();
+  await errorPage.goto(`${APP}/configuracoes`);
+  await errorPage.waitForSelector("[data-action=solo]");
+  const unexpectedError = errorPage.waitForEvent("pageerror", { timeout: 10000 });
+  await errorPage.evaluate(() => { Promise.reject(new TypeError("network error")); });
+  ok((await unexpectedError).message.includes("network error"), "erro de rede fora do consultor continua visível, sem filtro global");
+  await errorCtx.close();
 
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);
 } catch (err) {

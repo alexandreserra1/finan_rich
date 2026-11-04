@@ -255,6 +255,13 @@ Verificação de 03/11/2026: `make test`, dez suítes Chromium e nove WebKit pas
 A matriz do CI exige os dois motores, sem `continue-on-error`. A execução Linux no GitHub
 será acompanhada após o push; isso não substitui a conferência no iPhone.
 
+**Complemento de 04/11/2026:** o Linux revelou uma promessa sem tratamento ao fechar a
+resposta da IA depois de uma queda de rede. A proteção agora fica no transporte Go usado
+como WebAssembly: não cancela de novo um corpo cuja leitura já falhou. Saiu o filtro
+global de erros de rede do JavaScript. O teste mantém a queda real da conexão e também
+confere que um erro independente continua aparecendo. Isso é diferente do `Page crashed`
+do motor antigo; não muda o cliente nativo nem as contas do app.
+
 ## Ordem de execução
 
 1. Manter `make test` e `make e2e` como verificação das próximas alterações.

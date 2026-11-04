@@ -181,7 +181,7 @@ diagnóstico original; o estado atual está na última coluna e nas verificaçõ
   `WebCore::Navigation::initializeForNewWindow`, a mesma assinatura da
   [regressão #37766 do WebKit usado pelo Playwright](https://github.com/microsoft/playwright/issues/37766).
   Atualização mínima de 1.56.1 (revisão 2215) para 1.57.0 (revisão 2227), que inclui a
-  correção upstream. Nenhuma alteração no Go, WebAssembly, gráfico ou dados da pessoa.
+  correção upstream. A queda nativa não exigiu alterar as regras ou os gráficos.
   As nove suítes WebKit passaram; a matriz do CI agora exige ambos os motores.
   Antes de trocar de página, os testes offline, de importação e de dívidas aguardam a
   sincronização; isso evita o diagnóstico nativo de cancelamento `access control checks`.
@@ -213,11 +213,38 @@ repetida após a espera nova e passou. Licenças, `npm audit` do e2e e validaç�
 com `actionlint` também passaram. Revisões independentes de código, segurança e testes
 não encontraram bloqueadores. A primeira execução da matriz no GitHub ainda será
 acompanhada após o push. A execução `41749749940` expôs uma medição da caixa de mensagem
-antes de ela aparecer no Chromium; o teste agora aguarda a caixa ficar visível. O WebKit
-Linux registrou `TypeError: Load failed`, sem nova queda nativa; o diagnóstico agora inclui
-o endereço e a pilha no momento do erro. A aprovação remota continua pendente.
+antes de ela aparecer no Chromium; o teste agora aguarda a sincronização, a caixa visível
+e o crescimento, sem consultar um elemento já retirado da tela.
+A aprovação remota da correção completa continua pendente.
 Android real, Safari real e login Google real continuam pendentes.
 Os testes direcionados de Ollama e configuração já tinham passado com `-race`.
+
+### Fechamento da resposta da IA no navegador (04/11/2026)
+
+O WebKit Linux expôs outro erro, diferente da queda nativa: `TypeError: Load failed`
+quando o teste cortava a conexão no meio da resposta. Na execução `41750939040`, a
+instrumentação confirmou por identidade que a promessa rejeitada era a retornada por
+`reader.cancel()`, chamada pelo `net/http` do Go ao fechar um stream que já tinha falhado.
+
+- `internal/llm/browser_stream_js.go` instala a proteção só no navegador/WebAssembly.
+  O transporte preserva a leitura e seus erros; apenas evita cancelar de novo o corpo
+  depois de erro de leitura diferente de EOF. EOF, saída antecipada e erro de parser
+  continuam fechando o corpo normalmente. O cliente nativo não muda.
+- Removido o filtro global de `unhandledrejection` de `cloud-ai.js`. Não foi substituído
+  por filtro de mensagens nem por alteração global do protótipo dos streams.
+- Testes Go cobrem leitura interrompida, EOF, leitura normal, fechamento antecipado e
+  transparência do transporte. O primeiro caso falhou antes da correção e passou depois,
+  também com `-race` e como WebAssembly.
+- O teste do app continua cortando uma conexão de verdade e conferindo a resposta
+  alternativa, sem texto incompleto salvo. Outro contexto provoca um erro independente
+  com a mensagem `network error` e exige que ele continue visível. Esse controle falhava
+  com o filtro antigo. A instrumentação temporária de promessas foi retirada.
+- `make test`, dez suítes Chromium e nove WebKit passaram com a correção. A conferência
+  final do app sem a instrumentação passou nos dois motores. Revisões de código,
+  segurança e testes aprovaram. Falta confirmar a execução Linux após publicar a correção.
+
+Limite: trata o fechamento após falha de leitura do corpo HTTP do consultor, não todo
+cancelamento possível dentro da biblioteca padrão do Go. Não altera cálculos financeiros.
 
 ### Riscos
 

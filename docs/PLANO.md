@@ -157,5 +157,7 @@ Estado detalhado em [AUDITORIA-2026-11-03.md](AUDITORIA-2026-11-03.md).
 - [x] Resolver a queda nativa do WebKit: Playwright 1.57.0, revisão 2227. Nove suítes
   WebKit e dez Chromium aprovadas localmente; matriz obrigatória dos dois motores no CI.
   O Google simulado continua no Chromium por usar resposta 302.
+- [x] Corrigir o fechamento da resposta da IA após queda de rede no Go/WebAssembly,
+  sem esconder erros globais. Testes de leitura/fechamento e controle negativo no navegador.
 - [x] Fixar o job Chromium em Ubuntu 24.04: a execução anterior da main usou Ubuntu 26.04,
   não suportado pelo Playwright instalado, e falhou antes de iniciar os testes.
