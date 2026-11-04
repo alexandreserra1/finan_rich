@@ -154,7 +154,8 @@ O andamento detalhado está em [PLANO.md](PLANO.md) e [passo-a-passo.md](passo-a
   no computador; no app, o cartão aberto continua aberto quando a tela é atualizada.
 - **Aparelhos reais:** conferir Safari, Android, Sair pela rede, Ollama e nuvem na tela nova.
 - **WebKit:** a queda nativa na navegação foi isolada no motor do Playwright 1.56.1;
-  atualização para 1.57.0, nove suítes aprovadas e matriz Chromium/WebKit no CI.
+  atualização para 1.57.0, nove suítes aprovadas e matriz Chromium/WebKit verde no CI
+  (execução `41844337044`, commit `122c407`).
   Detalhes em [passo-a-passo.md](passo-a-passo.md#safari-motor-webkit-29102026).
 - **Queda da IA no navegador:** fechamento de stream já interrompido protegido no
   Go/WebAssembly; filtro global de erros removido, com teste para erros independentes.

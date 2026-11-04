@@ -252,8 +252,9 @@ install webkit && npm run webkit`; versão 26.0). Diagnóstico atualizado em 03/
   (302), então `google.test` só roda no Chromium.
 
 Verificação de 03/11/2026: `make test`, dez suítes Chromium e nove WebKit passaram.
-A matriz do CI exige os dois motores, sem `continue-on-error`. A execução Linux no GitHub
-será acompanhada após o push; isso não substitui a conferência no iPhone.
+A matriz do CI exige os dois motores, sem `continue-on-error`. Em 04/11/2026, ambos passaram
+no Linux na [execução 41844337044](https://github.com/alexandreserra1/finan_rich/actions/runs/41844337044)
+(commit `122c407`); isso não substitui a conferência no iPhone.
 
 **Complemento de 04/11/2026:** o Linux revelou uma promessa sem tratamento ao fechar a
 resposta da IA depois de uma queda de rede. A proteção agora fica no transporte Go usado

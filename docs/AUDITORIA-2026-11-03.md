@@ -141,7 +141,7 @@ diagnóstico original; o estado atual está na última coluna e nas verificaçõ
 | 1 | Registro `transfer` separado dos lançamentos; atualiza saldo e faturas, sem alterar gastos e renda. Na tela Contas: "Transferir" e "Pagar fatura". Abate valores antigos primeiro e aceita antecipação. | `internal/domain`, `internal/store`, `internal/finance/accounts.go`, `js/db.js`, `js/main.js`, `js/pages/accounts.js`, `app.css` | Go: validação, saldos, pagamentos, patrimônio. e2e `accounts.test`: fatura paga sem mudar o Painel. | Claude | feito em `939d4fd` |
 | 2 | Passo a passo de limite por IP para `/chat/completions` e `/v1/chat/completions`. Mexer no painel é com você. | `docs/IA-GRATIS.md` | Criar a regra e conferir eventos e resposta 429, conforme o limite escolhido. | você; documentação pelo Codex | documentado; configuração pendente |
 | 3 | Sem IA salva nos Ajustes e com o modelo padrão faltando no Ollama, usar um modelo local de conversa já baixado. Sem nenhum, manter o aviso e a resposta sem IA. Escolha salva não muda. | `internal/web/aiconfig.go` | Go: seleção, chamada real ao Ollama falso, modelos de nuvem e vetores excluídos, erro e lista vazia. | Codex, concluindo o trabalho do Claude | implementado e testes Go aprovados |
-| 4 | Playwright 1.57.0 corrige a queda nativa. Matriz obrigatória Chromium/WebKit no CI após a aprovação local. Google permanece no Chromium porque o mock usa redirecionamento 302. | `.github/workflows/ci.yml`, `e2e/package.json`, testes | Nove suítes WebKit e dez Chromium aprovadas localmente; acompanhar a primeira execução da matriz no GitHub. | Codex | implementado, aprovado localmente e ativado no CI |
+| 4 | Playwright 1.57.0 corrige a queda nativa. Matriz obrigatória Chromium/WebKit no CI após a aprovação local. Google permanece no Chromium porque o mock usa redirecionamento 302. | `.github/workflows/ci.yml`, `e2e/package.json`, testes | Nove suítes WebKit e dez Chromium aprovadas localmente e no Linux, execução `41844337044`. | Codex | concluído e aprovado no CI |
 | 5 | Workflow diário e manual com `/healthz` e pergunta de conexão no endereço real. Só aceita resposta completa com texto "ok". As notificações dependem das preferências da conta GitHub. | `.github/workflows/ia-diaria.yml`, `docs/IA-GRATIS.md` | Resposta publicada validada, sete casos do validador e execução `41747839412` aprovada no GitHub. | Codex | implementado e conferido no GitHub; notificações pendentes |
 | 6 | O computador abre `/chat` com `pages/advisor.js` e `/api/chat`; saíram a tela e as rotas antigas. | `internal/web/chat.go`, `server.go`, `js/main.js`, `js/pages/advisor.js`, testes | Go e suítes `app.test` e `budget.test`. | Claude e agente em paralelo | feito em `0af70a2` |
 | 7 | Apagar a IA dentro do celular. | `js/local-ai.js`, `pages/device.js`, `advisor`, `askapi`, `mobile/package.json`, F-Droid, docs | `make test`, `make e2e`, `make mobile`. | eu, **depois da sua confirmação** | aguardando você |
@@ -211,11 +211,12 @@ Os itens 7 e 11 continuam com as condições originais. O protótipo em
 e as nove suítes de `PORT_OFFSET=2200 npm run webkit` passaram. A importação Chromium foi
 repetida após a espera nova e passou. Licenças, `npm audit` do e2e e validação do workflow
 com `actionlint` também passaram. Revisões independentes de código, segurança e testes
-não encontraram bloqueadores. A primeira execução da matriz no GitHub ainda será
-acompanhada após o push. A execução `41749749940` expôs uma medição da caixa de mensagem
+não encontraram bloqueadores. A primeira execução da matriz, `41749749940`, expôs uma medição da caixa de mensagem
 antes de ela aparecer no Chromium; o teste agora aguarda a sincronização, a caixa visível
 e o crescimento, sem consultar um elemento já retirado da tela.
-A aprovação remota da correção completa continua pendente.
+A correção completa passou nos dois motores no Linux na
+[execução 41844337044](https://github.com/alexandreserra1/finan_rich/actions/runs/41844337044),
+do commit `122c407`, em 04/11/2026.
 Android real, Safari real e login Google real continuam pendentes.
 Os testes direcionados de Ollama e configuração já tinham passado com `-race`.
 
@@ -241,7 +242,8 @@ instrumentação confirmou por identidade que a promessa rejeitada era a retorna
   com o filtro antigo. A instrumentação temporária de promessas foi retirada.
 - `make test`, dez suítes Chromium e nove WebKit passaram com a correção. A conferência
   final do app sem a instrumentação passou nos dois motores. Revisões de código,
-  segurança e testes aprovaram. Falta confirmar a execução Linux após publicar a correção.
+  segurança e testes aprovaram. Chromium e WebKit também passaram no Linux, na execução
+  `41844337044`, com a correção publicada em `122c407`.
 
 Limite: trata o fechamento após falha de leitura do corpo HTTP do consultor, não todo
 cancelamento possível dentro da biblioteca padrão do Go. Não altera cálculos financeiros.

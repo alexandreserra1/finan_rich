@@ -155,7 +155,8 @@ Estado detalhado em [AUDITORIA-2026-11-03.md](AUDITORIA-2026-11-03.md).
 - [x] Confirmar a execução do workflow de IA no GitHub: execução `41747839412` aprovada.
 - [ ] Conferir as notificações da conta GitHub.
 - [x] Resolver a queda nativa do WebKit: Playwright 1.57.0, revisão 2227. Nove suítes
-  WebKit e dez Chromium aprovadas localmente; matriz obrigatória dos dois motores no CI.
+  WebKit e dez Chromium aprovadas localmente e no Linux, execução `41844337044`;
+  matriz obrigatória dos dois motores no CI.
   O Google simulado continua no Chromium por usar resposta 302.
 - [x] Corrigir o fechamento da resposta da IA após queda de rede no Go/WebAssembly,
   sem esconder erros globais. Testes de leitura/fechamento e controle negativo no navegador.
