@@ -183,6 +183,16 @@ try {
   await waitHealthy();
 
   const ctx = await browser.newContext({ ...devices["Pixel 7"] });
+  await ctx.addInitScript(() => {
+    const cancellations = new WeakSet();
+    const cancel = ReadableStreamDefaultReader.prototype.cancel;
+    ReadableStreamDefaultReader.prototype.cancel = function (...args) {
+      const result = Reflect.apply(cancel, this, args);
+      cancellations.add(result);
+      return result;
+    };
+    window.addEventListener("unhandledrejection", (event) => console.error("diagnóstico de cancelamento:", cancellations.has(event.promise), event.reason?.message));
+  });
   const page = await ctx.newPage();
   const errors = [];
   const logs = [];
@@ -292,6 +302,7 @@ try {
   ok(await page.locator(".msg.pending").count() === 0 && !(await page.textContent(".messages")).includes("Metade da resp") && !savedChat.includes("Metade da resp") &&
     (await page.textContent(".msg.assistant >> nth=-1")).includes("Resumo de"),
     `internet caindo no meio do chat: resposta sem IA, sem "Pensando…" e sem resposta pela metade`);
+  console.log(logs.filter((entry) => entry.includes("diagnóstico de cancelamento")).join("\n"));
 
   // O grátis do finan_rich no limite: resposta sem IA e o caminho para a chave grátis da pessoa.
   await page.evaluate(async (port) => { // a configuração com a chave fica guardada no próprio app (a chave cifrada não passa bem pelo teste)
@@ -769,12 +780,15 @@ try {
   const saf = await safariCtx.newPage();
   saf.on("pageerror", (error) => recordError(saf, error));
   await saf.goto(`${B}/chat`);
+  await saf.evaluate(() => window.finanSync());
   const box = saf.locator("textarea[name=message]");
   await box.waitFor({ state: "visible" });
-  const h0 = (await box.boundingBox()).height;
+  const h0 = await box.evaluate((input) => input.getBoundingClientRect().height);
   await box.fill("linha 1\nlinha 2\nlinha 3\nlinha 4");
   await box.dispatchEvent("input");
-  ok((await box.boundingBox()).height > h0 + 20, `sem field-sizing (Safari), a caixa do Consultor cresce com o texto (${h0} → ${(await box.boundingBox()).height})`);
+  await saf.waitForFunction((height) => document.querySelector("textarea[name=message]")?.getBoundingClientRect().height > height + 20, h0);
+  const h1 = await box.evaluate((input) => input.getBoundingClientRect().height);
+  ok(h1 > h0 + 20, `sem field-sizing (Safari), a caixa do Consultor cresce com o texto (${h0} → ${h1})`);
   await safariCtx.close();
 
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);
