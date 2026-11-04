@@ -186,7 +186,12 @@ try {
   const page = await ctx.newPage();
   const errors = [];
   const logs = [];
-  page.on("pageerror", (e) => errors.push(e.message));
+  const recordError = (page, error) => {
+    const detail = `${page.url()}\n${error.stack || error.message}`;
+    errors.push(detail);
+    console.error(detail);
+  };
+  page.on("pageerror", (error) => recordError(page, error));
   page.on("console", (m) => logs.push(`[${m.type()}] ${m.text()}`));
   page.on("requestfailed", (r) => logs.push(`[falhou] ${r.url()} ${r.failure()?.errorText}`));
   globalThis.dumpPage = async () => {
@@ -588,7 +593,7 @@ try {
 
   // O mesmo no consultor do computador (tela do navegador).
   const desk = await browser.newPage();
-  desk.on("pageerror", (e) => errors.push(e.message));
+  desk.on("pageerror", (error) => recordError(desk, error));
   await desk.goto(`${B}/chat`);
   await desk.waitForSelector(".proposal");
   const before = await desk.locator(".proposal").count(); // os da conversa do celular também aparecem aqui
@@ -662,7 +667,7 @@ try {
     return route.fulfill({ headers, body: JSON.stringify({ next: null, results: [{ id: "n1", description: "Padaria do Zé", amount: 18.9, date: `${url.searchParams.get("dateFrom")}T09:00:00.000Z`, type: "DEBIT", status: "POSTED" }] }) });
   });
   const of = await ofCtx.newPage();
-  of.on("pageerror", (e) => errors.push(e.message));
+  of.on("pageerror", (error) => recordError(of, error));
   await of.goto(`${APP}/configuracoes`);
   await of.click("[data-action=solo]");
   await of.waitForSelector("form[data-form=transaction]", { state: "attached", timeout: 20000 });
@@ -728,7 +733,7 @@ try {
     } } };
   });
   const rem = await remCtx.newPage();
-  rem.on("pageerror", (e) => errors.push(e.message));
+  rem.on("pageerror", (error) => recordError(rem, error));
   rem.on("dialog", (d) => d.accept());
   await rem.goto(`${APP}/configuracoes`);
   await rem.click("[data-action=solo]");
@@ -762,9 +767,10 @@ try {
   const safariCtx = await browser.newContext({ viewport: { width: 1200, height: 900 } });
   await safariCtx.addInitScript(() => { const real = CSS.supports.bind(CSS); CSS.supports = (p, v) => (p === "field-sizing" ? false : real(p, v)); });
   const saf = await safariCtx.newPage();
-  saf.on("pageerror", (e) => errors.push("safari: " + e.message));
+  saf.on("pageerror", (error) => recordError(saf, error));
   await saf.goto(`${B}/chat`);
   const box = saf.locator("textarea[name=message]");
+  await box.waitFor({ state: "visible" });
   const h0 = (await box.boundingBox()).height;
   await box.fill("linha 1\nlinha 2\nlinha 3\nlinha 4");
   await box.dispatchEvent("input");

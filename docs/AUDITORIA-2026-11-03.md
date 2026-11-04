@@ -212,7 +212,11 @@ e as nove suítes de `PORT_OFFSET=2200 npm run webkit` passaram. A importação 
 repetida após a espera nova e passou. Licenças, `npm audit` do e2e e validação do workflow
 com `actionlint` também passaram. Revisões independentes de código, segurança e testes
 não encontraram bloqueadores. A primeira execução da matriz no GitHub ainda será
-acompanhada após o push. Android real, Safari real e login Google real continuam pendentes.
+acompanhada após o push. A execução `41749749940` expôs uma medição da caixa de mensagem
+antes de ela aparecer no Chromium; o teste agora aguarda a caixa ficar visível. O WebKit
+Linux registrou `TypeError: Load failed`, sem nova queda nativa; o diagnóstico agora inclui
+o endereço e a pilha no momento do erro. A aprovação remota continua pendente.
+Android real, Safari real e login Google real continuam pendentes.
 Os testes direcionados de Ollama e configuração já tinham passado com `-race`.
 
 ### Riscos
