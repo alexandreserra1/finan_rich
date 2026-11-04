@@ -1,0 +1,32 @@
+name: IA publicada
+
+on:
+  schedule:
+    - cron: '17 12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ia-publicada
+  cancel-in-progress: false
+
+jobs:
+  conferir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Confere o servidor
+        run: |
+          resposta=$(curl --fail --silent --show-error --connect-timeout 10 --max-time 30 https://finan-rich-ia.vercel.app/healthz)
+          test "$resposta" = ok
+      - name: Confere uma resposta real da IA, sem dados financeiros
+        run: |
+          curl --fail --silent --show-error --connect-timeout 10 --max-time 180 \
+            https://finan-rich-ia.vercel.app/chat/completions \
+            -H 'Content-Type: application/json' \
+            -H 'Authorization: Bearer ci-ia-diaria' \
+            --data '{"model":"auto","stream":false,"max_tokens":128,"messages":[{"role":"user","content":"Responda só: ok"}]}' \
+            --output resposta.json
+          jq -e '(.error == null) and (.choices[0].message.role == "assistant") and (.choices[0].finish_reason == "stop") and ((.choices[0].message.content // "" | ascii_downcase | gsub("[[:space:].!]"; "")) == "ok")' resposta.json

@@ -139,3 +139,21 @@ falsos). Do protótipo veio o visual e os textos; as contas continuam as do Go.
   e limites com barra), Análise (mapa de gastos, limites, estabelecimentos), Notas (cartões e
   janela), Importar (passos), Exportar e backup (duas colunas) e Ajustes (grade de cartões).
 - [ ] Domínio próprio: a prévia do link aponta para `finan-rich-ia.vercel.app` até lá.
+
+## F. Retomada da auditoria (03/11/2026)
+
+Estado detalhado em [AUDITORIA-2026-11-03.md](AUDITORIA-2026-11-03.md).
+
+- [x] Concluir a escolha automática de um modelo local já baixado quando não há escolha
+  salva e falta o modelo padrão. Não escolhe modelo de nuvem ou vetores; preserva Ajustes.
+- [x] Testar a seleção e uma chamada ao Ollama falso; cenários de erro, lista vazia e
+  modelo salvo cobertos. `make test` passou.
+- [x] Criar a conferência diária e manual da IA publicada. Teste local real retornou "ok";
+  o workflow rejeita HTTP 200 sem resposta e respostas prontas do app.
+- [x] Documentar a regra do Firewall da Vercel, cobrindo os dois caminhos da IA.
+- [ ] Aplicar a regra no painel da Vercel e conferir o bloqueio.
+- [ ] Confirmar a execução do workflow de IA no GitHub e as notificações da conta.
+- [ ] Resolver a queda do WebKit na navegação offline antes de ativá-lo no CI. A suíte
+  WebKit cobre nove fluxos; o Google simulado continua no Chromium por usar resposta 302.
+- [x] Fixar o job Chromium em Ubuntu 24.04: a execução anterior da main usou Ubuntu 26.04,
+  não suportado pelo Playwright instalado, e falhou antes de iniciar os testes.

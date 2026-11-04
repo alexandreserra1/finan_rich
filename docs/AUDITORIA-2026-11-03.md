@@ -133,18 +133,21 @@ scripts de instalação e o workflow de release.
 
 ### Como cada item é resolvido
 
+Situação conferida na retomada pelo Codex em 03/11/2026. Os achados acima preservam o
+diagnóstico original; o estado atual está na última coluna e nas verificações abaixo.
+
 | # | Como | Arquivos | Como confere | Quem | Situação |
 |---|---|---|---|---|---|
-| 1 | Registro novo `transfer` (de uma conta para outra, valor, data, descrição), separado dos lançamentos: nenhum total de gasto, entrada, orçamento, análise ou IA muda. O saldo das contas e o "em aberto" do cartão passam a contar as transferências; a fatura mostra "Paga" quando os pagamentos depois do fechamento cobrem o total. Na tela Contas: "Transferir" e, no cartão, "Pagar fatura" (já com o valor da fatura). Computador antigo recusa o tipo novo: o app já pula tipos desconhecidos e avisa para atualizar. | `internal/domain`, `internal/store`, `internal/finance/accounts.go`, `js/db.js`, `js/main.js`, `js/pages/accounts.js`, `app.css` | Go: validação, saldos, fatura paga, patrimônio. e2e `accounts.test`: pagar a fatura zera o "em aberto" e não muda o Painel. Auditoria do dia 02 repetida. | eu | a fazer |
-| 2 | Passo a passo do Firewall da Vercel (regra de limite por IP no `/chat/completions`), no `docs/IA-GRATIS.md`. Mexer no painel é com você. | `docs/IA-GRATIS.md` | Você cria a regra; um teste com 30 pedidos seguidos recebe 429. | você (eu escrevo o passo a passo) | a fazer |
-| 3 | Sem IA salva nos Ajustes e com o modelo padrão faltando no Ollama, usar o primeiro modelo de conversa já baixado (o mesmo da lista "Usar …" de hoje). Sem nenhum modelo, nada muda (resposta pronta e o aviso de hoje). | `internal/web/aiconfig.go` | Go: Ollama falso com só `qwen2.5:7b-instruct` → o Consultor usa ele. | eu | a fazer |
-| 4 | Job `e2e-webkit` no CI, depois de a rodada local no WebKit passar (se a queda do Painel aparecer, investigar antes de ligar). | `.github/workflows/ci.yml` | A rodada local; o job verde no GitHub. | eu | rodando localmente |
-| 5 | Workflow diário (e "rodar agora") que chama `/healthz` e uma pergunta de teste (a mesma do botão "Testar conexão") no endereço real; falhou, o GitHub manda e-mail. | `.github/workflows/ia-diaria.yml` | Rodar o mesmo `curl` daqui; disparar o workflow à mão. | eu | a fazer |
-| 6 | O computador passa a abrir `/chat` com a mesma tela do app (`pages/advisor.js`), falando com `/api/chat`; saem `chat.js`, `chat.html` e as rotas antigas (`/chat/enviar`, `/chat/limpar`). O aviso de modelo faltando continua (link para Ajustes). | `internal/web/chat.go`, `server.go`, `templates/chat.html`, `static/chat.js`, `js/main.js`, `js/pages/advisor.js`, `e2e/app.test.mjs`, `e2e/budget.test.mjs` | `go test ./internal/web`; e2e `app.test` e `budget.test` (partes do computador). | agente em paralelo (cópia isolada do repositório) | a fazer |
+| 1 | Registro `transfer` separado dos lançamentos; atualiza saldo e faturas, sem alterar gastos e renda. Na tela Contas: "Transferir" e "Pagar fatura". Abate valores antigos primeiro e aceita antecipação. | `internal/domain`, `internal/store`, `internal/finance/accounts.go`, `js/db.js`, `js/main.js`, `js/pages/accounts.js`, `app.css` | Go: validação, saldos, pagamentos, patrimônio. e2e `accounts.test`: fatura paga sem mudar o Painel. | Claude | feito em `939d4fd` |
+| 2 | Passo a passo de limite por IP para `/chat/completions` e `/v1/chat/completions`. Mexer no painel é com você. | `docs/IA-GRATIS.md` | Criar a regra e conferir eventos e resposta 429, conforme o limite escolhido. | você; documentação pelo Codex | documentado; configuração pendente |
+| 3 | Sem IA salva nos Ajustes e com o modelo padrão faltando no Ollama, usar um modelo local de conversa já baixado. Sem nenhum, manter o aviso e a resposta sem IA. Escolha salva não muda. | `internal/web/aiconfig.go` | Go: seleção, chamada real ao Ollama falso, modelos de nuvem e vetores excluídos, erro e lista vazia. | Codex, concluindo o trabalho do Claude | implementado e testes Go aprovados |
+| 4 | Job WebKit no CI só depois de a rodada local passar. `npm run webkit` executa as nove suítes compatíveis; Google permanece no Chromium porque o mock usa redirecionamento 302. | `.github/workflows/ci.yml`, `e2e/package.json` | Rodada local e depois job verde no GitHub. | Codex | bloqueado: WebKit caiu na navegação offline; job não ativado |
+| 5 | Workflow diário e manual com `/healthz` e pergunta de conexão no endereço real. Só aceita resposta completa com texto "ok". As notificações dependem das preferências da conta GitHub. | `.github/workflows/ia-diaria.yml`, `docs/IA-GRATIS.md` | Resposta publicada validada e sete casos do validador; confirmar execução no GitHub. | Codex | implementado e conferido localmente |
+| 6 | O computador abre `/chat` com `pages/advisor.js` e `/api/chat`; saíram a tela e as rotas antigas. | `internal/web/chat.go`, `server.go`, `js/main.js`, `js/pages/advisor.js`, testes | Go e suítes `app.test` e `budget.test`. | Claude e agente em paralelo | feito em `0af70a2` |
 | 7 | Apagar a IA dentro do celular. | `js/local-ai.js`, `pages/device.js`, `advisor`, `askapi`, `mobile/package.json`, F-Droid, docs | `make test`, `make e2e`, `make mobile`. | eu, **depois da sua confirmação** | aguardando você |
-| 8 | Apagar as 74 regras de CSS sem uso. | `static/app.css` | Busca dos nomes no código; `make e2e`; prints das telas. | eu | a fazer |
-| 9 | `npm audit fix` em `mobile/` (sem `--force`). | `mobile/package-lock.json` | `npm audit`, `scripts/check-licenses.sh`, `make mobile`. | eu | a fazer |
-| 10 | Apagar o computador como IA do intermediário. | `cmd/finanlocal`, `internal/localguard`, `scripts/finanlocal.sh`, `internal/proxy`, docs | `make test`. | eu, **depois da sua confirmação** | aguardando você |
+| 8 | Apagar regras de CSS sem uso (contagem final: 78). | `static/app.css` | Busca dos nomes e testes no navegador. | Claude | feito em `1fbf982` |
+| 9 | Lockfile atualizado pelo Claude; conferir também licenças e avisos remanescentes antes de outra atualização. | `mobile/package-lock.json` | `npm audit`, licenças e montagem do app. | Claude | parcial: uuid e licenças de ferramentas ainda em revisão |
+| 10 | Apagar o computador como IA do intermediário. | `cmd/finanlocal`, `internal/localguard`, `scripts/finanlocal.sh`, `internal/proxy`, docs | `make test`. | Claude, após confirmação registrada na sessão anterior | feito em `8b13010` |
 | 11 | Trocar o SDK pelo formato OpenAI da Anthropic. | `internal/llm` | Só com uma chave da Anthropic para testar as ferramentas. | fica para quando houver chave | adiado |
 
 ### Ordem e paralelo
@@ -159,6 +162,47 @@ scripts de instalação e o workflow de release.
    mesmo tempo dão erro de porta. O agente roda só as suítes dele.
 4. **Por último:** o 4 no CI, com a rodada local verde. Os itens 7 e 10 entram quando você
    confirmar; o 2 é no painel da Vercel.
+
+### Verificações da retomada (03/11/2026)
+
+- **1 feito:** transferência e pagamento de fatura em `939d4fd`, com testes em Go e
+  `e2e/accounts.test.mjs`. O pagamento abate primeiro valores antigos; não depende apenas
+  de pagamentos feitos depois do fechamento, como a proposta inicial dizia.
+- **2 documentado:** passo a passo em `docs/IA-GRATIS.md`; a regra ainda precisa ser aplicada
+  no painel da Vercel. Cobrir os dois caminhos, `/chat/completions` e `/v1/chat/completions`.
+- **3 concluído:** sem escolha salva, prefere modelos locais conhecidos já baixados; ignora
+  nuvem e vetores. O teste de privacidade falhava antes da correção: apenas modelos de
+  nuvem disponíveis levavam à escolha de `kimi-k2:1t-cloud`. Agora mantém o modelo local
+  padrão e o aviso. A revisão também reproduziu aliases remotos sem sufixo de nuvem:
+  `remote_host` e `remote_model` da lista do Ollama são conferidos antes de escolher.
+  Não altera escolha explícita nem baixa modelo.
+- **4 ainda bloqueado:** `BROWSER=webkit PORT_OFFSET=2200 npm run test:core` caiu ao navegar
+  do Painel para Lançamentos sem conexão, no `offline.test.mjs` (`Page crashed`). Não houve
+  aprovação completa do WebKit nesta retomada; não foi usado `continue-on-error`.
+- **CI Chromium:** o job da main anterior falhou antes dos testes porque o Playwright
+  1.56.1 não suporta `ubuntu26.04-x64` (execução `41730531349`). O job `e2e` foi fixado em
+  `ubuntu-24.04`, sem trocar dependência nem desativar teste. Go, Android e iOS dessa
+  execução anterior estavam aprovados.
+- **5 conferido:** `/healthz` respondeu `ok`; a pergunta real retornou `ok` de
+  `openai/gpt-oss-120b`, com término `stop`. O validador rejeitou HTML, erro, resposta vazia
+  e resposta pronta do app. Não envia dados financeiros. Execução diária às 12h17 UTC.
+- **6 feito:** Consultor unificado em `0af70a2`; computador, app e site usam `pages/advisor.js`.
+- **8 feito:** `1fbf982` removeu 78 regras de CSS; a contagem inicial era 74.
+- **9 parcial:** o lockfile já foi atualizado pelo Claude. Continuam a revisão do `uuid`
+  de desenvolvimento e das licenças BlueOak declaradas por `glob` e `minimatch`; não foram
+  introduzidas novas dependências nesta retomada.
+- **10 feito:** removido em `8b13010` e integrado na main. Não reintroduzir `FINAN_LOCAL_*`.
+- **Teste de importação isolado:** o cenário "sem IA disponível" consultava o Ollama real
+  do Mac. O servidor do teste agora usa um endereço local sem serviço. O teste passou sem
+  depender dos modelos instalados na máquina.
+
+Os itens 7 e 11 continuam com as condições originais. O protótipo em
+`docs/rich-mais-recente/`, os arquivos gerados do Capacitor e os worktrees foram preservados.
+
+**Validação final desta retomada:** `make test` e as dez suítes Chromium de `make e2e`
+passaram. Os testes direcionados de Ollama e configuração também passaram com `-race`.
+As revisões de código e segurança aprovaram a seleção automática após a correção dos
+aliases remotos. Não houve validação completa de WebKit, Android real nem login Google real.
 
 ### Riscos
 

@@ -15,6 +15,44 @@ celular (anonimiza) ──HTTPS──> intermediário (Vercel, chaves em variáv
   O mesmo programa roda na Vercel (`vercel.json`; ela procura o programa em `cmd/api`) e no
   Cloud Run. Na Vercel ele também serve o site do finan_rich (as telas do app, pacote `site`,
   compilado com `-tags sitebundle`): tudo que não é rota da IA abre o site.
+
+## Conferência diária da IA publicada
+
+O workflow `.github/workflows/ia-diaria.yml` confere `/healthz` e pede apenas
+"Responda só: ok" diretamente ao intermediário, todos os dias às 12h17 UTC e também
+manualmente em **Actions → IA publicada → Run workflow**. Não envia dados financeiros nem
+precisa de chave de provedor no GitHub. O identificador `ci-ia-diaria` não é segredo nem
+autenticação de usuário: serve para o limite por aparelho do intermediário.
+
+Só passa com uma resposta de assistente completa, sem erro e com texto "ok". HTTP 200 com
+texto vazio, erro ou resposta pronta do app não conta como IA funcionando. Em 03/11/2026,
+o teste local no endereço publicado recebeu "ok" de `openai/gpt-oss-120b`. O limite de 128
+tokens deixa espaço para o raciocínio do modelo; com 16, ele terminou sem texto visível.
+
+Falhas aparecem na aba Actions. Para receber e-mail, confira as notificações de Actions
+da sua conta GitHub; o workflow não configura essas preferências. A checagem não comprova
+ferramentas, streaming ou todos os provedores.
+
+## Limite no Firewall da Vercel
+
+Passo a passo conferido na [documentação oficial](https://vercel.com/docs/vercel-firewall/vercel-waf/rate-limiting)
+em 03/11/2026:
+
+1. No projeto da Vercel, abra **Firewall → Configure → New Rule**.
+2. Combine método `POST` com caminho `/chat/completions` **ou** `/v1/chat/completions`.
+3. Escolha **Rate Limit**, janela fixa de 60 segundos e contagem por IP. Comece, como
+   referência ajustável, com 30 pedidos por minuto; uma pergunta pode gerar várias chamadas.
+4. Use resposta **429**. **Log** apenas observa, sem bloquear.
+5. Salve, revise e publique a regra. Confira os eventos antes de divulgar o site.
+
+O Hobby permite uma regra de limite dentro das três regras personalizadas. Confira os
+limites e preços apresentados no painel antes de ativar. Os contadores são por região;
+isso não garante um teto global de gasto nem distingue pessoas na mesma rede.
+
+Não configurado nesta retomada: exige acesso ao painel da Vercel.
+
+## Por que este intermediário
+
 - **Por que Groq**: plano grátis sem cartão, muito rápido, modelos abertos com ferramentas, e
   ele não usa os dados da API para treinar.
 - **Por que Vercel**: plano grátis (Hobby) sem cartão, login com o GitHub e publicação a cada
