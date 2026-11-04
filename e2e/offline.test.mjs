@@ -116,6 +116,9 @@ try {
   await page.waitForFunction(() => /1 pendente/.test(document.getElementById("sync-status").textContent), null, { timeout: 5000 })
     .then(() => ok(true, "indicador mostra 1 alteração pendente"), async () => ok(false, "indicador mostra 1 alteração pendente: " + await page.textContent("#sync-status")));
   await page.goto(`${B}/`);
+  await page.waitForSelector(".dash-kpis");
+  await waitStatus(page, "offline");
+  ok((await page.textContent(".cards")).includes("R$ 3.012,50"), "painel offline inclui o lançamento ainda não enviado");
   await page.goto(`${B}/lancamentos`);
   await page.waitForSelector("td:has-text('Feira (offline)')", { timeout: 20000 });
   ok(true, "recarregando sem servidor, nada se perde");

@@ -106,8 +106,8 @@ nunca deixe a pessoa sem resposta.
 - [x] "Perguntar para ..." em cada aviso e resumo do time: abre o Consultor com quem avisou e a
   pergunta pronta; as de vencimento, dívida, metas e gastos têm resposta sem IA.
 - [x] Avisos no sininho do cabeçalho, com "Limpar tudo" sincronizado entre aparelhos.
-- [x] Testes também no motor do Safari (WebKit): PDF corrigido; trava ao recarregar o Painel
-  a conferir no iPhone.
+- [x] Testes também no motor do Safari (WebKit): PDF corrigido; queda nativa ao navegar
+  resolvida com Playwright 1.57.0. Safari no iPhone continua pendente.
 - [x] Redesenho do Painel (o Alexandre desenhou; implementado na seção E).
 - [x] Análise de segurança (30/10/2026): sem falhas conhecidas nas dependências nem segredos no
   histórico; corrigido o `<option>` montado com nome do Ollama. A decidir: limite de pedidos do
@@ -152,8 +152,10 @@ Estado detalhado em [AUDITORIA-2026-11-03.md](AUDITORIA-2026-11-03.md).
   o workflow rejeita HTTP 200 sem resposta e respostas prontas do app.
 - [x] Documentar a regra do Firewall da Vercel, cobrindo os dois caminhos da IA.
 - [ ] Aplicar a regra no painel da Vercel e conferir o bloqueio.
-- [ ] Confirmar a execução do workflow de IA no GitHub e as notificações da conta.
-- [ ] Resolver a queda do WebKit na navegação offline antes de ativá-lo no CI. A suíte
-  WebKit cobre nove fluxos; o Google simulado continua no Chromium por usar resposta 302.
+- [x] Confirmar a execução do workflow de IA no GitHub: execução `41747839412` aprovada.
+- [ ] Conferir as notificações da conta GitHub.
+- [x] Resolver a queda nativa do WebKit: Playwright 1.57.0, revisão 2227. Nove suítes
+  WebKit e dez Chromium aprovadas localmente; matriz obrigatória dos dois motores no CI.
+  O Google simulado continua no Chromium por usar resposta 302.
 - [x] Fixar o job Chromium em Ubuntu 24.04: a execução anterior da main usou Ubuntu 26.04,
   não suportado pelo Playwright instalado, e falhou antes de iniciar os testes.

@@ -76,6 +76,7 @@ try {
     await page.goto(`${B}/dividas${extraCents ? `?extra=${extraCents}` : ""}`);
     await page.waitForSelector(".debt-plan", { timeout: 20000 });
     await page.waitForFunction((n) => document.querySelectorAll(".debt-item").length >= n, current.length);
+    await page.evaluate(() => window.finanSync());
     return page.evaluate(async (extra) => {
       const finance = await import("/static/js/finance.js");
       const ledger = await (await import("/static/js/db.js")).loadLedger();
@@ -154,6 +155,7 @@ try {
   await page.fill("#open-finance textarea[name=items]", "item-1");
   await page.click("#open-finance button[type=submit]");
   await page.waitForSelector("text=Open Finance salvo");
+  await page.evaluate(() => window.finanSync?.());
   await page.goto(`${B}/importar`);
   await page.fill("form[data-form=openfinance] input[name=from]", day(4, 1).slice(0, 10));
   await page.click("form[data-form=openfinance] button[type=submit]");

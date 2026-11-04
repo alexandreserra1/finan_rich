@@ -153,5 +153,8 @@ O andamento detalhado está em [PLANO.md](PLANO.md) e [passo-a-passo.md](passo-a
 - **Consultor · feito:** o cartão de números fica salvo com a resposta e volta ao recarregar
   no computador; no app, o cartão aberto continua aberto quando a tela é atualizada.
 - **Aparelhos reais:** conferir Safari, Android, Sair pela rede, Ollama e nuvem na tela nova.
+- **WebKit:** a queda nativa na navegação foi isolada no motor do Playwright 1.56.1;
+  atualização para 1.57.0, nove suítes aprovadas e matriz Chromium/WebKit no CI.
+  Detalhes em [passo-a-passo.md](passo-a-passo.md#safari-motor-webkit-29102026).
 - **Contas externas:** configurar as variáveis `GOOGLE_*` na Vercel, seguindo [GOOGLE.md](GOOGLE.md).
   O computador como IA do intermediário (`FINAN_LOCAL_*`) foi removido em 03/11/2026: sem uso.

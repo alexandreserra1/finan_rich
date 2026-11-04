@@ -141,8 +141,8 @@ diagnóstico original; o estado atual está na última coluna e nas verificaçõ
 | 1 | Registro `transfer` separado dos lançamentos; atualiza saldo e faturas, sem alterar gastos e renda. Na tela Contas: "Transferir" e "Pagar fatura". Abate valores antigos primeiro e aceita antecipação. | `internal/domain`, `internal/store`, `internal/finance/accounts.go`, `js/db.js`, `js/main.js`, `js/pages/accounts.js`, `app.css` | Go: validação, saldos, pagamentos, patrimônio. e2e `accounts.test`: fatura paga sem mudar o Painel. | Claude | feito em `939d4fd` |
 | 2 | Passo a passo de limite por IP para `/chat/completions` e `/v1/chat/completions`. Mexer no painel é com você. | `docs/IA-GRATIS.md` | Criar a regra e conferir eventos e resposta 429, conforme o limite escolhido. | você; documentação pelo Codex | documentado; configuração pendente |
 | 3 | Sem IA salva nos Ajustes e com o modelo padrão faltando no Ollama, usar um modelo local de conversa já baixado. Sem nenhum, manter o aviso e a resposta sem IA. Escolha salva não muda. | `internal/web/aiconfig.go` | Go: seleção, chamada real ao Ollama falso, modelos de nuvem e vetores excluídos, erro e lista vazia. | Codex, concluindo o trabalho do Claude | implementado e testes Go aprovados |
-| 4 | Job WebKit no CI só depois de a rodada local passar. `npm run webkit` executa as nove suítes compatíveis; Google permanece no Chromium porque o mock usa redirecionamento 302. | `.github/workflows/ci.yml`, `e2e/package.json` | Rodada local e depois job verde no GitHub. | Codex | bloqueado: WebKit caiu na navegação offline; job não ativado |
-| 5 | Workflow diário e manual com `/healthz` e pergunta de conexão no endereço real. Só aceita resposta completa com texto "ok". As notificações dependem das preferências da conta GitHub. | `.github/workflows/ia-diaria.yml`, `docs/IA-GRATIS.md` | Resposta publicada validada e sete casos do validador; confirmar execução no GitHub. | Codex | implementado e conferido localmente |
+| 4 | Playwright 1.57.0 corrige a queda nativa. Matriz obrigatória Chromium/WebKit no CI após a aprovação local. Google permanece no Chromium porque o mock usa redirecionamento 302. | `.github/workflows/ci.yml`, `e2e/package.json`, testes | Nove suítes WebKit e dez Chromium aprovadas localmente; acompanhar a primeira execução da matriz no GitHub. | Codex | implementado, aprovado localmente e ativado no CI |
+| 5 | Workflow diário e manual com `/healthz` e pergunta de conexão no endereço real. Só aceita resposta completa com texto "ok". As notificações dependem das preferências da conta GitHub. | `.github/workflows/ia-diaria.yml`, `docs/IA-GRATIS.md` | Resposta publicada validada, sete casos do validador e execução `41747839412` aprovada no GitHub. | Codex | implementado e conferido no GitHub; notificações pendentes |
 | 6 | O computador abre `/chat` com `pages/advisor.js` e `/api/chat`; saíram a tela e as rotas antigas. | `internal/web/chat.go`, `server.go`, `js/main.js`, `js/pages/advisor.js`, testes | Go e suítes `app.test` e `budget.test`. | Claude e agente em paralelo | feito em `0af70a2` |
 | 7 | Apagar a IA dentro do celular. | `js/local-ai.js`, `pages/device.js`, `advisor`, `askapi`, `mobile/package.json`, F-Droid, docs | `make test`, `make e2e`, `make mobile`. | eu, **depois da sua confirmação** | aguardando você |
 | 8 | Apagar regras de CSS sem uso (contagem final: 78). | `static/app.css` | Busca dos nomes e testes no navegador. | Claude | feito em `1fbf982` |
@@ -176,9 +176,17 @@ diagnóstico original; o estado atual está na última coluna e nas verificaçõ
   padrão e o aviso. A revisão também reproduziu aliases remotos sem sufixo de nuvem:
   `remote_host` e `remote_model` da lista do Ollama são conferidos antes de escolher.
   Não altera escolha explícita nem baixa modelo.
-- **4 ainda bloqueado:** `BROWSER=webkit PORT_OFFSET=2200 npm run test:core` caiu ao navegar
-  do Painel para Lançamentos sem conexão, no `offline.test.mjs` (`Page crashed`). Não houve
-  aprovação completa do WebKit nesta retomada; não foi usado `continue-on-error`.
+- **4 concluído nesta investigação:** a queda original em `offline.test.mjs` foi
+  reproduzida. O relatório nativo do macOS aponta `EXC_BREAKPOINT` em
+  `WebCore::Navigation::initializeForNewWindow`, a mesma assinatura da
+  [regressão #37766 do WebKit usado pelo Playwright](https://github.com/microsoft/playwright/issues/37766).
+  Atualização mínima de 1.56.1 (revisão 2215) para 1.57.0 (revisão 2227), que inclui a
+  correção upstream. Nenhuma alteração no Go, WebAssembly, gráfico ou dados da pessoa.
+  As nove suítes WebKit passaram; a matriz do CI agora exige ambos os motores.
+  Antes de trocar de página, os testes offline, de importação e de dívidas aguardam a
+  sincronização; isso evita o diagnóstico nativo de cancelamento `access control checks`.
+  A câmera falsa foi corrigida no protótipo de `MediaDevices`, mantendo a leitura real
+  do QR pelo jsQR. Não houve filtro de `pageerror`, teste removido ou `continue-on-error`.
 - **CI Chromium:** o job da main anterior falhou antes dos testes porque o Playwright
   1.56.1 não suporta `ubuntu26.04-x64` (execução `41730531349`). O job `e2e` foi fixado em
   `ubuntu-24.04`, sem trocar dependência nem desativar teste. Go, Android e iOS dessa
@@ -199,10 +207,13 @@ diagnóstico original; o estado atual está na última coluna e nas verificaçõ
 Os itens 7 e 11 continuam com as condições originais. O protótipo em
 `docs/rich-mais-recente/`, os arquivos gerados do Capacitor e os worktrees foram preservados.
 
-**Validação final desta retomada:** `make test` e as dez suítes Chromium de `make e2e`
-passaram. Os testes direcionados de Ollama e configuração também passaram com `-race`.
-As revisões de código e segurança aprovaram a seleção automática após a correção dos
-aliases remotos. Não houve validação completa de WebKit, Android real nem login Google real.
+**Validação final desta retomada:** `make test`, as dez suítes Chromium de `make e2e`
+e as nove suítes de `PORT_OFFSET=2200 npm run webkit` passaram. A importação Chromium foi
+repetida após a espera nova e passou. Licenças, `npm audit` do e2e e validação do workflow
+com `actionlint` também passaram. Revisões independentes de código, segurança e testes
+não encontraram bloqueadores. A primeira execução da matriz no GitHub ainda será
+acompanhada após o push. Android real, Safari real e login Google real continuam pendentes.
+Os testes direcionados de Ollama e configuração já tinham passado com `-race`.
 
 ### Riscos
 
@@ -210,4 +221,4 @@ aliases remotos. Não houve validação completa de WebKit, Android real nem log
 |---|---|---|
 | Computador antigo recebe uma transferência do celular novo | recusa o registro | o app já pula tipos desconhecidos e mostra "atualize a Rich do computador" (o texto deixa de falar só de notas) |
 | Duas rodadas de testes no navegador ao mesmo tempo | erro de porta em uso | uma rodada de cada vez; o agente roda só as suítes dele |
-| A queda do Painel no WebKit volta no CI | job vermelho | só liga o job depois de investigar a rodada local |
+| Uma regressão de navegador volta no CI | job vermelho | motores fixados pelo Playwright; ambos obrigatórios, sem ignorar erros |

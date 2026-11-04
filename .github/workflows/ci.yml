@@ -43,6 +43,10 @@ jobs:
 
   e2e:
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -62,8 +66,12 @@ jobs:
         working-directory: e2e
         run: |
           npm install --no-audit --no-fund
-          npx playwright install --with-deps chromium
-          FINANRICH_BIN=../dist/finanrich APP_WWW=../mobile/www SITE_BIN=../dist/finansite npm test
+          npx playwright install --with-deps ${{ matrix.browser }}
+          if [ "${{ matrix.browser }}" = webkit ]; then
+            FINANRICH_BIN=../dist/finanrich APP_WWW=../mobile/www SITE_BIN=../dist/finansite npm run webkit
+          else
+            FINANRICH_BIN=../dist/finanrich APP_WWW=../mobile/www SITE_BIN=../dist/finansite npm test
+          fi
 
   android:
     runs-on: ubuntu-latest

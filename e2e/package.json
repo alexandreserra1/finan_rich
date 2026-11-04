@@ -10,6 +10,6 @@
     "webkit": "BROWSER=webkit npm run test:core"
   },
   "devDependencies": {
-    "playwright": "1.56.1"
+    "playwright": "1.57.0"
   }
 }

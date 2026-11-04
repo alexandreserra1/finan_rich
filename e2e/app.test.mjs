@@ -567,7 +567,7 @@ try {
   const qr = (await (await fetch(`${B}/configuracoes`)).text()).match(/<img src="(data:image\/png;base64,[^"]+)" alt="QR code para parear o app"/)?.[1]?.replaceAll("&#43;", "+").replaceAll("&#x2b;", "+");
   ok(!!qr, "computador mostra o QR code de pareamento");
   await page.addInitScript((src) => {
-    navigator.mediaDevices.getUserMedia = async () => {
+    Object.defineProperty(Object.getPrototypeOf(navigator.mediaDevices), "getUserMedia", { configurable: true, value: async () => {
       const img = new Image();
       img.src = src;
       await img.decode();
@@ -577,7 +577,7 @@ try {
       draw();
       setInterval(draw, 100);
       return canvas.captureStream(10);
-    };
+    } });
   }, qr);
   await page.goto(`${APP}/configuracoes`);
   await page.click("summary:has-text('Conectar a outro computador')");

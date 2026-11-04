@@ -225,8 +225,8 @@ login/Drive e aparelhos reais ainda precisam de medição própria.
 
 ## Safari (motor WebKit), 29/10/2026
 
-Os testes no navegador agora rodam também no WebKit, o motor do Safari (`cd e2e && npm run
-webkit`; versão 26.0). Resultado:
+Os testes no navegador rodam também no WebKit, o motor do Safari (`cd e2e && npx playwright
+install webkit && npm run webkit`; versão 26.0). Diagnóstico atualizado em 03/11/2026:
 
 - **Erro real, corrigido:** a fatura em PDF não era lida no Safari ("undefined is not a
   function"). O pdf.js 6 percorre `ReadableStream` com `for await`, que o Safari 26 não tem;
@@ -234,13 +234,26 @@ webkit`; versão 26.0). Resultado:
   Safari no Chromium para a falha não voltar.
 - **Corrida no teste, corrigida:** a troca de personagem no Consultor (`e2e/app.test.mjs`)
   esperava a mensagem pendente, que já tem o nome.
-- **A conferir no iPhone:** no WebKit do Playwright, a página trava ("Page crashed") ao
-  recarregar o Painel logo depois que ele aparece (offline, app e budget). Não é memória
-  (o WebAssembly usa 6 MB), nem o gráfico, nem as animações, nem o service worker; outras
-  telas recarregam sem problema. Pode ser defeito do WebKit do Playwright: conferir no Safari
-  do iPhone abrindo o Painel e recarregando algumas vezes seguidas.
+- **Queda nativa corrigida no motor de teste:** o Playwright 1.56.1 usava o WebKit revisão
+  2215. O relatório do macOS aponta `EXC_BREAKPOINT` em
+  `WebCore::Navigation::initializeForNewWindow`, na navegação após trocar o histórico e
+  recarregar. É a mesma assinatura da [regressão #37766](https://github.com/microsoft/playwright/issues/37766),
+  corrigida pelo WebKit e incluída no Playwright 1.57. Atualizamos para 1.57.0, revisão
+  2227; não foi necessário alterar o Go, o WebAssembly ou os gráficos.
+- **Corridas dos testes:** antes de sair do Painel offline e das simulações de dívida,
+  o teste aguarda a tentativa de sincronização terminar. Navegar no meio dela fazia o
+  WebKit registrar o cancelamento como `due to access control checks`, apesar do erro de
+  rede já tratado pelo app. Nenhum filtro de `pageerror` foi adicionado. A câmera falsa
+  agora substitui `getUserMedia` no protótipo, pois a troca na instância não persistia no
+  WebKit; a leitura continua usando um QR de verdade e o jsQR.
+- **A conferir no iPhone:** esta rodada usa o WebKit do Playwright, não o Safari instalado
+  no aparelho. Conferir o Painel, recargas, câmera e sincronização no iPhone continua pendente.
 - **Limite do Playwright:** no WebKit, o Google falso não pode responder com redirecionamento
   (302), então `google.test` só roda no Chromium.
+
+Verificação de 03/11/2026: `make test`, dez suítes Chromium e nove WebKit passaram.
+A matriz do CI exige os dois motores, sem `continue-on-error`. A execução Linux no GitHub
+será acompanhada após o push; isso não substitui a conferência no iPhone.
 
 ## Ordem de execução
 

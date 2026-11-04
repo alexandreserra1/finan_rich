@@ -159,6 +159,7 @@ try {
   await page.waitForSelector("text=Open Finance salvo");
   ok(!(await page.content()).includes("meu-segredo"), "Ajustes não mostra o Client Secret");
   const fetchBank = async () => {
+    await page.evaluate(() => window.finanSync?.());
     await page.goto(`${B}/importar`);
     await page.click("form[data-form=openfinance] button[type=submit]");
     await page.click("[data-bank='0']");
