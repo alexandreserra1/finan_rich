@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"slices"
 
 	"github.com/alexandreserra1/finan_rich/internal/llm"
 )
@@ -26,8 +27,33 @@ func (s *Server) aiSettings(ctx context.Context) (AISettings, error) {
 		presetID = id
 		p := llm.PresetByID(id)
 		cfg = llm.Config{Kind: p.Kind, BaseURL: saved["base_url"], Model: saved["model"], APIKey: saved["api_key"]}
+	} else if cfg.Kind == llm.KindOllama {
+		cfg.Model = installedModel(ctx, cfg)
 	}
 	return AISettings{Preset: llm.PresetByID(presetID), Config: cfg}, nil
+}
+
+// localPreferred: os modelos locais na ordem de qualidade (os da lista do Ollama
+// e o Qwen 2.5 7B, que acertou todas as perguntas da avaliação do time).
+var localPreferred = append(slices.Clone(llm.PresetByID("ollama").Models), "qwen2.5:7b-instruct")
+
+// installedModel: sem escolha nos Ajustes e com o modelo padrão faltando no
+// Ollama, o melhor modelo de conversa já baixado (instalação nova responde com
+// IA, e nada sai do computador). Sem Ollama ou sem nenhum, fica o padrão.
+func installedModel(ctx context.Context, cfg llm.Config) string {
+	p, err := llm.New(cfg)
+	ollama, ok := p.(*llm.Ollama)
+	if err != nil || !ok {
+		return cfg.Model
+	}
+	if has, err := ollama.HasModel(ctx); err != nil || has {
+		return cfg.Model
+	}
+	models, _ := ollama.LocalModels(ctx)
+	if pick := llm.PickModels(models, localPreferred); len(pick) > 0 {
+		return pick[0]
+	}
+	return cfg.Model
 }
 
 func (s *Server) saveAISettings(ctx context.Context, a AISettings) error {

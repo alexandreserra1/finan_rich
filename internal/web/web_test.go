@@ -582,14 +582,17 @@ func TestStaticGzipAndETag(t *testing.T) {
 	}
 }
 
-// Falta o modelo configurado, mas outro de conversa já está baixado: o aviso
-// oferece usar o que já existe (sem os de vetores) e volta para o Consultor.
+// Falta o modelo escolhido nos Ajustes, mas outro de conversa já está baixado: o
+// aviso oferece usar o que já existe (sem os de vetores) e volta para o Consultor.
 func TestChatOffersInstalledModel(t *testing.T) {
 	ollama := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, `{"models":[{"name":"qwen2.5:7b-instruct"},{"name":"nomic-embed-text:latest"},{"name":"bge-m3:latest"}]}`)
 	}))
 	t.Cleanup(ollama.Close)
-	a := newApp(t, ollama.URL) // configurado com qwen3:4b, que não está baixado
+	a := newApp(t, ollama.URL)
+	// Escolhido nos Ajustes o qwen3:4b, que não está baixado (sem escolha, o app já
+	// usaria o qwen2.5 sozinho: TestDefaultModelFallsBackToInstalled).
+	a.post("/configuracoes", url.Values{"preset": {"ollama"}, "base_url": {ollama.URL}, "model": {"qwen3:4b"}})
 	// A tela do Consultor recebe o que vai no "Usar …" (POST /configuracoes com volta=/chat).
 	info := a.chatInfo()
 	use, _ := info["use"].(map[string]any)
@@ -620,5 +623,88 @@ func TestChatOffersInstalledModel(t *testing.T) {
 	}
 	if info := a.chatInfo(); info["ready"] != true || info["use"] != nil || !strings.Contains(fmt.Sprint(info["model"]), "qwen2.5:7b-instruct") {
 		t.Errorf("com o modelo trocado, a IA fica pronta: %v", info)
+	}
+}
+
+// Instalação nova: o modelo padrão não está no Ollama, mas há outros de conversa.
+// O Consultor usa o melhor deles em vez de responder sem IA (continua no computador).
+func TestDefaultModelFallsBackToInstalled(t *testing.T) {
+	var asked []string
+	ollama := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/tags":
+			fmt.Fprint(w, `{"models":[{"name":"qwen2.5:1.5b-instruct"},{"name":"bge-m3:latest"},{"name":"qwen2.5:7b-instruct"}]}`)
+		case "/api/chat":
+			var body struct{ Model string }
+			json.NewDecoder(r.Body).Decode(&body)
+			asked = append(asked, body.Model)
+			fmt.Fprintln(w, `{"message":{"content":"Pague o cartão."},"done":true}`)
+		}
+	}))
+	t.Cleanup(ollama.Close)
+	st, err := store.Open(context.Background(), ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	s, err := New(st, Options{AIPreset: "ollama", AIDefaults: llm.Config{Kind: llm.KindOllama, BaseURL: ollama.URL, Model: "qwen3.5:9b"}, Port: "8080"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ai, err := s.aiSettings(context.Background())
+	if err != nil || ai.Model != "qwen2.5:7b-instruct" {
+		t.Fatalf("modelo = %q (%v), want qwen2.5:7b-instruct", ai.Model, err)
+	}
+	if st := s.aiStatus(context.Background(), ai); !st.Ready {
+		t.Errorf("com um modelo baixado, a IA está pronta: %+v", st)
+	}
+	p, _, err := s.provider(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.Chat(t.Context(), llm.Request{Messages: []llm.Message{{Role: llm.RoleUser, Content: "Como organizar as dívidas?"}}}, func(string) {}); err != nil {
+		t.Fatal(err)
+	}
+	if len(asked) != 1 || asked[0] != "qwen2.5:7b-instruct" {
+		t.Fatalf("modelo enviado ao Ollama = %v", asked)
+	}
+	// Escolha feita nos Ajustes vale como está, mesmo com o modelo faltando.
+	if err := s.saveAISettings(context.Background(), AISettings{Preset: llm.PresetByID("ollama"), Config: llm.Config{Kind: llm.KindOllama, BaseURL: ollama.URL, Model: "qwen3.5:9b"}}); err != nil {
+		t.Fatal(err)
+	}
+	if ai, _ := s.aiSettings(context.Background()); ai.Model != "qwen3.5:9b" {
+		t.Errorf("a escolha dos Ajustes foi trocada: %q", ai.Model)
+	}
+}
+
+func TestInstalledModel(t *testing.T) {
+	for _, scenario := range []struct {
+		name   string
+		body   string
+		status int
+		want   string
+	}{
+		{"padrão disponível", `{"models":[{"name":"qwen3.5:9b"},{"name":"qwen2.5:7b-instruct"}]}`, 200, "qwen3.5:9b"},
+		{"prefere modelo conhecido", `{"models":[{"name":"qwen2.5:1.5b-instruct"},{"name":"qwen2.5:7b-instruct"}]}`, 200, "qwen2.5:7b-instruct"},
+		{"ignora modelos da nuvem", `{"models":[{"name":"qwen3.5:cloud"},{"name":"qwen2.5:1.5b-instruct"}]}`, 200, "qwen2.5:1.5b-instruct"},
+		{"somente nuvem", `{"models":[{"name":"qwen3.5:cloud"},{"name":"kimi-k2:1t-cloud"}]}`, 200, "qwen3.5:9b"},
+		{"alias remoto sem sufixo", `{"models":[{"name":"consultor:latest","remote_host":"https://ollama.com","remote_model":"gpt-oss:120b"}]}`, 200, "qwen3.5:9b"},
+		{"alias remoto antes de modelo local", `{"models":[{"name":"qwen2.5:7b-instruct","remote_model":"gpt-oss:120b"},{"name":"qwen2.5:1.5b-instruct"}]}`, 200, "qwen2.5:1.5b-instruct"},
+		{"somente vetores", `{"models":[{"name":"bge-m3:latest"},{"name":"nomic-embed-text:latest"}]}`, 200, "qwen3.5:9b"},
+		{"nenhum modelo", `{"models":[]}`, 200, "qwen3.5:9b"},
+		{"Ollama indisponível", `{"error":"indisponível"}`, 503, "qwen3.5:9b"},
+		{"resposta inválida", `inválido`, 200, "qwen3.5:9b"},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			ollama := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(scenario.status)
+				fmt.Fprint(w, scenario.body)
+			}))
+			t.Cleanup(ollama.Close)
+			cfg := llm.Config{Kind: llm.KindOllama, BaseURL: ollama.URL, Model: "qwen3.5:9b"}
+			if got := installedModel(t.Context(), cfg); got != scenario.want {
+				t.Errorf("modelo = %q, esperado %q", got, scenario.want)
+			}
+		})
 	}
 }

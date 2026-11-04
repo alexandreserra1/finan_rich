@@ -185,6 +185,14 @@ func IsCloudModel(model string) bool {
 
 // Models lista os modelos já baixados no Ollama.
 func (o *Ollama) Models(ctx context.Context) ([]string, error) {
+	return o.models(ctx, false)
+}
+
+func (o *Ollama) LocalModels(ctx context.Context) ([]string, error) {
+	return o.models(ctx, true)
+}
+
+func (o *Ollama) models(ctx context.Context, localOnly bool) ([]string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, o.baseURL+"/api/tags", nil)
 	if err != nil {
 		return nil, err
@@ -199,15 +207,20 @@ func (o *Ollama) Models(ctx context.Context) ([]string, error) {
 	}
 	var body struct {
 		Models []struct {
-			Name string `json:"name"`
+			Name        string `json:"name"`
+			RemoteHost  string `json:"remote_host"`
+			RemoteModel string `json:"remote_model"`
 		} `json:"models"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		return nil, err
 	}
-	names := make([]string, len(body.Models))
-	for i, m := range body.Models {
-		names[i] = m.Name
+	names := make([]string, 0, len(body.Models))
+	for _, m := range body.Models {
+		if localOnly && (m.RemoteHost != "" || m.RemoteModel != "" || IsCloudModel(m.Name)) {
+			continue
+		}
+		names = append(names, m.Name)
 	}
 	slices.Sort(names)
 	return names, nil

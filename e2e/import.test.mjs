@@ -47,7 +47,7 @@ const pluggy = createServer((req, res) => {
   res.end("{}");
 }).listen(PLUGGY_PORT);
 
-const server = spawn(BIN, ["-data", dataDir, "-no-browser", "-addr", `127.0.0.1:${PORT}`], { stdio: "ignore", env: { ...process.env, FINAN_PLUGGY_URL: `http://127.0.0.1:${PLUGGY_PORT}` } });
+const server = spawn(BIN, ["-data", dataDir, "-no-browser", "-addr", `127.0.0.1:${PORT}`], { stdio: "ignore", env: { ...process.env, FINAN_PLUGGY_URL: `http://127.0.0.1:${PLUGGY_PORT}`, FINAN_AI_BASE_URL: "http://127.0.0.1:1" } });
 for (let i = 0; i < 100; i++) {
   try { if ((await fetch(`${B}/healthz`)).ok) break; } catch {}
   await new Promise((r) => setTimeout(r, 100));
