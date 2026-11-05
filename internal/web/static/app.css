@@ -1461,7 +1461,7 @@ button.danger:hover { background: var(--neg-soft); border-color: transparent; co
   .start-main { padding: 35px 25px; }
 }
 
-/* ---------- Consultor IA (chat.html no computador, pages/advisor.js no app e no site) ---------- */
+/* ---------- Consultor IA (pages/advisor.js no computador, no app e no site) ---------- */
 /* Cabeçalho: rosto de quem conversa, título e o estado da IA (pronta, sem IA, sem conexão). */
 .consultor-head { align-items: center; }
 .consultor-id { display: flex; align-items: center; gap: 12px; min-width: 0; }
