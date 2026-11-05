@@ -41,6 +41,11 @@ O leitor de QR usa a câmera do próprio WebView (`getUserMedia`) com o jsQR. An
 38 MB; sem ele, e com o R8 (`minifyEnabled`/`shrinkResources`), o APK fica bem menor e o
 CI falha se passar de 12 MB.
 
+Ferramentas de montar o app (vêm com o `@capacitor/cli` e **não vão dentro do APK**): `glob`,
+`minimatch`, `rimraf` e `@isaacs/nonrecursive-glob-match` usam a BlueOak-1.0.0, licença
+permissiva aprovada pela OSI. A checagem do `scripts/check-licenses.sh` cobre só o que vai no
+app (`--production`), por isso não as lista.
+
 ## IA
 
 - **Padrão: Ollama** (MIT) com modelos de pesos abertos (Qwen, Apache-2.0), tudo no seu

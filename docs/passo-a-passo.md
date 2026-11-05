@@ -94,7 +94,7 @@ automáticas.
 |---|---|
 | Dependências Go | `govulncheck`: nenhuma falha conhecida |
 | Dependências do e2e | `npm audit`: nenhuma |
-| Dependências do app (`mobile/`) | 3 avisos moderados no `uuid`, por `@capacitor/cli` → `xcode`. Só roda ao montar o app (não vai dentro dele) e a falha só existe com o parâmetro `buf`, que o CLI não usa. Rever quando sair `@capacitor/cli` com `xcode` novo; o `npm audit fix --force` sairia da faixa declarada |
+| Dependências do app (`mobile/`) | 3 avisos moderados no `uuid`, por `@capacitor/cli` → `xcode`. Só roda ao montar o app (não vai dentro dele) e a falha só existe com o parâmetro `buf`, que o CLI não usa. Saiu o `@capacitor/cli` 8.6.0 (28/10/2026), com `xcode` 4 sem `uuid`: subir o Capacitor inteiro (cli, core, android, ios) de 8.5.2 para 8.6.0 a partir de 12/11/2026, com o APK montado no CI. O `npm audit fix --force` sairia da faixa declarada |
 | Segredos no histórico do git | nenhum (chaves do Groq, Google, OpenRouter, GitHub, chaves privadas); nenhum `.env`, `.key`, keystore ou `.db` versionado |
 | Login do Google no site | cookie `HttpOnly`, `Secure`, `SameSite=Strict`; segredo do cliente só no servidor; limite por IP; respostas sem cache |
 | Cabeçalhos | computador: CSP só com arquivos próprios, `frame-ancestors 'none'`, `nosniff`; site: CSP na página, `X-Frame-Options: DENY`, HSTS, `Permissions-Policy` |
