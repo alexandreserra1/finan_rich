@@ -11,6 +11,7 @@ import { createServer } from "node:http";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { watchErrors } from "./errors.mjs";
 
 const BIN = process.env.FINANRICH_BIN || "../dist/finanrich";
 const OFF = Number(process.env.PORT_OFFSET || 0); // PORT_OFFSET=100: roda ao lado de outra cópia do repositório
@@ -69,7 +70,7 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PAT
 try {
   const page = await browser.newPage({ viewport: { width: 1200, height: 900 } });
   const errors = [];
-  page.on("pageerror", (e) => errors.push(e.message));
+  watchErrors(page, errors);
 
   // open abre Dívidas (com o valor a mais) e devolve a conta do Go e o que a tela mostra.
   async function open(extraCents = 0) {

@@ -5,6 +5,7 @@
 import { chromium as chromiumEngine, devices, webkit } from "playwright";
 const chromium = process.env.BROWSER === "webkit" ? webkit : chromiumEngine; // BROWSER=webkit: o motor do Safari
 import { spawn } from "node:child_process";
+import { watchErrors } from "./errors.mjs";
 
 const BIN = process.env.SITE_BIN || "../dist/finansite";
 const OFF = Number(process.env.PORT_OFFSET || 0); // PORT_OFFSET=100: roda ao lado de outra cópia do repositório
@@ -32,7 +33,7 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PAT
 try {
   const page = await browser.newPage({ ...devices["Pixel 7"] });
   const errors = [];
-  page.on("pageerror", (e) => errors.push(e.message));
+  watchErrors(page, errors);
   page.on("dialog", (d) => d.accept());
 
   // Antes de escolher a tela (landing ou Painel), a moldura do app não aparece.

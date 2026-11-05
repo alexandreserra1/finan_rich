@@ -272,3 +272,19 @@ cancelamento possível dentro da biblioteca padrão do Go. Não altera cálculos
   do app (`finance.insights`), e o caso sem renda ganhou um teste em Go
   (`TestLiaAllowanceWithoutIncome`).
 
+### Falso alarme intermitente do WebKit no CI (05/11/2026)
+
+O job `e2e (webkit)` falhou de forma intermitente (execuções `41845386992`, `42050154128` e
+`42050530318`; a `42049713407`, com o mesmo código, passou) com "Fetch API cannot load <url>
+due to access control checks" em pedidos que a troca de página cancela (`/api/sync`,
+`/static/advisor.wasm`). O app trata esses erros (a pilha mostra a corrente com `.catch`); no
+WebKit do Linux a página é desmontada antes do tratamento rodar e o motor acusa a rejeição.
+No WebKit do macOS o mesmo cenário só marca o pedido como cancelado (conferido com um
+servidor lento e troca de página).
+
+`e2e/errors.mjs` (`watchErrors`), usado por todas as suítes, descarta esse aviso só quando
+o navegador também marcou o pedido daquele endereço como cancelado (`requestfailed`), nas
+duas ordens de chegada. Qualquer outro erro continua valendo, inclusive o controle do
+`app.test` que exige um erro de rede visível. `e2e/errors.test.mjs` confere a regra sem
+navegador. Onze suítes no Chromium e dez no WebKit (macOS) passaram.
+

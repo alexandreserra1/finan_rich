@@ -10,6 +10,7 @@ import { createServer } from "node:http";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { watchErrors } from "./errors.mjs";
 
 const BIN = process.env.FINANRICH_BIN || "../dist/finanrich";
 const TESTDATA = "../internal/importer/testdata";
@@ -59,7 +60,7 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PAT
 try {
   const page = await browser.newPage();
   const errors = [];
-  page.on("pageerror", (e) => errors.push(e.message));
+  watchErrors(page, errors);
   const row = (desc) => page.locator(`.import-table tr:has(input[value="${desc}"])`);
 
   await page.goto(`${B}/lancamentos`);

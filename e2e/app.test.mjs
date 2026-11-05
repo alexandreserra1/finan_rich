@@ -12,6 +12,7 @@ import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { extname, join, normalize } from "node:path";
+import { watchErrors } from "./errors.mjs";
 
 const BIN = process.env.FINANRICH_BIN || "../dist/finanrich";
 const WWW = process.env.APP_WWW || "../mobile/www";
@@ -186,12 +187,12 @@ try {
   const page = await ctx.newPage();
   const errors = [];
   const logs = [];
-  const recordError = (page, error) => {
+  const recordError = (page, error) => { // o texto guardado: o endereço e a pilha do erro
     const detail = `${page.url()}\n${error.stack || error.message}`;
-    errors.push(detail);
     console.error(detail);
+    return detail;
   };
-  page.on("pageerror", (error) => recordError(page, error));
+  watchErrors(page, errors, (error) => recordError(page, error));
   page.on("console", (m) => logs.push(`[${m.type()}] ${m.text()}`));
   page.on("requestfailed", (r) => logs.push(`[falhou] ${r.url()} ${r.failure()?.errorText}`));
   globalThis.dumpPage = async () => {
@@ -569,7 +570,7 @@ try {
 
   // O mesmo no consultor do computador (tela do navegador).
   const desk = await browser.newPage();
-  desk.on("pageerror", (error) => recordError(desk, error));
+  watchErrors(desk, errors, (error) => recordError(desk, error));
   await desk.goto(`${B}/chat`);
   await desk.waitForSelector(".proposal");
   const before = await desk.locator(".proposal").count(); // os da conversa do celular também aparecem aqui
@@ -643,7 +644,7 @@ try {
     return route.fulfill({ headers, body: JSON.stringify({ next: null, results: [{ id: "n1", description: "Padaria do Zé", amount: 18.9, date: `${url.searchParams.get("dateFrom")}T09:00:00.000Z`, type: "DEBIT", status: "POSTED" }] }) });
   });
   const of = await ofCtx.newPage();
-  of.on("pageerror", (error) => recordError(of, error));
+  watchErrors(of, errors, (error) => recordError(of, error));
   await of.goto(`${APP}/configuracoes`);
   await of.click("[data-action=solo]");
   await of.waitForSelector("form[data-form=transaction]", { state: "attached", timeout: 20000 });
@@ -709,7 +710,7 @@ try {
     } } };
   });
   const rem = await remCtx.newPage();
-  rem.on("pageerror", (error) => recordError(rem, error));
+  watchErrors(rem, errors, (error) => recordError(rem, error));
   rem.on("dialog", (d) => d.accept());
   await rem.goto(`${APP}/configuracoes`);
   await rem.click("[data-action=solo]");
@@ -743,7 +744,7 @@ try {
   const safariCtx = await browser.newContext({ viewport: { width: 1200, height: 900 } });
   await safariCtx.addInitScript(() => { const real = CSS.supports.bind(CSS); CSS.supports = (p, v) => (p === "field-sizing" ? false : real(p, v)); });
   const saf = await safariCtx.newPage();
-  saf.on("pageerror", (error) => recordError(saf, error));
+  watchErrors(saf, errors, (error) => recordError(saf, error));
   await saf.goto(`${B}/chat`);
   await saf.evaluate(() => window.finanSync());
   const box = saf.locator("textarea[name=message]");

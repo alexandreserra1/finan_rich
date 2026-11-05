@@ -11,6 +11,7 @@ import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { watchErrors } from "./errors.mjs";
 
 const BIN = process.env.FINANRICH_BIN || "../dist/finanrich";
 const OFF = Number(process.env.PORT_OFFSET || 0); // PORT_OFFSET=100: roda ao lado de outra cópia do repositório
@@ -78,7 +79,7 @@ try {
   const page = await pc.newPage();
   const errors = [];
   const logs = [];
-  page.on("pageerror", (e) => errors.push(e.message));
+  watchErrors(page, errors);
   page.on("console", (m) => logs.push(`[${m.type()}] ${m.text()}`));
   page.on("requestfailed", (r) => logs.push(`[falhou] ${r.url()} ${r.failure()?.errorText}`));
   globalThis.dumpPage = async () => {

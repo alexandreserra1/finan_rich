@@ -9,6 +9,7 @@ import { spawn } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { watchErrors } from "./errors.mjs";
 
 const BIN = process.env.FINANRICH_BIN || "../dist/finanrich";
 const OFF = Number(process.env.PORT_OFFSET || 0); // PORT_OFFSET=100: roda ao lado de outra cópia do repositório
@@ -47,7 +48,7 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PAT
 try {
   const page = await browser.newPage({ acceptDownloads: true });
   const errors = [];
-  page.on("pageerror", (e) => errors.push(e.message));
+  watchErrors(page, errors);
   page.on("dialog", (d) => d.accept());
 
   // Dados: um lançamento e duas notas.

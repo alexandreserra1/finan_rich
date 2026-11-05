@@ -8,6 +8,7 @@ const chromium = process.env.BROWSER === "webkit" ? webkit : chromiumEngine; // 
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";
+import { watchErrors } from "./errors.mjs";
 
 const BIN = process.env.SITE_BIN || "../dist/finansite";
 const OFF = Number(process.env.PORT_OFFSET || 0); // PORT_OFFSET=100: roda ao lado de outra cópia do repositório
@@ -146,7 +147,7 @@ try {
   const ctxA = await browser.newContext({ ...devices["Pixel 7"] });
   await fakeGoogle(ctxA);
   const a = await ctxA.newPage();
-  a.on("pageerror", (e) => errors.push("A: " + e.message));
+  watchErrors(a, errors, (e) => "A: " + e.message);
   a.on("dialog", (d) => d.accept());
   await login(a);
   ok(exchanges[0]?.client_secret === "segredo-teste" && exchanges[0]?.grant_type === "authorization_code", "o código é trocado pelo intermediário, com o secret só no servidor");
@@ -167,7 +168,7 @@ try {
   const ctxB = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   await fakeGoogle(ctxB);
   const b = await ctxB.newPage();
-  b.on("pageerror", (e) => errors.push("B: " + e.message));
+  watchErrors(b, errors, (e) => "B: " + e.message);
   b.on("dialog", (d) => d.accept());
   await login(b);
   await b.goto(`${SITE}/lancamentos`);
