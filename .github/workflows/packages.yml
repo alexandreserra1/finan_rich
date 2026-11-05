@@ -10,6 +10,9 @@ on:
     types: [completed]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   homebrew:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'

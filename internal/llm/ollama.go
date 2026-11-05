@@ -188,6 +188,8 @@ func (o *Ollama) Models(ctx context.Context) ([]string, error) {
 	return o.models(ctx, false)
 }
 
+// LocalModels lista só os modelos baixados neste computador, sem os da nuvem
+// nem os apelidos de modelos remotos.
 func (o *Ollama) LocalModels(ctx context.Context) ([]string, error) {
 	return o.models(ctx, true)
 }

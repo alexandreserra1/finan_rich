@@ -6,6 +6,9 @@ on:
     paths: ["scripts/install.*", ".github/workflows/install.yml"]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   unix:
     strategy:

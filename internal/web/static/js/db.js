@@ -4,7 +4,6 @@
 
 const DB_NAME = "finan_rich";
 const DB_VERSION = 1;
-export const TYPES = ["category", "transaction", "debt", "pref", "note", "goal", "recurring", "account"];
 
 let dbPromise = null;
 
