@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  issues: write # abre o aviso quando falha
 
 concurrency:
   group: ia-publicada
@@ -30,3 +31,20 @@ jobs:
             --data '{"model":"auto","stream":false,"max_tokens":128,"messages":[{"role":"user","content":"Responda só: ok"}]}' \
             --output resposta.json
           jq -e '(.error == null) and (.choices[0].message.role == "assistant") and (.choices[0].finish_reason == "stop") and ((.choices[0].message.content // "" | ascii_downcase | gsub("[[:space:].!]"; "")) == "ok")' resposta.json
+      # Issue nova notifica quem acompanha o repositório, sem depender das
+      # preferências de notificação do GitHub Actions de cada conta.
+      - name: Avisa por issue quando falha
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EXECUCAO: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          titulo='IA grátis fora do ar'
+          aberta=$(gh issue list --state open --search "in:title \"$titulo\"" --json number --jq '.[0].number // empty')
+          if [ -n "$aberta" ]; then
+            gh issue comment "$aberta" --body "Falhou de novo: $EXECUCAO"
+          else
+            gh issue create --title "$titulo" --body "A conferência diária da IA grátis falhou: $EXECUCAO
+          Feche esta issue quando a IA voltar a responder."
+          fi
