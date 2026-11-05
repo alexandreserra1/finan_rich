@@ -23,7 +23,8 @@ func (s *Server) aiSettings(ctx context.Context) (AISettings, error) {
 	}
 	presetID := s.aiDefaults.Preset.ID
 	cfg := s.aiDefaults.Config
-	if id, ok := saved["preset"]; ok {
+	// Provedor salvo que saiu do app (Claude e DeepSeek, pagos, em 11/2026): vale o padrão.
+	if id, ok := saved["preset"]; ok && llm.PresetByID(id).ID == id {
 		presetID = id
 		p := llm.PresetByID(id)
 		cfg = llm.Config{Kind: p.Kind, BaseURL: saved["base_url"], Model: saved["model"], APIKey: saved["api_key"]}

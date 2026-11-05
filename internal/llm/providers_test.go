@@ -194,38 +194,10 @@ func TestOpenAIError(t *testing.T) {
 	}
 }
 
-func TestAnthropicChat(t *testing.T) {
-	var body map[string]any
-	srv := server(t, &body, func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/event-stream")
-		for _, e := range []string{
-			`{"type":"message_start","message":{"id":"m","type":"message","role":"assistant","model":"claude-opus-5-5","content":[],"stop_reason":null,"usage":{"input_tokens":1,"output_tokens":0}}}`,
-			`{"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}`,
-			`{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Pague o cartão."}}`,
-			`{"type":"content_block_stop","index":0}`,
-			`{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":3}}`,
-			`{"type":"message_stop"}`,
-		} {
-			var typ struct{ Type string }
-			json.Unmarshal([]byte(e), &typ)
-			fmt.Fprintf(w, "event: %s\ndata: %s\n\n", typ.Type, e)
-		}
-	})
-	streamed, full, err := collectChat(t, NewAnthropic("chave", "claude-opus-5-5", srv.URL))
-	if err != nil || streamed != "Pague o cartão." || full != streamed {
-		t.Fatalf("streamed=%q full=%q err=%v", streamed, full, err)
-	}
-	msgs := body["messages"].([]any)
-	if len(msgs) != 3 || msgs[1].(map[string]any)["role"] != "assistant" || body["fallbacks"] != "default" {
-		t.Errorf("corpo = %v", body)
-	}
-}
-
 func TestNew(t *testing.T) {
 	for _, cfg := range []Config{
-		{Kind: KindOllama},                // sem modelo
-		{Kind: KindOpenAI, Model: "m"},    // sem URL
-		{Kind: KindAnthropic, Model: "m"}, // sem chave
+		{Kind: KindOllama},             // sem modelo
+		{Kind: KindOpenAI, Model: "m"}, // sem URL
 		{Kind: "desconhecido", Model: "m"},
 	} {
 		if _, err := New(cfg); !errors.Is(err, ErrNotConfigured) {
@@ -298,41 +270,6 @@ func TestOpenAITools(t *testing.T) {
 	}
 }
 
-func TestAnthropicTools(t *testing.T) {
-	var body map[string]any
-	srv := server(t, &body, func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/event-stream")
-		for _, e := range []string{
-			`{"type":"message_start","message":{"id":"m","type":"message","role":"assistant","model":"claude-opus-5-5","content":[],"stop_reason":null,"usage":{"input_tokens":1,"output_tokens":0}}}`,
-			`{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"t1","name":"buscar","input":{}}}`,
-			`{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"texto\": \"uber\"}"}}`,
-			`{"type":"content_block_stop","index":0}`,
-			`{"type":"message_delta","delta":{"stop_reason":"tool_use"},"usage":{"output_tokens":3}}`,
-			`{"type":"message_stop"}`,
-		} {
-			var typ struct{ Type string }
-			json.Unmarshal([]byte(e), &typ)
-			fmt.Fprintf(w, "event: %s\ndata: %s\n\n", typ.Type, e)
-		}
-	})
-	reply, err := NewAnthropic("chave", "claude-opus-5-5", srv.URL).Chat(context.Background(), toolReq, func(string) {})
-	if err != nil || len(reply.ToolCalls) != 1 || reply.ToolCalls[0].ID != "t1" {
-		t.Fatalf("reply=%+v err=%v", reply, err)
-	}
-	var got map[string]any
-	if json.Unmarshal(reply.ToolCalls[0].Args, &got); got["texto"] != "uber" {
-		t.Errorf("args = %s", reply.ToolCalls[0].Args)
-	}
-	msgs := body["messages"].([]any)
-	use := msgs[1].(map[string]any)["content"].([]any)[0].(map[string]any)
-	res := msgs[2].(map[string]any)["content"].([]any)[0].(map[string]any)
-	tool := body["tools"].([]any)[0].(map[string]any)
-	if use["type"] != "tool_use" || use["id"] != "c1" || res["type"] != "tool_result" || res["tool_use_id"] != "c1" ||
-		tool["name"] != "buscar" || tool["input_schema"].(map[string]any)["required"] == nil {
-		t.Errorf("corpo = %v", body)
-	}
-}
-
 func TestToolsUnsupported(t *testing.T) {
 	if !ToolsUnsupported(&APIError{Status: 400, Message: "registry.ollama.ai/library/gemma:2b does not support tools"}) {
 		t.Error("deveria reconhecer modelo sem ferramentas")
@@ -350,7 +287,6 @@ func TestIsLocal(t *testing.T) {
 		{Kind: KindOpenAI, BaseURL: "http://localhost:1234/v1", Model: "m"}:                  true,
 		{Kind: KindOpenAI, BaseURL: "https://api.groq.com/openai/v1", Model: "m"}:            false,
 		{Kind: KindOpenAI, BaseURL: "https://generativelanguage.googleapis.com", Model: "m"}: false,
-		{Kind: KindAnthropic, Model: "claude-opus-5-5"}:                                      false,
 		// Nome que só parece local: os dados iriam sem apelidos para fora.
 		{Kind: KindOpenAI, BaseURL: "http://localhost.site-de-fora.com/v1", Model: "m"}: false,
 		{Kind: KindOpenAI, BaseURL: "http://meupc.local:1234/v1", Model: "m"}:           true,

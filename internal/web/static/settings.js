@@ -19,7 +19,7 @@
     }
     // Endereço só importa para Ollama (se mudou) e APIs compatíveis com OpenAI.
     // No grátis do finan_rich, endereço e modelo são do servidor.
-    field("base_url").hidden = preset.Kind === "anthropic" || preset.ID === "finan";
+    field("base_url").hidden = preset.ID === "finan";
     if (field("model")) field("model").hidden = preset.ID === "finan";
     field("api_key").hidden = !preset.NeedsKey && preset.ID !== "custom";
     form.querySelector('[data-field="ollama-tip"]').hidden = preset.Kind !== "ollama";

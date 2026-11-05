@@ -1,10 +1,10 @@
 // Package llm abstrai o modelo de linguagem usado pelo consultor.
 //
-// Qualquer provedor implementa a interface Provider. Hoje existem três:
+// Qualquer provedor implementa a interface Provider. Hoje existem dois, ambos
+// usados de graça:
 //   - Ollama: roda modelos abertos (Qwen, DeepSeek, Llama...) no próprio PC, grátis e privado.
-//   - OpenAI-compatível: qualquer API no formato /v1/chat/completions (Groq, DeepSeek,
-//     OpenRouter, LM Studio, a própria OpenAI...).
-//   - Anthropic: modelos Claude (pago).
+//   - OpenAI-compatível: qualquer API no formato /v1/chat/completions (a IA grátis
+//     da Rich, Groq, Gemini, OpenRouter, LM Studio...).
 //
 // Para adicionar um provedor novo, implemente Provider e registre-o em New.
 package llm
@@ -96,9 +96,8 @@ func args(raw json.RawMessage) json.RawMessage {
 
 // Tipos de provedor.
 const (
-	KindOllama    = "ollama"
-	KindOpenAI    = "openai"
-	KindAnthropic = "anthropic"
+	KindOllama = "ollama"
+	KindOpenAI = "openai"
 )
 
 // Config descreve qual provedor usar e como acessá-lo.
@@ -128,11 +127,6 @@ func New(cfg Config) (Provider, error) {
 			return nil, fmt.Errorf("%w: informe a URL da API", ErrNotConfigured)
 		}
 		return NewOpenAI(cfg.BaseURL, cfg.APIKey, cfg.Model), nil
-	case KindAnthropic:
-		if cfg.APIKey == "" {
-			return nil, fmt.Errorf("%w: informe a chave da API da Anthropic", ErrNotConfigured)
-		}
-		return NewAnthropic(cfg.APIKey, cfg.Model, cfg.BaseURL), nil
 	default:
 		return nil, fmt.Errorf("%w: provedor desconhecido %q", ErrNotConfigured, cfg.Kind)
 	}
@@ -195,11 +189,9 @@ func (e *APIError) hint() string {
 func trimSlash(s string) string { return strings.TrimRight(s, "/") }
 
 // IsLocal diz se a IA roda neste computador ou na rede de casa (os dados não
-// saem). Nuvem (Groq, Gemini, Anthropic, modelos ":cloud" do Ollama) não é.
+// saem). Nuvem (Groq, Gemini, modelos ":cloud" do Ollama) não é.
 func IsLocal(cfg Config) bool {
 	switch {
-	case cfg.Kind == KindAnthropic:
-		return false
 	case cfg.Kind == KindOllama && IsCloudModel(cfg.Model):
 		return false
 	}

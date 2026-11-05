@@ -28,7 +28,7 @@ enviadas quando o computador volta a ser alcançável.
  │      │                                      │        │ internal/store     SQLite (records) │
  │ static/js/sync.js ──── POST /api/sync ──────┼───────▶│      │                             │
  │                    ◀── o que mudou ─────────┼────────│ internal/advisor + internal/llm    │
- │ sw.js               abre sem conexão        │        │      └──▶ Ollama / Groq / Claude   │
+ │ sw.js               abre sem conexão        │        │      └──▶ Ollama / Groq / Gemini   │
  └─────────────────────────────────────────────┘        └────────────────────────────────────┘
 ```
 
@@ -41,8 +41,7 @@ enviadas quando o computador volta a ser alcançável.
   `domain`; `store`, `advisor` e `web` usam os de dentro. Nada de dentro conhece HTTP.
 - **Local-first.** O aparelho é a fonte da verdade para a tela; o servidor é o ponto de
   encontro entre aparelhos e onde a IA roda.
-- **Poucas dependências.** Stdlib do Go, o driver SQLite em Go puro, o SDK da Anthropic e um
-  gerador de QR code. No navegador, nenhum framework e nenhuma etapa de build de JS.
+- **Poucas dependências.** Stdlib do Go, o driver SQLite em Go puro e um gerador de QR code. No navegador, nenhum framework e nenhuma etapa de build de JS.
 
 ### Mapa de dependências entre pacotes Go
 
@@ -54,7 +53,7 @@ web ──▶ advisor, auth, llm, store, (domain)
 advisor ──▶ finance, domain, money, llm, store(ChatMessage)
 store ──▶ domain
 finance ──▶ domain
-domain, money, auth, llm ──▶ (só biblioteca padrão; llm usa o SDK da Anthropic)
+domain, money, auth, llm ──▶ (só biblioteca padrão)
 ```
 
 Pacotes que rodam no navegador (precisam compilar para `js/wasm`, então **não podem**
@@ -147,7 +146,7 @@ aparelho                                      servidor
    fala o Otávio, que atende primeiro e usa todas. Depois da resposta, `finance.Route` olha o assunto da pergunta e, se for de outro
    do time, a tela oferece perguntar para ele (`finance.route`, pelo `finance.wasm`). A resposta guarda quem respondeu (coluna `agent` em `chat_messages`).
    O laço pede ferramentas até 4 vezes por pergunta. Ferramentas usam o formato nativo de cada
-   provedor (Ollama, OpenAI-compatível, Anthropic); se o modelo não aceitar ferramentas, o
+   provedor (Ollama ou OpenAI-compatível); se o modelo não aceitar ferramentas, o
    consultor pergunta de novo sem elas.
    Quando a IA configurada é de nuvem (`llm.IsLocal` falso), `advisor.Answer` anonimiza antes
    (`advisor/anon.go`): lojas, dívidas, credores e metas viram apelidos, as notas ficam de fora,
@@ -364,10 +363,9 @@ Tabelas atuais:
 |---|---|
 | `llm.go` | Interface `Provider` (`Chat` com streaming), `Config`, `New` (escolhe a implementação), cliente HTTP compartilhado. |
 | `ollama.go` | Ollama pela API nativa: contexto de 8192 tokens, `think: false`, temperatura 0,7; lista e baixa modelos; distingue "não instalado", "lento" e "precisa de login" (modelos `:cloud`). |
-| `openai.go` | Qualquer API no formato `/v1/chat/completions` (Groq, OpenRouter, DeepSeek, LM Studio). |
-| `anthropic.go` | Claude pelo SDK oficial, com fallback automático em recusas. |
+| `openai.go` | Qualquer API no formato `/v1/chat/completions` (a IA grátis da Rich, Groq, Gemini, OpenRouter, LM Studio). |
 | `stream.go` | Leitura de NDJSON/SSE e o filtro que remove `<think>…</think>` mesmo partido entre pedaços. |
-| `presets.go` | Opções prontas da tela de Ajustes (Ollama, Ollama Cloud, Groq, OpenRouter, DeepSeek…). |
+| `presets.go` | Opções prontas da tela de Ajustes (Ollama, Ollama Cloud, Groq, Gemini, OpenRouter, outro compatível). Só opções grátis: as pagas (Claude e DeepSeek) saíram em 11/2026. |
 | `*_test.go` | Cada provedor contra um servidor falso que imita a API real. |
 
 ### `internal/advisor/` — o consultor
@@ -510,7 +508,7 @@ Cada tela exporta `render(ctx)` (devolve o HTML) e, se tiver formulário, `bind(
 | `make e2e` | O ciclo offline completo num navegador de verdade, e o app do celular (pareamento e sync com token). |
 
 Nada usa a rede: o banco é SQLite em memória e os provedores de IA são servidores falsos que
-imitam o Ollama, a OpenAI e a Anthropic.
+imitam o Ollama e as APIs no formato da OpenAI.
 
 ## Como estender
 

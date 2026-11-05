@@ -173,7 +173,7 @@ A versão do app fica em `mobile/android/app/version.properties`: o workflow de 
     recebe para melhorar os produtos dele.
   - O consultor, as ferramentas e a anonimização são os mesmos do computador, compilados para
     um WebAssembly à parte (`cmd/finanadvisor` → `advisor.wasm`, ~3 MB no APK), que só o app
-    leva e só carrega ao abrir o Consultor. O Claude (Anthropic) fica só no computador.
+    leva e só carrega ao abrir o Consultor.
 
 - **IA dentro do celular**: removida em 11/2026 (auditoria de 03/11, item 7). Com um modelo
   de 0,5B, levava minutos por resposta sem WebGPU e errava mais que a resposta pronta do app.

@@ -131,9 +131,8 @@ Achados das revisões de código, segurança e testes que ficaram para depois:
   plano grátis do Gemini acaba rápido (erro 429, a tela avisa). Vale mostrar o uso do dia.
 - **Pelo Wi-Fi o tráfego é HTTP**: para usar fora de casa, Tailscale (HTTPS).
 - **IA "custom" num proxy local** (LiteLLM etc.) conta como local e vai sem apelidos.
-- **Limite de pedidos do intermediário na Vercel** fica na memória de cada instância (vale menos
-  do que parece). Antes de chave paga ou de divulgar o site: regra no Firewall da Vercel ou
-  contador compartilhado (análise de 30/10/2026 em `passo-a-passo.md`, 2.4).
+- ~~**Limite de pedidos do intermediário na Vercel**~~: regra no Firewall da Vercel, 30 por
+  minuto por IP, ativa desde 05/11/2026 (`IA-GRATIS.md`).
 
 ## Retomada do Consultor e da auditoria (29/10/2026)
 

@@ -369,9 +369,10 @@ func TestSettings(t *testing.T) {
 	a := newApp(t, fakeOllama(t).URL)
 	ctx := context.Background()
 
-	// Provedor na nuvem sem chave: recusado.
+	// Provedor que não existe (o Claude pago saiu em 11/2026): recusado, em vez
+	// de virar Ollama com o modelo de outro provedor.
 	if _, loc := a.post("/configuracoes", url.Values{"preset": {"anthropic"}, "model": {"claude-opus-5-5"}}); !strings.Contains(loc, "erro=") {
-		t.Errorf("sem chave deveria dar erro: %s", loc)
+		t.Errorf("provedor desconhecido deveria dar erro: %s", loc)
 	}
 	form := url.Values{"preset": {"groq"}, "model": {"qwen/qwen3-32b"}, "base_url": {"https://api.groq.com/openai/v1"}, "api_key": {"segredo"}}
 	if _, loc := a.post("/configuracoes", form); !strings.Contains(loc, "msg=") {
@@ -674,6 +675,30 @@ func TestDefaultModelFallsBackToInstalled(t *testing.T) {
 	}
 	if ai, _ := s.aiSettings(context.Background()); ai.Model != "qwen3.5:9b" {
 		t.Errorf("a escolha dos Ajustes foi trocada: %q", ai.Model)
+	}
+}
+
+// Quem tinha salvo um provedor que saiu do app (Claude e DeepSeek, pagos, em
+// 11/2026) volta para o padrão, sem levar o modelo e a chave do provedor antigo.
+func TestRemovedPresetFallsBackToDefault(t *testing.T) {
+	ctx := context.Background()
+	st, err := store.Open(ctx, ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	s, err := New(st, Options{AIPreset: "ollama", AIDefaults: llm.Config{Kind: llm.KindOllama, BaseURL: "http://127.0.0.1:1", Model: "qwen3:4b"}, Port: "8080"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"anthropic", "deepseek"} {
+		if err := st.SaveSettings(ctx, aiPrefix, map[string]string{"preset": id, "model": "pago", "api_key": "sk-segredo"}); err != nil {
+			t.Fatal(err)
+		}
+		ai, err := s.aiSettings(ctx)
+		if err != nil || ai.Preset.ID != "ollama" || ai.Kind != llm.KindOllama || ai.Model != "qwen3:4b" || ai.APIKey != "" {
+			t.Errorf("%s salvo: %+v (%v), want o padrão (Ollama, qwen3:4b, sem chave)", id, ai, err)
+		}
 	}
 }
 

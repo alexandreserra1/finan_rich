@@ -63,6 +63,10 @@ func (s *Server) saveSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	preset := llm.PresetByID(r.FormValue("preset"))
+	if preset.ID != r.FormValue("preset") {
+		redirect(w, r, "/configuracoes", "", errors.New("escolha um dos provedores da lista"))
+		return
+	}
 	ai := AISettings{Preset: preset, Config: llm.Config{
 		Kind:    preset.Kind,
 		BaseURL: strings.TrimSpace(r.FormValue("base_url")),

@@ -18,7 +18,7 @@ import (
 var Preferred = []string{
 	"openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b", // Groq
 	"gemini-3.8-flash", "gemini-flash-latest", "gemini-3.5-flash-lite", // Gemini
-	"openrouter/free", "deepseek-chat", // OpenRouter, DeepSeek
+	"openrouter/free", // OpenRouter
 }
 
 // ListModels pergunta a uma API no formato OpenAI quais modelos ela tem.

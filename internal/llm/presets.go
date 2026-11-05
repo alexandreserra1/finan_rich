@@ -66,27 +66,9 @@ var Presets = []Preset{
 		Models: []string{"openrouter/free", "qwen/qwen3.8-27b:free", "google/gemma-4-31b-it:free"},
 	},
 	{
-		ID: "deepseek", Name: "DeepSeek (nuvem, muito barato)", Kind: KindOpenAI,
-		Description: "API oficial da DeepSeek. Paga, mas custa centavos por conversa.",
-		BaseURL:     "https://api.deepseek.com", Model: "deepseek-chat", NeedsKey: true,
-		KeyURL: "https://platform.deepseek.com/api_keys",
-		KeySteps: []string{
-			"Crie uma conta e coloque crédito (esta é paga, mas barata).",
-			"Toque em \"Create new API key\", dê um nome e confirme.",
-			"Copie a chave (começa com sk-). Ela só aparece uma vez.",
-		},
-		Models: []string{"deepseek-chat", "deepseek-reasoner"},
-	},
-	{
 		ID: "custom", Name: "Outro compatível com OpenAI", Kind: KindOpenAI,
-		Description: "LM Studio, vLLM, OpenAI ou qualquer API no formato /v1/chat/completions.",
+		Description: "LM Studio, vLLM ou outro programa no formato /v1/chat/completions.",
 		BaseURL:     "http://localhost:1234/v1", Model: "",
-	},
-	{
-		ID: "anthropic", Name: "Anthropic Claude (nuvem, pago)", Kind: KindAnthropic,
-		Description: "Modelos Claude, pagos por uso. Precisa de chave da Anthropic.",
-		Model:       "claude-opus-5-5", NeedsKey: true, KeyURL: "https://platform.claude.com/",
-		Models: []string{"claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"},
 	},
 }
 

@@ -14,7 +14,7 @@ import (
 )
 
 // OpenAI conversa com qualquer API compatível com /v1/chat/completions da OpenAI.
-// É o formato mais comum: Groq, DeepSeek, OpenRouter, LM Studio, vLLM, etc.
+// É o formato mais comum: Groq, Gemini, OpenRouter, LM Studio, vLLM, etc.
 type OpenAI struct {
 	baseURL string // inclui o /v1, ex: https://api.groq.com/openai/v1
 	apiKey  string

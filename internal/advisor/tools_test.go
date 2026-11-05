@@ -224,7 +224,7 @@ func TestAskStopsCallingTools(t *testing.T) {
 	if err != nil || answer != "Fim." || len(fake.asked) != maxToolRounds+1 || fake.asked[maxToolRounds].Tools != nil {
 		t.Fatalf("answer=%q err=%v rodadas=%d", answer, err, len(fake.asked))
 	}
-	// Sem "tools", o pedido não pode levar blocos de ferramenta (a Anthropic recusa):
+	// Sem "tools", o pedido não pode levar blocos de ferramenta (alguns provedores recusam):
 	// os resultados vão como texto.
 	last := fake.asked[maxToolRounds].Messages
 	for _, m := range last {

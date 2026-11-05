@@ -139,16 +139,16 @@ diagnóstico original; o estado atual está na última coluna e nas verificaçõ
 | # | Como | Arquivos | Como confere | Quem | Situação |
 |---|---|---|---|---|---|
 | 1 | Registro `transfer` separado dos lançamentos; atualiza saldo e faturas, sem alterar gastos e renda. Na tela Contas: "Transferir" e "Pagar fatura". Abate valores antigos primeiro e aceita antecipação. | `internal/domain`, `internal/store`, `internal/finance/accounts.go`, `js/db.js`, `js/main.js`, `js/pages/accounts.js`, `app.css` | Go: validação, saldos, pagamentos, patrimônio. e2e `accounts.test`: fatura paga sem mudar o Painel. | Claude | feito em `939d4fd` |
-| 2 | Passo a passo de limite por IP para `/chat/completions` e `/v1/chat/completions`. Mexer no painel é com você. | `docs/IA-GRATIS.md` | Criar a regra e conferir eventos e resposta 429, conforme o limite escolhido. | você; documentação pelo Codex | documentado; configuração pendente |
+| 2 | Passo a passo de limite por IP para `/chat/completions` e `/v1/chat/completions`. Mexer no painel é com você. | `docs/IA-GRATIS.md` | Criar a regra e conferir eventos e resposta 429, conforme o limite escolhido. | Claude, pela CLI da Vercel | feito em 05/11: 30 por minuto por IP; o 31º pedido voltou 429 |
 | 3 | Sem IA salva nos Ajustes e com o modelo padrão faltando no Ollama, usar um modelo local de conversa já baixado. Sem nenhum, manter o aviso e a resposta sem IA. Escolha salva não muda. | `internal/web/aiconfig.go` | Go: seleção, chamada real ao Ollama falso, modelos de nuvem e vetores excluídos, erro e lista vazia. | Codex, concluindo o trabalho do Claude | implementado e testes Go aprovados |
 | 4 | Playwright 1.57.0 corrige a queda nativa. Matriz obrigatória Chromium/WebKit no CI após a aprovação local. Google permanece no Chromium porque o mock usa redirecionamento 302. | `.github/workflows/ci.yml`, `e2e/package.json`, testes | Nove suítes WebKit e dez Chromium aprovadas localmente e no Linux, execução `41844337044`. | Codex | concluído e aprovado no CI |
-| 5 | Workflow diário e manual com `/healthz` e pergunta de conexão no endereço real. Só aceita resposta completa com texto "ok". As notificações dependem das preferências da conta GitHub. | `.github/workflows/ia-diaria.yml`, `docs/IA-GRATIS.md` | Resposta publicada validada, sete casos do validador e execução `41747839412` aprovada no GitHub. | Codex | implementado e conferido no GitHub; notificações pendentes |
+| 5 | Workflow diário e manual com `/healthz` e pergunta de conexão no endereço real. Só aceita resposta completa com texto "ok". As notificações dependem das preferências da conta GitHub. | `.github/workflows/ia-diaria.yml`, `docs/IA-GRATIS.md` | Resposta publicada validada, sete casos do validador e execução `41747839412` aprovada no GitHub. | Codex; aviso pelo Claude | feito: a falha abre uma issue (testado em 05/11, issue #19) |
 | 6 | O computador abre `/chat` com `pages/advisor.js` e `/api/chat`; saíram a tela e as rotas antigas. | `internal/web/chat.go`, `server.go`, `js/main.js`, `js/pages/advisor.js`, testes | Go e suítes `app.test` e `budget.test`. | Claude e agente em paralelo | feito em `0af70a2` |
 | 7 | Apagar a IA dentro do celular (aprovado pelo dono em 03/11, na sessão do Claude). Quem tinha baixado o modelo recebe os ~470 MB de volta ao abrir o app; a política de segurança deixou de liberar `worker-src blob:`. | `js/local-ai.js`, `pages/device.js`, `pages/advisor.js`, `main.js`, `advisor`, `askapi`, `cmd/finanadvisor`, `export.go`, `mobile/package.json`, F-Droid, docs | `make test`, dez suítes Chromium e nove WebKit, `cap sync` sem o wllama. | Claude | feito |
 | 8 | Apagar regras de CSS sem uso (contagem final: 78). | `static/app.css` | Busca dos nomes e testes no navegador. | Claude | feito em `1fbf982` |
 | 9 | Lockfile atualizado (`glob`, `minimatch`). BlueOak-1.0.0 só nas ferramentas de montar o app (já eram BlueOak antes; permissiva, OSI), registrado em `docs/LICENSES.md`. O `uuid` sai com o `@capacitor/cli` 8.6.0 (xcode 4): atualização do Capacitor inteiro adiada para 12/11/2026, quando a versão tiver duas semanas, com o APK montado no CI. | `mobile/package-lock.json`, `docs/LICENSES.md`, `docs/passo-a-passo.md` | `npm audit`, licenças e montagem do app. | Claude | feito; `uuid` com data de revisão (12/11) |
 | 10 | Apagar o computador como IA do intermediário. | `cmd/finanlocal`, `internal/localguard`, `scripts/finanlocal.sh`, `internal/proxy`, docs | `make test`. | Claude, após confirmação registrada na sessão anterior | feito em `8b13010` |
-| 11 | Trocar o SDK pelo formato OpenAI da Anthropic. | `internal/llm` | Só com uma chave da Anthropic para testar as ferramentas. | fica para quando houver chave | adiado |
+| 11 | Apagar as IAs pagas (Claude e DeepSeek) e o SDK da Anthropic: o dono só quer IA grátis ou no próprio Mac (05/11). Quem tinha uma delas salva volta ao Ollama. | `internal/llm`, `internal/web`, `go.mod`, docs | Go: provedor salvo que saiu volta ao padrão; formulário recusa provedor desconhecido. | Claude | feito |
 
 ### Ordem e paralelo
 
@@ -204,7 +204,7 @@ diagnóstico original; o estado atual está na última coluna e nas verificaçõ
   do Mac. O servidor do teste agora usa um endereço local sem serviço. O teste passou sem
   depender dos modelos instalados na máquina.
 
-O item 11 continua com as condições originais. O item 7 foi feito em 05/11 (abaixo). O protótipo em
+O item 11 foi feito em 05/11: em vez de trocar o SDK, as IAs pagas saíram. O item 7 foi feito em 05/11 (abaixo). O protótipo em
 `docs/rich-mais-recente/`, os arquivos gerados do Capacitor e os worktrees foram preservados.
 
 **Validação final desta retomada:** `make test`, as dez suítes Chromium de `make e2e`

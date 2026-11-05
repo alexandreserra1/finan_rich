@@ -49,6 +49,8 @@ scripts/clean.sh   # limpeza (veja "Limpeza" abaixo)
 - Ao concluir alterações verificadas, faça commit e push para o remoto. Inclua somente
   arquivos da tarefa; preserve dados locais, arquivos gerados e mudanças de outros trabalhos.
 - Nunca versionar `dist/`, `mobile/www`, `finance.wasm`, bancos `*.db`, `.env`, keystores.
+- IA só grátis ou no computador da pessoa (Ollama, LM Studio). Não adicionar provedor pago
+  nem SDK de provedor: tudo fala o formato OpenAI (`internal/llm/openai.go`) ou o do Ollama.
 
 ## Como programar: Ponytail + ciclo de skills
 

@@ -11,7 +11,6 @@ build falhar.
 | Dependência | Para quê | Licença |
 |---|---|---|
 | `modernc.org/sqlite` (+ `libc`, `mathutil`, `memory`) | banco SQLite em Go puro (sem C) | BSD-3-Clause |
-| `github.com/anthropics/anthropic-sdk-go` (+ `tidwall/*`, `invopop/jsonschema`, …) | falar com a API da Anthropic, **só se** você escolher essa IA | MIT / BSD / Apache-2.0 |
 | `rsc.io/qr` | QR code de pareamento | BSD-3-Clause |
 | `golang.org/x/sys`, `golang.org/x/sync`, `google/uuid`, `dustin/go-humanize` | utilitários | BSD / MIT |
 
@@ -50,9 +49,10 @@ app (`--production`), por isso não as lista.
 
 - **Padrão: Ollama** (MIT) com modelos de pesos abertos (Qwen, Apache-2.0), tudo no seu
   computador.
-- **Opcional**: Anthropic, OpenAI, Gemini, etc. são serviços fechados de terceiros. Só são
-  usados se você configurar a chave, e então os dados enviados ao consultor saem do seu
-  computador (veja o README).
+- **Opcional, nos planos grátis**: a IA grátis da Rich (Groq), Groq, Gemini e OpenRouter são
+  serviços de terceiros. Só são usados se você escolher, e então o resumo enviado ao
+  consultor sai do seu computador com apelidos no lugar dos nomes (veja o README). A Rich
+  não oferece IA paga.
 
 ## Distribuição
 

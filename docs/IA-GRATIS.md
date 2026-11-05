@@ -29,8 +29,9 @@ texto vazio, erro ou resposta pronta do app não conta como IA funcionando. Em 0
 o teste local no endereço publicado recebeu "ok" de `openai/gpt-oss-120b`. O limite de 128
 tokens deixa espaço para o raciocínio do modelo; com 16, ele terminou sem texto visível.
 
-Falhas aparecem na aba Actions. Para receber e-mail, confira as notificações de Actions
-da sua conta GitHub; o workflow não configura essas preferências. A checagem não comprova
+Quando falha, o workflow abre a issue "IA grátis fora do ar" (ou comenta na que já estiver
+aberta), e o GitHub avisa por e-mail quem acompanha o repositório. Feche a issue quando a IA
+voltar. Testado em 05/11/2026 com um endereço quebrado num ramo temporário (issue #19). A checagem não comprova
 ferramentas, streaming ou todos os provedores.
 
 ## Limite no Firewall da Vercel
@@ -49,7 +50,17 @@ O Hobby permite uma regra de limite dentro das três regras personalizadas. Conf
 limites e preços apresentados no painel antes de ativar. Os contadores são por região;
 isso não garante um teto global de gasto nem distingue pessoas na mesma rede.
 
-Não configurado nesta retomada: exige acesso ao painel da Vercel.
+**Ativa desde 05/11/2026**, criada pela CLI da Vercel (65.1.0), sem o painel: regra
+"Limite da IA grátis por IP", POST com caminho terminado em `/chat/completions` (cobre os
+dois), 30 pedidos por 60 segundos por IP, resposta 429. Conferida com 34 pedidos sem o texto
+do app: os 30 primeiros chegaram ao intermediário (403, recusados antes da Groq) e os outros
+voltaram 429 do Firewall. Para mudar ou tirar:
+
+```bash
+npx vercel@65.1.0 firewall rules list --project finan-rich-ia
+npx vercel@65.1.0 firewall rules update <id> --rate-limit-requests 60 --project finan-rich-ia
+npx vercel@65.1.0 firewall publish --project finan-rich-ia
+```
 
 ## Por que este intermediário
 

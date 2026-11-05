@@ -116,7 +116,7 @@ func Ask(ctx context.Context, p llm.Provider, agent string, history []llm.Messag
 }
 
 // withoutTools troca os pedidos e resultados de ferramentas por texto: pedido
-// sem "tools" mas com blocos de ferramenta é recusado (Anthropic, por exemplo).
+// sem "tools" mas com blocos de ferramenta é recusado por alguns provedores.
 func withoutTools(msgs []llm.Message) []llm.Message {
 	var out []llm.Message
 	var results []string

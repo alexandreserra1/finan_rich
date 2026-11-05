@@ -140,15 +140,16 @@ interpreta e aconselha. Em testes com dados reais, isso levou o `qwen3.5:9b` de 
 toda conta" para acertar prazos e valores. Planos de divisão livres, montados pelo próprio
 modelo, ainda podem ter somas erradas: confira os números antes de seguir.
 
-Não quer instalar nada? Em **Configurações** dá para usar uma IA na nuvem:
+Não quer instalar nada? Em **Configurações** dá para usar uma IA na nuvem, sempre de graça
+(a Rich não oferece IA paga):
 
 | Provedor | Custo | Chave |
 |---|---|---|
+| Rich grátis | Grátis, com limite por dia | Não precisa |
 | Groq | Plano grátis | Grátis em console.groq.com |
+| Google Gemini | Plano grátis | Grátis em aistudio.google.com |
 | OpenRouter | Modelos `:free` grátis | Grátis em openrouter.ai |
-| DeepSeek | Centavos por conversa | platform.deepseek.com |
-| Outro compatível com OpenAI | Depende | LM Studio, vLLM, OpenAI... |
-| Anthropic Claude | Pago | platform.claude.com |
+| Outro compatível com OpenAI | Grátis no seu computador | LM Studio, vLLM... |
 
 Na nuvem, o resumo das suas finanças é enviado ao provedor junto com cada pergunta.
 
@@ -302,7 +303,7 @@ internal/importer/  importação de extratos OFX/CSV: leitura, categoria sugerid
 internal/pluggy/    Open Finance pelo Meu Pluggy: contas e lançamentos viram um extrato
 internal/wasmapi/   ponte JSON entre o navegador e as regras
 internal/store/     SQLite: registros sincronizáveis, chat, sessões, configurações
-internal/llm/       interface Provider + Ollama, APIs compatíveis com OpenAI e Anthropic
+internal/llm/       interface Provider + Ollama e APIs compatíveis com OpenAI
 internal/advisor/   prompt do consultor e retrato financeiro enviado à IA
 internal/auth/      senha (PBKDF2), tokens de sessão e limite de tentativas
 internal/web/       HTTP, /api/sync, pareamento, templates, service worker e o app do aparelho (static/js)
@@ -335,7 +336,7 @@ e2e/                testes no navegador: offline, sincronização entre aparelho
 
 - **Um executável só.** SQLite com driver em Go puro (`modernc.org/sqlite`, sem CGO), e
   templates, CSS e JS embutidos com `embed`. Compila para qualquer sistema sem dependências.
-- **Poucas dependências**: o driver SQLite e o SDK da Anthropic. O resto é stdlib: rotas com
+- **Poucas dependências**: o driver SQLite e o gerador de QR code. O resto é stdlib: rotas com
   `http.ServeMux` e páginas com `html/template`. O único JavaScript é o do chat e o das
   configurações.
 - **Dinheiro em centavos** para evitar arredondamento. Juros em pontos-base (1,99% = 199).
@@ -364,7 +365,7 @@ e2e/                testes no navegador: offline, sincronização entre aparelho
 ### Testes
 
 `make test` roda tudo sem rede: o banco é SQLite em memória e os provedores de IA são
-testados contra servidores falsos que imitam o Ollama e as APIs da OpenAI e da Anthropic.
+testados contra servidores falsos que imitam o Ollama e as APIs no formato da OpenAI.
 As regras de negócio rodam duas vezes: compiladas normalmente e como WebAssembly no Node.
 
 `make e2e` abre um Chromium de verdade e testa o ciclo completo: lançar online, desligar o
