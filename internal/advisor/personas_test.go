@@ -90,13 +90,6 @@ func TestPersonaToolsAreEnforced(t *testing.T) {
 	}
 }
 
-func TestLocalRequestAsPersona(t *testing.T) {
-	r := LocalRequest(Question{Text: "oi", Ledger: toolsLedger(), Today: time.Now(), Agent: "otavio"})
-	if !strings.HasPrefix(r.System, PromptMarker) || !strings.Contains(r.System, "Você é o Otávio") {
-		t.Errorf("IA do celular sem a voz do Otávio:\n%s", r.System)
-	}
-}
-
 // Cada personagem recebe só as seções do resumo que usa: prompt menor, mais
 // rápido (principalmente no modelo local) e menos chance de misturar assuntos.
 func TestSnapshotFor(t *testing.T) {

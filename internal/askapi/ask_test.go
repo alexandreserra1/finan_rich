@@ -81,37 +81,6 @@ func TestAskAnonymizedCloud(t *testing.T) {
 	}
 }
 
-// IA dentro do celular: as mensagens saem prontas daqui (formato OpenAI),
-// com as instruções do consultor, os nomes verdadeiros e sem ferramentas.
-func TestLocalPrompt(t *testing.T) {
-	raw, _ := json.Marshal(map[string]any{
-		"ledger":   json.RawMessage(`{"debts":[{"id":"d","updatedAt":1,"name":"Cartão Nubank","balanceCents":320000,"monthlyRateBp":1400,"minPaymentCents":32000}]}`),
-		"history":  []ChatTurn{{"user", "p1"}, {"assistant", "r1"}, {"user", "p2"}, {"assistant", "r2"}},
-		"question": "qual dívida pago primeiro?",
-		"today":    "2026-10-20",
-	})
-	var out struct {
-		OK    []ChatTurn
-		Error string
-	}
-	if err := json.Unmarshal([]byte(LocalPrompt(string(raw))), &out); err != nil || out.Error != "" {
-		t.Fatal(err, out.Error)
-	}
-	roles := ""
-	for _, m := range out.OK {
-		roles += m.Role + " "
-	}
-	if roles != "system user assistant user " || out.OK[1].Content != "p2" {
-		t.Fatalf("mensagens = %+v", out.OK)
-	}
-	if !strings.HasPrefix(out.OK[0].Content, advisor.PromptMarker) || strings.Contains(out.OK[0].Content, "ferramenta") {
-		t.Errorf("system = %q", out.OK[0].Content[:80])
-	}
-	if last := out.OK[3].Content; !strings.Contains(last, "Cartão Nubank") || !strings.HasSuffix(last, "qual dívida pago primeiro?") {
-		t.Errorf("última = %q", last)
-	}
-}
-
 func TestAskNeedsCloudPresetAndKey(t *testing.T) {
 	for ai, want := range map[string]string{
 		`{"preset":"ollama"}`:                 "escolha um provedor",
@@ -310,14 +279,7 @@ func TestAskPreparedSkipsAI(t *testing.T) {
 	if r := askOut(t, Ask(context.Background(), req)); !r.App || r.AIError != "" || strings.Contains(r.Answer, advisor.OfflineNotice) || !strings.Contains(r.Answer, "Cartão Nubank") {
 		t.Errorf("pronta: %+v", r)
 	}
-	// Para a IA dentro do celular: a tela pergunta antes se há resposta pronta.
-	if r := askOut(t, Prepared(req)); !r.App || !strings.Contains(r.Answer, "Cartão Nubank") {
-		t.Errorf("Prepared: %+v", r)
-	}
-	if got := Prepared(`{"question":"e a moto?","agent":"bento"}`); got != `{}` {
-		t.Errorf("pergunta livre não tem resposta pronta: %s", got)
-	}
-	// Sem internet ou IA do celular com erro: a tela pede a resposta sem IA.
+	// Sem internet: a tela pede a resposta sem IA.
 	if r := askOut(t, Offline(`{"ledger":`+offlineLedger+`,"question":"e a moto?","agent":"bento","today":"2026-10-20"}`)); !r.App || !strings.HasPrefix(r.Answer, advisor.OfflineNotice) {
 		t.Errorf("Offline: %+v", r)
 	}

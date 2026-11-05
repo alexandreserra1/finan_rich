@@ -77,8 +77,8 @@ nunca deixe a pessoa sem resposta.
   streaming, tokens lidos de respostas reais); os endereços de Gemini, Cerebras, OpenRouter e
   Cloudflare existem e recusam chave inválida (o Gemini com 400, tratado). Falta só uma resposta
   real de cada um deles, que depende das chaves na Vercel.
-- Celular: B1, B2, B5 e B6 valem no app (nuvem e IA dentro do celular); a IA
-  dentro do celular já recebe as contas prontas.
+- Celular: B1, B2, B5 e B6 valem no app (nuvem). A IA dentro do celular foi removida em
+  11/2026 (docs/AUDITORIA-2026-11-03.md, item 7).
 
 ## C. Redesign Esmeralda (telas que faltam)
 

@@ -349,7 +349,13 @@ try {
   await page.waitForSelector(".msg.assistant >> nth=-1 >> .app-answer:has-text('Resposta do app, sem IA.')", { timeout: 30000 });
   ok(cloudBodies.length === calls, "pergunta pronta da Lia: resposta do app, sem chamar a IA");
   const liaText = await page.locator(".msg.assistant").last().innerText();
-  ok(liaText.includes("Ainda não há renda neste mês") && liaText.includes("Lance a entrada"), `sem renda lançada, a Lia pede a entrada antes de dizer quanto cabe: ${liaText.slice(0, 300)}`);
+  // O salário do guia entra no dia 5: antes dele não há renda no mês. A resposta segue a conta do app.
+  const income = await page.evaluate(async () => {
+    const f = await import("/static/js/finance.js"), ui = await import("/static/js/ui.js");
+    return f.insights(await (await import("/static/js/db.js")).loadLedger(), ui.today()).incomeCents;
+  });
+  ok(income ? liaText.includes("Ainda cabe no mês") || liaText.includes("já passou da renda") : liaText.includes("Ainda não há renda neste mês") && liaText.includes("Lance a entrada"),
+    `a Lia diz quanto cabe pela renda do mês (${income ? "com renda" : "sem renda: pede a entrada"}): ${liaText.replace(/\s+/g, " ").slice(0, 200)}`);
   await page.reload();
   await page.waitForSelector(".team-member[data-agent=lia][aria-pressed=true]", { timeout: 20000 });
   ok((await page.getAttribute("textarea[name=message]", "placeholder")).includes("Lia") && (await page.textContent(".messages")).includes("Otávio · Organização e dívidas"),
@@ -366,51 +372,20 @@ try {
   await page.click(".team-member[data-agent=otavio]");
   await page.waitForSelector(".team-member[data-agent=otavio][aria-pressed=true]");
 
-  // IA dentro do celular, com um wllama falso no lugar do de verdade (o de
-  // verdade só entra no app pelo cap sync, e o modelo tem 470 MB).
-  await page.route("**/static/vendor/wllama/index.js", (route) => route.fulfill({ contentType: "text/javascript", body: `
-    export class ModelManager {
-      async getModels() { const url = localStorage.getItem("fake-model"); return url ? [{ url, remove: async () => localStorage.removeItem("fake-model") }] : []; }
-      async downloadModel(url, { progressCallback }) {
-        for (const p of [25, 50, 100]) { progressCallback({ loaded: p, total: 100 }); await new Promise((r) => setTimeout(r, 50)); }
-        localStorage.setItem("fake-model", url);
-      }
-    }
-    export class Wllama {
-      async loadModel() {}
-      async exit() {}
-      async createChatCompletion({ messages, stream }) {
-        window.localMessages = messages;
-        if (JSON.stringify(messages.at(-1)).includes("IA em pane")) throw new Error("modelo travou");
-        return (async function* () {
-          for (const piece of ["Guarde ", "**10%** ", "do salário."]) { await new Promise((r) => setTimeout(r, 30)); yield { choices: [{ delta: { content: piece } }] }; }
-        })();
-      }
-    }` }));
+  // A IA dentro do celular saiu (11/2026): quem tinha baixado o modelo (pasta "cache"
+  // do armazenamento do app) recebe o espaço de volta ao abrir, e a opção some dos Ajustes.
+  // (O WebKit do Playwright não abre esse armazenamento num contexto de teste: lá, só a opção.)
+  const opfs = await page.evaluate(async () => {
+    try { await (await navigator.storage.getDirectory()).getDirectoryHandle("cache", { create: true }); return true; } catch { return false; }
+  });
   await page.goto(`${APP}/configuracoes`);
-  await page.click("[data-action=local-download]", { timeout: 20000 });
-  await page.waitForSelector(".flash:has-text('Modelo baixado')", { timeout: 15000 });
-  await page.goto(`${APP}/chat`);
-  await page.waitForSelector(".chat:has-text('dentro deste celular')", { timeout: 20000 });
-  const cloudCalls = cloudBodies.length;
-  await page.fill("textarea[name=message]", "Quanto gastei na Feira?");
-  await page.click("form[data-form=ask] button");
-  await page.waitForSelector(".msg.assistant:not(.pending):has-text('do salário.')", { timeout: 20000 });
-  const sentLocal = JSON.stringify(await page.evaluate(() => window.localMessages));
-  ok(cloudBodies.length === cloudCalls && sentLocal.includes("Feira") && (await page.innerHTML(".msg.assistant >> nth=-1")).includes("<strong>10%</strong>"),
-    "IA dentro do celular: responde com os nomes verdadeiros e nada vai para a nuvem");
-  await page.reload();
-  await page.waitForSelector(".msg.assistant:has-text('do salário.')", { timeout: 20000 });
-  ok(true, "a conversa com a IA dentro do celular fica salva");
-  await page.fill("textarea[name=message]", "E se a IA em pane?");
-  await page.click("form[data-form=ask] button");
-  await page.waitForSelector(".msg.assistant >> nth=-1 >> .app-answer:has-text('modelo travou')", { timeout: 20000 });
-  ok((await page.textContent(".msg.assistant >> nth=-1")).includes("A IA não respondeu agora") && cloudBodies.length === cloudCalls,
-    "IA dentro do celular com erro: resposta sem IA, feita no aparelho");
-  await page.goto(`${APP}/configuracoes`);
-  await page.uncheck("[data-action=local-ai]", { timeout: 20000 });
-  await page.waitForSelector(".flash:has-text('volta a usar')");
-  await page.unroute("**/static/vendor/wllama/index.js");
+  if (opfs) {
+    await page.waitForFunction(async () => {
+      try { await (await navigator.storage.getDirectory()).getDirectoryHandle("cache"); return false; } catch { return true; }
+    }, null, { timeout: 10000 });
+  }
+  ok(await page.locator("#ia-local, [data-action=local-download]").count() === 0,
+    opfs ? "o modelo da antiga IA dentro do celular é apagado e a opção não aparece mais" : "a opção da antiga IA dentro do celular não aparece mais (sem OPFS neste navegador)");
 
   // Link de pareamento (QR code) abre Ajustes preenchido, sem conectar sozinho.
   const code = await newPairingCode();

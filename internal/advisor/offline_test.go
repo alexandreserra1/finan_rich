@@ -223,3 +223,12 @@ func TestOtavioReadsPayment(t *testing.T) {
 	got := Offline(offlineQ("otavio", "Paguei 200 reais no Cartão hoje"))
 	wantAll(t, "pagamento", got, "Registrar pagamento", "Cartão → Empréstimo")
 }
+
+// Sem renda em nenhum mês, a Lia pede a entrada antes de dizer quanto cabe
+// (no navegador esse caso só aparece até o dia 4, antes do salário do guia).
+func TestLiaAllowanceWithoutIncome(t *testing.T) {
+	q := Question{Ledger: domain.Ledger{Categories: []domain.Category{{Meta: domain.Meta{ID: "m", UpdatedAt: 1}, Name: "Mercado", Bucket: domain.BucketNecessidades}},
+		Transactions: []domain.Transaction{{Meta: domain.Meta{ID: "t", UpdatedAt: 1}, Kind: domain.KindSaida, Description: "Feira", AmountCents: 5000, CategoryID: "m", Date: "2026-10-03"}}},
+		Today: time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC), Agent: "lia", Text: "Quanto ainda posso gastar?"}
+	wantAll(t, "lia sem renda", Offline(q), "Ainda não há renda neste mês", "Lance a entrada")
+}

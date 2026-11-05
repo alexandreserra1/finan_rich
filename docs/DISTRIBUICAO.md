@@ -37,8 +37,8 @@ cerca de um dia. Os textos e as capturas de tela vêm de `fastlane/metadata/andr
    > expenses, debts, goals, statement import (OFX/CSV/PDF) and a local AI advisor. Data
    > stays on the phone and syncs only with the user's own computer (LAN or Tailscale).
    > **Libraries:** Capacitor (MIT), AndroidX (Apache-2.0), pdf.js and jsQR
-   > (Apache-2.0), capacitor-native-biometric (MPL-2.0, AndroidX Biometric), wllama/llama.cpp (MIT; the
-   > optional on-device AI model is downloaded on demand by the user); no Google Play Services, no trackers, no ads. License check runs in CI
+   > (Apache-2.0), capacitor-native-biometric (MPL-2.0, AndroidX Biometric); no Google Play
+   > Services, no trackers, no ads. License check runs in CI
    > (`scripts/check-licenses.sh`).
    > **Metadata:** Fastlane structure in `fastlane/metadata/android` (pt-BR, en-US).
    > **Permissions:** INTERNET (sync with the user's computer), CAMERA (scan the pairing
@@ -64,11 +64,8 @@ mudança, para a gente saber antes deles se a receita quebrou.
 3. Depois de aceito, o F-Droid confere as tags novas (`UpdateCheckMode: Tags`) e publica
    as versões seguintes sozinho.
 
-A versão do F-Droid sai **sem a IA dentro do celular**: o `wllama.wasm` vem compilado do npm, e o
-F-Droid só aceita o que ele mesmo compila. A receita apaga `node_modules/@wllama` depois do
-`npm ci` (e marca em `scandelete`); a cópia do `capacitor:copy:before` pula quando o pacote não
-existe, e o app esconde a opção. O workflow confere que o APK não leva o wllama. Para ter a IA no
-F-Droid um dia, a receita precisaria compilar o llama.cpp para WebAssembly (Emscripten).
+A IA dentro do celular (wllama, que o F-Droid não aceitava por vir compilado do npm) saiu em
+11/2026: o APK do F-Droid e o do GitHub agora levam o mesmo conteúdo.
 
 Observação: como o F-Droid assina com a chave deles, quem instalou pelo F-Droid não
 atualiza com o APK do GitHub (e vice-versa). Para unificar, dá para tornar o build

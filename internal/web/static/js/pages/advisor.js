@@ -2,18 +2,17 @@
 // No computador (navegador), fala sempre com a IA dele pela /api/chat. No app:
 // - pelo computador pareado (a IA roda lá; precisa estar ao alcance);
 // - pela nuvem, direto do celular, com os nomes anonimizados (cloud-ai.js);
-// - dentro do celular, sem internet e sem nada sair do aparelho (local-ai.js).
+// - sem internet, a resposta pronta do app (regras em Go).
 import * as cloud from "../cloud-ai.js";
 import * as db from "../db.js";
 import * as finance from "../finance.js";
-import * as local from "../local-ai.js";
 import { endpoint, isApp } from "../device.js";
 import { applyProposal, proposalButton, proposalKind, saveNote } from "../notes-save.js";
 import { html, raw } from "../ui.js";
 
 export const needsData = false;
 
-let chat = null; // { history: [{role, content, proposals, agent}], suggest, model, ready, problem, busy, error, cloud, local, aiLocal, use }
+let chat = null; // { history: [{role, content, proposals, agent}], suggest, model, ready, problem, busy, error, cloud, aiLocal, use }
 
 // O time: cada personagem aconselha do seu jeito (internal/advisor/personas.go).
 const SUGGESTIONS = {
@@ -49,7 +48,7 @@ function aiState() {
   if (chat.offline) return ["off", "Sem conexão com o computador"];
   if (chat.problem) return ["none", "Sem IA agora"];
   if (!isApp) return ["ok", chat.model + (chat.aiLocal ? "" : " · na nuvem")];
-  return ["ok", chat.model + (chat.local ? " · dentro do celular" : chat.cloud ? " · na nuvem" : " · no computador")];
+  return ["ok", chat.model + (chat.cloud ? " · na nuvem" : " · no computador")];
 }
 
 const TRASH = "M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6";
@@ -91,9 +90,7 @@ export function render() {
     ${teamColumn(me)}
     <section class="panel chat">
       ${chatTop(me)}
-      ${!isApp ? deskNotes() : chat.problem ? html`<p class="notice warn">${chat.problem}</p>` : chat.local
-        ? html`<p class="small muted chat-where">Usando ${chat.model} dentro deste celular: nada sai do aparelho, nem precisa de internet. É uma IA pequena: responde mais devagar, erra mais e não lança nada por você.</p>`
-        : chat.cloud
+      ${!isApp ? deskNotes() : chat.problem ? html`<p class="notice warn">${chat.problem}</p>` : chat.cloud
         ? html`<p class="small muted chat-where">Usando ${chat.model} na nuvem, direto deste celular. Nomes de lojas, dívidas e metas vão com apelidos, e as notas não vão; a IA vê só valores, datas e categorias.</p>`
         : html`<p class="small muted chat-where">Usando ${chat.model} no computador. O consultor vê seus números, metas e notas a cada pergunta.</p>`}
       <div class="messages">
@@ -113,7 +110,7 @@ export function render() {
           ${chat.numbers ? numbersCard(chat.numbers, true) : ""}
           <div class="partial">${chat.partial ? md(chat.partial) : ""}</div>
           ${chat.partial ? "" : html`<div class="thinking"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>${chat.numbers ? "Os números já estão aí. A IA está escrevendo a explicação…" : "Lendo seus lançamentos e fazendo as contas…"}</div>
-          <p class="small faint slow-note">${chat.local ? "Dentro do celular, a resposta pode levar até um minuto." : chat.cloud ? "Na nuvem, a resposta leva alguns segundos." : "No computador, a primeira resposta pode demorar enquanto o modelo carrega."}</p>`}</div>` : ""}
+          <p class="small faint slow-note">${chat.cloud ? "Na nuvem, a resposta leva alguns segundos." : "No computador, a primeira resposta pode demorar enquanto o modelo carrega."}</p>`}</div>` : ""}
         ${chat.error ? html`<div class="msg error" role="alert">Erro: ${chat.error}</div>` : ""}
         ${chat.suggest && !chat.busy ? html`<div class="handoff">${face(member(chat.suggest.agent), 28)}<span>Isso é com ${member(chat.suggest.agent).name} (${member(chat.suggest.agent).role}).</span>
           <button type="button" class="small-btn secondary" data-handoff>Perguntar para ${member(chat.suggest.agent).name}</button></div>` : ""}
@@ -165,12 +162,6 @@ async function loadChat(ctx) {
 
 async function openChat(ctx) {
   // No computador (isApp falso), a IA é sempre a dele: vai direto para a /api/chat.
-  // A IA dentro do celular, quando ligada, vale sobre as outras: nada sai do aparelho.
-  if (isApp && await local.ready().catch(() => false)) {
-    chat = { history: await cloud.loadChat(), model: local.MODEL.name, ready: true, problem: "", busy: false, error: "", cloud: true, local: true };
-    ctx.rerender();
-    return;
-  }
   const cfg = isApp ? await cloud.config().catch(() => null) : null;
   if (cloud.ready(cfg) && (cfg.enabled || !ctx.server)) {
     const history = await cloud.loadChat();
@@ -225,20 +216,7 @@ async function ask(ctx, question) {
   if (chat.numbers) ctx.rerender();
   try {
     if (chat.cloud) {
-      let reply;
-      if (chat.local) {
-        // A IA do celular não passa pelo Go: a resposta pronta e a sem IA vêm daqui.
-        reply = await cloud.prepared(ctx.ledger, question, agent);
-        if (!reply) {
-          try {
-            reply = await local.ask(ctx.ledger, chat.history.slice(0, -1), question, (text) => showPartial(text), agent);
-          } catch (err) {
-            reply = { ...(await cloud.offline(ctx.ledger, question, agent)), aiError: err.message };
-          }
-        }
-      } else {
-        reply = await cloud.ask(ctx.ledger, chat.history.slice(0, -1), question, agent);
-      }
+      const reply = await cloud.ask(ctx.ledger, chat.history.slice(0, -1), question, agent);
       chat.partial = "";
       chat.history.push(assistantMessage(reply, agent, chat.numbers));
       suggestHandoff(question, agent);

@@ -205,6 +205,10 @@ function updateCrumb() {
 }
 updateCrumb();
 
+// A IA dentro do celular (wllama) saiu em 11/2026: o modelo que alguém tenha
+// baixado (~470 MB, na pasta "cache" do armazenamento do app) é apagado aqui.
+if (device.isApp) navigator.storage?.getDirectory?.().then((dir) => dir.removeEntry("cache", { recursive: true })).catch(() => {});
+
 async function load() {
   [ledger, server] = await Promise.all([db.loadLedger(), device.server()]);
   if (device.isSite) {

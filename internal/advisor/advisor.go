@@ -204,29 +204,3 @@ func Answer(ctx context.Context, p llm.Provider, q Question, onText func(string)
 	}
 	return Reply{Text: answer, Proposals: proposals}, nil
 }
-
-// Na IA dentro do celular (llama.cpp em WebAssembly, 1 thread), cada palavra
-// do pedido custa tempo: vai só a última pergunta e resposta e os maiores
-// estabelecimentos.
-const (
-	maxLocalHistory   = 2
-	maxLocalMerchants = 10
-)
-
-// LocalRequest monta o pedido para a IA que roda dentro do celular: sem
-// ferramentas (modelos minúsculos não sabem usá-las; a resposta é só texto),
-// sem apelidos (nada sai do aparelho) e com histórico curto.
-func LocalRequest(q Question) llm.Request {
-	history := q.History
-	if len(history) > maxLocalHistory {
-		history = history[len(history)-maxLocalHistory:]
-	}
-	f := BuildFacts(q.Ledger, q.Today)
-	if len(f.Merchants) > maxLocalMerchants {
-		f.Merchants = f.Merchants[:maxLocalMerchants]
-	}
-	// Sem ferramentas aqui: a conta pronta do personagem é tudo que a IA pequena terá.
-	r := BuildRequest(history, q.Text, withPrefetch(SnapshotFor(f, q.Agent), q.Agent, NewTools(q.Ledger, q.Today, nil), q.Text))
-	r.System = systemFor(q.Agent)
-	return r
-}

@@ -144,7 +144,7 @@ diagnóstico original; o estado atual está na última coluna e nas verificaçõ
 | 4 | Playwright 1.57.0 corrige a queda nativa. Matriz obrigatória Chromium/WebKit no CI após a aprovação local. Google permanece no Chromium porque o mock usa redirecionamento 302. | `.github/workflows/ci.yml`, `e2e/package.json`, testes | Nove suítes WebKit e dez Chromium aprovadas localmente e no Linux, execução `41844337044`. | Codex | concluído e aprovado no CI |
 | 5 | Workflow diário e manual com `/healthz` e pergunta de conexão no endereço real. Só aceita resposta completa com texto "ok". As notificações dependem das preferências da conta GitHub. | `.github/workflows/ia-diaria.yml`, `docs/IA-GRATIS.md` | Resposta publicada validada, sete casos do validador e execução `41747839412` aprovada no GitHub. | Codex | implementado e conferido no GitHub; notificações pendentes |
 | 6 | O computador abre `/chat` com `pages/advisor.js` e `/api/chat`; saíram a tela e as rotas antigas. | `internal/web/chat.go`, `server.go`, `js/main.js`, `js/pages/advisor.js`, testes | Go e suítes `app.test` e `budget.test`. | Claude e agente em paralelo | feito em `0af70a2` |
-| 7 | Apagar a IA dentro do celular. | `js/local-ai.js`, `pages/device.js`, `advisor`, `askapi`, `mobile/package.json`, F-Droid, docs | `make test`, `make e2e`, `make mobile`. | eu, **depois da sua confirmação** | aguardando você |
+| 7 | Apagar a IA dentro do celular (aprovado pelo dono em 03/11, na sessão do Claude). Quem tinha baixado o modelo recebe os ~470 MB de volta ao abrir o app; a política de segurança deixou de liberar `worker-src blob:`. | `js/local-ai.js`, `pages/device.js`, `pages/advisor.js`, `main.js`, `advisor`, `askapi`, `cmd/finanadvisor`, `export.go`, `mobile/package.json`, F-Droid, docs | `make test`, dez suítes Chromium e nove WebKit, `cap sync` sem o wllama. | Claude | feito |
 | 8 | Apagar regras de CSS sem uso (contagem final: 78). | `static/app.css` | Busca dos nomes e testes no navegador. | Claude | feito em `1fbf982` |
 | 9 | Lockfile atualizado pelo Claude; conferir também licenças e avisos remanescentes antes de outra atualização. | `mobile/package-lock.json` | `npm audit`, licenças e montagem do app. | Claude | parcial: uuid e licenças de ferramentas ainda em revisão |
 | 10 | Apagar o computador como IA do intermediário. | `cmd/finanlocal`, `internal/localguard`, `scripts/finanlocal.sh`, `internal/proxy`, docs | `make test`. | Claude, após confirmação registrada na sessão anterior | feito em `8b13010` |
@@ -204,7 +204,7 @@ diagnóstico original; o estado atual está na última coluna e nas verificaçõ
   do Mac. O servidor do teste agora usa um endereço local sem serviço. O teste passou sem
   depender dos modelos instalados na máquina.
 
-Os itens 7 e 11 continuam com as condições originais. O protótipo em
+O item 11 continua com as condições originais. O item 7 foi feito em 05/11 (abaixo). O protótipo em
 `docs/rich-mais-recente/`, os arquivos gerados do Capacitor e os worktrees foram preservados.
 
 **Validação final desta retomada:** `make test`, as dez suítes Chromium de `make e2e`
@@ -255,3 +255,20 @@ cancelamento possível dentro da biblioteca padrão do Go. Não altera cálculos
 | Computador antigo recebe uma transferência do celular novo | recusa o registro | o app já pula tipos desconhecidos e mostra "atualize a Rich do computador" (o texto deixa de falar só de notas) |
 | Duas rodadas de testes no navegador ao mesmo tempo | erro de porta em uso | uma rodada de cada vez; o agente roda só as suítes dele |
 | Uma regressão de navegador volta no CI | job vermelho | motores fixados pelo Playwright; ambos obrigatórios, sem ignorar erros |
+
+### Item 7 e um teste que dependia da data (05/11/2026)
+
+- **7 feito:** saíram `js/local-ai.js`, a seção dos Ajustes, o caminho no Consultor,
+  `advisor.LocalRequest`, `askapi.LocalPrompt` e `askapi.Prepared` (só essa IA usava) e as
+  exportações `localPrompt` e `prepared` do `advisor.wasm`. Também saíram a dependência
+  `@wllama/wllama`, a cópia no `cap sync`, o passo do F-Droid e a checagem do workflow. O
+  `main.js` apaga a pasta `cache` do armazenamento do app (só o wllama usava) na abertura;
+  o e2e confere no Chromium (no WebKit do Playwright esse armazenamento não abre num contexto
+  de teste). A política de segurança do app e do site tirou `blob:` de `worker-src`; o
+  leitor de PDF usa o próprio arquivo do worker.
+- **Teste dependente da data:** a pergunta "Quanto ainda posso gastar?" da Lia no
+  `app.test` esperava "sem renda", mas o salário do guia do primeiro uso cai no dia 5: do dia
+  5 em diante o teste falhava, sem relação com o código. Agora o teste compara com a conta
+  do app (`finance.insights`), e o caso sem renda ganhou um teste em Go
+  (`TestLiaAllowanceWithoutIncome`).
+

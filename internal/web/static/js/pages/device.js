@@ -5,7 +5,6 @@ import * as device from "../device.js";
 import * as finance from "../finance.js";
 import * as google from "../google.js";
 import * as cloud from "../cloud-ai.js";
-import * as local from "../local-ai.js";
 import * as openFinance from "../openfinance.js";
 import * as lock from "../lock.js";
 import { resetChat } from "./advisor.js";
@@ -252,7 +251,6 @@ export function render({ server, params, ledger }) {
 
     ${cloudSection(server)}
 
-    ${localSection()}
 
     ${device.isSite ? "" : openFinanceSection()}
 
@@ -317,7 +315,6 @@ export function bind(root, ctx) {
   });
   bindGoogle(root, ctx);
   bindCloud(root, ctx);
-  bindLocal(root, ctx);
   bindOpenFinance(root, ctx);
   bindLock(root, ctx);
   root.querySelector('[data-action="solo"]')?.addEventListener("click", () => startSolo(ctx, "/lancamentos"));
@@ -371,7 +368,6 @@ async function forgetHere() {
   await device.unpair(); // o token do computador sai do cofre também
   await db.wipe();
   lockState = null; // o bloqueio também sai
-  localState = null; // e a escolha da IA dentro do celular (o modelo baixado continua)
   await openFinance.forget();
   ofState = undefined;
 }
@@ -562,82 +558,6 @@ function bindOpenFinance(root, ctx) {
     if (!confirm("Apagar as credenciais do Open Finance deste celular?")) return;
     await openFinance.forget();
     ofState = null;
-    redraw();
-  });
-}
-
-// ---------- IA dentro do celular ----------
-
-let localState = null; // { downloaded, enabled, progress } (carregado depois; null = ainda não ou sem wllama)
-
-function localSection() {
-  if (!localState) return html`<section id="ia-local" hidden></section>`;
-  const s = localState;
-  const m = local.MODEL;
-  return html`<section class="panel" id="ia-local">
-    ${head("IA dentro do celular", "Um terceiro caminho, sem internet nenhuma.")}
-    <p class="small muted">O consultor roda neste celular, sem internet: nem a pergunta nem os seus números saem do aparelho.
-      Usa o modelo ${m.name} (código aberto, Apache-2.0), baixado uma vez (${m.mb} MB; prefira o Wi-Fi).
-      É uma IA pequena: responde mais devagar que a do computador ou da nuvem, erra mais e não lança nada por você.</p>
-    ${navigator.gpu ? "" : html`<p class="notice warn">Este celular não oferece aceleração gráfica (WebGPU) para o app: a IA dentro dele fica muito lenta, vários minutos por resposta.</p>`}
-    ${s.progress != null
-      ? html`<p><progress max="100" value="${Math.round(s.progress * 100)}" aria-label="Baixando o modelo"></progress> <span data-local="pct">${Math.round(s.progress * 100)}%</span></p>`
-      : s.downloaded
-        ? html`<label class="check"><input type="checkbox" data-action="local-ai" ${s.enabled ? "checked" : ""}> Usar a IA dentro do celular no Consultor</label>
-          <div class="row-actions tight"><button type="button" class="secondary" data-action="local-remove">Apagar o modelo (libera ${m.mb} MB)</button></div>`
-        : html`<div class="row-actions tight"><button type="button" data-action="local-download">Baixar o modelo (${m.mb} MB)</button></div>`}
-  </section>`;
-}
-
-// Como a IA na nuvem, a seção se redesenha sozinha.
-function bindLocal(root, ctx) {
-  const redraw = () => {
-    const section = root.querySelector("#ia-local");
-    if (!section) return;
-    section.outerHTML = toString(localSection());
-    bindLocal(root, ctx);
-  };
-  if (!localState) {
-    local.available().then(async (has) => {
-      if (!has) return;
-      localState = { downloaded: await local.downloaded(), enabled: !!(await local.config())?.enabled, progress: null };
-      redraw();
-    });
-    return;
-  }
-  root.querySelector('[data-action="local-download"]')?.addEventListener("click", async () => {
-    localState.progress = 0;
-    redraw();
-    try {
-      await local.download((p) => {
-        localState.progress = p;
-        const bar = document.querySelector("#ia-local progress");
-        if (bar) bar.value = Math.round(p * 100);
-        const pct = document.querySelector('#ia-local [data-local="pct"]');
-        if (pct) pct.textContent = `${Math.round(p * 100)}%`;
-      });
-      await local.setEnabled(true);
-      localState = { downloaded: true, enabled: true, progress: null };
-      resetChat();
-      ctx.flash("Modelo baixado ✓ O Consultor já usa a IA dentro do celular.");
-    } catch (err) {
-      localState.progress = null;
-      ctx.error(new Error("não deu para baixar o modelo: " + (err instanceof TypeError ? "sem internet" : err.message)));
-    }
-    redraw();
-  });
-  root.querySelector('[data-action="local-ai"]')?.addEventListener("change", async (e) => {
-    await local.setEnabled(e.target.checked);
-    localState.enabled = e.target.checked;
-    resetChat();
-    ctx.flash(e.target.checked ? "O Consultor vai usar a IA dentro do celular." : "O Consultor volta a usar o computador ou a nuvem.");
-  });
-  root.querySelector('[data-action="local-remove"]')?.addEventListener("click", async () => {
-    if (!confirm(`Apagar o modelo da IA (${local.MODEL.mb} MB)? Dá para baixar de novo depois.`)) return;
-    await local.remove();
-    localState = { downloaded: false, enabled: false, progress: null };
-    resetChat();
-    ctx.flash("Modelo apagado.");
     redraw();
   });
 }

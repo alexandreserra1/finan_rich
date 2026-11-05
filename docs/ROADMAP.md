@@ -74,8 +74,8 @@ Ficam três limitações que só um app de verdade resolve:
 > tudo (menos o consultor) funciona sem computador. Se depois parear, as categorias padrão se
 > juntam às do computador sem duplicar. Consultor sem computador: IA na nuvem com plano
 > grátis, chamada do celular com os nomes anonimizados e a chave cifrada (ver MOBILE.md).
-> IA dentro do aparelho (wllama/llama.cpp): feito, ver MOBILE.md. Ela é pequena e precisa
-> de WebGPU para ser rápida; sem ferramentas (não lança nada pela conversa).
+> IA dentro do aparelho (wllama/llama.cpp): feita e removida em 11/2026 (lenta sem WebGPU e
+> pior que a resposta pronta do app; ver MOBILE.md).
 
 Para quem não quer deixar um computador ligado:
 

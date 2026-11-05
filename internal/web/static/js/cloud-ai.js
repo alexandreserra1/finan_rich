@@ -161,14 +161,9 @@ export async function ask(ledger, history, question, agent = "otavio") {
   return unwrap(await window.finanAdvisor.ask(JSON.stringify(req)));
 }
 
-// Respostas do app, sem IA (regras em Go, advisor.wasm): { answer, proposals, app }.
-// prepared: a resposta pronta da sugestão, ou null se a pergunta precisa da IA.
-// offline: a resposta com as contas do personagem quando a IA não pôde responder.
+// Resposta do app, sem IA (regras em Go, advisor.wasm): { answer, proposals, app },
+// com as contas do personagem quando a IA não pôde responder.
 const appRequest = (ledger, question, agent) => JSON.stringify({ ledger, question, agent, today: today() });
-export async function prepared(ledger, question, agent = "otavio") {
-  await loadAdvisor();
-  return unwrap(window.finanAdvisor.prepared(appRequest(ledger, question, agent))) || null;
-}
 export async function offline(ledger, question, agent = "otavio") {
   await loadAdvisor();
   return unwrap(window.finanAdvisor.offline(appRequest(ledger, question, agent)));

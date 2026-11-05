@@ -107,22 +107,8 @@ func Ask(ctx context.Context, reqJSON string) string {
 	return reply(askReply(r, req.AI.Preset), nil)
 }
 
-// Prepared devolve a resposta pronta do app para a pergunta, ou {} se ela
-// precisa da IA. A IA dentro do celular pergunta aqui antes de gerar.
-func Prepared(reqJSON string) string {
-	var req AskRequest
-	if err := json.Unmarshal([]byte(reqJSON), &req); err != nil {
-		return reply(nil, err)
-	}
-	q := req.question()
-	if !advisor.Prepared(q) {
-		return reply(nil, nil)
-	}
-	return reply(askReply(advisor.Reply{Text: advisor.Offline(q), App: true}, ""), nil)
-}
-
 // Offline é a resposta sem IA, para quando a IA nem pôde ser chamada (sem
-// internet, IA do celular com erro, computador fora do alcance).
+// internet, computador fora do alcance).
 func Offline(reqJSON string) string {
 	var req AskRequest
 	if err := json.Unmarshal([]byte(reqJSON), &req); err != nil {
@@ -132,7 +118,7 @@ func Offline(reqJSON string) string {
 }
 
 // Numbers são as contas do personagem para a tela mostrar na hora, antes da
-// resposta da IA; {} se a pergunta é pronta (aí o app já responde com Prepared).
+// resposta da IA; {} se a pergunta é pronta (aí a própria resposta já é do app).
 func Numbers(reqJSON string) string {
 	var req AskRequest
 	if err := json.Unmarshal([]byte(reqJSON), &req); err != nil {
@@ -143,23 +129,6 @@ func Numbers(reqJSON string) string {
 		return reply(nil, nil)
 	}
 	return reply(askReply(advisor.Reply{Text: n, App: true}, ""), nil)
-}
-
-// LocalPrompt monta as mensagens (formato OpenAI: system, user, assistant)
-// para a IA que roda dentro do celular (wllama). As instruções e o retrato
-// financeiro vêm daqui, das mesmas regras do computador; só a geração do
-// texto roda no wllama. Sem ferramentas e sem apelidos: nada sai do aparelho.
-func LocalPrompt(reqJSON string) string {
-	var req AskRequest
-	if err := json.Unmarshal([]byte(reqJSON), &req); err != nil {
-		return reply(nil, err)
-	}
-	r := advisor.LocalRequest(req.question())
-	msgs := []ChatTurn{{Role: "system", Content: r.System}}
-	for _, m := range r.Messages {
-		msgs = append(msgs, ChatTurn{Role: string(m.Role), Content: m.Content})
-	}
-	return reply(msgs, nil)
 }
 
 // Check confere a chave com uma pergunta mínima (sem dados da pessoa), para a

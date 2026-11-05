@@ -32,7 +32,6 @@ const PRECACHE = [
   "/static/js/theme.js",
   "/static/js/openfinance.js",
   "/static/js/banknotes.js",
-  "/static/js/local-ai.js",
   "/static/js/charts.js",
   "/static/vendor/chartjs/chart.umd.min.js",
 ];
