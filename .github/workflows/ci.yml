@@ -11,6 +11,7 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15 # normal: 2 min; teste travado não fica horas rodando
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -43,6 +44,7 @@ jobs:
 
   e2e:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20 # normal: 3 a 4 min; teste travado não fica horas rodando
     strategy:
       fail-fast: false
       matrix:
@@ -75,6 +77,7 @@ jobs:
 
   android:
     runs-on: ubuntu-latest
+    timeout-minutes: 30 # normal: 6 min; teste travado não fica horas rodando
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -129,6 +132,7 @@ jobs:
 
   ios:
     runs-on: macos-latest
+    timeout-minutes: 30 # normal: 2 min; teste travado não fica horas rodando
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5

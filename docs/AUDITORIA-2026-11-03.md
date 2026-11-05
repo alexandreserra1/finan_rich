@@ -283,8 +283,12 @@ No WebKit do macOS o mesmo cenário só marca o pedido como cancelado (conferido
 servidor lento e troca de página).
 
 `e2e/errors.mjs` (`watchErrors`), usado por todas as suítes, descarta esse aviso só quando
-o navegador também marcou o pedido daquele endereço como cancelado (`requestfailed`), nas
-duas ordens de chegada. Qualquer outro erro continua valendo, inclusive o controle do
-`app.test` que exige um erro de rede visível. `e2e/errors.test.mjs` confere a regra sem
-navegador. Onze suítes no Chromium e dez no WebKit (macOS) passaram.
+o pedido é do mesmo endereço (origem) da página. Ali não existe checagem de acesso de
+verdade, que só vale entre endereços diferentes; então a mensagem só pode ser o
+cancelamento. A primeira versão exigia também o aviso de pedido cancelado do Playwright
+(`requestfailed`), mas na execução `42094117234` (commit `f0d51dc`) esse aviso não chegou
+para o `advisor.wasm` dos Ajustes do app, e o teste falhou à toa. Erro de acesso para outro
+endereço (outra porta conta) e qualquer outro erro continuam valendo, inclusive o controle
+do `app.test` que exige um erro de rede visível. `e2e/errors.test.mjs` confere a regra sem
+navegador.
 
