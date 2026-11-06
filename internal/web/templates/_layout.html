@@ -45,15 +45,16 @@
 </header>
 <nav class="tabs" id="menu" aria-label="Menu principal">
   <a class="brand side-brand" href="/" aria-label="Rich, ir para o painel">rich<span>✳</span></a>
-  <span class="nav-label">Sua vida financeira</span>
-  <a href="/" class="tab-main" aria-label="Painel" {{if eq .Page "dashboard"}}aria-current="page"{{end}}>{{template "icon" "grid"}}<span class="tab-long">Painel</span><span class="tab-short" aria-hidden="true">Início</span></a>
-  <a href="/lancamentos" class="tab-main" aria-label="Lançamentos (Extrato)" {{if eq .Page "transactions"}}aria-current="page"{{end}}>{{template "icon" "swap"}}<span class="tab-long">Lançamentos</span><span class="tab-short" aria-hidden="true">Extrato</span></a>
+  <span class="nav-label">Dia a dia</span>
+  <a href="/" class="tab-main" aria-label="Início" {{if eq .Page "dashboard"}}aria-current="page"{{end}}>{{template "icon" "grid"}}<span>Início</span></a>
+  <a href="/lancamentos" class="tab-main" aria-label="Movimentos" {{if eq .Page "transactions"}}aria-current="page"{{end}}>{{template "icon" "swap"}}<span>Movimentos</span></a>
+  <a href="/analise" class="tab-main" {{if eq .Page "insights"}}aria-current="page"{{end}}>{{template "icon" "chart"}}<span>Análise</span></a>
+  <span class="nav-label">Planejar e cuidar</span>
+  <a href="/chat" class="tab-extra" aria-label="Consultor" {{if eq .Page "chat"}}aria-current="page"{{end}}>{{template "icon" "chat"}}<span>Consultor</span></a>
+  <a href="/metas" class="tab-extra" {{if eq .Page "goals"}}aria-current="page"{{end}}>{{template "icon" "target"}}<span>Metas</span></a>
   <a href="/contas" class="tab-extra" {{if eq .Page "accounts"}}aria-current="page"{{end}}>{{template "icon" "wallet"}}<span>Contas e cartões</span></a>
   <a href="/dividas" class="tab-extra" {{if eq .Page "debts"}}aria-current="page"{{end}}>{{template "icon" "card"}}<span>Dívidas</span></a>
-  <a href="/metas" class="tab-main" {{if eq .Page "goals"}}aria-current="page"{{end}}>{{template "icon" "target"}}<span>Metas</span></a>
-  <a href="/analise" class="tab-extra" {{if eq .Page "insights"}}aria-current="page"{{end}}>{{template "icon" "chart"}}<span>Análise</span></a>
   <a href="/categorias" class="tab-extra" {{if eq .Page "categories"}}aria-current="page"{{end}}>{{template "icon" "tag"}}<span>Categorias e orçamento</span></a>
-  <a href="/chat" class="tab-main" aria-label="Consultor" {{if eq .Page "chat"}}aria-current="page"{{end}}>{{template "icon" "chat"}}<span class="tab-long">Consultor</span><span class="tab-short" aria-hidden="true">Consultor</span></a>
   <span class="nav-label">Seu espaço</span>
   <a href="/notas" class="tab-extra" {{if eq .Page "notes"}}aria-current="page"{{end}}>{{template "icon" "note"}}<span>Notas</span></a>
   <a href="/importar" class="tab-extra" {{if eq .Page "import"}}aria-current="page"{{end}}>{{template "icon" "import"}}<span>Importar</span></a>

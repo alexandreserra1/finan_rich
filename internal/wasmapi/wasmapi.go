@@ -270,6 +270,14 @@ func Insights(ledgerJSON, today string) string {
 	return reply(finance.Insights(l, day), nil)
 }
 
+func Home(ledgerJSON, today string) string {
+	ledger, date, err := planInput(ledgerJSON, today)
+	if err != nil {
+		return reply(nil, err)
+	}
+	return reply(finance.Home(ledger, date), nil)
+}
+
 // Diagnose é o diagnóstico das dívidas (o que mais custa e onde guardar).
 func Diagnose(ledgerJSON, today string) string {
 	l, day, err := planInput(ledgerJSON, today)

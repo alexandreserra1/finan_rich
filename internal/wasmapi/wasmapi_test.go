@@ -31,6 +31,18 @@ const ledger = `{
   "prefs": []
 }`
 
+func TestHome(t *testing.T) {
+	view, message := decode(t, Home(ledger, "2026-10-10"))
+	if message != "" || view["estimateAvailable"] != false || view["weekFrom"] != "2026-10-04" || view["weekInCents"] != float64(500000) {
+		t.Fatalf("resumo do Início: %v, %s", view, message)
+	}
+	for _, input := range []struct{ ledger, date string }{{"{", "2026-10-10"}, {ledger, "ontem"}} {
+		if _, message := decode(t, Home(input.ledger, input.date)); message == "" {
+			t.Fatal("entrada inválida deve ser recusada")
+		}
+	}
+}
+
 func TestDashboard(t *testing.T) {
 	v, errMsg := decode(t, Dashboard(ledger, "2026-10"))
 	if errMsg != "" || v["balanceCents"] != float64(300000) || v["label"] != "outubro de 2026" {

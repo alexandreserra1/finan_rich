@@ -88,6 +88,7 @@ function rateColumns(v) {
 
 export function render({ ledger, params }) {
   const v = finance.insights(ledger, today());
+  const home = finance.home(ledger, today());
   const m = finance.money;
   const mode = compareWith(params);
   const maxPlace = v.places.length ? v.places[0].cents : 0;
@@ -102,12 +103,11 @@ export function render({ ledger, params }) {
   const month = finance.dashboard(ledger, today().slice(0, 7));
   const cats = Object.fromEntries(ledger.categories.map((c) => [c.id, c]));
   return html`
-    ${pageHead("Sua grana, vista de perto.", null, { kicker: `${v.label} · dia ${v.day} de ${v.daysInMonth}`, sub: "Estimativas transparentes e comparações que ajudam a decidir.", actions: toggle })}
+    ${pageHead("Para onde foi meu dinheiro?", null, { kicker: `${v.label} · dia ${v.day} de ${v.daysInMonth}`, sub: "O que mudou, onde economizar e como o mês pode terminar.", actions: toggle })}
 
     <section class="cards metricgrid ins-kpis">
-      ${metric("Pode gastar por dia", v.freeCents < 0 ? m(0) : m(v.perDayCents), v.freeCents < 0
-        ? `o mês já passou ${m(-v.freeCents)} do que cabe`
-        : `sobram ${m(v.freeCents)} até o fim do mês${v.incomeEstimated ? " (renda estimada pela média)" : ""}`, { extra: "perday", cls: v.freeCents < 0 ? "neg" : "" })}
+      ${metric("Referência de orçamento por dia", !home.estimateAvailable ? "Indisponível" : home.freeCents < 0 ? "Orçamento negativo" : m(home.perDayCents),
+        !home.estimateAvailable ? home.estimateReason : `Estimativa com os registros disponíveis: ${m(home.freeCents)} no mês. Não é saldo disponível.`, { extra: "perday", cls: home.freeCents < 0 ? "neg" : "" })}
       ${metric("Gastos variáveis até hoje", m(v.variableCents), "sem investimentos e contas fixas")}
       ${metric("Projeção do mês", m(v.projectedCents), `com ${m(v.fixedCents)} de contas fixas${v.lastMonthCents ? ` · mês passado: ${m(v.lastMonthCents)}` : ""}`)}
       ${metric("Taxa de economia", v.incomeCents && !v.incomeEstimated ? `${v.savingsPct}%` : "—", v.incomeCents && !v.incomeEstimated
@@ -119,7 +119,7 @@ export function render({ ledger, params }) {
 
     <section class="ins-row">
       <section class="panel">
-        <div class="panel-head"><div><h2>Seu mapa de gastos</h2><p class="faint small">${v.label}</p></div></div>
+        <div class="panel-head"><div><h2>Onde gastei mais?</h2><p class="faint small">${v.label}</p></div></div>
         ${spendingRing(month)}
       </section>
       <section class="panel">
@@ -129,13 +129,13 @@ export function render({ ledger, params }) {
     </section>
 
     <section class="panel">
-      <div class="panel-head"><h2>Ritmo do mês</h2><span class="faint small">só gastos variáveis; a projeção segue o ritmo de até hoje</span></div>
+      <div class="panel-head"><h2>Como o mês pode terminar?</h2><span class="faint small">só gastos variáveis; a projeção segue o ritmo de até hoje</span></div>
       ${paceChart(v, mode)}
     </section>
 
     <section class="ins-row">
       <section class="panel">
-        <div class="panel-head"><h2>Onde dá para economizar</h2><a class="small" href="/chat?agente=lia">Falar com a Lia</a></div>
+        <div class="panel-head"><h2>Onde posso economizar?</h2><a class="small" href="/chat?agente=lia">Falar com a Lia</a></div>
         ${v.savings.length ? html`<ul class="savings">
           ${v.savings.map((s) => html`<li class="saving ${s.kind}">
             <div class="saving-top"><strong>${s.title}</strong>${!s.monthlyCents ? "" : s.kind === "ritmo"

@@ -13,6 +13,19 @@ import { html, raw } from "../ui.js";
 export const needsData = false;
 
 let chat = null; // { history: [{role, content, proposals, agent}], suggest, model, ready, problem, busy, error, cloud, aiLocal, use }
+let pendingDraft = null;
+
+export function stageDraft(message) {
+  const text = String(message).trim().slice(0, 500);
+  if (!text || (pendingDraft && pendingDraft !== text) || (chat?.draft && chat.draft !== text) || chat?.busy) return false;
+  pendingDraft = text;
+  return true;
+}
+
+export function clearDraft() {
+  pendingDraft = null;
+  if (chat) chat.draft = "";
+}
 
 // O time: cada personagem aconselha do seu jeito (internal/advisor/personas.go).
 const SUGGESTIONS = {
@@ -82,7 +95,11 @@ export function render() {
       <div class="notice warn ai-setup"><strong>O consultor precisa de uma IA para funcionar.</strong>
       Para usar sem computador, escolha uma IA na nuvem (há opções grátis) em
       <a href="/configuracoes#ia-nuvem">Ajustes → Consultor sem computador</a>. Ou conecte este celular a um computador com a Rich.
-      <span class="small muted">O resto do app funciona normalmente sem IA.</span></div></section></div>`;
+      <span class="small muted">O resto do app funciona normalmente sem IA.</span></div>
+      ${pendingDraft !== null ? html`<div class="home-draft"><label for="prepared-message">Sua mensagem preparada, só nesta aba</label>
+        <textarea id="prepared-message" data-draft-input maxlength="500" autocomplete="off">${pendingDraft}</textarea>
+        <p class="small muted">Nada foi enviado ou registrado. Você pode copiar o texto ou usar o formulário sem IA.</p>
+        <a class="btn secondary" href="/lancamentos?novo=1">Registrar manualmente</a></div>` : ""}</section></div>`;
   }
   return html`
     ${head()}
@@ -116,7 +133,7 @@ export function render() {
           <button type="button" class="small-btn secondary" data-handoff>Perguntar para ${member(chat.suggest.agent).name}</button></div>` : ""}
       </div>
       ${chat.busy ? "" : html`<div class="suggestions">${(SUGGESTIONS[me.id] || SUGGESTIONS.otavio).map((s) => html`<button type="button" data-suggest="${s}">${s}</button>`)}</div>`}
-      <form data-form="ask" class="chat-form">
+      <form data-form="ask" class="chat-form" autocomplete="off">
         <div class="composer">
           <textarea name="message" rows="1" placeholder="Qual é o seu próximo plano? Fale com ${me.name}…" aria-label="Mensagem para ${me.name}" required ${chat.busy ? "disabled" : ""}>${chat.draft || ""}</textarea>
           <button type="submit" class="send" aria-label="Enviar" ${chat.busy ? "disabled" : ""}>${icon(SEND_ICON, 16)}</button>
@@ -204,6 +221,7 @@ async function ask(ctx, question) {
   const agent = agentId;
   chat.history.push({ role: "user", content: question });
   chat.busy = true;
+  chat.draft = "";
   chat.error = "";
   chat.suggest = null;
   chat.offline = false;
@@ -294,8 +312,17 @@ export function bind(root, ctx) {
     loadChat(ctx);
     return;
   }
+  const prepared = root.querySelector("[data-draft-input]");
+  prepared?.addEventListener("input", () => { pendingDraft = prepared.value.slice(0, 500); });
   const form = root.querySelector('[data-form="ask"]');
   if (!form) return; // só o aviso de configurar a IA
+  if (pendingDraft !== null) {
+    chat.draft = pendingDraft;
+    pendingDraft = null;
+    chat.suggest = null;
+    ctx.rerender();
+    return;
+  }
   // Vindo do "Perguntar para ..." do Painel: quem avisou e a pergunta já escrita.
   const want = ctx.params.get("agente"), question = ctx.params.get("pergunta");
   if (want !== null || question !== null) {
@@ -321,6 +348,7 @@ export function bind(root, ctx) {
   form.elements.message.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
   });
+  form.elements.message.addEventListener("input", () => { chat.draft = form.elements.message.value; });
   // Safari não tem field-sizing (app.css): aqui a caixa cresce com o texto.
   if (!CSS.supports("field-sizing", "content")) {
     const box = form.elements.message;
@@ -331,7 +359,6 @@ export function bind(root, ctx) {
     box.dispatchEvent(new Event("input"));
     box.focus();
     box.setSelectionRange(box.value.length, box.value.length);
-    chat.draft = "";
   }
   // O cartão dos números fica como a pessoa deixou quando a tela é redesenhada.
   root.querySelectorAll("details[data-numbers]").forEach((d) => d.addEventListener("toggle", () => {
@@ -375,4 +402,4 @@ export function bind(root, ctx) {
 }
 
 // Os Ajustes mudaram a IA: a próxima abertura do consultor relê a configuração.
-export function resetChat() { chat = null; }
+export function resetChat() { chat = null; pendingDraft = null; }

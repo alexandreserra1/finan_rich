@@ -33,6 +33,12 @@ for (let i = 0; i < 100; i++) {
 const records = async (type) => (await (await fetch(`${B}/api/sync`, { method: "POST", headers: { "Content-Type": "application/json" }, body: '{"cursor":0}' })).json())
   .changes.filter((c) => c.type === type && !c.record.deleted).map((c) => c.record);
 
+const alerts = (page) => page.evaluate(async () => {
+  const finance = await import("/static/js/finance.js");
+  const ledger = await (await import("/static/js/db.js")).loadLedger();
+  return finance.alerts(ledger, (await import("/static/js/ui.js")).today());
+});
+
 const pad = (n) => String(n).padStart(2, "0");
 const now = new Date();
 const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -72,13 +78,11 @@ try {
   await page.waitForSelector(".welcome:has-text('Passo 4 de 4')");
   await page.fill(".welcome input[name=target]", "6.000");
   await page.click(".welcome button[type=submit]");
-  await page.waitForSelector(".cards.has-hero");
+  await page.waitForSelector('[data-section="money-now"]');
   ok(await page.isVisible(".flash:has-text('Pronto!')"), "ao terminar, mostra o Painel montado");
-  const brief = (name) => page.locator(`#time .brief:has(strong:text-is('${name}'))`);
-  ok((await brief("Otávio").textContent()).includes("Cartão: 10,00% ao mês") && (await brief("Tito").textContent()).includes("Reserva de emergência") &&
-    await brief("Otávio").locator(".brief-main").getAttribute("href") === "/dividas", "o time conta no Painel o que viu (Otávio na dívida, Tito na meta)");
-  ok(decodeURIComponent(await brief("Otávio").locator(".ask-team").getAttribute("href")) === "/chat?agente=otavio&pergunta=Qual+dívida+devo+pagar+primeiro?",
-    "cada resumo do time tem 'Perguntar para ...', com uma pergunta que o app responde sem IA");
+  const insights = page.locator('[data-section="insights"] [data-insight]');
+  ok(await page.locator('[data-section="insights"]').isVisible() && await insights.count() <= 3,
+    "o Início mostra até três insights compactos, sem exigir um achado para cada pessoa do time");
   await page.evaluate(() => window.finanSync());
   const [rec, prefs, debts, goals] = await Promise.all(["recurring", "pref", "debt", "goal"].map(records));
   const split = prefs.find((p) => p.id === "split")?.value;
@@ -88,7 +92,7 @@ try {
   ok(goals.length === 1 && goals[0].name === "Reserva de emergência" && goals[0].targetCents === 600000, "passo 4 criou a meta");
   ok(prefs.some((p) => p.id === "primeiro-uso"), "o fim do guia vale para os outros aparelhos");
   await page.reload();
-  await page.waitForSelector(".cards.has-hero");
+  await page.waitForSelector('[data-section="money-now"]');
   ok(await page.locator(".welcome").count() === 0, "depois do guia, o Painel abre normal");
 
   // ---------- Orçamento por categoria ----------
@@ -115,8 +119,9 @@ try {
   await add("Padaria Açúcar", "35", "Restaurantes e delivery · Desejos");
   await add("Pão de Açúcar", "120", "Mercado · Necessidades");
   await page.goto(`${B}/`);
-  await page.waitForSelector("#atencao");
-  ok((await page.textContent("#atencao")).includes("R$ 80,00 de R$ 100,00"), "o Painel mostra em \"O que pede atenção\" o orçamento a 80%");
+  await page.waitForSelector('[data-section="insights"]');
+  const near = (await alerts(page)).find((alert) => alert.kind === "budget-near" && alert.title.includes("Restaurantes e delivery"));
+  ok(!!near && (await page.locator('[data-section="insights"]').innerText()).includes(near.title), "o Início mostra o alerta de orçamento calculado pelo Go ao chegar a 80%");
   // Os avisos ficam no sininho do cabeçalho (no computador, ao lado da marca).
   const bell = page.locator("[data-bell]:visible");
   const openBell = async () => { if (await page.locator("#avisos").isHidden()) await bell.click(); };
@@ -140,18 +145,19 @@ try {
   await page.waitForSelector(".tx-card");
   await add("iFood lanche", "30", "Restaurantes e delivery · Desejos");
   await page.goto(`${B}/`);
-  await page.waitForSelector("#atencao");
+  await page.waitForSelector('[data-section="insights"]');
   await openBell();
   ok(await page.locator("#avisos .bell-item").count() === 1 && await page.isVisible("#avisos .bell-item.danger:has-text('Orçamento de Restaurantes e delivery estourou')"),
     "o aviso de 80% saiu ao ser tocado; o de orçamento estourado é outro e aparece");
-  ok((await page.textContent("#atencao")).includes("Restaurantes e delivery: R$ 10,00 acima do teto"), "aviso e \"O que pede atenção\" quando o orçamento estoura");
+  const over = (await alerts(page)).find((alert) => alert.kind === "budget-over" && alert.title.includes("Restaurantes e delivery"));
+  ok(!!over && (await page.locator('[data-section="insights"]').innerText()).includes(over.title), "o Início mostra o alerta de orçamento estourado calculado pelo Go");
   await page.goto(`${B}/analise`);
   await page.waitForSelector(".pace-chart canvas");
   ok(/Categorias e seus limites[\s\S]*R\$ 110,00[\s\S]*Teto R\$ 100,00/.test(await page.textContent("main")), "Análise mostra os orçamentos");
 
   // O aviso leva aos lançamentos da categoria e sai da lista.
   await page.goto(`${B}/`);
-  await page.waitForSelector("#atencao");
+  await page.waitForSelector('[data-section="insights"]');
   await openBell();
   await page.click("#avisos .bell-item:has-text('estourou') .bell-main");
   await page.waitForSelector(".filter-total");

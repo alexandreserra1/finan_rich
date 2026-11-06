@@ -162,3 +162,20 @@ Estado detalhado em [AUDITORIA-2026-11-03.md](AUDITORIA-2026-11-03.md).
   sem esconder erros globais. Testes de leitura/fechamento e controle negativo no navegador.
 - [x] Fixar o job Chromium em Ubuntu 24.04: a execução anterior da main usou Ubuntu 26.04,
   não suportado pelo Playwright instalado, e falhou antes de iniciar os testes.
+
+## G. Experiência simples (05/11/2026)
+
+Plano e verificação em [PLANO-EXPERIENCIA-SIMPLES.md](PLANO-EXPERIENCIA-SIMPLES.md).
+
+- [x] Início com dinheiro, semana e até três insights priorizados, sem apresentação grande
+  do time ou gráfico anual. Metas só aparecem quando existem.
+- [x] Referência de orçamento explicada e indisponível quando os registros não permitem
+  uma estimativa responsável. Mesma regra na Análise, calculada no Go.
+- [x] Navegação Início, Movimentos, Análise e Mais, sem remover funções.
+- [x] Registro por mensagem apenas em memória; sem envio automático, com confirmação e
+  alternativa manual. Rascunho preservado mesmo sem IA configurada.
+- [x] Primeiro uso com importação e registro direto; guia continua opcional.
+- [x] Go/Wasm, doze suítes Chromium e onze WebKit aprovados; revisões de código e segurança.
+- [ ] Conferir em iPhone e Android reais.
+- [ ] Corrigir renovação de sessão vencida após autorização; achado médio preexistente,
+  descrito no plano desta entrega.

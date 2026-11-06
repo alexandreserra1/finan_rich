@@ -95,6 +95,7 @@ document.querySelectorAll('form[action="/sair"]').forEach((form) => form.addEven
     flash(`${left} ${left === 1 ? "alteração deste aparelho ainda não chegou" : "alterações deste aparelho ainda não chegaram"} ao computador. Conecte-se e tente sair de novo; nada foi apagado.`, "err");
     return;
   }
+  advisor.clearDraft();
   await db.wipe();
   form.submit();
 }));
@@ -159,6 +160,7 @@ function render(message) {
   refreshBell();
   document.body.classList.remove("landing-mode", "login-mode");
   if (device.isSite && !signedIn && path !== "/oauth") {
+    advisor.clearDraft();
     // Site sem login: nenhuma tela do app, nem por endereço digitado. Endereço
     // de dentro do app (/dividas…) vira o login; "/" mostra a landing.
     if (path !== "/") history.replaceState(null, "", "/?entrar=1");

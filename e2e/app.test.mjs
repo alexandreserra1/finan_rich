@@ -242,6 +242,53 @@ try {
   await addTransaction(page, "Feira (só celular)", "40");
   ok(true, "sem computador, o app funciona só no celular (categorias criadas no aparelho)");
 
+  {
+    const message = "Registro particular ainda sem IA configurada";
+    const edited = "Registro particular revisado antes de configurar a IA";
+    const aiRequests = [];
+    const trackAI = (request) => {
+      if (request.method() === "POST" && /\/api\/chat(?:\/|$)|\/chat\/completions|\/api\/generate/.test(new URL(request.url()).pathname)) aiRequests.push(request.url());
+    };
+    page.on("request", trackAI);
+    await page.goto(`${APP}/`);
+    await page.fill('form[data-form="quick-entry"] input[name="message"]', message);
+    await page.press('form[data-form="quick-entry"] input[name="message"]', "Enter");
+    await page.waitForURL(`${APP}/chat`);
+    const draft = page.locator("[data-draft-input]");
+    await draft.waitFor();
+    ok(await draft.inputValue() === message && await draft.isEditable() && await page.locator("form[data-form=ask]").count() === 0,
+      "sem computador nem IA configurada, a mensagem continua editável no aviso, sem abrir o envio para IA");
+    await draft.fill(edited);
+    await page.locator('nav.tabs a[href="/"]:not(.side-brand)').click();
+    await page.getByRole("button", { name: "Mais", exact: true }).click();
+    await page.locator('nav.tabs a[href="/chat"]').click();
+    await draft.waitFor();
+    ok(await draft.inputValue() === edited, "editar o rascunho sem IA atualiza a memória da aba e preserva o texto ao voltar");
+    const persisted = await page.evaluate(async () => {
+      const database = await new Promise((resolve, reject) => {
+        const request = indexedDB.open("finan_rich");
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      try {
+        const stores = await Promise.all(Array.from(database.objectStoreNames, (name) => new Promise((resolve, reject) => {
+          const request = database.transaction(name).objectStore(name).getAll();
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        })));
+        return JSON.stringify([stores, Object.entries(localStorage), Object.entries(sessionStorage)]);
+      } finally { database.close(); }
+    });
+    ok(!persisted.includes(message) && !persisted.includes(edited), "sem IA, o rascunho não vai para registros, histórico, fila, metadados ou armazenamento da página");
+    ok(aiRequests.length === 0 && page.url() === `${APP}/chat`, "sem IA, preparar e editar a mensagem não faz pedido de IA nem coloca o texto no endereço");
+    const manual = page.getByRole("link", { name: "Registrar manualmente", exact: true });
+    ok(await manual.isVisible() && await manual.getAttribute("href") === "/lancamentos?novo=1", "o aviso sem IA oferece o atalho para o registro manual");
+    await page.reload();
+    await page.waitForSelector(".ai-setup");
+    ok(await draft.count() === 0 || await draft.inputValue() === "", "recarregar descarta o rascunho sem IA configurada");
+    page.off("request", trackAI);
+  }
+
   // Consultor sem computador: IA na nuvem, chave cifrada, nomes anonimizados.
   await page.evaluate(async (port) => (await import("/static/js/db.js")).setMeta("cloud-ai", { preset: "groq", baseUrl: `http://127.0.0.1:${port}` }), CLOUD_PORT); // a nuvem falsa
   await page.goto(`${APP}/configuracoes`);
@@ -436,8 +483,14 @@ try {
   ok((await serverRecords()).some((r) => r.description === "Padaria (offline)"), "ao reconectar, o lançamento offline chegou ao computador");
 
   // Consultor dentro do app: fala com a IA do computador pelo token.
+  ok(await page.locator("nav.tabs a[href='/chat']").isHidden(), "no celular, Consultor fica dentro do Mais, não nas abas principais");
+  await page.getByRole("button", { name: "Mais", exact: true }).click();
+  await page.waitForSelector("body.menu-open nav.tabs a[href='/chat']");
+  ok(await page.locator("[data-menu]").getAttribute("aria-expanded") === "true", "Mais informa que o menu está aberto");
   await page.click("nav.tabs a[href='/chat']");
   await page.waitForSelector("form[data-form=ask]", { timeout: 15000 });
+  ok(await page.locator("body.menu-open").count() === 0 && await page.locator("[data-menu]").getAttribute("aria-expanded") === "false",
+    "Mais abre o menu e tocar em Consultor fecha o menu ao entrar na conversa");
   await page.fill("textarea[name=message]", "Quanto gastei com mercado?");
   await page.click("form[data-form=ask] button");
   await page.waitForSelector(".msg.assistant:has-text('R$ 250,00')", { timeout: 20000 });
@@ -450,6 +503,8 @@ try {
 
   // Consultor com ferramentas: busca lançamentos e propõe um lançamento, que só
   // entra depois do "Adicionar".
+  await page.getByRole("button", { name: "Mais", exact: true }).click();
+  await page.waitForSelector("body.menu-open nav.tabs a[href='/chat']");
   await page.click("nav.tabs a[href='/chat']");
   await page.waitForSelector("form[data-form=ask]", { timeout: 15000 });
   await page.fill("textarea[name=message]", "Quanto gastei na padaria?");

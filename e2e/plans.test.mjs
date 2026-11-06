@@ -187,7 +187,7 @@ try {
   await page.evaluate(() => window.finanSync());
   ok((await records("goal")).length === 1, "meta sincronizou");
 
-  // Análise: ritmo, quanto dá para gastar por dia e onde foi o dinheiro.
+  // Análise: ritmo, referência de orçamento por dia e onde foi o dinheiro.
   await page.goto(`${B}/lancamentos`);
   await page.waitForSelector(".tx-card");
   await openTx(page);
@@ -200,7 +200,19 @@ try {
   await page.waitForSelector(".pace-chart canvas");
   await page.waitForFunction(() => window.Chart && Object.keys(window.Chart.instances).length > 0);
   const analysis = await page.textContent("main");
-  ok(/Pode gastar por dia/.test(analysis) && /Projeção do mês/.test(analysis), "análise mostra quanto dá para gastar por dia e a projeção");
+  ok(/Referência de orçamento por dia/.test(analysis) && /Projeção do mês/.test(analysis), "análise mostra a referência de orçamento por dia e a projeção");
+  const home = await page.evaluate(async () => {
+    const finance = await import("/static/js/finance.js");
+    const ledger = await (await import("/static/js/db.js")).loadLedger();
+    return finance.home(ledger, (await import("/static/js/ui.js")).today());
+  });
+  const perDay = page.locator(".ins-kpis .perday");
+  ok(!home.estimateAvailable && await perDay.locator("strong").innerText() === "Indisponível" &&
+    (await perDay.innerText()).includes(home.estimateReason),
+    "sem renda corrente ou com compromissos pendentes, a referência fica indisponível com o motivo do Go, não R$ 0,00");
+  ok(await page.locator("main h1").innerText() === "Para onde foi meu dinheiro?" &&
+    ["Onde gastei mais?", "Como o mês pode terminar?", "Onde posso economizar?"].every((title) => analysis.includes(title)),
+    "análise apresenta as perguntas principais em linguagem clara");
   ok(await page.locator("#gastei tbody tr:has-text('iFood')").count() === 1 && !/Poupança/.test(await page.textContent("#gastei")), "gastei onde: iFood aparece; investimento não conta como gasto");
   await page.hover(".pace-chart canvas", { position: { x: 60, y: 120 } });
   await page.waitForFunction(() => /^Dia \d+\s+· Este mês R\$/.test(document.querySelector(".pace-chart .chart-strip")?.innerText || ""));

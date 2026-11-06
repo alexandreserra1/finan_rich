@@ -87,10 +87,12 @@ export function render({ ledger, params }) {
         <div class="card hero first-use">
           <span class="hero-label caps">Primeiro uso</span>
           <div class="first-use-text">
-            <h2>Seu painel começa pelo salário.</h2>
-            <p>Quatro passos, uns 2 minutos. Depois o mês se monta sozinho: entradas, saídas e quanto cabe em cada grupo.</p>
+            <h2>Como você quer começar?</h2>
+            <p>Importe um extrato, registre um movimento ou siga o guia opcional. Não precisa configurar tudo agora.</p>
           </div>
           <div class="first-use-actions">
+            <a class="btn secondary" href="/importar">Importar e revisar um extrato</a>
+            <a class="btn secondary" href="/lancamentos?novo=1">Registrar um movimento</a>
             <a class="btn" href="/?passo=1">Começar agora</a>
             <button type="button" class="link plain" data-action="finish">Pular e ir para o Painel</button>
           </div>

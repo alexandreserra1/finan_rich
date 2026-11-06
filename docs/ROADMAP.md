@@ -3,6 +3,17 @@
 Ideias para as próximas versões, com o que já foi pensado sobre cada uma.
 A arquitetura atual está em [ARCHITECTURE.md](ARCHITECTURE.md).
 
+## Experiência simples (05/11/2026)
+
+Entregue o Início enxuto, o resumo de sete dias, até três insights com ação, a navegação
+principal menor e o registro preparado sem texto na URL nem envio automático. Importação,
+confirmações, contas, metas, dívidas, notas e exportações continuam disponíveis.
+Estimativas não são apresentadas como dinheiro livre; a disponibilidade vem do Go.
+
+Plano, limites, testes e pendência média de sessão em
+[PLANO-EXPERIENCIA-SIMPLES.md](PLANO-EXPERIENCIA-SIMPLES.md). Voz, coleta automática e uma
+regra universal de saldo disponível não entraram sem requisitos próprios.
+
 ## App mobile
 
 > **Status:** app Android desde a v1.2; na v1.5, leitor de QR, consultor dentro do app,
