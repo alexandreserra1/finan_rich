@@ -68,7 +68,17 @@ jobs:
         working-directory: e2e
         run: |
           npm install --no-audit --no-fund
-          npx playwright install --with-deps ${{ matrix.browser }}
+          # As bibliotecas do navegador vêm do espelho do apt da Azure, que às vezes baixa a
+          # 20 KB/s (o normal é 40 s ao todo) e prendia o job até o limite de 20 min. Passou
+          # de 5 min: tenta de novo sem esse espelho (a lista do runner segue para o
+          # archive.ubuntu.com). O timeout roda com sudo para conseguir parar o apt (root).
+          deps() { sudo env "PATH=$PATH" timeout 5m npx playwright install-deps ${{ matrix.browser }}; }
+          if ! deps; then
+            sudo dpkg --configure -a
+            sudo sed -i '/azure\.archive\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt
+            deps
+          fi
+          npx playwright install ${{ matrix.browser }}
           if [ "${{ matrix.browser }}" = webkit ]; then
             FINANRICH_BIN=../dist/finanrich APP_WWW=../mobile/www SITE_BIN=../dist/finansite npm run webkit
           else
