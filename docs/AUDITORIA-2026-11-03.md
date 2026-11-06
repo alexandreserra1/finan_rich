@@ -298,3 +298,10 @@ fica só no `stack`. A regra lia a mensagem, então nunca reconhecia o aviso rea
 execuções verdes depois dela foram sorte. Agora ela lê o `stack`, e o teste sem navegador
 monta o erro do mesmo jeito que o Playwright (`server/webkit/wkPage.js`).
 
+Outra causa de job do WebKit cancelado, sem relação com os testes: o espelho do apt da Azure
+às vezes baixa as bibliotecas do navegador a 20 KB/s, e o job ficava preso até o limite de
+20 minutos (quatro vezes entre 05 e 06/11, a última na execução `42230617279`). Desde o
+commit `9789e56`, a instalação tem prazo de 5 minutos (o normal é 40 segundos); se passar,
+tenta de novo sem esse espelho, pelo `archive.ubuntu.com`. A segunda tentativa foi
+conferida forçando a primeira a parar no meio do download (execução `42267517443`).
+
