@@ -69,10 +69,23 @@ try {
 
   // Barreira: nenhum endereço do app abre sem login, nem digitado, nem com dados antigos no navegador.
   await page.evaluate(async () => {
-    const db = await import("/static/js/db.js");
     const f = await import("/static/js/finance.js");
     await f.load();
-    await db.saveManyLocal(f.defaultCategories(Date.now()).map((record) => ({ type: "category", record })));
+    const database = await new Promise((resolve, reject) => {
+      const request = indexedDB.open("finan_rich");
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      await new Promise((resolve, reject) => {
+        const transaction = database.transaction("records", "readwrite");
+        transaction.oncomplete = resolve;
+        transaction.onerror = transaction.onabort = () => reject(transaction.error);
+        for (const record of f.defaultCategories(Date.now())) {
+          transaction.objectStore("records").put({ key: `category:${record.id}`, type: "category", record });
+        }
+      });
+    } finally { database.close(); }
   });
   let leaked = [];
   for (const path of ["/", "/dividas", "/lancamentos", "/metas", "/analise", "/contas", "/chat", "/configuracoes", "/exportar"]) {

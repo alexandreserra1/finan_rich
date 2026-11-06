@@ -177,5 +177,5 @@ Plano e verificação em [PLANO-EXPERIENCIA-SIMPLES.md](PLANO-EXPERIENCIA-SIMPLE
 - [x] Primeiro uso com importação e registro direto; guia continua opcional.
 - [x] Go/Wasm, doze suítes Chromium e onze WebKit aprovados; revisões de código e segurança.
 - [ ] Conferir em iPhone e Android reais.
-- [ ] Corrigir renovação de sessão vencida após autorização; achado médio preexistente,
-  descrito no plano desta entrega.
+- [x] Corrigir renovação de sessão vencida; achado médio preexistente, corrigido em
+  05/11/2026 (detalhes no plano desta entrega).

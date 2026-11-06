@@ -64,7 +64,12 @@ for (let i = 0; i < 100; i++) {
 const drive = { id: null, version: 0, content: null, revoked: [], spaces: new Set(), down: false };
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS" };
 const json = (route, status, data) => route.fulfill({ status, headers: { ...cors, "Content-Type": "application/json" }, body: JSON.stringify(data) });
+let contexts = 0;
 async function fakeGoogle(context) {
+  // Cada navegador sai de um IP seu (na Vercel, o X-Forwarded-For): o limite das
+  // rotas /oauth do intermediário (60 por hora por IP) vale por pessoa, não para o teste todo.
+  const ip = `203.0.113.${++contexts}`;
+  await context.route(`${SITE}/oauth/*`, (route) => route.continue({ headers: { ...route.request().headers(), "x-forwarded-for": ip } }));
   await context.route("https://accounts.google.com/**", (route) => {
     const u = new URL(route.request().url());
     const state = u.searchParams.get("state");
@@ -122,7 +127,12 @@ async function login(page) {
   ok(!(await page.locator('[data-action="solo"]').count()), "no login do site não existe \"usar sem conta\"");
   await page.waitForSelector(".start-google:not([hidden]) [data-action=google]", { timeout: 20000 });
   await page.click("[data-action=google]");
-  await page.waitForURL(`${SITE}/`, { timeout: 20000 });
+  try {
+    await page.waitForURL(`${SITE}/`, { timeout: 20000 });
+  } catch (error) {
+    await logStatus(page, "retorno OAuth");
+    throw error;
+  }
   await page.waitForSelector(".cards, .welcome", { timeout: 20000 });
 }
 async function addTransaction(page, desc, amount) {
@@ -135,9 +145,41 @@ async function addTransaction(page, desc, amount) {
   await page.waitForSelector(`td:has-text('${desc}')`);
 }
 async function syncNow(page) {
-  await page.goto(`${SITE}/configuracoes`);
-  await page.click("#google [data-action=google-sync]", { timeout: 20000 });
-  await page.waitForSelector("#flash:has-text('Sincronizado com o Google Drive')", { timeout: 20000 });
+  let stage = "abrir ajustes";
+  try {
+    await page.goto(`${SITE}/configuracoes`);
+    stage = "clicar em sincronizar";
+    await page.click("#google [data-action=google-sync]", { timeout: 20000 });
+    stage = "esperar confirmação";
+    await page.waitForSelector("#flash:has-text('Sincronizado com o Google Drive')", { timeout: 20000 });
+  } catch (error) {
+    await logStatus(page, stage);
+    throw error;
+  }
+}
+async function logStatus(page, stage) {
+  const status = await page.evaluate(async () => {
+    const db = await import("/static/js/db.js");
+    const sync = await import("/static/js/sync.js");
+    const activity = await db.getMeta("site-active", null);
+    const pending = await db.getMeta("google-pending", null);
+    const session = await db.siteSession();
+    const flash = document.querySelector("#flash");
+    return {
+      pathname: location.pathname, now: Date.now(),
+      siteActive: Number.isSafeInteger(activity) ? activity : { type: typeof activity },
+      session: { signedIn: session.signedIn, expired: session.expired },
+      flash: flash ? { class: flash.className, hidden: flash.hidden } : null,
+      sync: { status: sync.state.status },
+      oauth: { present: !!document.querySelector("[data-oauth-status]"), failed: !!document.querySelector("[data-oauth-status].neg"), text: document.querySelector("[data-oauth-status]")?.textContent },
+      pending: {
+        present: !!pending,
+        ageMs: Number.isSafeInteger(pending?.at) ? Date.now() - pending.at : null,
+        stateMatches: !!pending && pending.state === new URLSearchParams(location.search).get("state"),
+      },
+    };
+  }).catch(() => ({ unavailable: true }));
+  console.error("Diagnóstico do navegador " + JSON.stringify({ stage, ...status }));
 }
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
@@ -223,6 +265,86 @@ try {
   await b.evaluate(async () => (await import("/static/js/db.js")).setMeta("site-active", Date.now()));
   await b.goto(`${SITE}/`);
   await b.waitForSelector(".dash-kpis", { timeout: 20000 });
+
+  for (const interaction of ["clique", "tecla", "outra aba"]) {
+    const sessionCtx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    try {
+      await fakeGoogle(sessionCtx);
+      const sessionPage = await sessionCtx.newPage();
+      watchErrors(sessionPage, errors, (e) => `sessão (${interaction}): ${e.message}`);
+      await sessionPage.clock.install();
+      await login(sessionPage);
+      await syncNow(sessionPage);
+      await sessionPage.goto(`${SITE}/`);
+      await sessionPage.waitForSelector(".dash-kpis", { timeout: 20000 });
+      const now = await sessionPage.evaluate(() => Date.now());
+      await sessionPage.clock.pauseAt(now + 1000);
+      const beforeInteraction = await sessionPage.evaluate(async () => {
+        const db = await import("/static/js/db.js");
+        return { timestamp: await db.getMeta("site-active", null), account: await db.getMeta("google", null), ledger: await db.loadLedger() };
+      });
+      await sessionPage.clock.setSystemTime(now + 31 * 60_000);
+      ok(await sessionPage.locator(".dash-kpis").isVisible(), `${interaction}: o Painel ainda está aberto antes da interação e do intervalo`);
+      if (interaction === "outra aba") {
+        const exchangesBeforeInteraction = exchanges.length;
+        await sessionPage.evaluate(async () => {
+          const db = await import("/static/js/db.js");
+          await db.setMeta("site-active", Date.now());
+          window.sessionBubbleClicks = 0;
+          document.addEventListener("click", (event) => {
+            if (event.target.closest('nav.tabs a[href="/lancamentos"]')) window.sessionBubbleClicks++;
+          });
+        });
+        ok(await sessionPage.evaluate(async () => (await import("/static/js/google.js")).needsSessionCheck()),
+          "outra aba renovou o banco, mas o cache local ainda precisa de revalidação");
+        const movements = sessionPage.locator('nav.tabs a[href="/lancamentos"]');
+        await movements.click();
+        let checked = false;
+        for (let attempt = 0; attempt < 30; attempt++) {
+          checked = await sessionPage.evaluate(async () => !(await import("/static/js/google.js")).needsSessionCheck());
+          if (checked) break;
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        ok(checked, "primeiro clique revalida a sessão renovada no banco sem disparar o intervalo");
+        ok(await sessionPage.evaluate(() => window.sessionBubbleClicks) === 0 &&
+          new URL(sessionPage.url()).pathname === "/" && await sessionPage.locator(".dash-kpis").isVisible(),
+        "primeiro clique fica bloqueado: não chega ao bubble nem é repetido após revalidar");
+        ok(await sessionPage.locator(".start").count() === 0 && exchanges.length === exchangesBeforeInteraction,
+          "sessão renovada em outra aba não pede novo login OAuth");
+        await movements.click();
+        await sessionPage.waitForSelector("td:has-text('Mercado do Google')", { timeout: 20000 });
+        ok(new URL(sessionPage.url()).pathname === "/lancamentos" &&
+          await sessionPage.evaluate(() => window.sessionBubbleClicks) === 1,
+        "próximo clique chega ao bubble uma vez e abre os movimentos");
+        continue;
+      }
+      if (interaction === "clique") await sessionPage.locator(".dash-kpis").click();
+      else await sessionPage.keyboard.press("Shift");
+      const expiredOnInteraction = await sessionPage.locator(".start .login-note:has-text('sem usar')")
+        .waitFor({ timeout: 3000 }).then(() => true, () => false);
+      ok(expiredOnInteraction && await sessionPage.locator("nav.tabs").isHidden() &&
+        await sessionPage.locator(".dash-kpis").count() === 0 && new URL(sessionPage.url()).search === "?entrar=1",
+      `${interaction} após vencer: pede login e esconde o Painel antes do intervalo de 15 segundos`);
+      const afterInteraction = await sessionPage.evaluate(async () => {
+        const db = await import("/static/js/db.js");
+        return { timestamp: await db.getMeta("site-active", null), account: await db.getMeta("google", null), ledger: await db.loadLedger() };
+      });
+      ok(JSON.stringify(afterInteraction) === JSON.stringify(beforeInteraction),
+        `${interaction} após vencer: não ressuscita a sessão nem altera conta e dados financeiros`);
+      const exchangesBeforeLogin = exchanges.filter((entry) => entry.grant_type === "authorization_code").length;
+      await login(sessionPage);
+      const newSession = await sessionPage.evaluate(async () => {
+        const db = await import("/static/js/db.js");
+        const google = await import("/static/js/google.js");
+        return { timestamp: await db.getMeta("site-active", null), now: Date.now(), session: await google.session() };
+      });
+      ok(exchanges.filter((entry) => entry.grant_type === "authorization_code").length > exchangesBeforeLogin &&
+        newSession.timestamp === newSession.now && newSession.session.signedIn && !newSession.session.expired,
+      `${interaction}: somente um novo login OAuth cria outra sessão válida`);
+    } finally {
+      await sessionCtx.close();
+    }
+  }
 
   // Navegador com o relógio 1 hora atrasado: ao gravar no Drive, ele aprende a
   // hora do Google e as edições saem com a hora certa (docs/passo-a-passo.md 1.3).

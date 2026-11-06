@@ -211,11 +211,16 @@ updateCrumb();
 // baixado (~470 MB, na pasta "cache" do armazenamento do app) é apagado aqui.
 if (device.isApp) navigator.storage?.getDirectory?.().then((dir) => dir.removeEntry("cache", { recursive: true })).catch(() => {});
 
-async function load() {
+async function load(activate = false) {
   [ledger, server] = await Promise.all([db.loadLedger(), device.server()]);
   if (device.isSite) {
     ({ signedIn, expired } = await google.session());
-    if (signedIn) google.markActive(true).catch(() => {}); // abrir o site também conta como uso
+    // Abrir o site conta como uso; dados que chegam pela sincronização, não.
+    if (signedIn && activate && !(await google.markActive(true))) [signedIn, expired] = [false, true];
+    if (!signedIn) {
+      advisor.clearDraft();
+      return;
+    }
   }
   await applyRecurring();
   scheduleReminders(ledger).catch(() => {}); // no app: os lembretes do time
@@ -251,7 +256,7 @@ async function applyRecurring() {
 
 async function reloadAndRender(message) {
   await load();
-  if (dirty && !message) {
+  if (dirty && !message && (!device.isSite || signedIn)) {
     rerenderPending = true; // redesenha quando o usuário terminar de preencher
     return;
   }
@@ -268,19 +273,59 @@ function navigate(url, replace = false) {
 }
 
 // Site: com a página aberta e parada, a sessão vence sozinha e a tela vira o login.
-if (device.isSite) setInterval(async () => {
-  if (!signedIn) return;
-  const s = await google.session();
-  if (!s.signedIn) {
-    signedIn = false;
-    expired = s.expired;
-    history.replaceState(null, "", "/?entrar=1"); // o login com o aviso; o ícone da pantera ainda leva à landing
-    render();
-  }
-}, 15_000);
+let sessionCheck = null;
+let revalidatingSession = false;
 
-// Site: clique ou tecla conta como uso (a sessão vence após google.IDLE_MS parado).
-if (device.isSite) ["click", "keydown"].forEach((ev) => document.addEventListener(ev, () => { if (signedIn) google.markActive().catch(() => {}); }, { passive: true }));
+function closeSession() {
+  signedIn = false;
+  expired = true;
+  dirty = false;
+  rerenderPending = false;
+  advisor.clearDraft();
+  history.replaceState(null, "", "/?entrar=1"); // o login com o aviso; o ícone da pantera ainda leva à landing
+  render();
+}
+
+function checkSiteSession(renew = false) {
+  if (!signedIn) return Promise.resolve(false);
+  if (sessionCheck) return sessionCheck;
+  if (google.needsSessionCheck()) revalidatingSession = true;
+  sessionCheck = (async () => {
+    try {
+      const valid = renew ? await google.markActive() : (await google.session()).signedIn;
+      if (!valid) closeSession();
+      return valid;
+    } catch {
+      closeSession();
+      return false;
+    } finally {
+      revalidatingSession = false;
+      sessionCheck = null;
+    }
+  })();
+  return sessionCheck;
+}
+
+if (device.isSite) {
+  setInterval(() => checkSiteSession(), 15_000);
+  window.addEventListener("finan-session-expired", closeSession);
+  window.addEventListener("focus", () => checkSiteSession());
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) checkSiteSession(); });
+  // Clique, tecla ou envio conta como uso (a sessão vence após google.IDLE_MS parado).
+  // Passado o prazo guardado, o gesto é barrado até o banco confirmar a sessão:
+  // um clique depois de vencer não age nem a renova.
+  for (const eventName of ["click", "keydown", "submit"]) {
+    document.addEventListener(eventName, (event) => {
+      if (!signedIn) return;
+      if (revalidatingSession || google.needsSessionCheck()) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        revalidatingSession = true;
+      }
+      checkSiteSession(true);
+    }, { capture: true });
+  }
+}
 
 document.addEventListener("click", (e) => {
   const a = e.target.closest("a[href]");
@@ -303,18 +348,19 @@ if (root) {
   // Primeiro as regras; só depois lê os dados, para pegar também o que uma
   // sincronização que terminou durante a carga já gravou no aparelho.
   finance.load()
-    .then(load)
+    .then(() => load(true))
     .then(() => {
       booted = true;
       render();
       if (changedDuringBoot) reloadAndRender();
     })
     .catch((err) => {
+      if (device.isSite && err.kind === "login") return closeSession(); // a sessão venceu no meio da carga
       root.innerHTML = `<p class="notice warn">Não foi possível iniciar o app: ${String(err.message || err).replace(/</g, "&lt;")}</p>`;
     });
 } else if (document.querySelector("[data-bell]")) {
   // Telas do servidor (Ajustes no computador): as regras só para o sininho.
-  finance.load().then(load).catch(() => {});
+  finance.load().then(() => load(true)).catch(() => {});
 }
 
 // App do celular: links finanrich://parear?url=...&codigo=... (QR code do

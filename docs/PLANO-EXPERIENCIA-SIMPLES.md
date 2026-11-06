@@ -107,13 +107,17 @@ Também não serão alterados autenticação, migrações, segredos, infraestrut
 
 Nenhum teste de navegador substitui a conferência posterior em iPhone e Android reais.
 
-## Pendência de segurança fora desta alteração
+## Sessão vencida (corrigido em 05/11/2026)
 
-**Média, preexistente:** `google.markActive()` pode renovar uma sessão já vencida quando
-alguém clica ou digita numa aba ainda aberta, antes da checagem periódica. Não reabre uma
-tela que já passou pelo guard de expiração. Reprodução isolada com relógio e armazenamento
-em memória confirmou a mudança de `expired: true` para `false`, sem usar dados reais.
+**Era média, preexistente:** `google.markActive()` podia renovar uma sessão já vencida quando
+alguém clicava ou digitava numa aba ainda aberta, antes da checagem periódica.
 
-A correção altera autenticação e foi pedida autorização separada. Não foi incluída sem
-essa confirmação. Em computador compartilhado, sair da conta continua sendo necessário;
-não tratar o tempo de inatividade como proteção suficiente nesse intervalo.
+Agora a hora do último uso é lida e renovada numa transação só do banco do navegador
+(`db.siteSession`), e sessão vencida não renova: só um login novo. No site, gravar
+lançamentos confere a sessão na mesma transação; vencida, nada é gravado. Clique, tecla ou
+envio depois do prazo é barrado até o banco confirmar a sessão. A sincronização não conta
+como uso. Testes: `e2e/session.test.mjs` (banco real, Chromium e WebKit) e os casos de
+clique, tecla e outra aba em `e2e/google.test.mjs`.
+
+Em computador compartilhado, sair da conta continua sendo o certo: os 30 minutos sem uso
+são uma rede de proteção, não a proteção principal.

@@ -5,7 +5,7 @@
 // O token de renovação fica no cofre do sistema no app e, no site, num cookie
 // HttpOnly posto pelo intermediário (o JavaScript da página não lê: nem um
 // script injetado); o token de acesso (1 hora) só na memória.
-import { getMeta, setMeta } from "./db.js";
+import { getMeta, setMeta, siteSession, SITE_IDLE_MS } from "./db.js";
 import * as device from "./device.js";
 
 // Mesmo endereço de llm.FreeProxyURL (um teste em Go confere).
@@ -39,24 +39,30 @@ export async function available() {
 // ---- sessão do site ----
 // O site pode estar num computador de outra pessoa: sem uso por IDLE_MS, ele
 // pede para entrar de novo (main.js mostra o login no lugar das telas).
-export const IDLE_MS = 30 * 60_000;
-let touched = 0;
+export const IDLE_MS = SITE_IDLE_MS;
+let sessionDeadline = 0; // até quando a sessão vale, pela última leitura do banco
 
-// markActive guarda a hora do último uso (no máximo uma gravação por minuto).
+// markActive guarda a hora do último uso (no máximo uma gravação por minuto) e
+// diz se a sessão vale. Sessão vencida não renova: só um login novo.
 export async function markActive(force = false) {
-  const now = Date.now();
-  if (!force && now - touched < 60_000) return;
-  touched = now;
-  await setMeta("site-active", now);
+  const state = await siteSession(true, force);
+  sessionDeadline = state.expiresAt;
+  return state.signedIn;
 }
 
 // session diz se há conta ligada e se ela ainda vale: { signedIn, expired }.
 export async function session() {
-  if (!(await getMeta("google", null))) return { signedIn: false, expired: false };
-  const last = await getMeta("site-active", 0);
-  const expired = !last || Date.now() - last > IDLE_MS;
-  return { signedIn: !expired, expired };
+  const state = await siteSession();
+  sessionDeadline = state.expiresAt;
+  return { signedIn: state.signedIn, expired: state.expired };
 }
+
+// needsSessionCheck diz, sem ler o banco, se o prazo guardado passou ou se o
+// relógio voltou para antes do último uso: aí main.js confere antes de aceitar o gesto.
+export const needsSessionCheck = () => {
+  const now = Date.now();
+  return now >= sessionDeadline || now < sessionDeadline - IDLE_MS;
+};
 
 // account devolve { email } da conta ligada, ou null.
 export async function account() {
@@ -110,13 +116,15 @@ export async function finish(code, state) {
   }
   await setMeta("google-pending", null);
   const { ok, data } = await post("/oauth/token", { code, verifier: pending.verifier, redirectUri: base() + "/oauth" });
-  if (!ok || !data.access_token) throw new Error("o Google recusou o login (" + (data.error_description || data.error || "tente de novo") + ")");
+  if (!ok || !data.access_token) throw new Error("o Google recusou o login (" + (data.error_description || data.error?.message || data.error || "tente de novo") + ")");
   if (!data.refresh_token && !data.cookie) throw new Error("o Google não mandou a permissão para manter você conectado; tente de novo");
   access = { token: data.access_token, exp: Date.now() + (data.expires_in || 3600) * 1000 };
   if (data.refresh_token) await saveRefresh(data.refresh_token);
   // No site o token ficou no cookie; aqui só o e-mail. No app, no cofre do sistema.
   await setMeta("google", { email: email(data.id_token || ""), refresh: vault() || data.cookie ? null : data.refresh_token });
-  await markActive(true); // a sessão do site começa agora
+  const now = Date.now();
+  await setMeta("site-active", now); // a sessão do site começa agora
+  sessionDeadline = now + IDLE_MS;
 }
 
 async function saveRefresh(token) {

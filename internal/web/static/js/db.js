@@ -4,6 +4,7 @@
 
 const DB_NAME = "finan_rich";
 const DB_VERSION = 1;
+export const SITE_IDLE_MS = 30 * 60_000; // site: sem uso por esse tempo, pede o login de novo
 
 let dbPromise = null;
 
@@ -61,25 +62,42 @@ export async function allRecords() {
 }
 
 // saveManyLocal grava várias alterações de uma vez (ex.: restaurar um backup).
+// No site, só com a sessão valendo, conferida na mesma transação: vencida, nada é gravado.
 export async function saveManyLocal(items) {
   const db = await open();
-  const tx = db.transaction(["records", "outbox"], "readwrite");
-  for (const { type, record } of items) {
-    const key = keyOf(type, record.id);
-    tx.objectStore("records").put({ key, type, record });
-    tx.objectStore("outbox").put({ key, type, record });
+  const site = document.documentElement.dataset.site === "web";
+  const tx = db.transaction(site ? ["records", "outbox", "meta"] : ["records", "outbox"], "readwrite");
+  let authorizationError = null;
+  const save = () => {
+    for (const { type, record } of items) {
+      const key = keyOf(type, record.id);
+      tx.objectStore("records").put({ key, type, record });
+      tx.objectStore("outbox").put({ key, type, record });
+    }
+  };
+  if (site) {
+    readSiteSession(tx.objectStore("meta"), (state) => {
+      if (state.signedIn) save();
+      else {
+        authorizationError = Object.assign(new Error("A sessão venceu. Entre de novo; nenhum dado desta alteração foi gravado."), { kind: "login" });
+        tx.abort();
+      }
+    });
+  } else save();
+  try {
+    await done(tx);
+  } catch (error) {
+    if (authorizationError) {
+      window.dispatchEvent(new Event("finan-session-expired"));
+      throw authorizationError;
+    }
+    throw error;
   }
-  return done(tx);
 }
 
 // saveLocal grava uma alteração feita neste aparelho e a coloca na fila de envio.
 export async function saveLocal(type, record) {
-  const db = await open();
-  const tx = db.transaction(["records", "outbox"], "readwrite");
-  const key = keyOf(type, record.id);
-  tx.objectStore("records").put({ key, type, record });
-  tx.objectStore("outbox").put({ key, type, record });
-  return done(tx);
+  return saveManyLocal([{ type, record }]);
 }
 
 // applyRemote grava registros vindos do computador. Vence a versão mais
@@ -139,6 +157,38 @@ export async function setMeta(key, value) {
   const tx = db.transaction("meta", "readwrite");
   tx.objectStore("meta").put(value, key);
   return done(tx);
+}
+
+// readSiteSession lê a sessão do site dentro de uma transação já aberta, para
+// quem chama decidir e gravar nela mesma (outra aba não muda nada no meio).
+// Hora do último uso estranha ou no futuro (relógio mexido) conta como vencida.
+function readSiteSession(store, receive) {
+  const account = store.get("google");
+  const activity = store.get("site-active");
+  activity.onsuccess = () => {
+    const now = Date.now();
+    const last = activity.result;
+    const invalid = !Number.isSafeInteger(last) || last <= 0 || now < last || now - last >= SITE_IDLE_MS;
+    receive({ signedIn: !!account.result && !invalid, expired: !!account.result && invalid, expiresAt: invalid || !account.result ? 0 : last + SITE_IDLE_MS }, now, last);
+  };
+}
+
+// siteSession devolve { signedIn, expired, expiresAt }; com renew, uma sessão
+// ainda válida ganha a hora de agora (no máximo uma gravação por minuto, salvo force).
+export async function siteSession(renew = false, force = false) {
+  const db = await open();
+  const transaction = db.transaction("meta", renew ? "readwrite" : "readonly");
+  const store = transaction.objectStore("meta");
+  let result;
+  readSiteSession(store, (state, now, last) => {
+    result = state;
+    if (renew && state.signedIn && (force || now - last >= 60_000)) {
+      store.put(now, "site-active");
+      result.expiresAt = now + SITE_IDLE_MS;
+    }
+  });
+  await done(transaction);
+  return result;
 }
 
 // wipe apaga tudo deste aparelho (ao sair da conta).
