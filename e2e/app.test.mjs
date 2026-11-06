@@ -193,18 +193,18 @@ try {
     return detail;
   };
   watchErrors(page, errors, (error) => recordError(page, error));
-  // O diagnóstico de uma falha mostra a página em uso (watch troca quando o teste passa para outra).
-  let watched = page;
-  const watch = (p) => {
-    watched = p;
+  // O diagnóstico de uma falha mostra todas as páginas abertas (a falha pode ser em qualquer uma).
+  const listen = (p) => {
     p.on("console", (m) => logs.push(`[${m.type()}] ${m.text()}`));
     p.on("requestfailed", (r) => logs.push(`[falhou] ${r.url()} ${r.failure()?.errorText}`));
   };
-  watch(page);
+  listen(page);
   globalThis.dumpPage = async () => {
     console.log("--- diagnóstico ---");
-    console.log("url:", watched.url(), "| status:", await watched.textContent("#sync-status").catch(() => "?"));
-    console.log("tela:", (await watched.innerText("body").catch(() => "")).slice(0, 600));
+    for (const p of browser.contexts().flatMap((c) => c.pages())) {
+      console.log("url:", p.url(), "| status:", await p.textContent("#sync-status").catch(() => "?"));
+      console.log("tela:", (await p.innerText("body").catch(() => "")).slice(0, 600));
+    }
     console.log(logs.slice(-15).join("\n"));
   };
 
@@ -706,7 +706,7 @@ try {
   });
   const of = await ofCtx.newPage();
   watchErrors(of, errors, (error) => recordError(of, error));
-  watch(of);
+  listen(of);
   await of.goto(`${APP}/configuracoes`);
   await of.click("[data-action=solo]");
   await of.waitForSelector("form[data-form=transaction]", { state: "attached", timeout: 20000 });
@@ -753,7 +753,6 @@ try {
   [meta, inVault] = await vaulted();
   ok(!meta.token && meta.vault && inVault?.length > 20, "token antigo em texto passa para o cofre e a sincronização continua");
   await ofCtx.close();
-  watched = page;
 
   // Lembretes do time no celular (plugin de notificações falso): Otávio avisa
   // o vencimento, Lia toda segunda e Tito no dia do salário; o toque abre a tela.

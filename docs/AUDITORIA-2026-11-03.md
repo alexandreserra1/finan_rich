@@ -292,3 +292,9 @@ endereço (outra porta conta) e qualquer outro erro continuam valendo, inclusive
 do `app.test` que exige um erro de rede visível. `e2e/errors.test.mjs` confere a regra sem
 navegador.
 
+Na execução `42152951986` (06/11, commit `04bc6a4`) o aviso escapou mesmo assim: no WebKit, o
+Playwright corta a mensagem do erro no primeiro ":" (o de "http:"), e o endereço inteiro
+fica só no `stack`. A regra lia a mensagem, então nunca reconhecia o aviso real; as
+execuções verdes depois dela foram sorte. Agora ela lê o `stack`, e o teste sem navegador
+monta o erro do mesmo jeito que o Playwright (`server/webkit/wkPage.js`).
+

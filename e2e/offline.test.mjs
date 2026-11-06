@@ -80,12 +80,19 @@ try {
   const errors = [];
   const logs = [];
   watchErrors(page, errors);
-  page.on("console", (m) => logs.push(`[${m.type()}] ${m.text()}`));
-  page.on("requestfailed", (r) => logs.push(`[falhou] ${r.url()} ${r.failure()?.errorText}`));
+  // O diagnóstico de uma falha mostra todas as páginas abertas (a falha pode ser em qualquer uma).
+  const listen = (p) => {
+    p.on("console", (m) => logs.push(`[${m.type()}] ${m.text()}`));
+    p.on("requestfailed", (r) => logs.push(`[falhou] ${r.url()} ${r.failure()?.errorText}`));
+  };
+  listen(page);
   globalThis.dumpPage = async () => {
     console.log("--- diagnóstico ---");
-    console.log("url:", page.url(), "| status:", await page.textContent("#sync-status").catch(() => "?"));
-    console.log("tela:", (await page.innerText("body").catch(() => "")).slice(0, 500));
+    for (const p of browser.contexts().flatMap((c) => c.pages())) {
+      console.log("url:", p.url(), "| status:", await p.textContent("#sync-status").catch(() => "?"),
+        "| estado:", JSON.stringify(await p.evaluate(() => ({ regras: typeof window.finan, sw: !!navigator.serviceWorker?.controller })).catch(() => "?")));
+      console.log("tela:", (await p.innerText("body").catch(() => "")).slice(0, 500));
+    }
     console.log(logs.slice(-15).join("\n"));
   };
 
@@ -140,6 +147,7 @@ try {
   // Outro aparelho recebe; e o que ele lança chega ao primeiro.
   const phone = await browser.newContext({ ...devices["iPhone 13"] });
   const other = await phone.newPage();
+  listen(other);
   // Aparelho lento: as regras (WebAssembly) chegam depois da primeira sincronização.
   // Antes da correção, a tela ficava presa em "Baixando seus dados…".
   await phone.route("**/static/finance.wasm", async (route) => { await sleep(3000); await route.continue(); });
@@ -157,6 +165,7 @@ try {
   // conexão, perderia para uma mais antiga de outro aparelho).
   const lateCtx = await browser.newContext({ viewport: { width: 1000, height: 800 } });
   const late = await lateCtx.newPage();
+  listen(late);
   await late.clock.setFixedTime(new Date(Date.now() - 3600_000));
   await late.goto(`${B}/lancamentos`);
   await late.waitForSelector("td:has-text('Uber (do celular)')", { timeout: 20000 });

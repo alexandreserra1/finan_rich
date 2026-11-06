@@ -7,6 +7,8 @@
 // verdade, que só vale entre endereços diferentes. O aviso de "pedido cancelado"
 // do Playwright não serve de prova: às vezes não chega (CI de 05/11/2026).
 // Qualquer outro erro continua valendo. format monta o texto guardado.
+// O texto é lido do stack: no WebKit, o Playwright corta a mensagem no primeiro
+// ":" (o de "http:") e o endereço inteiro só fica no stack.
 const CANCELLED = /cannot load (\S+) due to access control checks/;
 
 const origin = (url) => {
@@ -19,7 +21,7 @@ const origin = (url) => {
 
 export function watchErrors(page, errors, format = (e) => e.message) {
   page.on("pageerror", (e) => {
-    const url = CANCELLED.exec(e.message)?.[1];
+    const url = CANCELLED.exec(e.stack || e.message)?.[1];
     const here = origin(page.url());
     if (url && here && here !== "null" && origin(url) === here) return;
     errors.push(format(e));

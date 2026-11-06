@@ -3,7 +3,13 @@ import { EventEmitter } from "node:events";
 import assert from "node:assert/strict";
 import { watchErrors } from "./errors.mjs";
 
-const msg = (url) => ({ message: `Fetch API cannot load ${url} due to access control checks.` });
+// O erro como o Playwright monta no WebKit (server/webkit/wkPage.js): ele corta o
+// texto no primeiro ":", que é o de "http:"; o texto inteiro fica só no stack.
+const msg = (url) => {
+  const text = `Fetch API cannot load ${url} due to access control checks.`;
+  const cut = text.indexOf(":");
+  return { name: text.slice(0, cut), message: text.substring(cut + 2), stack: `${text}\n    at unknown (${url}:1:1)` };
+};
 const fakePage = (url) => Object.assign(new EventEmitter(), { url: () => url });
 
 // Pedido ao mesmo endereço da página cancelado pela troca de página: não entra,
