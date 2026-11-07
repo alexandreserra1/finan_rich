@@ -92,12 +92,19 @@ const oldSave = (page, record) => page.evaluate((record) => new Promise((resolve
 
 const browserOpts = { executablePath: process.env.CHROMIUM_PATH || undefined };
 const errors = [];
+// Avisos do banco (db.js: quanto demorou para abrir e por que o SQLite não abriu), mostrados
+// numa falha: no CI, é o que explica o que aconteceu.
+const logs = [];
+const watch = (page) => {
+  watchErrors(page, errors);
+  page.on("console", (m) => { if (["warning", "error"].includes(m.type())) logs.push(`${m.type()}: ${m.text()}`); });
+};
 let ctx;
 try {
   // 1. Migração: tudo aparece, a chave de criptografia continua usável e a fila sobe.
   ctx = await chromium.launchPersistentContext(tmp("finan-e2e-migrate-perfil-"), browserOpts);
   const page = ctx.pages()[0] || await ctx.newPage();
-  watchErrors(page, errors);
+  watch(page);
   await page.goto(`${B}/offline`);
   await clearOPFS(page);
   await oldData(page, false);
@@ -119,7 +126,7 @@ try {
 
   // 2. Uma aba de cada vez: a nova assume, a antiga avisa e "Usar aqui" volta o banco para ela.
   const second = await ctx.newPage();
-  watchErrors(second, errors);
+  watch(second);
   await second.goto(`${B}/lancamentos`);
   await second.waitForSelector("text=Gravado no SQLite", { timeout: 20000 });
   await page.waitForSelector("#elsewhere [data-use-here]", { timeout: 10000 });
@@ -146,7 +153,7 @@ try {
   // 3. Falha na cópia: continua no IndexedDB sem perder nada e copia na próxima abertura.
   ctx = await chromium.launchPersistentContext(tmp("finan-e2e-migrate-perfil-"), browserOpts);
   const other = ctx.pages()[0] || await ctx.newPage();
-  watchErrors(other, errors);
+  watch(other);
   await other.goto(`${B}/offline`);
   await clearOPFS(other);
   await oldData(other, true);
@@ -179,7 +186,7 @@ try {
   await oldTab(old);
   await oldSave(old, tx("antes-troca", "Antes da troca"));
   const updated = await ctx.newPage();
-  watchErrors(updated, errors);
+  watch(updated);
   await updated.goto(`${B}/lancamentos`);
   await updated.waitForSelector("#db-wait .modal-panel", { timeout: 20000 });
   ok(true, "com uma aba na versão anterior aberta, a aba nova espera e pede para recarregar ou fechar a outra");
@@ -205,7 +212,7 @@ try {
     window.holder.postMessage({ id: 1, ops: [] });
   }));
   const next = await ctx.newPage();
-  watchErrors(next, errors);
+  watch(next);
   await next.goto(`${B}/lancamentos`);
   await new Promise((r) => setTimeout(r, 2000)); // a aba nova já tentou abrir e achou o banco preso
   await old.evaluate(() => new Promise((resolve) => {
@@ -222,7 +229,7 @@ try {
   const suspend = (p, ms) => { p.evaluate((ms) => { const end = Date.now() + ms; while (Date.now() < end); }, ms).catch(() => {}); };
   suspend(next, 8000);
   const third = await ctx.newPage();
-  watchErrors(third, errors);
+  watch(third);
   await third.goto(`${B}/lancamentos`);
   await third.waitForSelector("#db-wait .modal-panel", { timeout: 20000 });
   await third.waitForSelector("text=Gravado na aba antiga", { timeout: 20000 });
@@ -230,7 +237,7 @@ try {
   ok(!(await third.$("#db-wait .modal-panel")), "aba suspensa: a nova espera com o aviso e abre quando a suspensa volta e solta o banco");
   suspend(third, 20000); // se fechar demorar (o WebKit espera a aba ocupada responder), ela volta e solta
   const fourth = await ctx.newPage();
-  watchErrors(fourth, errors);
+  watch(fourth);
   await fourth.goto(`${B}/lancamentos`);
   await fourth.waitForSelector("#db-wait .modal-panel", { timeout: 20000 });
   await third.close(); // o WebKit só fecha a aba quando o laço acaba (até 16 s): a nova continua esperando
@@ -240,6 +247,7 @@ try {
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);
 } catch (err) {
   ok(false, `${err.message} ${JSON.stringify(errors)}`);
+  console.log(`avisos das páginas:\n${logs.join("\n")}`);
 } finally {
   await ctx?.close().catch(() => {});
   server.kill();

@@ -41,16 +41,19 @@ async function choose() {
     }
     // O Worker da página anterior pode demorar a soltar o arquivo (sqlite-worker.js espera).
     const slow = setTimeout(() => waitScreen(true), 3000);
+    const started = Date.now();
     try {
       await run(SCHEMA);
     } finally {
       clearTimeout(slow);
       waitScreen(false);
+      if (Date.now() - started > 3000) console.warn(`banco: abrir levou ${Date.now() - started} ms`);
     }
     const sql = sqliteStore(run, idb);
     await migrate(run);
     return sql;
   } catch (error) {
+    console.warn("banco: o SQLite não abriu:", error?.message || error); // o motivo, para quem investiga
     worker?.terminate();
     giveUp?.();
     giveUp = null;

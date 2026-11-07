@@ -56,6 +56,6 @@ onmessage = async ({ data: { id, ops, close } }) => {
     });
     postMessage({ id, out });
   } catch (e) {
-    postMessage({ id, error: String(e?.message || e), code: e?.code === "guard" ? "guard" : undefined });
+    postMessage({ id, error: e?.name && e.name !== "Error" ? `${e.name}: ${e.message}` : String(e?.message || e), code: e?.code === "guard" ? "guard" : undefined });
   }
 };
