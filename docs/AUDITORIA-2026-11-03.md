@@ -298,6 +298,13 @@ fica só no `stack`. A regra lia a mensagem, então nunca reconhecia o aviso rea
 execuções verdes depois dela foram sorte. Agora ela lê o `stack`, e o teste sem navegador
 monta o erro do mesmo jeito que o Playwright (`server/webkit/wkPage.js`).
 
+Em 06/11, com a busca automática do Open Finance, o aviso apareceu sem `stack` (no WebKit do
+macOS, Playwright 1.64.1) e para o computador pareado, que fica em outra porta. Sem `stack`,
+a regra remonta o texto pelo nome e pela mensagem (o corte tira o ":/" de "http://"). E o
+`app.test` passa o endereço do computador como origem confiável: ele responde a `/api/` com
+`Access-Control-Allow-Origin: *`, então ali a falha de acesso também só pode ser o
+cancelamento. No celular de verdade esses pedidos saem pelo lado nativo (CapacitorHttp).
+
 Outra causa de job do WebKit cancelado, sem relação com os testes: o espelho do apt da Azure
 às vezes baixa as bibliotecas do navegador a 20 KB/s, e o job ficava preso até o limite de
 20 minutos (quatro vezes entre 05 e 06/11, a última na execução `42230617279`). Desde o

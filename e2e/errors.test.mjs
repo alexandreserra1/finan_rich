@@ -29,6 +29,20 @@ page.emit("pageerror", msg("http://127.0.0.1:18098/token"));
 page.emit("pageerror", msg("https://exemplo.com/api"));
 assert.equal(errors.length, 2);
 
+// O app pareado fala com o computador em outro endereço, que libera /api/ para
+// qualquer origem: o cancelamento de um pedido a ele não entra; outro endereço, sim.
+page = fakePage("http://127.0.0.1:18097/lancamentos");
+errors = [];
+watchErrors(page, errors, undefined, ["http://127.0.0.1:18098"]);
+page.emit("pageerror", msg("http://127.0.0.1:18098/api/openfinance"));
+page.emit("pageerror", msg("http://127.0.0.1:18099/api/openfinance"));
+assert.equal(errors.length, 1);
+// Às vezes o WebKit manda o erro sem pilha: o endereço sai do nome e da mensagem.
+page.emit("pageerror", { ...msg("http://127.0.0.1:18098/api/openfinance"), stack: "" });
+page.emit("pageerror", { ...msg("http://127.0.0.1:18097/api/sync"), stack: "" });
+page.emit("pageerror", { ...msg("http://127.0.0.1:18099/api/sync"), stack: "" });
+assert.equal(errors.length, 2);
+
 // Página já fechada (about:blank) não tem endereço: o erro vale.
 page = fakePage("about:blank");
 errors = [];

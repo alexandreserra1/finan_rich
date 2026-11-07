@@ -192,7 +192,7 @@ try {
     console.error(detail);
     return detail;
   };
-  watchErrors(page, errors, (error) => recordError(page, error));
+  watchErrors(page, errors, (error) => recordError(page, error), [B]); // B: o computador pareado
   // O diagnóstico de uma falha mostra todas as páginas abertas (a falha pode ser em qualquer uma).
   const listen = (p) => {
     p.on("console", (m) => logs.push(`[${m.type()}] ${m.text()}`));
@@ -705,7 +705,7 @@ try {
     return route.fulfill({ headers, body: JSON.stringify({ next: null, results: [{ id: "n1", description: "Padaria do Zé", amount: 18.9, date: `${url.searchParams.get("dateFrom")}T09:00:00.000Z`, type: "DEBIT", status: "POSTED" }] }) });
   });
   const of = await ofCtx.newPage();
-  watchErrors(of, errors, (error) => recordError(of, error));
+  watchErrors(of, errors, (error) => recordError(of, error), [B]); // B: o computador pareado
   listen(of);
   await of.goto(`${APP}/configuracoes`);
   await of.click("[data-action=solo]");
@@ -772,7 +772,7 @@ try {
     } } };
   });
   const rem = await remCtx.newPage();
-  watchErrors(rem, errors, (error) => recordError(rem, error));
+  watchErrors(rem, errors, (error) => recordError(rem, error), [B]); // B: o computador pareado
   rem.on("dialog", (d) => d.accept());
   await rem.goto(`${APP}/configuracoes`);
   await rem.click("[data-action=solo]");
@@ -806,7 +806,7 @@ try {
   const safariCtx = await browser.newContext({ viewport: { width: 1200, height: 900 } });
   await safariCtx.addInitScript(() => { const real = CSS.supports.bind(CSS); CSS.supports = (p, v) => (p === "field-sizing" ? false : real(p, v)); });
   const saf = await safariCtx.newPage();
-  watchErrors(saf, errors, (error) => recordError(saf, error));
+  watchErrors(saf, errors, (error) => recordError(saf, error), [B]); // B: o computador pareado
   await saf.goto(`${B}/chat`);
   await saf.evaluate(() => window.finanSync());
   const box = saf.locator("textarea[name=message]");
