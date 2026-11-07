@@ -70,6 +70,26 @@ const state = (page) => page.evaluate(async () => {
 });
 const save = (page, record) => page.evaluate(async (record) => (await import("/static/js/db.js")).saveLocal("transaction", record), record);
 
+// Uma aba ainda na versão anterior: abre o IndexedDB na versão 1, como ela fazia, e
+// fica com a conexão aberta (a versão anterior nunca fecha).
+const oldTab = (page) => page.evaluate(() => new Promise((resolve, reject) => {
+  const req = indexedDB.open("finan_rich", 1);
+  req.onupgradeneeded = () => {
+    for (const name of ["records", "outbox"]) req.result.createObjectStore(name, { keyPath: "key" });
+    req.result.createObjectStore("meta");
+  };
+  req.onsuccess = () => { window.oldDb = req.result; resolve(); };
+  req.onerror = () => reject(req.error);
+}));
+const oldSave = (page, record) => page.evaluate((record) => new Promise((resolve, reject) => {
+  const t = window.oldDb.transaction(["records", "outbox"], "readwrite");
+  const row = { key: `transaction:${record.id}`, type: "transaction", record };
+  t.objectStore("records").put(row);
+  t.objectStore("outbox").put(row);
+  t.oncomplete = resolve;
+  t.onerror = t.onabort = () => reject(t.error);
+}), record);
+
 const browserOpts = { executablePath: process.env.CHROMIUM_PATH || undefined };
 const errors = [];
 let ctx;
@@ -148,10 +168,56 @@ try {
   await broken.goto(`${B}/offline`);
   const refused = await broken.evaluate(() => import("/static/js/db.js").then((db) => db.getMeta("cursor", null)).then(() => "abriu", (e) => e.message));
   ok(refused.includes("não consegui abrir o banco"), `se o SQLite não abrir depois da cópia, avisa em vez de usar o backup (${refused})`);
+  await ctx.close();
+
+  // 4. Aba ainda na versão anterior durante a atualização: a nova espera ela sair antes de
+  // copiar, e depois a versão anterior não abre mais o banco (nada fica para trás).
+  ctx = await chromium.launchPersistentContext(tmp("finan-e2e-migrate-perfil-"), browserOpts);
+  const old = ctx.pages()[0] || await ctx.newPage();
+  await old.goto(`${B}/offline`);
+  await clearOPFS(old);
+  await oldTab(old);
+  await oldSave(old, tx("antes-troca", "Antes da troca"));
+  const updated = await ctx.newPage();
+  watchErrors(updated, errors);
+  await updated.goto(`${B}/lancamentos`);
+  await updated.waitForSelector("#db-wait .modal-panel", { timeout: 20000 });
+  ok(true, "com uma aba na versão anterior aberta, a aba nova espera e pede para recarregar ou fechar a outra");
+  await oldSave(old, tx("aba-antiga", "Gravado na aba antiga"));
+  await old.reload(); // fecha a conexão da versão anterior
+  await updated.waitForSelector("text=Gravado na aba antiga", { timeout: 20000 });
+  s = await state(updated);
+  ok(s.moved && s.tx.includes("Antes da troca") && s.tx.includes("Gravado na aba antiga") && !(await updated.$("#db-wait")),
+    `a cópia leva também o que a aba antiga gravou enquanto a nova esperava (${JSON.stringify(s)})`);
+  const reopened = await old.evaluate(() => new Promise((resolve) => {
+    const req = indexedDB.open("finan_rich", 1);
+    req.onsuccess = () => resolve("abriu");
+    req.onerror = () => resolve(req.error.name);
+  }));
+  ok(reopened === "VersionError", `depois da cópia, a versão anterior não abre mais o banco antigo (${reopened})`);
+
+  // 5. O Worker da aba anterior ainda segura os arquivos do banco (recarregar, ou fechar e
+  // abrir logo): a aba nova tenta de novo, sem desistir e sem apagar o banco.
+  await updated.close();
+  await old.evaluate(() => new Promise((resolve, reject) => {
+    window.holder = new Worker("/static/js/sqlite-worker.js", { type: "module" });
+    window.holder.onmessage = ({ data }) => (data.error ? reject(new Error(data.error)) : resolve());
+    window.holder.postMessage({ id: 1, ops: [] });
+  }));
+  const next = await ctx.newPage();
+  watchErrors(next, errors);
+  await next.goto(`${B}/lancamentos`);
+  await new Promise((r) => setTimeout(r, 2000)); // a aba nova já tentou abrir e achou o banco preso
+  await old.evaluate(() => new Promise((resolve) => {
+    window.holder.onmessage = resolve;
+    window.holder.postMessage({ id: 2, close: true });
+  }));
+  await next.waitForSelector("text=Gravado na aba antiga", { timeout: 20000 });
+  ok(true, "banco ainda preso pelo Worker da aba anterior: a aba nova espera ele soltar e abre com tudo");
 
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);
 } catch (err) {
-  ok(false, err.message);
+  ok(false, `${err.message} ${JSON.stringify(errors)}`);
 } finally {
   await ctx?.close().catch(() => {});
   server.kill();

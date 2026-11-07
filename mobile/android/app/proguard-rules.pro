@@ -19,3 +19,8 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# O plugin do SQLite usa o Tink (pelo androidx.security), que cita anotações que só
+# servem na compilação (JSR-305). Elas não vão no app e não fazem falta.
+-dontwarn javax.annotation.Nullable
+-dontwarn javax.annotation.concurrent.GuardedBy

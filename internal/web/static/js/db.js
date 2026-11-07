@@ -9,6 +9,8 @@
 // (navegação anônima) fica no IndexedDB; mas, depois da cópia, nunca volta para
 // ele (estaria desatualizado). No app do celular é o SQLite nativo
 // (sqlite-native.js), com a mesma cópia; sem o plugin no app, fica no IndexedDB.
+// A cópia só começa depois que as abas da versão anterior (só IndexedDB) fecham:
+// veja DB_VERSION em db-idb.js.
 //
 // Só uma aba usa o banco SQLite: a nova pede (Web Locks e BroadcastChannel), a
 // antiga termina o que estava gravando, solta o banco e avisa a tela

@@ -92,9 +92,14 @@ as regras em Go não mudaram.
 - **"Apagar os dados do aparelho":** apaga tudo, menos a marca da migração. Sem ela, a próxima
   abertura tentaria copiar de novo e cairia no IndexedDB, escondendo o que foi gravado depois
   (achado na revisão e coberto por teste).
-- **Risco conhecido, sem código:** durante a atualização, uma aba ainda com a versão antiga (só
-  IndexedDB) pode continuar gravando no IndexedDB enquanto outra aba já migrou. Hoje isso chega
-  ao SQLite pela sincronização: no navegador do computador ela vai ao programa do computador; no
-  site, ao Google Drive. O app do celular tem uma tela só e recarrega ao atualizar. Se um dia
-  houver uso no navegador sem nenhuma sincronização, recarregar as abas abertas no `activate` do
-  service worker resolve.
+- **Aba na versão anterior durante a atualização:** a versão anterior abria o IndexedDB na
+  versão 1 e nunca fechava a conexão. A nova abre na versão 2, e o navegador só deixa abrir
+  depois que todas as conexões da versão 1 fecham. Até lá, a aba nova mostra "A Rich está
+  aberta em outra aba" e pede para recarregar ou fechar a outra. Depois disso, a versão
+  anterior não abre mais o banco (`VersionError`). Por isso, a cópia para o SQLite nunca deixa
+  para trás o que uma aba antiga gravou (coberto por teste).
+- **Abrir o SQLite logo depois de recarregar:** o Worker da página anterior pode ainda segurar
+  os arquivos do banco por um instante. O Worker novo tenta de novo por até 5 segundos, só
+  nesse caso (erro `NoModificationAllowedError` no Chromium, `InvalidStateError` no WebKit).
+  Abre com `preserveOnInitFailure`: no padrão do pacote, uma falha ao abrir apaga a pasta do
+  banco (achado ao investigar uma falha do CI, coberto por teste).

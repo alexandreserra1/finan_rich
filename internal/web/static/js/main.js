@@ -321,14 +321,14 @@ window.addEventListener("finan-db-elsewhere", () => {
   document.querySelector("[data-use-here]").addEventListener("click", () => location.reload());
   document.querySelector("[data-use-here]").focus();
 });
-// Esta aba espera outra soltar o banco (db.js) e a outra demora a responder.
+// Esta aba espera outra soltar o banco (db.js, db-idb.js) e a outra demora a responder.
 window.addEventListener("finan-db-wait", ({ detail: waiting }) => {
   document.getElementById("db-wait")?.remove();
   if (!waiting) return;
   document.body.insertAdjacentHTML("beforeend", `<div class="modal" id="db-wait"><div class="modal-scrim"></div>
     <div class="modal-panel" role="alertdialog" aria-modal="true" aria-labelledby="db-wait-title"><div class="modal-form">
       <div class="modal-head"><h2 id="db-wait-title">A Rich está aberta em outra aba</h2></div>
-      <p class="muted">Esperando a outra aba soltar os dados. Se ela não responder (por exemplo, aberta em segundo plano no celular), feche-a.</p>
+      <p class="muted">Esperando a outra aba soltar os dados. Se ela não responder (aberta em segundo plano no celular, ou ainda na versão anterior da Rich), recarregue ou feche essa aba.</p>
     </div></div></div>`);
 });
 

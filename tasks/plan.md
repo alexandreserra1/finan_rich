@@ -230,6 +230,8 @@ novidades.
 | A migração perde dados | Alto | O IndexedDB fica intacto; a cópia é conferida antes de ser marcada; e2e com dados da versão anterior e com falha no meio; o computador e o Drive guardam outra cópia |
 | OPFS indisponível em algum navegador (Safari antigo, janela anônima) | Médio | A tarefa 1 mede; se faltar, a sessão continua no IndexedDB (o código atual), sem perda |
 | Duas abas no mesmo banco | Médio | Uma aba com o banco de cada vez (tarefa 5) |
+| Aba na versão anterior grava no IndexedDB depois da cópia | Alto | O IndexedDB sobe para a versão 2: a cópia espera as abas antigas fecharem e, depois, a versão anterior não abre mais o banco (e2e) |
+| Falha ao abrir o SQLite apaga o banco (padrão do pacote) | Alto | `preserveOnInitFailure` e nova tentativa enquanto o Worker da página anterior solta os arquivos (e2e) |
 | O motor nativo não roda no Playwright | Médio | Plugin falso no teste, builds no CI e teste em aparelho antes de publicar (tarefa 7) |
 | A abertura fica mais lenta (o Notion viu isso) | Baixo | Carregar o SQLite no Worker em paralelo com o `finance.wasm`; a tarefa 1 mede |
 | Plugin da comunidade sem manutenção | Baixo | É o plugin padrão de SQLite do Capacitor, MIT, com versão de outubro de 2026; o SQL é o mesmo, então trocar de plugin mexe só no motor nativo |

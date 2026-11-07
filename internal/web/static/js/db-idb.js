@@ -6,21 +6,30 @@
 // sincronização.
 
 const DB_NAME = "finan_rich";
-const DB_VERSION = 1;
+// 2: tranca o banco para a versão anterior do app, que abria na 1 e nunca fechava. Abrir
+// na 2 espera as abas dela fecharem, e depois disso ela não abre mais. Assim a cópia para
+// o SQLite (db.js) nunca deixa para trás o que uma aba antiga gravou.
+const DB_VERSION = 2;
 export const SITE_IDLE_MS = 30 * 60_000; // site: sem uso por esse tempo, pede o login de novo
 
 let dbPromise = null;
+const waitScreen = (on) => window.dispatchEvent(new CustomEvent("finan-db-wait", { detail: on }));
 
 function open() {
   dbPromise ??= new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = () => {
+    req.onblocked = () => waitScreen(true); // uma aba na versão anterior ainda está aberta
+    req.onupgradeneeded = ({ oldVersion }) => {
+      if (oldVersion) return; // da 1 para a 2, as tabelas são as mesmas
       const db = req.result;
       db.createObjectStore("records", { keyPath: "key" }); // {key: "tipo:id", type, record}
       db.createObjectStore("outbox", { keyPath: "key" });  // {key, type, record}: última versão pendente
       db.createObjectStore("meta");                         // cursor etc.
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      waitScreen(false);
+      resolve(req.result);
+    };
     req.onerror = () => reject(req.error);
   });
   return dbPromise;
