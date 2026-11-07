@@ -215,6 +215,28 @@ try {
   await next.waitForSelector("text=Gravado na aba antiga", { timeout: 20000 });
   ok(true, "banco ainda preso pelo Worker da aba anterior: a aba nova espera ele soltar e abre com tudo");
 
+  // 6. Aba suspensa (no celular, em segundo plano): não responde ao pedido do banco e
+  // continua com a trava. Aqui, a aba fica ocupada (o JavaScript dela não roda), o mesmo
+  // efeito nos dois motores. A nova espera com o aviso e abre quando a suspensa volta e
+  // solta o banco, ou quando ela é fechada (o celular descarta a aba).
+  const suspend = (p, ms) => { p.evaluate((ms) => { const end = Date.now() + ms; while (Date.now() < end); }, ms).catch(() => {}); };
+  suspend(next, 8000);
+  const third = await ctx.newPage();
+  watchErrors(third, errors);
+  await third.goto(`${B}/lancamentos`);
+  await third.waitForSelector("#db-wait .modal-panel", { timeout: 20000 });
+  await third.waitForSelector("text=Gravado na aba antiga", { timeout: 20000 });
+  await next.waitForSelector("#elsewhere [data-use-here]", { timeout: 10000 });
+  ok(!(await third.$("#db-wait .modal-panel")), "aba suspensa: a nova espera com o aviso e abre quando a suspensa volta e solta o banco");
+  suspend(third, 60000);
+  const fourth = await ctx.newPage();
+  watchErrors(fourth, errors);
+  await fourth.goto(`${B}/lancamentos`);
+  await fourth.waitForSelector("#db-wait .modal-panel", { timeout: 20000 });
+  await third.close();
+  await fourth.waitForSelector("text=Gravado na aba antiga", { timeout: 20000 });
+  ok(!(await fourth.$("#db-wait .modal-panel")), "aba suspensa e fechada (o celular descartou a aba): a nova abre com tudo");
+
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);
 } catch (err) {
   ok(false, `${err.message} ${JSON.stringify(errors)}`);

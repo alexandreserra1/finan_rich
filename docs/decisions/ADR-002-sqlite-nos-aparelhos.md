@@ -84,7 +84,10 @@ as regras em Go não mudaram.
     janela temporária, usa a reserva no IndexedDB;
   - `e2e/sqlite.test.mjs` e `e2e/migrate.test.mjs` usam perfis persistentes, para o WebKit
     também testar o SQLite;
-  - o motor nativo só se confere de verdade num aparelho.
+  - o motor nativo foi conferido num emulador Android 14 (07/11/2026): a v1.10.0 com dados
+    no IndexedDB, atualizada pelo APK de release (com o R8), passou tudo para o SQLite nativo,
+    sincronizou e manteve os dados depois de fechar e de o Android matar o app em segundo
+    plano. Falta o aparelho de verdade, e o iPhone (sem Xcode nesta máquina).
 - **Backup:** o IndexedDB de antes fica por pelo menos duas versões, só com os registros, a
   fila, a marca e as chaves de criptografia. O `meta` antigo (tokens de pareamento e do Google,
   o hash da senha do app) sai logo depois da cópia, para não ficar segredo esquecido no disco.

@@ -4,7 +4,7 @@ Detalhes, critérios de aceite e riscos em [plan.md](plan.md).
 
 ## Fase 0: provas
 - [x] Tarefa 1: SQLite WebAssembly com OPFS funciona no Chromium e no WebKit (medir tamanho e tempo)
-- [ ] Tarefa 2: plugin nativo `@capacitor-community/sqlite` compila no Android e no iOS (limite do APK subiu para 18 MB; falta o CI confirmar)
+- [x] Tarefa 2: plugin nativo `@capacitor-community/sqlite` compila no Android e no iOS (APK de 15,9 MB, limite de 18 MB)
 - [ ] Ponto de controle A: números conferidos com o Alexandre
 
 ## Fase 1: web
@@ -15,7 +15,7 @@ Detalhes, critérios de aceite e riscos em [plan.md](plan.md).
 
 ## Fase 2: celular
 - [x] Tarefa 6: motor SQLite nativo no app e migração do IndexedDB do WebView (o código; liga quando o plugin entrar no app)
-- [ ] Tarefa 7: teste em Android e iPhone de verdade (Alexandre)
+- [ ] Tarefa 7: teste em Android e iPhone de verdade (Alexandre; o emulador Android já passou)
 - [ ] Ponto de controle C: confirmação antes de publicar
 
 ## Fase 3: docs e versão

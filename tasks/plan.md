@@ -113,7 +113,8 @@ continua no IndexedDB (o `db.js` só usa o motor nativo quando o plugin existe).
 
 **Decisão (07/11/2026):** subir o limite do CI para 18 MB. Ainda é um app pequeno, e é a única
 opção que não muda a publicação nem o F-Droid. O plugin entrou no app; o tamanho real sai no job
-`android` do CI.
+`android` do CI. Medido: 15,9 MB (16.268 KB no CI, 16.272 KB aqui).
+
 
 ### Ponto de controle A
 - [ ] números das tarefas 1 e 2 conferidos com o Alexandre (segue ou para).
@@ -205,6 +206,13 @@ entrar no app (decisão do tamanho do APK, tarefa 2) e o teste num aparelho (tar
       segundo plano.
 
 **Depende de:** tarefa 6.
+
+**Resultado parcial (07/11/2026), num emulador Android 14 (WebView 113):** a v1.10.0 gravou dados
+no IndexedDB; o APK de release desta versão (com o R8), instalado por cima, copiou tudo para o
+SQLite nativo, com a fila de envio e o cursor. Fechar e abrir de novo, aplicar e limpar a
+sincronização (`applyRemote`, `clearSent`) e um minuto em segundo plano com o Android matando o
+processo: os dados ficaram e o banco gravou normalmente. Falta: um Android de verdade, o
+iPhone (precisa do Xcode), a sincronização com o computador pela rede e horas em segundo plano.
 
 ### Ponto de controle C
 - [ ] tarefa 7 confirmada pelo Alexandre antes de publicar a versão.
