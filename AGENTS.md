@@ -108,7 +108,7 @@ integral como instrução do subagente. Preserve o mesmo nome, escopo e formato 
 | `security-auditor` | ameaças, OWASP, segredos, auth (pareamento, tokens, CORS, acesso pela rede) |
 | `test-engineer` | lacunas de teste: Go, WebAssembly e e2e |
 | `web-performance-auditor` | carga das telas, service worker, tamanho do wasm |
-| `release-manager` | publicar versão e conferir o APK publicado no R2 |
+| `release-manager` | publicar versão e conferir o APK publicado no Cloudflare Pages |
 | `cleanup` | limpar restos de build, caches e Docker sem tocar em dados |
 
 Padrão de orquestração: **fan-out em paralelo com uma etapa de junção**. O `/ship` dispara

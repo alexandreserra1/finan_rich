@@ -54,7 +54,7 @@ jobs:
           # Opcional: abre o pedido no winget (ver docs/DISTRIBUICAO.md).
           WINGET_GITHUB_TOKEN: ${{ secrets.WINGET_GITHUB_TOKEN }}
 
-  # App Android: compila e publica o .apk no Cloudflare R2 (não no GitHub). A página
+  # App Android: compila e publica o .apk no Cloudflare Pages (não no GitHub). A página
   # /baixar do site (o QR code) e o aviso de versão nova do app apontam para lá.
   android:
     needs: release
@@ -94,26 +94,21 @@ jobs:
           echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/finan.jks"
           FINAN_KEYSTORE_FILE="$RUNNER_TEMP/finan.jks" ./gradlew assembleRelease --no-daemon
           cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/finan_rich.apk"
-      - name: Publica no Cloudflare R2
+      - name: Publica no Cloudflare Pages
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: auto
-          # O R2 não aceita as somas de verificação que o aws-cli manda por padrão.
-          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
-          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          [ -n "$R2_ACCOUNT_ID" ] && [ -n "$R2_BUCKET" ] && [ -n "$AWS_ACCESS_KEY_ID" ] || { echo "Faltam os secrets R2_* (veja docs/DISTRIBUICAO.md)"; exit 1; }
+          [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ] || { echo "Faltam os secrets CLOUDFLARE_* (veja docs/DISTRIBUICAO.md)"; exit 1; }
           # A mesma conta do build.gradle (a versão vem da tag).
           name="${TAG#v}"; IFS=. read -r major minor patch <<< "$name"; code=$((major * 10000 + minor * 100 + patch))
-          apk="$RUNNER_TEMP/finan_rich.apk"
-          put() { aws s3 cp --endpoint-url "https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com" "$@"; }
-          type=application/vnd.android.package-archive
-          put "$apk" "s3://$R2_BUCKET/android/finan_rich_$name.apk" --content-type "$type"
-          put "$apk" "s3://$R2_BUCKET/android/finan_rich.apk" --content-type "$type" --cache-control no-cache \
-            --content-disposition 'attachment; filename="finan_rich.apk"'
-          # Por último: o app só vê a versão nova quando o APK dela já está lá.
-          printf '{"versionName":"%s","versionCode":%s,"sha256":"%s"}\n' "$name" "$code" "$(sha256sum "$apk" | cut -d' ' -f1)" > "$RUNNER_TEMP/latest.json"
-          put "$RUNNER_TEMP/latest.json" "s3://$R2_BUCKET/android/latest.json" --content-type application/json --cache-control no-cache
+          out="$RUNNER_TEMP/download"
+          mkdir -p "$out/android"
+          cp "$RUNNER_TEMP/finan_rich.apk" "$out/android/finan_rich.apk"
+          printf '{"versionName":"%s","versionCode":%s,"sha256":"%s"}\n' "$name" "$code" "$(sha256sum "$out/android/finan_rich.apk" | cut -d' ' -f1)" > "$out/android/latest.json"
+          # O celular baixa como arquivo de app, com o nome certo.
+          printf '/android/finan_rich.apk\n  Content-Type: application/vnd.android.package-archive\n  Content-Disposition: attachment; filename="finan_rich.apk"\n' > "$out/_headers"
+          # Cria o projeto na primeira vez (depois, "já existe" não é erro). A publicação troca
+          # o APK e o latest.json de uma vez só: o app nunca vê uma versão sem o APK dela.
+          npx --yes wrangler@4.152.0 pages project create finan-rich-app --production-branch main || true
+          npx --yes wrangler@4.152.0 pages deploy "$out" --project-name finan-rich-app --branch main --commit-dirty=true

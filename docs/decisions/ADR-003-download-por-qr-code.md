@@ -1,4 +1,4 @@
-# ADR-003: Download do app por QR code, com o APK no Cloudflare R2, e licença fechada
+# ADR-003: Download do app por QR code, com o APK no Cloudflare Pages, e licença fechada
 
 ## Situação
 
@@ -27,20 +27,21 @@ Pesquisa (07/11/2026):
   reiniciar e esperar 24 horas) ou pelo ADB. A verificação custa US$ 25 e pede documento;
   há uma conta grátis limitada a 20 aparelhos. Hoje, segundo a imprensa, APK baixado de site
   ainda instala normalmente no Brasil.
-- Hospedagem grátis do APK (16 MB): Cloudflare R2 (10 GB guardados, download sem custo nem
-  limite de tráfego; pede um cartão para ligar), Vercel Blob (10 GB de download por mês;
-  passou, bloqueia) e o próprio site na Vercel (100 GB por mês, mas a publicação do site
-  mudaria).
+- Hospedagem grátis do APK (16 MB): Cloudflare Pages (sem cartão, tráfego sem limite,
+  arquivos de até 25 MB), Cloudflare R2 (10 GB guardados, download sem custo; pede cartão),
+  um segundo projeto na Vercel (sem cartão; 100 GB por mês divididos com o site e a IA, e o
+  plano grátis é só para uso não comercial) e Vercel Blob (10 GB de download por mês).
 
 ## Decisão
 
 - **Página `/baixar` no site** (`site/baixar.html`), com o QR code que a abre no celular
   (`/baixar/qr.png`, gerado em Go com `rsc.io/qr`), o botão de baixar e os passos. Os Ajustes
   do programa do computador mostram o mesmo QR.
-- **APK no Cloudflare R2.** A Release assina o APK com a chave do projeto e publica
-  `android/finan_rich_<versão>.apk`, `android/finan_rich.apk` (o mais recente) e, por último,
-  `android/latest.json`. O site redireciona `/baixar/android` e `/baixar/versao` para lá
-  (`site/download.go`; o endereço público do bucket fica em `apkBase`).
+- **APK no Cloudflare Pages** (projeto `finan-rich-app`). A Release assina o APK com a
+  chave do projeto e publica, de uma vez só, `android/finan_rich.apk` e
+  `android/latest.json` com o `wrangler` (código aberto, versão fixa). O site redireciona
+  `/baixar/android` e `/baixar/versao` para lá (`site/download.go`; o endereço fica em
+  `apkBase`).
 - **Atualizador no próprio app**, no lugar das lojas: ao abrir, o app confere
   `/baixar/versao`; com versão nova, avisa e mostra em Ajustes o botão que abre o download no
   navegador. O Android instala por cima (mesma chave) e os dados ficam.
@@ -56,23 +57,27 @@ Pesquisa (07/11/2026):
 - **F-Droid / IzzyOnDroid:** exigem código aberto.
 - **Play Store** (US$ 25, mais 12 testadores por 14 dias para contas novas): instala e
   atualiza sozinho, mas tem custo.
+- **Cloudflare R2:** foi a primeira escolha, mas pede cartão para ligar.
+- **Vercel:** no projeto do site, cada push publicaria o site sem o APK; um segundo projeto
+  divide os 100 GB por mês com o site e a IA (passou, a Vercel pausa todos) e o plano grátis
+  é só para uso não comercial.
 - **Vercel Blob:** o download fica bloqueado depois de 10 GB no mês (uns 600 APKs).
-- **APK dentro do site na Vercel:** sem conta nova, mas a Release passaria a publicar o site,
-  e um push comum apagaria o APK. Fica como saída se o cartão do R2 for um problema.
+- **Hostinger:** paga.
 - **Instalar a atualização sem o navegador** (PackageInstaller, com a permissão
   `REQUEST_INSTALL_PACKAGES`): menos toques, mas exige código nativo e uma permissão sensível.
   O navegador já baixa e o Android já confere a chave.
 
 ## Consequências
 
-- **Configuração única:** o Alexandre cria o bucket e os secrets `R2_*`
-  ([DISTRIBUICAO.md](../DISTRIBUICAO.md)) e manda o endereço público para `apkBase`. Até lá,
-  `/baixar/android` responde "ainda não está no ar" e a Release falha na etapa do APK.
+- **Configuração única:** o Alexandre cria o token da Cloudflare e os secrets
+  `CLOUDFLARE_*` ([DISTRIBUICAO.md](../DISTRIBUICAO.md)); a primeira Release cria o projeto e
+  mostra o endereço, que vai para `apkBase`. Até lá, `/baixar/android` responde "ainda não
+  está no ar" e a Release falha na etapa do APK.
 - **Verificação do Google:** quando a regra valer para APK de site (2027, talvez antes no
   Brasil), quem instalar pode cair no fluxo avançado. Os caminhos grátis seguem: o site no
   navegador (vira ícone na tela inicial) e a conta limitada a 20 aparelhos para testes.
   Pagar os US$ 25 resolve, se a regra de não gastar mudar.
-- **`r2.dev`:** tem limite de pedidos por segundo, folgado para downloads; com domínio próprio
-  no Cloudflare, troca por `download.<domínio>`.
+- **Limite de 25 MB por arquivo no Pages:** o APK tem uns 16 MB e o CI barra acima de 18 MB.
+  Se o app crescer além disso, a saída é o R2 (com cartão).
 - **iPhone:** sem app (a App Store custa US$ 99 por ano); a página leva ao site no Safari.
 - **Programa do computador:** continua no GitHub Releases, Homebrew, Scoop e winget, como antes.

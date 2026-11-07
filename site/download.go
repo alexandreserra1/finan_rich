@@ -6,9 +6,11 @@ import (
 	"rsc.io/qr"
 )
 
-// apkBase é o endereço público do bucket do Cloudflare R2 onde a Release publica o app
+// apkBase é o endereço do projeto no Cloudflare Pages onde a Release publica o app
 // Android (android/finan_rich.apk e android/latest.json; veja docs/DISTRIBUICAO.md). Não
-// é segredo. Vazio: o download ainda não está no ar.
+// é segredo. Vazio: o download ainda não está no ar. Só se preenche com o endereço que a
+// primeira publicação mostrar: se o nome estiver ocupado, o Pages dá outro, e apontar para
+// um endereço alheio mandaria as pessoas baixarem o APK de outra pessoa.
 var apkBase = ""
 
 // DownloadPaths são os caminhos de Download. O cmd/api registra um a um: com a pasta
@@ -16,7 +18,7 @@ var apkBase = ""
 var DownloadPaths = []string{"/baixar/android", "/baixar/versao", "/baixar/qr.png"}
 
 // Download serve as rotas de /baixar/ (a página /baixar é o baixar.html):
-//   - /baixar/android: o APK mais recente (redireciona para o R2);
+//   - /baixar/android: o APK mais recente (redireciona para o Pages);
 //   - /baixar/versao: a versão mais recente, que o app confere para avisar de atualização;
 //   - /baixar/qr.png: o QR code que abre /baixar no celular.
 func Download() http.Handler {

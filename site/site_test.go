@@ -61,9 +61,9 @@ func TestDownload(t *testing.T) {
 	if rec := get("/baixar/android"); rec.Code != http.StatusServiceUnavailable {
 		t.Errorf("sem o bucket configurado = %d, quer 503 (não um link quebrado)", rec.Code)
 	}
-	apkBase = "https://pub-x.r2.dev"
+	apkBase = "https://finan-rich-app.pages.dev"
 	t.Cleanup(func() { apkBase = "" })
-	for path, want := range map[string]string{"/baixar/android": "https://pub-x.r2.dev/android/finan_rich.apk", "/baixar/versao": "https://pub-x.r2.dev/android/latest.json"} {
+	for path, want := range map[string]string{"/baixar/android": "https://finan-rich-app.pages.dev/android/finan_rich.apk", "/baixar/versao": "https://finan-rich-app.pages.dev/android/latest.json"} {
 		if rec := get(path); rec.Code != http.StatusFound || rec.Header().Get("Location") != want {
 			t.Errorf("%s = %d %q, quer %q", path, rec.Code, rec.Header().Get("Location"), want)
 		}

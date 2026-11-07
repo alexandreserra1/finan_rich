@@ -62,6 +62,6 @@ app (`--production`), por isso não as lista.
 
 ## Distribuição
 
-O app Android é baixado pela página `/baixar` do site (QR code), com o APK no Cloudflare R2;
+O app Android é baixado pela página `/baixar` do site (QR code), com o APK no Cloudflare Pages;
 veja [DISTRIBUICAO.md](DISTRIBUICAO.md). O F-Droid e o IzzyOnDroid só aceitam código aberto
 e não são mais usados.

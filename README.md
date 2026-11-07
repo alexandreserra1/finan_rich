@@ -389,7 +389,7 @@ git tag v1.0.0 && git push origin v1.0.0
 Ou pelo site: **Actions → Release → Run workflow**, informando a versão. O GitHub Actions
 roda os testes, cria a tag e o GoReleaser publica os executáveis do computador em Releases.
 Em seguida o APK do Android é compilado, assinado com a chave do projeto e publicado no
-Cloudflare R2, de onde a página `/baixar` e o aviso de versão nova do app o buscam (veja
+Cloudflare Pages, de onde a página `/baixar` e o aviso de versão nova do app o buscam (veja
 [docs/DISTRIBUICAO.md](docs/DISTRIBUICAO.md)).
 
 ## Licença

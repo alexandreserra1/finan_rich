@@ -9,7 +9,7 @@ const plugins = () => window.Capacitor?.Plugins || {};
 
 export const canScan = cameraAvailable;
 
-// O APK mais recente: a Release publica no Cloudflare R2 e o site aponta para lá
+// O APK mais recente: a Release publica no Cloudflare Pages e o site aponta para lá
 // (site/download.go). Abre no navegador do celular, que baixa e instala por cima.
 export const APP_DOWNLOAD = `${SERVER}/baixar/android`;
 

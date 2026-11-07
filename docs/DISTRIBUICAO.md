@@ -2,7 +2,7 @@
 
 | Onde | Custo | Atualiza | Situação |
 |---|---|---|---|
-| **QR code / página `/baixar` do site** (APK no Cloudflare R2) | grátis | o app avisa e baixa a versão nova | ✅ pronto; falta criar o bucket (abaixo) |
+| **QR code / página `/baixar` do site** (APK no Cloudflare Pages) | grátis | o app avisa e baixa a versão nova | ✅ pronto; falta o token da Cloudflare (abaixo) |
 | iPhone pelo Safari (Tela de Início) | grátis | sim (é o site) | ✅ já funciona |
 | Play Store | US$ 25 uma vez | sim | não planejado (sem gasto) |
 | App Store / TestFlight | US$ 99 por ano | sim | não planejado (sem gasto) |
@@ -16,36 +16,40 @@ IzzyOnDroid, que só aceitam código aberto, saíram. Decisão e alternativas em
 1. A pessoa aponta a câmera do celular para o QR code. Ele aparece na página
    `https://finan-rich-ia.vercel.app/baixar` (aberta no computador) e nos Ajustes do programa
    do computador (*App do celular*). O QR abre a mesma página no celular.
-2. No celular, **Baixar o app** busca o APK (`/baixar/android` redireciona para o R2).
+2. No celular, **Baixar o app** busca o APK (`/baixar/android` redireciona para o Cloudflare Pages).
 3. O Android pede, uma vez, para permitir instalar apps do navegador. Depois, **Instalar**.
 
-**Versões novas:** cada release publica o APK no R2 e, por último, o `android/latest.json`.
+**Versões novas:** cada release publica o APK e o `android/latest.json` no Cloudflare Pages, de uma vez só.
 Ao abrir, o app confere `/baixar/versao` e, se houver versão nova, avisa e mostra em Ajustes
 o botão **Baixar a versão X**, que abre o download no navegador. O Android instala por cima
 (mesma chave de assinatura) e os dados ficam.
 
 Código: `site/baixar.html` (a página), `site/download.go` (rotas `/baixar/android`,
 `/baixar/versao` e `/baixar/qr.png`), `newVersion` em `js/native.js` (o aviso no app) e o job
-`android` de `.github/workflows/release.yml` (publica no R2).
+`android` de `.github/workflows/release.yml` (publica no Pages).
 
-### Criar o bucket no Cloudflare R2 (uma vez, grátis)
+### Ligar o Cloudflare Pages (uma vez, grátis, sem cartão)
 
-O plano grátis guarda 10 GB e o download não tem custo nem limite de tráfego.
+O plano grátis do Pages não pede cartão, não tem limite de tráfego e aceita arquivos de até
+25 MB (o APK tem uns 16 MB; o CI barra acima de 18 MB). Fica separado da Vercel: um pico de
+downloads não gasta a cota do site nem da IA grátis. O R2 da Cloudflare pede cartão e a
+Vercel divide 100 GB por mês entre todos os projetos (ADR-003).
 
-1. Crie uma conta grátis em <https://dash.cloudflare.com> e abra **R2 Object Storage**
-   (o Cloudflare pede um cartão para ligar o R2, mas o plano grátis não cobra).
-2. **Create bucket**, nome `finan-rich` (ou outro).
-3. No bucket, **Settings → Public access → R2.dev subdomain → Allow**. Copie o endereço
-   (`https://pub-….r2.dev`) e me mande: ele não é segredo, vai em `site/download.go`.
-4. Em **R2 → Manage API tokens → Create API token**, permissão *Object Read & Write*, só
-   nesse bucket. Guarde o *Access Key ID* e o *Secret Access Key* (a chave nunca no chat).
-5. No GitHub, **Settings → Secrets and variables → Actions**, crie os secrets:
-   `R2_ACCOUNT_ID` (o *Account ID* do painel do R2), `R2_BUCKET` (o nome do bucket),
-   `R2_ACCESS_KEY_ID` e `R2_SECRET_ACCESS_KEY`.
+1. Crie uma conta grátis em <https://dash.cloudflare.com>.
+2. Copie o **Account ID**: em **Workers & Pages**, ele aparece na coluna da direita (ou no
+   endereço da página, logo depois de `dash.cloudflare.com/`).
+3. Em **My Profile → API Tokens → Create Token → Create Custom Token**, dê um nome
+   (`finan_rich release`) e, em **Permissions**, escolha **Account → Cloudflare Pages →
+   Edit**. Em **Account Resources**, deixe só a sua conta. Crie e copie o token (ele só
+   aparece uma vez; a chave nunca no chat).
+4. No GitHub, **Settings → Secrets and variables → Actions**, crie os secrets
+   `CLOUDFLARE_ACCOUNT_ID` e `CLOUDFLARE_API_TOKEN`.
 
-Sem esses secrets, a Release falha na etapa do APK (para não publicar pela metade). O
-endereço `r2.dev` tem limite de pedidos por segundo, folgado para downloads; com um domínio
-próprio no Cloudflare, dá para trocar por `download.<domínio>`.
+A primeira Release cria o projeto `finan-rich-app` e mostra no log o endereço
+(`https://finan-rich-app.pages.dev`, ou outro, se o nome estiver ocupado). Esse endereço vai
+em `apkBase` (`site/download.go`); só então `/baixar/android` passa a baixar. Sem os
+secrets, a Release falha na etapa do APK (para não publicar pela metade). Com domínio próprio
+no Cloudflare, dá para usar `download.<domínio>` no lugar do `pages.dev`.
 
 ### A verificação de desenvolvedor do Google
 

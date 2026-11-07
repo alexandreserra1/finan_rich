@@ -121,7 +121,7 @@ Testar o fluxo do app sem Android: `make e2e` (inclui o `e2e/app.test.mjs`).
 
 O CI compila um **APK de teste** a cada push (artefato `finan_rich-android-teste` na
 execução do workflow). A release (`release.yml`) assina o APK com a chave do projeto e o
-publica no Cloudflare R2, de onde a página `/baixar` do site (o QR code) e o aviso de versão
+publica no Cloudflare Pages, de onde a página `/baixar` do site (o QR code) e o aviso de versão
 nova do app o buscam ([DISTRIBUICAO.md](DISTRIBUICAO.md)). Com a mesma chave sempre, cada
 versão nova instala **por cima** da anterior, mantendo os dados do celular; sem a chave
 (secrets abaixo), a release falha em vez de publicar um APK que não atualizaria por cima.
@@ -246,7 +246,7 @@ preciso a conta de desenvolvedor (anual).
 
 ## Próximos passos
 
-- **Bucket do Cloudflare R2** para o download por QR code: passo a passo em
+- **Projeto no Cloudflare Pages** para o download por QR code: passo a passo em
   [DISTRIBUICAO.md](DISTRIBUICAO.md).
 - **Play Store** (taxa única) e **App Store/TestFlight** (conta Apple anual): dependem das
   contas; fora do plano enquanto a regra for não gastar.
