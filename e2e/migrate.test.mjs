@@ -98,6 +98,7 @@ const logs = [];
 const watch = (page) => {
   watchErrors(page, errors);
   page.on("console", (m) => { if (["warning", "error"].includes(m.type())) logs.push(`${m.type()}: ${m.text()}`); });
+  page.on("response", (r) => { if (r.status() >= 400) logs.push(`${r.status()} ${r.request().method()} ${r.url()}`); });
 };
 let ctx;
 try {
@@ -250,6 +251,7 @@ try {
 } catch (err) {
   ok(false, `${err.message} ${JSON.stringify(errors)}`);
   console.log(`avisos das páginas:\n${logs.join("\n")}`);
+  for (const p of ctx?.pages() || []) console.log(`tela ${p.url()}: ${(await p.evaluate(() => document.body.innerText).catch(() => "")).replace(/\s+/g, " ").slice(0, 300)}`);
 } finally {
   await ctx?.close().catch(() => {});
   server.kill();
