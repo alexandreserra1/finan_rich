@@ -96,10 +96,29 @@ perfil normal funciona. Por isso o IndexedDB fica como reserva quando o OPFS fal
 **Depende de:** nada. **Arquivos:** `mobile/package.json`, `mobile/package-lock.json` e os
 arquivos versionados do `cap sync`. **Tamanho:** S.
 
+**Resultado (07/11/2026):** o plugin entrou em `mobile/package.json` e no lock (só acrescenta
+pacotes) e `capacitor.config.json` ganhou `"CapacitorSQLite": { "androidIsEncryption": false }`.
+Com o padrão `true`, o plugin cria uma chave no Keystore a cada abertura; se o backup do Android
+restaurar o arquivo dela em outro aparelho, o plugin não inicia e o app fica sem banco. A
+verificação de licenças passa. O CI roda `npm ci` e `cap sync` antes de compilar, então os
+arquivos nativos gerados não precisam ir para o commit (os três da lista de não commitar
+continuam fora). Esta máquina não tem Java nem Xcode: o APK não foi compilado aqui.
+
+**Achado que pede decisão:** no Android o plugin traz o SQLCipher, com bibliotecas nativas de
+7,6 MB (quatro arquiteturas). Pela estimativa, o APK passa de 8 MB para uns 16 MB, acima do
+limite de 12 MB do CI. Opções: tirar a arquitetura x86 (só emuladores antigos de 32 bits; o
+x86_64 fica para o emulador do CI), comprimir as bibliotecas no APK (`useLegacyPackaging`), um
+APK por arquitetura, ou subir o limite. Até a decisão, o plugin não vai para o commit, e o app
+continua no IndexedDB (o `db.js` só usa o motor nativo quando o plugin existe).
+
 ### Ponto de controle A
 - [ ] números das tarefas 1 e 2 conferidos com o Alexandre (segue ou para).
 
 ### Fase 1: web
+
+As tarefas 3, 4 e 5 saíram juntas: o motor SQLite sem a migração apagaria da tela os dados de
+quem já usa, e sem "uma aba de cada vez" a segunda aba ficaria sem banco. Assim não precisou da
+chave para ligar e desligar.
 
 #### Tarefa 3: `db.js` com o motor SQLite da web, desligado por padrão
 
@@ -166,6 +185,13 @@ IndexedDB do WebView do mesmo jeito da tarefa 4.
 
 **Depende de:** tarefas 2 e 4. **Arquivos:** `js/db.js`, `js/native.js` e um teste novo.
 **Tamanho:** M.
+
+**Resultado (07/11/2026):** `js/sqlite-native.js` implementa o mesmo `run(ops)` sobre o plugin,
+com as chamadas numa fila. O `db.js` usa ele no app quando o plugin existe. O teste
+`e2e/native.test.mjs` usa um plugin falso (SQLite WebAssembly na memória, com as manias do
+plugin: `ios_columns`, conexão que sobrevive a recarregar) e confere o contrato e o banco por
+cima. Ele falha se tirar a fila, o descarte do `ios_columns` ou o desfazer. Falta o plugin
+entrar no app (decisão do tamanho do APK, tarefa 2) e o teste num aparelho (tarefa 7).
 
 #### Tarefa 7: teste num aparelho de verdade (Alexandre)
 

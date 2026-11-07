@@ -271,19 +271,8 @@ try {
     await draft.waitFor();
     ok(await draft.inputValue() === edited, "editar o rascunho sem IA atualiza a memória da aba e preserva o texto ao voltar");
     const persisted = await page.evaluate(async () => {
-      const database = await new Promise((resolve, reject) => {
-        const request = indexedDB.open("finan_rich");
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-      });
-      try {
-        const stores = await Promise.all(Array.from(database.objectStoreNames, (name) => new Promise((resolve, reject) => {
-          const request = database.transaction(name).objectStore(name).getAll();
-          request.onsuccess = () => resolve(request.result);
-          request.onerror = () => reject(request.error);
-        })));
-        return JSON.stringify([stores, Object.entries(localStorage), Object.entries(sessionStorage)]);
-      } finally { database.close(); }
+      const stores = await (await import("/static/js/db.js")).dump(); // registros, fila e metadados, no banco que estiver em uso
+      return JSON.stringify([stores, Object.entries(localStorage), Object.entries(sessionStorage)]);
     });
     ok(!persisted.includes(message) && !persisted.includes(edited), "sem IA, o rascunho não vai para registros, histórico, fila, metadados ou armazenamento da página");
     ok(aiRequests.length === 0 && page.url() === `${APP}/chat`, "sem IA, preparar e editar a mensagem não faz pedido de IA nem coloca o texto no endereço");

@@ -2,7 +2,8 @@
 
 ## Situação
 
-Aceita.
+Aceita. A parte dos aparelhos (IndexedDB) foi substituída pelo
+[ADR-002](ADR-002-sqlite-nos-aparelhos.md): a web e o celular também passam a usar SQLite.
 
 ## Data
 

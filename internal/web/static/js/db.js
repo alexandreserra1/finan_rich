@@ -1,200 +1,152 @@
-// Banco local do aparelho (IndexedDB). Guarda uma cópia de todos os registros,
-// a fila de alterações ainda não enviadas ao computador (outbox) e o cursor da
+// Banco local do aparelho. Guarda uma cópia de todos os registros, a fila de
+// alterações ainda não enviadas ao computador (outbox) e o cursor da
 // sincronização. É o que permite usar o app sem conexão.
+//
+// Na web, é SQLite (db-sqlite.js, no Worker sqlite-worker.js). Na primeira vez,
+// os dados do IndexedDB (db-idb.js) são copiados numa transação só, conferidos e
+// marcados; o IndexedDB fica intacto, como backup. Se a cópia falhar, continua
+// no IndexedDB e tenta de novo na próxima abertura. Onde o SQLite não abre
+// (navegação anônima) fica no IndexedDB; mas, depois da cópia, nunca volta para
+// ele (estaria desatualizado). No app do celular é o SQLite nativo
+// (sqlite-native.js), com a mesma cópia; sem o plugin no app, fica no IndexedDB.
+//
+// Só uma aba usa o banco SQLite: a nova pede (Web Locks e BroadcastChannel), a
+// antiga termina o que estava gravando, solta o banco e avisa a tela
+// ("finan-db-elsewhere"); dali em diante as chamadas dela ficam paradas.
+import * as idb from "./db-idb.js";
+import { metaOp, MOVED, putOp, SCHEMA, sqliteStore } from "./db-sqlite.js";
+import { openNative } from "./sqlite-native.js";
 
-const DB_NAME = "finan_rich";
-const DB_VERSION = 1;
-export const SITE_IDLE_MS = 30 * 60_000; // site: sem uso por esse tempo, pede o login de novo
+export { SITE_IDLE_MS } from "./db-idb.js";
 
-let dbPromise = null;
+const LOCK = "finan-rich-db";
+let backend = null;
 
-function open() {
-  dbPromise ??= new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      db.createObjectStore("records", { keyPath: "key" }); // {key: "tipo:id", type, record}
-      db.createObjectStore("outbox", { keyPath: "key" });  // {key, type, record}: última versão pendente
-      db.createObjectStore("meta");                         // cursor etc.
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-  return dbPromise;
-}
+const store = () => (backend ??= choose());
 
-const keyOf = (type, id) => `${type}:${id}`;
-
-function done(tx) {
-  return new Promise((resolve, reject) => {
-    tx.oncomplete = () => resolve();
-    tx.onerror = tx.onabort = () => reject(tx.error);
-  });
-}
-
-function all(store) {
-  return new Promise((resolve, reject) => {
-    const req = store.getAll();
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-// loadLedger devolve todos os registros no formato do domain.Ledger do Go.
-export async function loadLedger() {
-  const db = await open();
-  const rows = await all(db.transaction("records").objectStore("records"));
-  const ledger = { categories: [], transactions: [], debts: [], prefs: [], notes: [], goals: [], recurring: [], accounts: [], transfers: [] };
-  const lists = {
-    category: ledger.categories, transaction: ledger.transactions, debt: ledger.debts, pref: ledger.prefs,
-    note: ledger.notes, goal: ledger.goals, recurring: ledger.recurring,
-    account: ledger.accounts, transfer: ledger.transfers,
-  };
-  for (const row of rows) lists[row.type]?.push(row.record);
-  return ledger;
-}
-
-// allRecords devolve todos os registros com o tipo, inclusive os apagados (é o
-// que vai para o arquivo do Google Drive).
-export async function allRecords() {
-  const db = await open();
-  return (await all(db.transaction("records").objectStore("records"))).map(({ type, record }) => ({ type, record }));
-}
-
-// saveManyLocal grava várias alterações de uma vez (ex.: restaurar um backup).
-// No site, só com a sessão valendo, conferida na mesma transação: vencida, nada é gravado.
-export async function saveManyLocal(items) {
-  const db = await open();
-  const site = document.documentElement.dataset.site === "web";
-  const tx = db.transaction(site ? ["records", "outbox", "meta"] : ["records", "outbox"], "readwrite");
-  let authorizationError = null;
-  const save = () => {
-    for (const { type, record } of items) {
-      const key = keyOf(type, record.id);
-      tx.objectStore("records").put({ key, type, record });
-      tx.objectStore("outbox").put({ key, type, record });
-    }
-  };
-  if (site) {
-    readSiteSession(tx.objectStore("meta"), (state) => {
-      if (state.signedIn) save();
-      else {
-        authorizationError = Object.assign(new Error("A sessão venceu. Entre de novo; nenhum dado desta alteração foi gravado."), { kind: "login" });
-        tx.abort();
-      }
-    });
-  } else save();
+async function choose() {
+  const app = window.Capacitor?.isNativePlatform?.();
+  const plugin = window.Capacitor?.Plugins?.CapacitorSQLite;
+  if (app ? !plugin : typeof Worker === "undefined") return fallback();
+  if (!app) await takeLock(); // o app tem uma tela só
+  let worker;
   try {
-    await done(tx);
+    let run;
+    if (app) run = await openNative(plugin);
+    else {
+      worker = new Worker("/static/js/sqlite-worker.js", { type: "module" });
+      run = connect(worker);
+    }
+    await run(SCHEMA);
+    const sql = sqliteStore(run, idb);
+    await migrate(run);
+    return sql;
   } catch (error) {
-    if (authorizationError) {
-      window.dispatchEvent(new Event("finan-session-expired"));
-      throw authorizationError;
-    }
-    throw error;
+    worker?.terminate();
+    giveUp?.();
+    giveUp = null;
+    return fallback(error);
   }
 }
 
-// saveLocal grava uma alteração feita neste aparelho e a coloca na fila de envio.
-export async function saveLocal(type, record) {
-  return saveManyLocal([{ type, record }]);
+// fallback é o IndexedDB, só se os dados nunca foram para o SQLite: depois da
+// cópia, ele está desatualizado, e usar ele esconderia o que foi gravado depois.
+async function fallback(cause) {
+  if (await idb.getMeta(MOVED, null)) throw new Error("não consegui abrir o banco deste aparelho; recarregue (no navegador, feche antes as outras abas da Rich)", { cause });
+  return idb;
 }
 
-// applyRemote grava registros vindos do computador. Vence a versão mais
-// recente, como no servidor: uma edição local ainda não enviada não é perdida.
-export async function applyRemote(changes) {
-  if (!changes.length) return 0;
-  const db = await open();
-  const tx = db.transaction("records", "readwrite");
-  const store = tx.objectStore("records");
-  let applied = 0;
-  for (const { type, record } of changes) {
-    const key = keyOf(type, record.id);
-    const req = store.get(key);
-    req.onsuccess = () => {
-      const cur = req.result?.record;
-      if (!cur || record.updatedAt > cur.updatedAt ||
-          (record.updatedAt === cur.updatedAt && JSON.stringify(record) > JSON.stringify(cur))) {
-        store.put({ key, type, record });
-        applied++;
-      }
-    };
-  }
-  await done(tx);
-  return applied;
-}
-
-export async function pending() {
-  const db = await open();
-  return all(db.transaction("outbox").objectStore("outbox"));
-}
-
-// clearSent remove da fila o que foi enviado, se não mudou de novo nesse meio tempo.
-export async function clearSent(sent) {
-  const db = await open();
-  const tx = db.transaction("outbox", "readwrite");
-  const store = tx.objectStore("outbox");
-  for (const item of sent) {
-    const req = store.get(item.key);
-    req.onsuccess = () => {
-      if (req.result && req.result.record.updatedAt === item.record.updatedAt) store.delete(item.key);
-    };
-  }
-  return done(tx);
-}
-
-export async function getMeta(key, fallback) {
-  const db = await open();
-  return new Promise((resolve, reject) => {
-    const req = db.transaction("meta").objectStore("meta").get(key);
-    req.onsuccess = () => resolve(req.result ?? fallback);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-export async function setMeta(key, value) {
-  const db = await open();
-  const tx = db.transaction("meta", "readwrite");
-  tx.objectStore("meta").put(value, key);
-  return done(tx);
-}
-
-// readSiteSession lê a sessão do site dentro de uma transação já aberta, para
-// quem chama decidir e gravar nela mesma (outra aba não muda nada no meio).
-// Hora do último uso estranha ou no futuro (relógio mexido) conta como vencida.
-function readSiteSession(store, receive) {
-  const account = store.get("google");
-  const activity = store.get("site-active");
-  activity.onsuccess = () => {
-    const now = Date.now();
-    const last = activity.result;
-    const invalid = !Number.isSafeInteger(last) || last <= 0 || now < last || now - last >= SITE_IDLE_MS;
-    receive({ signedIn: !!account.result && !invalid, expired: !!account.result && invalid, expiresAt: invalid || !account.result ? 0 : last + SITE_IDLE_MS }, now, last);
+// connect devolve run(ops) para o Worker. Depois que outra aba assume o banco,
+// as chamadas ficam paradas (nada é gravado aqui).
+let elsewhere = false;
+function connect(worker) {
+  let seq = 0;
+  const waiting = new Map();
+  worker.onmessage = ({ data }) => {
+    const p = waiting.get(data.id);
+    waiting.delete(data.id);
+    if (data.error) p?.reject(Object.assign(new Error(data.error), { code: data.code }));
+    else p?.resolve(data.out);
   };
-}
-
-// siteSession devolve { signedIn, expired, expiresAt }; com renew, uma sessão
-// ainda válida ganha a hora de agora (no máximo uma gravação por minuto, salvo force).
-export async function siteSession(renew = false, force = false) {
-  const db = await open();
-  const transaction = db.transaction("meta", renew ? "readwrite" : "readonly");
-  const store = transaction.objectStore("meta");
-  let result;
-  readSiteSession(store, (state, now, last) => {
-    result = state;
-    if (renew && state.signedIn && (force || now - last >= 60_000)) {
-      store.put(now, "site-active");
-      result.expiresAt = now + SITE_IDLE_MS;
-    }
+  worker.onerror = (e) => {
+    e.preventDefault();
+    for (const p of waiting.values()) p.reject(new Error(e.message || "o banco deste navegador não abriu"));
+    waiting.clear();
+  };
+  const send = (msg) => new Promise((resolve, reject) => {
+    const id = ++seq;
+    waiting.set(id, { resolve, reject });
+    worker.postMessage({ id, ...msg });
   });
-  await done(transaction);
-  return result;
+  channel?.addEventListener("message", async ({ data }) => {
+    if (data !== "take" || !giveUp || elsewhere) return;
+    elsewhere = true; // o que chegar daqui em diante fica parado
+    await send({ close: true }).catch(() => {}); // o Worker termina antes o que já estava na fila
+    worker.terminate();
+    giveUp();
+    giveUp = null;
+    window.dispatchEvent(new Event("finan-db-elsewhere"));
+  });
+  return (ops) => (elsewhere ? new Promise(() => {}) : send({ ops }));
 }
 
-// wipe apaga tudo deste aparelho (ao sair da conta).
-export async function wipe() {
-  const db = await open();
-  const tx = db.transaction(["records", "outbox", "meta"], "readwrite");
-  for (const name of ["records", "outbox", "meta"]) tx.objectStore(name).clear();
-  return done(tx);
+// migrate copia o IndexedDB para o SQLite uma vez, numa transação só, e confere
+// as contagens dentro dela (diferença desfaz tudo). O IndexedDB fica com os
+// registros e a fila, como backup; do meta dele sai tudo (tokens, a senha do
+// app), menos a marca e as chaves de criptografia, que só existem lá.
+async function migrate(run) {
+  const [moved] = await run([{ sql: "SELECT value FROM meta WHERE key = ?", bind: [MOVED], rows: true }]);
+  if (moved.length) {
+    if (!(await idb.getMeta(MOVED, null))) await idb.setMeta(MOVED, JSON.parse(moved[0].value)); // a aba fechou logo depois da cópia
+    return;
+  }
+  const { records, outbox, meta } = await idb.dump();
+  const count = (table, n) => ({ sql: `SELECT 1 WHERE (SELECT count(*) FROM ${table}) = ?`, bind: [n], rows: true, guard: true });
+  const at = Date.now();
+  await run([ // um valor que não vira JSON falha aqui, antes de gravar
+    ...records.map((row) => putOp("records", row)),
+    ...outbox.map((row) => putOp("outbox", row)),
+    ...meta.map(([key, value]) => metaOp(key, value)),
+    count("records", records.length),
+    count("outbox", outbox.length),
+    count("meta", meta.length),
+    metaOp(MOVED, at),
+  ]);
+  await idb.setMeta(MOVED, at);
+  await idb.clearMeta((key, value) => key === MOVED || (typeof CryptoKey !== "undefined" && value instanceof CryptoKey));
 }
+
+// Uma aba de cada vez com o banco SQLite.
+const channel = typeof BroadcastChannel === "undefined" ? null : new BroadcastChannel(LOCK);
+let giveUp = null;
+const hold = (lock) => lock && new Promise((resolve) => { giveUp = resolve; });
+const waitScreen = (on) => window.dispatchEvent(new CustomEvent("finan-db-wait", { detail: on }));
+
+async function takeLock() {
+  if (!navigator.locks) return;
+  const free = await new Promise((resolve) => navigator.locks.request(LOCK, { ifAvailable: true }, (lock) => { resolve(!!lock); return hold(lock); }).catch(() => resolve(true)));
+  if (free) return;
+  // Repete o pedido: a outra aba pode ainda estar abrindo o banco e perder o primeiro.
+  const ask = () => channel?.postMessage("take");
+  ask();
+  const again = setInterval(ask, 1000);
+  // A outra aba pode estar suspensa (no celular, em segundo plano): a tela explica.
+  const slow = setTimeout(() => waitScreen(true), 3000);
+  await new Promise((resolve) => navigator.locks.request(LOCK, (lock) => { resolve(); return hold(lock); }).catch(resolve));
+  clearInterval(again);
+  clearTimeout(slow);
+  waitScreen(false);
+}
+
+export const loadLedger = () => store().then((b) => b.loadLedger());
+export const allRecords = () => store().then((b) => b.allRecords());
+export const saveManyLocal = (items) => store().then((b) => b.saveManyLocal(items));
+export const saveLocal = (type, record) => store().then((b) => b.saveLocal(type, record));
+export const applyRemote = (changes) => store().then((b) => b.applyRemote(changes));
+export const pending = () => store().then((b) => b.pending());
+export const clearSent = (sent) => store().then((b) => b.clearSent(sent));
+export const getMeta = (key, fallback) => store().then((b) => b.getMeta(key, fallback));
+export const setMeta = (key, value) => store().then((b) => b.setMeta(key, value));
+export const siteSession = (renew = false, force = false) => store().then((b) => b.siteSession(renew, force));
+export const wipe = () => store().then((b) => b.wipe());
+export const dump = () => store().then((b) => b.dump());

@@ -13,8 +13,10 @@ O finan_rich é **um único executável em Go** que roda no computador do usuár
 3. sincroniza os dados com cada aparelho (computador e celular) por `POST /api/sync`;
 4. conversa com um modelo de IA (por padrão o Ollama, local) para o Consultor IA.
 
-Cada aparelho guarda **uma cópia dos dados** no próprio navegador (IndexedDB) e monta as
-telas sozinho. Por isso o app funciona sem conexão: as alterações entram numa fila e são
+Cada aparelho guarda **uma cópia dos dados** no próprio navegador e monta as telas sozinho.
+Na web, essa cópia fica num banco SQLite (WebAssembly, gravado no OPFS); onde ele não abre,
+como na navegação anônima, e no app do celular por enquanto, fica no IndexedDB
+([ADR-002](decisions/ADR-002-sqlite-nos-aparelhos.md)). Por isso o app funciona sem conexão: as alterações entram numa fila e são
 enviadas quando o computador volta a ser alcançável.
 
 ```
@@ -24,7 +26,7 @@ enviadas quando o computador volta a ser alcançável.
  │      │  chamam                              │        │      │                             │
  │ finance.wasm        regras em Go (Wasm)  ◀──┼─ mesmo ─┼▶ internal/finance  regras em Go    │
  │      │                                      │ código │   internal/domain  modelos         │
- │ static/js/db.js     IndexedDB + fila        │        │      │                             │
+ │ static/js/db.js     SQLite (ou IndexedDB)   │        │      │                             │
  │      │                                      │        │ internal/store     SQLite (records) │
  │ static/js/sync.js ──── POST /api/sync ──────┼───────▶│      │                             │
  │                    ◀── o que mudou ─────────┼────────│ internal/advisor + internal/llm    │
@@ -68,7 +70,7 @@ O `make test-wasm` garante isso rodando os testes deles como WebAssembly.
 
 1. O navegador pede `/lancamentos`. O servidor (`web.appShell`) devolve só o **casco**:
    o layout com `<div id="app">` (`templates/app.html`).
-2. `static/js/main.js` carrega os dados do IndexedDB (`db.loadLedger`) e o `finance.wasm`
+2. `static/js/main.js` carrega os dados do banco local (`db.loadLedger`) e o `finance.wasm`
    (`finance.load`), descobre a tela pelo caminho da URL e chama `pages/transactions.js`.
 3. A tela pede os números prontos ao Go: `finance.dashboard(ledger, "2026-10")` →
    `wasmapi.Dashboard` → `finance.Dashboard` → JSON.
@@ -443,7 +445,11 @@ Arquivos do navegador (`static/`):
 | Arquivo | Função |
 |---|---|
 | `js/main.js` | Entrada do app: carrega dados e regras, monta a tela, salva alterações, navega sem recarregar, mostra o status da sincronização, apaga os dados do aparelho ao sair. |
-| `js/db.js` | IndexedDB: `records` (cópia dos dados), `outbox` (fila), `meta` (cursor). |
+| `js/db.js` | Banco local: `records` (cópia dos dados), `outbox` (fila), `meta` (cursor). Escolhe o SQLite ou o IndexedDB, copia o IndexedDB para o SQLite uma vez (o IndexedDB fica como backup) e deixa uma aba por vez com o SQLite ("Usar aqui"). |
+| `js/db-sqlite.js` | O SQL do banco local, igual na web (Worker) e no SQLite nativo do app. Bytes viram JSON e voltam a ser bytes; chaves de criptografia (`CryptoKey`) ficam no IndexedDB. |
+| `js/sqlite-worker.js` | Worker com o SQLite WebAssembly (`vendor/sqlite`), gravando no OPFS pelo modo `opfs-sahpool`. |
+| `js/sqlite-native.js` | O mesmo contrato sobre o SQLite nativo do app (plugin `@capacitor-community/sqlite`), com as chamadas numa fila para uma transação não se misturar com outra. |
+| `js/db-idb.js` | O banco no IndexedDB: o de antes, a reserva onde o SQLite não abre e o backup da migração. |
 | `js/sync.js` | Ciclo de sincronização e seus gatilhos. |
 | `js/device.js` | Para onde sincronizar: o próprio servidor (navegador) ou o computador pareado (app do celular, com token). |
 | `js/finance.js` | Carrega o `finance.wasm` e expõe as funções em JavaScript. |

@@ -310,6 +310,28 @@ function checkSiteSession(renew = false) {
   return sessionCheck;
 }
 
+// Outra aba assumiu o banco (db.js): esta para de gravar e oferece voltar.
+window.addEventListener("finan-db-elsewhere", () => {
+  document.body.insertAdjacentHTML("beforeend", `<div class="modal" id="elsewhere"><div class="modal-scrim"></div>
+    <div class="modal-panel" role="alertdialog" aria-modal="true" aria-labelledby="elsewhere-title"><div class="modal-form">
+      <div class="modal-head"><h2 id="elsewhere-title">A Rich está aberta em outra aba</h2></div>
+      <p class="muted">Para não misturar os dados, só uma aba usa o banco por vez.</p>
+      <div class="modal-foot"><button type="button" data-use-here>Usar aqui</button></div>
+    </div></div></div>`);
+  document.querySelector("[data-use-here]").addEventListener("click", () => location.reload());
+  document.querySelector("[data-use-here]").focus();
+});
+// Esta aba espera outra soltar o banco (db.js) e a outra demora a responder.
+window.addEventListener("finan-db-wait", ({ detail: waiting }) => {
+  document.getElementById("db-wait")?.remove();
+  if (!waiting) return;
+  document.body.insertAdjacentHTML("beforeend", `<div class="modal" id="db-wait"><div class="modal-scrim"></div>
+    <div class="modal-panel" role="alertdialog" aria-modal="true" aria-labelledby="db-wait-title"><div class="modal-form">
+      <div class="modal-head"><h2 id="db-wait-title">A Rich está aberta em outra aba</h2></div>
+      <p class="muted">Esperando a outra aba soltar os dados. Se ela não responder (por exemplo, aberta em segundo plano no celular), feche-a.</p>
+    </div></div></div>`);
+});
+
 if (device.isSite) {
   setInterval(() => checkSiteSession(), 15_000);
   window.addEventListener("finan-session-expired", closeSession);

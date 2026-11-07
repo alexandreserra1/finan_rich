@@ -192,21 +192,8 @@ try {
     }));
     assert.deepEqual(after.records, before, "preencher rascunho não deve alterar registros");
     assert.ok(!after.storage.includes(message), "rascunho não deve ir para os armazenamentos do navegador");
-    const persisted = await page.evaluate(async () => {
-      const database = await new Promise((resolve, reject) => {
-        const request = indexedDB.open("finan_rich");
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-      });
-      try {
-        return JSON.stringify(await Promise.all(Array.from(database.objectStoreNames, (name) => new Promise((resolve, reject) => {
-          const request = database.transaction(name).objectStore(name).getAll();
-          request.onsuccess = () => resolve(request.result);
-          request.onerror = () => reject(request.error);
-        }))));
-      } finally { database.close(); }
-    });
-    assert.ok(!persisted.includes(message), "rascunho não deve persistir em nenhum registro, fila ou metadado do IndexedDB");
+    const persisted = await page.evaluate(async () => JSON.stringify(await (await import("/static/js/db.js")).dump()));
+    assert.ok(!persisted.includes(message), "rascunho não deve persistir em nenhum registro, fila ou metadado do banco local");
     await page.reload();
     await draft.waitFor();
     assert.equal(await draft.inputValue(), "", "recarregar deve descartar o rascunho em memória");

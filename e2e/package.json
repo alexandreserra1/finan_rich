@@ -6,7 +6,7 @@
   "scripts": {
     "performance": "node performance.mjs",
     "test": "npm run test:core && node google.test.mjs",
-    "test:core": "node session.test.mjs && node errors.test.mjs && node sqlite.test.mjs && node offline.test.mjs && node app.test.mjs && node export.test.mjs && node import.test.mjs && node plans.test.mjs && node budget.test.mjs && node accounts.test.mjs && node debts.test.mjs && node simple.test.mjs && node site.test.mjs",
+    "test:core": "node session.test.mjs && node errors.test.mjs && node sqlite.test.mjs && node migrate.test.mjs && node native.test.mjs && node offline.test.mjs && node app.test.mjs && node export.test.mjs && node import.test.mjs && node plans.test.mjs && node budget.test.mjs && node accounts.test.mjs && node debts.test.mjs && node simple.test.mjs && node site.test.mjs",
     "webkit": "BROWSER=webkit npm run test:core"
   },
   "devDependencies": {

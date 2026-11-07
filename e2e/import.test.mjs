@@ -159,6 +159,8 @@ try {
   await page.fill("#open-finance textarea[name=items]", "item-1");
   await page.click("#open-finance button[type=submit]");
   await page.waitForSelector("text=Open Finance salvo");
+  // Espera os módulos do app terminarem de carregar: navegar antes corta o carregamento, e o WebKit acusa isso como erro da página.
+  await page.waitForFunction(() => typeof window.finanSync === "function");
   ok(!(await page.content()).includes("meu-segredo"), "Ajustes não mostra o Client Secret");
   const fetchBank = async () => {
     await page.evaluate(() => window.finanSync?.());

@@ -71,21 +71,8 @@ try {
   await page.evaluate(async () => {
     const f = await import("/static/js/finance.js");
     await f.load();
-    const database = await new Promise((resolve, reject) => {
-      const request = indexedDB.open("finan_rich");
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    try {
-      await new Promise((resolve, reject) => {
-        const transaction = database.transaction("records", "readwrite");
-        transaction.oncomplete = resolve;
-        transaction.onerror = transaction.onabort = () => reject(transaction.error);
-        for (const record of f.defaultCategories(Date.now())) {
-          transaction.objectStore("records").put({ key: `category:${record.id}`, type: "category", record });
-        }
-      });
-    } finally { database.close(); }
+    // Grava como se tivessem vindo de fora (applyRemote não pede sessão), no banco que estiver em uso.
+    await (await import("/static/js/db.js")).applyRemote(f.defaultCategories(Date.now()).map((record) => ({ type: "category", record })));
   });
   let leaked = [];
   for (const path of ["/", "/dividas", "/lancamentos", "/metas", "/analise", "/contas", "/chat", "/configuracoes", "/exportar"]) {

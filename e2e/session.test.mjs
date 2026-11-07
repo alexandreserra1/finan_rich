@@ -12,13 +12,13 @@ const server = createServer(async (req, res) => {
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     return res.end('<!doctype html><html data-site="web" lang="pt-BR"><title>Teste de sessão</title></html>');
   }
-  if (!/^\/static\/js\/(db|google|device)\.js$/.test(req.url)) {
+  if (!/^\/static\/(js\/(db|db-idb|db-sqlite|sqlite-worker|sqlite-native|google|device)\.js|vendor\/sqlite\/sqlite3\.(js|wasm))$/.test(req.url)) {
     res.writeHead(404);
     return res.end();
   }
   try {
     const source = await readFile(new URL(`../internal/web${req.url}`, import.meta.url));
-    res.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8" });
+    res.writeHead(200, { "Content-Type": req.url.endsWith(".wasm") ? "application/wasm" : "text/javascript; charset=utf-8" });
     res.end(source);
   } catch {
     res.writeHead(500);
@@ -50,18 +50,8 @@ async function test(name, run) {
       ]);
       await db.setMeta("cursor", 42);
       await db.setMeta("drive", { id: "arquivo-teste", version: "7" });
-      await new Promise((resolve, reject) => {
-        const request = indexedDB.open("finan_rich", 1);
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => {
-          const database = request.result;
-          const transaction = database.transaction("meta", "readwrite");
-          transaction.objectStore("meta").delete("google");
-          transaction.objectStore("meta").delete("site-active");
-          transaction.oncomplete = () => { database.close(); resolve(); };
-          transaction.onerror = transaction.onabort = () => { database.close(); reject(transaction.error); };
-        };
-      });
+      await db.setMeta("google", null); // sem sessão: cada teste monta a sua
+      await db.setMeta("site-active", null);
     });
     await run(page, context);
     console.log(`OK    ${name}`);
@@ -183,11 +173,13 @@ try {
 
   for (const change of ["vencer", "remover conta", "renovar"]) {
     for (const force of [false, true]) {
-      await test(`outra aba pode ${change}: markActive(${force}) relê o IndexedDB`, async (page, context) => {
+      await test(`outra aba pode ${change}: markActive(${force}) relê o banco ou a aba antiga para`, async (page, context) => {
         await page.evaluate(async (now) => {
           const db = await import("/static/js/db.js");
           await db.setMeta("google", { email: "pessoa@gmail.com" });
           await db.setMeta("site-active", now - 120_000);
+          window.__elsewhere = false;
+          addEventListener("finan-db-elsewhere", () => { window.__elsewhere = true; });
         }, NOW);
         await touch(page, false, true, { signedIn: true, expired: false }, NOW);
         const other = await context.newPage();
@@ -198,6 +190,17 @@ try {
           if (change === "remover conta") await db.setMeta("google", null);
           else await db.setMeta("site-active", change === "vencer" ? now - IDLE_MS : now - 120_000);
         }, { change, now: NOW });
+        // No SQLite só uma aba usa o banco: a nova assumiu, e a antiga para (nem lê nem
+        // renova), então não tem como agir com dado velho. No IndexedDB, as duas abas
+        // dividem o banco, e a antiga precisa reler.
+        if (await page.evaluate(() => window.__elsewhere)) {
+          const state = await page.evaluate(async (force) => Promise.race([
+            (await import("/static/js/google.js")).markActive(force).then(() => "respondeu"),
+            new Promise((resolve) => setTimeout(() => resolve("parada"), 500)),
+          ]), force);
+          assert.equal(state, "parada", "a aba que perdeu o banco não lê nem renova a sessão");
+          return;
+        }
         const valid = change === "renovar";
         await touch(page, force, valid, { signedIn: valid, expired: change === "vencer" }, valid ? NOW : undefined);
       });

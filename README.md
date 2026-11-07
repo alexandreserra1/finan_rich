@@ -323,7 +323,7 @@ e2e/                testes no navegador: offline, sincronização entre aparelho
  ┌──────────────────────────────┐   /api/sync    ┌──────────────────────────┐
  │ telas em JS  ← regras em Go  │ ─────────────▶ │ SQLite: records          │
  │ (static/js)    (finance.wasm)│ ◀───────────── │ (documentos JSON + rev)  │
- │ IndexedDB: dados + fila      │  envia a fila, │ Consultor IA (Ollama)    │
+ │ SQLite local: dados + fila   │  envia a fila, │ Consultor IA (Ollama)    │
  │ service worker: abre offline │  recebe o novo │                          │
  └──────────────────────────────┘                └──────────────────────────┘
 ```
