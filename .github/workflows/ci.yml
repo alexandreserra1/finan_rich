@@ -132,9 +132,12 @@ jobs:
       - name: Abre o app num emulador Android
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         with:
-          api-level: 34
+          # Android 17 com páginas de 16 KB (os celulares novos): pega biblioteca nativa sem
+          # alinhamento, como a do SQLite do app. A plataforma 36 é a do compileSdk.
+          api-level: 36
+          system-image-api-level: "37.2"
           arch: x86_64
-          target: google_apis
+          target: google_apis_ps16k
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           working-directory: mobile

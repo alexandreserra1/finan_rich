@@ -39,7 +39,14 @@ async function choose() {
       worker = new Worker("/static/js/sqlite-worker.js", { type: "module" });
       run = connect(worker);
     }
-    await run(SCHEMA);
+    // O Worker da página anterior pode demorar a soltar o arquivo (sqlite-worker.js espera).
+    const slow = setTimeout(() => waitScreen(true), 3000);
+    try {
+      await run(SCHEMA);
+    } finally {
+      clearTimeout(slow);
+      waitScreen(false);
+    }
     const sql = sqliteStore(run, idb);
     await migrate(run);
     return sql;

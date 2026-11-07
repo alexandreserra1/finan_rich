@@ -22,6 +22,16 @@ for i in $(seq 1 45); do
     if adb logcat -d -b crash | grep -A3 "FATAL EXCEPTION" | grep "Process: $PKG" ; then
       echo "FALHA: o app fechou com erro"; exit 1
     fi
+    # O banco SQLite nativo abriu: sem ele, o app cai no IndexedDB e a tela aparece do
+    # mesmo jeito. Pega, por exemplo, a biblioteca nativa sem alinhamento de 16 KB. A
+    # imagem google_apis deixa ler a pasta do app como root.
+    adb root >/dev/null && sleep 2 && adb wait-for-device
+    if ! adb shell ls "/data/data/$PKG/databases/" | grep -q "finanSQLite.db"; then
+      echo "FALHA: o banco SQLite nativo não foi criado"
+      adb logcat -d | grep -iE "sqlite|UnsatisfiedLink|dlopen|Capacitor" | tail -40 || true
+      exit 1
+    fi
+    echo "OK: o banco SQLite nativo abriu"
     exit 0
   fi
 done

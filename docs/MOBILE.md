@@ -242,9 +242,9 @@ preciso a conta de desenvolvedor (anual).
 - `e2e/app.test.mjs`: o fluxo do app (pareamento, sync com token, offline, consultor com uma
   IA falsa, salvar como nota) no Chromium.
 - Job `test`: `scripts/check-licenses.sh` (só dependências de código aberto).
-- Job `android`: compila o APK de release (R8 ligado; falha se passar de 18 MB) e o abre num emulador Android 14
+- Job `android`: compila o APK de release (R8 ligado; falha se passar de 18 MB) e o abre num emulador Android 17 com páginas de 16 KB
   (`mobile/scripts/smoke-android.sh`): confere que a tela inicial aparece (WebView carregou
-  as telas e o WebAssembly) e que não houve erro fatal.
+  as telas e o WebAssembly), que não houve erro fatal e que o banco SQLite nativo abriu.
 - Job `ios`: compila para o simulador.
 
 ## Próximos passos

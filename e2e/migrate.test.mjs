@@ -228,7 +228,7 @@ try {
   await third.waitForSelector("text=Gravado na aba antiga", { timeout: 20000 });
   await next.waitForSelector("#elsewhere [data-use-here]", { timeout: 10000 });
   ok(!(await third.$("#db-wait .modal-panel")), "aba suspensa: a nova espera com o aviso e abre quando a suspensa volta e solta o banco");
-  suspend(third, 60000);
+  suspend(third, 20000); // se fechar demorar (o WebKit espera a aba ocupada responder), ela volta e solta
   const fourth = await ctx.newPage();
   watchErrors(fourth, errors);
   await fourth.goto(`${B}/lancamentos`);
