@@ -251,7 +251,16 @@ try {
 } catch (err) {
   ok(false, `${err.message} ${JSON.stringify(errors)}`);
   console.log(`avisos das páginas:\n${logs.join("\n")}`);
-  for (const p of ctx?.pages() || []) console.log(`tela ${p.url()}: ${(await p.evaluate(() => document.body.innerText).catch(() => "")).replace(/\s+/g, " ").slice(0, 300)}`);
+  for (const p of ctx?.pages() || []) {
+    console.log(`tela ${p.url()}: ${(await p.evaluate(() => document.body.innerText).catch(() => "")).replace(/\s+/g, " ").slice(0, 300)}`);
+    // O banco responde? Em que pé está a sincronização? A tela de espera está aberta?
+    console.log(`  estado: ${await p.evaluate(async () => {
+      const db = await import("/static/js/db.js");
+      const answer = await Promise.race([db.getMeta("cursor", null).then((v) => `banco responde (cursor ${v})`, (e) => `banco com erro: ${e.message}`), new Promise((r) => setTimeout(() => r("banco parado"), 3000))]);
+      const { state } = await import("/static/js/sync.js");
+      return `${answer}; sincronização ${JSON.stringify(state)}; tela de espera ${!!document.querySelector("#db-wait .modal-panel")}`;
+    }).catch((e) => e.message)}`);
+  }
 } finally {
   await ctx?.close().catch(() => {});
   server.kill();
