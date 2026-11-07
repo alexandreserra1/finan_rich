@@ -32,10 +32,11 @@ const openTx = async (page) => {
 
 // Pluggy falsa (Open Finance): uma conta com dois lançamentos.
 const PLUGGY_PORT = 18088 + OFF;
+let pluggyAuths = 0; // quantas buscas chegaram à Pluggy
 const pluggy = createServer((req, res) => {
   res.setHeader("Content-Type", "application/json");
   const url = new URL(req.url, "http://x");
-  if (url.pathname === "/auth") return res.end('{"apiKey":"k"}');
+  if (url.pathname === "/auth") { pluggyAuths++; return res.end('{"apiKey":"k"}'); }
   if (req.headers["x-api-key"] !== "k") { res.statusCode = 403; return res.end("{}"); }
   if (url.pathname === "/accounts") return res.end('{"results":[{"id":"a1","type":"BANK","name":"Conta Inter","number":"0001234"}]}');
   if (url.pathname === "/v2/transactions") {
@@ -166,11 +167,36 @@ try {
     await page.click("[data-bank='0']");
     await page.waitForSelector(".import-table");
   };
-  await fetchBank();
-  ok(await page.locator(".import-table tbody tr").count() === 2 && (await row("Uber *Trip").locator("td.num").textContent()).includes("−R$ 23,50"), "lançamentos do banco chegam para revisar");
-  await row("Pix recebido").locator("select").selectOption({ index: 1 });
+  // Busca sozinha: ao abrir, a Rich busca no banco e só avisa no sininho; nada entra sem revisão.
+  const bankNotice = () => page.waitForFunction(() => document.getElementById("avisos")?.textContent.includes("2 lançamentos novos do banco"), null, { timeout: 15000 });
+  const hasUber = () => page.evaluate(async () => (await (await import("/static/js/db.js")).loadLedger()).transactions.some((t) => t.description === "Uber *Trip"));
+  await page.goto(`${B}/`);
+  await bankNotice();
+  ok(!(await hasUber()), "sem apertar nada, o sininho avisa os 2 lançamentos novos do banco, sem importar nenhum");
+  const asked = pluggyAuths;
+  await page.reload();
+  await bankNotice();
+  ok(pluggyAuths === asked, `abrir de novo não busca outra vez antes de 6 horas, e o aviso continua (${pluggyAuths - asked} busca a mais)`);
+  await page.click("[data-bell]:visible");
+  await page.click("#avisos a[href='/importar?banco=1']");
+  await page.click("[data-bank='0']");
+  await page.waitForSelector(".import-table");
+  ok(await page.locator(".import-table tbody tr").count() === 2 && (await row("Uber *Trip").locator("td.num").textContent()).includes("−R$ 23,50"), "o aviso abre a revisão dos lançamentos do banco");
+  await row("Pix recebido").locator("input[type=checkbox]").uncheck(); // deixado de fora na revisão
   await page.click("[data-action=import]");
   await page.waitForSelector("td:has-text('Uber *Trip')");
+  ok(!(await page.textContent("#avisos")).includes("do banco"), "depois de importar, o aviso do banco some");
+  // Relógio que voltou um dia (última busca "no futuro"): busca de novo em vez de
+  // esperar, e não avisa outra vez o que ficou de fora na revisão.
+  await page.evaluate(async () => {
+    const db = await import("/static/js/db.js");
+    await db.setMeta("pluggy-auto", { ...(await db.getMeta("pluggy-auto", {})), at: Date.now() + 86_400_000 });
+  });
+  const before = pluggyAuths;
+  await page.goto(`${B}/`);
+  await page.waitForFunction(async () => (await (await import("/static/js/db.js")).getMeta("pluggy-auto", {})).at <= Date.now());
+  await page.waitForTimeout(300); // o sininho redesenha logo depois de gravar
+  ok(pluggyAuths > before && !(await page.textContent("#avisos")).includes("do banco"), "relógio atrasado busca de novo, e o deixado de fora na revisão não volta a avisar");
   await fetchBank();
   ok(await row("Uber *Trip").locator(".status-importado").count() === 1, "buscar do banco de novo não duplica");
 

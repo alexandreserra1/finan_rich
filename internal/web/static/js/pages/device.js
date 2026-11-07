@@ -507,7 +507,7 @@ function openFinanceSection() {
   return html`<section class="panel" id="open-finance">
     ${head("Open Finance", "Lançamentos direto do banco, de graça, pelo Meu Pluggy, com a sua própria conta. Sem passar por servidor da Rich.",
       html`<span class="tag ${ofState ? "on" : ""}">${ofState ? "Configurado" : "Não configurado"}</span>`)}
-    <p class="small muted">Depois de configurar, use <a href="/importar">Importar → Buscar do banco</a>.</p>
+    <p class="small muted">Depois de configurar, com o app aberto, a Rich busca sozinha a cada 6 horas e avisa no sininho o que chegou; nada entra sem a sua revisão. Para buscar agora: <a href="/importar">Importar → Buscar do banco</a>.</p>
     <details ${ofState ? "" : "open"}><summary>Como configurar (uma vez)</summary>
       <ol class="small">
         <li>Crie uma conta grátis em dashboard.pluggy.ai, crie uma <strong>Application</strong> e copie o <strong>Client ID</strong> e o <strong>Client Secret</strong>.</li>

@@ -2,7 +2,9 @@ package finance
 
 import (
 	"fmt"
+	"hash/fnv"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/domain"
@@ -14,7 +16,7 @@ type Alert struct {
 	// ID: tipo, item, período e, no vencimento, a gravidade. Fica igual enquanto a
 	// situação não muda; é por ele que o sininho lembra o que a pessoa limpou.
 	ID    string `json:"id"`
-	Kind  string `json:"kind"`  // debt-due, debt-growing, bucket-over, budget-near, budget-over, unusual, goal-late, goal-done
+	Kind  string `json:"kind"`  // debt-due, debt-growing, bucket-over, budget-near, budget-over, unusual, goal-late, goal-done, bank-new
 	Level string `json:"level"` // danger, warn, ok
 	Title string `json:"title"`
 	Text  string `json:"text"`
@@ -40,15 +42,45 @@ func Alerts(l domain.Ledger, today time.Time) []Alert {
 // PendingAlerts são os avisos do sininho: os de Alerts menos os que a pessoa
 // limpou (domain.PrefAlertsCleared). Um aviso limpo volta quando a situação
 // muda: piorou, venceu de novo ou virou o mês com o problema ainda lá.
-func PendingAlerts(l domain.Ledger, today time.Time) []Alert {
+// bankNew: os lançamentos que a busca automática do Open Finance trouxe neste
+// aparelho e a pessoa ainda não revisou (IDs da revisão da importação).
+func PendingAlerts(l domain.Ledger, today time.Time, bankNew ...string) []Alert {
 	cleared := l.ClearedAlerts()
 	var out []Alert
-	for _, a := range allAlerts(l, today) {
+	for _, a := range append(bankAlert(l, bankNew), allAlerts(l, today)...) {
 		if !cleared[a.ID] {
 			out = append(out, a)
 		}
 	}
 	return top(out)
+}
+
+// bankAlert avisa quantos lançamentos do banco esperam a revisão. Os que já
+// entraram (aqui ou em outro aparelho) saem da conta; o ID depende só dos que
+// faltam, então o aviso limpo volta quando chega lançamento novo.
+func bankAlert(l domain.Ledger, ids []string) []Alert {
+	in := map[string]bool{}
+	for _, t := range l.Transactions {
+		in[t.ID] = true
+	}
+	var left []string
+	for _, id := range ids {
+		if !in[id] {
+			left = append(left, id)
+		}
+	}
+	if len(left) == 0 {
+		return nil
+	}
+	sort.Strings(left)
+	h := fnv.New64a()
+	h.Write([]byte(strings.Join(left, ",")))
+	title := fmt.Sprintf("%d lançamentos novos do banco", len(left))
+	if len(left) == 1 {
+		title = "1 lançamento novo do banco"
+	}
+	return []Alert{alert("bank-new", fmt.Sprintf("%x", h.Sum64()), "ok", title,
+		"Chegaram pelo Open Finance. Revise antes de entrarem nas suas contas.", "/importar?banco=1", "")}
 }
 
 // top deixa os graves primeiro e no máximo maxAlerts (lista vazia, nunca nula).

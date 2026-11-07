@@ -43,7 +43,7 @@ func main() {
 			return wasmapi.Contribution(str(a, 0), int64(a[1].Float()), str(a, 2))
 		}),
 		"recurringDue": js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.RecurringDue(str(a, 0), str(a, 1)) }),
-		"alerts":       js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Alerts(str(a, 0), str(a, 1)) }),
+		"alerts":       js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Alerts(str(a, 0), str(a, 1), str(a, 2)) }),
 		"insights":     js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Insights(str(a, 0), str(a, 1)) }),
 		"home":         js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Home(str(a, 0), str(a, 1)) }),
 		"diagnose":     js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Diagnose(str(a, 0), str(a, 1)) }),

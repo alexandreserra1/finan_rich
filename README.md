@@ -164,9 +164,11 @@ servidor do finan_rich.
 2. Em [meu.pluggy.ai](https://meu.pluggy.ai), conecte seus bancos (a autorização é feita no
    app do banco).
 3. No painel da Pluggy: sua Application → *Ir para Demo* → ⋮ → *Copiar Item ID* (um por banco).
-4. Cole os três em **Ajustes → Open Finance** (no computador ou no app) e use **Importar →
-   Buscar do banco**. Os lançamentos passam pela mesma revisão da importação de arquivo e
-   buscar de novo não duplica.
+4. Cole os três em **Ajustes → Open Finance** (no computador ou no app). Com o finan_rich
+   aberto, ele busca sozinho a cada 6 horas e avisa no sininho quantos lançamentos novos
+   chegaram; para buscar na hora, use **Importar → Buscar do banco**. Os lançamentos passam
+   pela mesma revisão da importação de arquivo (nada entra sem você conferir) e buscar de
+   novo não duplica.
 
 No **Android**, o app também lê as notificações dos apps de banco (compra aprovada, Pix
 recebido): em **Importar → Notificações do banco**, autorize uma vez e cada aviso vira um

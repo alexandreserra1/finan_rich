@@ -28,6 +28,7 @@ import * as accounts from "./pages/accounts.js";
 import * as start from "./pages/start.js";
 import * as landing from "./pages/landing.js";
 import * as google from "./google.js";
+import * as openFinance from "./openfinance.js";
 import * as oauthPage from "./pages/oauth.js";
 
 const ROUTES = { "/": dashboard, "/lancamentos": transactions, "/dividas": debts, "/categorias": categories, "/notas": notes, "/exportar": exportPage, "/importar": importPage, "/metas": goals, "/analise": insights, "/chat": advisor };
@@ -228,7 +229,10 @@ async function load(activate = false) {
 }
 
 // O sininho (bell.js): site sem login não mostra; limpar grava a preferência sincronizada.
-const refreshBell = () => bell.update(device.isSite && !signedIn ? null : ledger);
+const refreshBell = () => bell.update(device.isSite && !signedIn ? null : ledger, openFinance.pending());
+// Open Finance: busca sozinho de tempos em tempos (openfinance.js); o que chega
+// espera a revisão, com aviso no sininho.
+const autoBank = () => openFinance.autoFetch(ledger).then(refreshBell, () => {});
 bell.mount({
   save: async (ids) => {
     await context("/", new URLSearchParams()).save("pref", { id: "avisos-limpos", value: ids }, null, { rerender: false });
@@ -353,6 +357,8 @@ if (root) {
       booted = true;
       render();
       if (changedDuringBoot) reloadAndRender();
+      autoBank();
+      setInterval(autoBank, 30 * 60_000); // o prazo de 6 horas fica no openfinance.js
     })
     .catch((err) => {
       if (device.isSite && err.kind === "login") return closeSession(); // a sessão venceu no meio da carga
@@ -360,7 +366,7 @@ if (root) {
     });
 } else if (document.querySelector("[data-bell]")) {
   // Telas do servidor (Ajustes no computador): as regras só para o sininho.
-  finance.load().then(() => load(true)).catch(() => {});
+  finance.load().then(() => load(true)).then(autoBank).catch(() => {});
 }
 
 // App do celular: links finanrich://parear?url=...&codigo=... (QR code do

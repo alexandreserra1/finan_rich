@@ -316,6 +316,11 @@ de sempre (`wasmapi.ImportPreviewStatement`): buscar de novo não duplica. No co
 segredo nunca volta para a tela); no app com o Open Finance configurado, roda no
 `advisor.wasm` (`askapi.OpenFinance`) e o Client Secret fica no cofre do sistema
 (`js/openfinance.js`). Nada passa por servidor do finan_rich.
+Com a tela aberta (app ou navegador do computador), `openFinance.autoFetch` busca sozinho a
+cada 6 horas e guarda só os IDs dos lançamentos novos da revisão (meta `pluggy-auto`); o
+sininho mostra o aviso `bank-new` (`finance.PendingAlerts`, que tira os que já entraram,
+mesmo por outro aparelho) e leva a `/importar?banco=1`. Nada entra sem a revisão; os que a
+pessoa deixou de fora não avisam de novo naquele aparelho.
 
 A IA (opcional) fica no servidor: `internal/advisor/categorize.go` pergunta em lotes de 40 e
 só aceita respostas que sejam uma das categorias do tipo certo; `internal/web/categorize.go`

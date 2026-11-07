@@ -49,7 +49,7 @@ export const readBackup = (text) => unwrap(window.finan.readBackup(text));
 // Metas, recorrências e alertas dependem do dia de hoje (do aparelho).
 export const goals = (ledger, day) => unwrap(window.finan.goals(JSON.stringify(ledger), day));
 export const recurringDue = (ledger, day) => unwrap(window.finan.recurringDue(JSON.stringify(ledger), day));
-export const alerts = (ledger, day) => unwrap(window.finan.alerts(JSON.stringify(ledger), day));
+export const alerts = (ledger, day, bank = []) => unwrap(window.finan.alerts(JSON.stringify(ledger), day, JSON.stringify(bank)));
 export const insights = (ledger, day) => unwrap(window.finan.insights(JSON.stringify(ledger), day));
 export const home = (ledger, day) => unwrap(window.finan.home(JSON.stringify(ledger), day));
 // diagnose: o que mais custa nas dívidas, onde dá para guardar e o efeito de cada corte.

@@ -9,7 +9,7 @@ import { endpoint } from "../device.js";
 import { isPDF, pdfText } from "../pdftext.js";
 import * as openFinance from "../openfinance.js";
 import * as bankNotes from "../banknotes.js";
-import { BUCKETS, html, shiftMonth, today } from "../ui.js";
+import { BUCKETS, html, today } from "../ui.js";
 import { pageHead } from "./dashboard.js";
 
 export const needsData = false;
@@ -163,9 +163,9 @@ function renderUpload() {
     <section class="import-cols">
       <section class="panel">
         <h2>Direto do banco</h2>
-        <p class="muted">Com o Open Finance configurado em Ajustes (Meu Pluggy, grátis), os lançamentos vêm do banco sem arquivo.</p>
+        <p class="muted">Com o Open Finance configurado em Ajustes (Meu Pluggy, grátis), os lançamentos vêm do banco sem arquivo. Com a Rich aberta, ela busca sozinha a cada 6 horas e avisa no sininho o que chegou.</p>
         <form data-form="openfinance" class="bank-form">
-          <label class="field">Desde <input type="date" name="from" value="${shiftMonth(today().slice(0, 7), -1)}-01" required></label>
+          <label class="field">Desde <input type="date" name="from" value="${openFinance.defaultFrom()}" required></label>
           <button type="submit" class="secondary">Buscar do banco</button>
         </form>
       </section>
@@ -239,6 +239,11 @@ export function bind(root, ctx) {
       ctx.error(err);
     }
   });
+  // O aviso do sininho (busca automática) abre aqui com ?banco=1: busca e mostra as contas.
+  if (!state && ctx.params.get("banco")) {
+    history.replaceState(null, "", "/importar");
+    root.querySelector('[data-form="openfinance"]')?.requestSubmit();
+  }
   if (!state) return;
   if (state.bank) {
     root.querySelector('[data-action="cancel"]').addEventListener("click", () => { state = null; rerender(); });
@@ -331,6 +336,7 @@ export function bind(root, ctx) {
       }));
       await db.saveManyLocal(records);
       if (state.statement?.Format === "notificacao") await bankNotes.reviewed();
+      else if (state.statement) await openFinance.reviewed(items.map((it) => it.id)); // os deixados de fora não avisam de novo
       if (state.preview.account && state.accountId) { // da próxima vez este arquivo já vem com a conta certa
         await db.setMeta("import-accounts", { ...(await db.getMeta("import-accounts", {})), [state.preview.account]: state.accountId });
       }

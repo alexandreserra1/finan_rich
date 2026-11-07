@@ -162,3 +162,36 @@ func TestPendingAlerts(t *testing.T) {
 		t.Errorf("pendentes depois de piorar = %s", got)
 	}
 }
+
+// Open Finance: o que a busca automática trouxe e ainda não entrou vira um aviso;
+// limpar vale até chegar lançamento novo.
+func TestBankAlert(t *testing.T) {
+	today := time.Date(2026, 10, 15, 0, 0, 0, 0, time.UTC)
+	l := domain.Ledger{Transactions: []domain.Transaction{
+		{Meta: meta("imp-1"), Kind: domain.KindSaida, Description: "Uber", AmountCents: 2350, CategoryID: "x", Date: "2026-10-14"},
+	}}
+	if got := PendingAlerts(l, today, "imp-1"); len(got) != 0 {
+		t.Errorf("o que já entrou (neste ou em outro aparelho) não avisa: %+v", got)
+	}
+	got := PendingAlerts(l, today, "imp-3", "imp-1", "imp-2")
+	if len(got) != 1 || got[0].Kind != "bank-new" || got[0].Title != "2 lançamentos novos do banco" || got[0].Link != "/importar?banco=1" || got[0].Agent.ID != "otavio" {
+		t.Fatalf("aviso do banco = %+v", got)
+	}
+	if again := PendingAlerts(l, today, "imp-2", "imp-3"); len(again) != 1 || again[0].ID != got[0].ID {
+		t.Errorf("o ID não depende da ordem nem dos já importados: %+v", again)
+	}
+	v, _ := json.Marshal([]string{got[0].ID})
+	l.Prefs = []domain.Pref{{Meta: meta(domain.PrefAlertsCleared), Value: v}}
+	if left := PendingAlerts(l, today, "imp-2", "imp-3"); len(left) != 0 {
+		t.Errorf("limpo, não volta enquanto não chega lançamento novo: %+v", left)
+	}
+	if back := PendingAlerts(l, today, "imp-2", "imp-3", "imp-4"); len(back) != 1 || back[0].Title != "3 lançamentos novos do banco" {
+		t.Errorf("lançamento novo traz o aviso de volta: %+v", back)
+	}
+	if one := PendingAlerts(domain.Ledger{}, today, "imp-9"); len(one) != 1 || one[0].Title != "1 lançamento novo do banco" {
+		t.Errorf("singular = %+v", one)
+	}
+	if len(Alerts(domain.Ledger{}, today)) != 0 {
+		t.Error("sem busca do banco, nenhum aviso")
+	}
+}

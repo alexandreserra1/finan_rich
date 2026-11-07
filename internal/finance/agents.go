@@ -27,11 +27,11 @@ var Team = []Agent{
 	{"tito", "Tito", "Metas e reserva", "Um dia é uma ideia. Com um plano, pode virar uma data."},
 }
 
-// agentKinds diz quem avisa cada tipo de alerta. Otávio cuida do que vence e
-// das dívidas; Lia do orçamento, da divisão do salário e do gasto fora do padrão;
-// Tito das metas.
+// agentKinds diz quem avisa cada tipo de alerta. Otávio cuida do que vence, das
+// dívidas e do que chega do banco; Lia do orçamento, da divisão do salário e do
+// gasto fora do padrão; Tito das metas.
 var agentKinds = map[string]string{
-	"debt-due": "otavio", "debt-growing": "otavio",
+	"debt-due": "otavio", "debt-growing": "otavio", "bank-new": "otavio",
 	"bucket-over": "lia", "budget-near": "lia", "budget-over": "lia", "unusual": "lia",
 	"goal-late": "tito", "goal-done": "tito",
 }

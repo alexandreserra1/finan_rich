@@ -244,12 +244,19 @@ func RecurringDue(ledgerJSON, today string) string {
 }
 
 // Alerts devolve os avisos do sininho: os que a pessoa ainda não limpou.
-func Alerts(ledgerJSON, today string) string {
+// bankJSON: os IDs que a busca automática do Open Finance trouxe (vazio: nenhum).
+func Alerts(ledgerJSON, today, bankJSON string) string {
 	l, day, err := planInput(ledgerJSON, today)
 	if err != nil {
 		return reply(nil, err)
 	}
-	return reply(finance.PendingAlerts(l, day), nil)
+	var bank []string
+	if bankJSON != "" {
+		if err := json.Unmarshal([]byte(bankJSON), &bank); err != nil {
+			return reply(nil, err)
+		}
+	}
+	return reply(finance.PendingAlerts(l, day, bank...), nil)
 }
 
 // Briefings devolve o que Otávio, Tito e Lia têm a dizer hoje (Painel).

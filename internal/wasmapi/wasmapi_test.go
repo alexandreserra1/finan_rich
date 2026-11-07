@@ -137,7 +137,15 @@ func TestPlans(t *testing.T) {
 		t.Errorf("recorrentes: %+v", due)
 	}
 	var alerts struct{ OK []map[string]any }
-	json.Unmarshal([]byte(Alerts(withPlans, "2026-10-10")), &alerts)
+	json.Unmarshal([]byte(Alerts(withPlans, "2026-10-10", "")), &alerts)
+	var bank struct{ OK []map[string]any }
+	json.Unmarshal([]byte(Alerts(withPlans, "2026-10-10", `["imp-novo"]`)), &bank)
+	if len(bank.OK) != len(alerts.OK)+1 || bank.OK[len(bank.OK)-1]["kind"] != "bank-new" {
+		t.Errorf("aviso dos lançamentos do banco: %+v", bank)
+	}
+	if _, errMsg := decode(t, Alerts(withPlans, "2026-10-10", "{")); errMsg == "" {
+		t.Error("lista do banco inválida deveria dar erro")
+	}
 	var briefings struct{ OK []map[string]any }
 	json.Unmarshal([]byte(Briefings(withPlans, "2026-10-10")), &briefings)
 	if len(briefings.OK) == 0 || briefings.OK[0]["agent"] == nil {
