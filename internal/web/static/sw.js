@@ -34,6 +34,7 @@ const PRECACHE = [
   "/static/js/banknotes.js",
   "/static/js/charts.js",
   "/static/vendor/chartjs/chart.umd.min.js",
+  "/static/js/sqlite-worker.js", "/static/vendor/sqlite/sqlite3.js", "/static/vendor/sqlite/sqlite3.wasm",
 ];
 
 // Guarda cada arquivo, ignorando respostas redirecionadas (ex.: sessão expirada
