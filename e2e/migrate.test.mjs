@@ -233,8 +233,8 @@ try {
   watchErrors(fourth, errors);
   await fourth.goto(`${B}/lancamentos`);
   await fourth.waitForSelector("#db-wait .modal-panel", { timeout: 20000 });
-  await third.close();
-  await fourth.waitForSelector("text=Gravado na aba antiga", { timeout: 20000 });
+  await third.close(); // o WebKit só fecha a aba quando o laço acaba (até 16 s): a nova continua esperando
+  await fourth.waitForSelector("text=Gravado na aba antiga", { timeout: 45000 });
   ok(!(await fourth.$("#db-wait .modal-panel")), "aba suspensa e fechada (o celular descartou a aba): a nova abre com tudo");
 
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);
