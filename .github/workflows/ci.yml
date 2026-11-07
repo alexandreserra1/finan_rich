@@ -114,11 +114,11 @@ jobs:
           export $(cat ../finan_rich-chave/senhas.txt | sed 's/^ANDROID_/FINAN_/')
           cd android && ./gradlew assembleRelease --no-daemon
           "$(ls -d "$ANDROID_HOME"/build-tools/* | tail -1)/apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk | grep "CN=finan_rich"
-      - name: Tamanho do APK (falha acima de 12 MB)
+      - name: Tamanho do APK (falha acima de 18 MB; o SQLCipher do banco nativo ocupa uns 8)
         run: |
           size=$(stat -c %s mobile/android/app/build/outputs/apk/release/app-release.apk)
           echo "APK: $((size / 1024)) KB"
-          test "$size" -lt $((12 * 1024 * 1024))
+          test "$size" -lt $((18 * 1024 * 1024))
       - uses: actions/upload-artifact@v7
         with:
           name: finan_rich-android-teste

@@ -8,6 +8,9 @@
   "plugins": {
     "CapacitorHttp": {
       "enabled": true
+    },
+    "CapacitorSQLite": {
+      "androidIsEncryption": false
     }
   }
 }

@@ -11,7 +11,7 @@ no **pareamento**.
  ┌──────────────────────────────┐  /api/sync     ┌──────────────────────────┐
  │ telas + finance.wasm         │  Authorization │ devices: hash do token   │
  │ (dentro do app: abre sempre) │  Bearer <token>│ records (SQLite)         │
- │ IndexedDB: dados + fila      │ ─────────────▶ │                          │
+ │ SQLite: dados + fila         │ ─────────────▶ │                          │
  │ meta "server": url + token   │ ◀───────────── │ Consultor IA             │
  └──────────────────────────────┘                └──────────────────────────┘
 ```
@@ -36,6 +36,17 @@ Trocar a senha de acesso ou desligar o acesso pelo celular desconecta todos.
 
 O **Consultor IA** continua rodando no computador: no app, a aba abre a tela do consultor
 no navegador do celular (pede a senha de acesso na primeira vez).
+
+## Banco do app
+
+Os dados ficam num SQLite nativo do celular (plugin `@capacitor-community/sqlite`), com o mesmo
+SQL da web (`js/db-sqlite.js`). Na primeira abertura depois da atualização, o que estava no
+IndexedDB do WebView é copiado para ele e conferido; o IndexedDB fica como backup
+([ADR-002](decisions/ADR-002-sqlite-nos-aparelhos.md)). O `capacitor.config.json` desliga a
+criptografia do plugin (`androidIsEncryption: false`): ligada, ele cria uma chave no Keystore, e
+se o backup do Android restaurar o banco em outro aparelho sem essa chave, o plugin não inicia e
+o app fica sem banco. Os segredos (token do computador, chave da IA) continuam no cofre do
+sistema.
 
 ## Pareamento e segurança
 
@@ -231,7 +242,7 @@ preciso a conta de desenvolvedor (anual).
 - `e2e/app.test.mjs`: o fluxo do app (pareamento, sync com token, offline, consultor com uma
   IA falsa, salvar como nota) no Chromium.
 - Job `test`: `scripts/check-licenses.sh` (só dependências de código aberto).
-- Job `android`: compila o APK de release (R8 ligado; falha se passar de 12 MB) e o abre num emulador Android 14
+- Job `android`: compila o APK de release (R8 ligado; falha se passar de 18 MB) e o abre num emulador Android 14
   (`mobile/scripts/smoke-android.sh`): confere que a tela inicial aparece (WebView carregou
   as telas e o WebAssembly) e que não houve erro fatal.
 - Job `ios`: compila para o simulador.

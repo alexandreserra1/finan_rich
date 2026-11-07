@@ -34,12 +34,14 @@ Excel, CSV, PDF, OFX e a leitura de faturas são código nosso (sem bibliotecas)
 | Capacitor 8 (`core`, `android`, `ios`, `cli`) | casca nativa com WebView | MIT |
 | `@capacitor/app`, `filesystem`, `share`, `local-notifications` | links `finanrich://`, salvar/compartilhar arquivos, lembretes | MIT |
 | `@capgo/capacitor-native-biometric` | chave da IA no Keystore/Keychain e digital/rosto no bloqueio do app | MPL-2.0 |
+| `@capacitor-community/sqlite` 8.1 | banco SQLite nativo do app (no lugar do IndexedDB do WebView) | MIT |
+| SQLCipher (`net.zetetic:sqlcipher-android` no Android, `SQLCipher.swift` no iOS), ZIPFoundation (iOS) | o SQLite que o plugin usa por baixo (o app não liga a criptografia) e a cópia de bancos zipados (o app não usa) | BSD-3-Clause / MIT |
 | AndroidX (vem com o Capacitor) | base do app Android | Apache-2.0 |
 
 O leitor de QR usa a câmera do próprio WebView (`getUserMedia`) com o jsQR. Antes era o
 `@capacitor/barcode-scanner`, que traz o ML Kit do Google (fechado) e deixava o APK com
 38 MB; sem ele, e com o R8 (`minifyEnabled`/`shrinkResources`), o APK fica bem menor e o
-CI falha se passar de 12 MB.
+CI falha se passar de 18 MB (o banco nativo, com o SQLCipher, ocupa uns 8 MB).
 
 Ferramentas de montar o app (vêm com o `@capacitor/cli` e **não vão dentro do APK**): `glob`,
 `minimatch`, `rimraf` e `@isaacs/nonrecursive-glob-match` usam a BlueOak-1.0.0, licença

@@ -74,9 +74,9 @@ as regras em Go não mudaram.
 - **Tamanho na web:** são uns 586 KB a mais com gzip para baixar (uma vez, depois fica no
   cache). O banco abre em 55 a 178 ms nos testes.
 - **Tamanho no Android:** o plugin traz o SQLCipher, com bibliotecas nativas de 7,6 MB nas
-  quatro arquiteturas. O APK passaria de uns 8 MB para uns 16 MB, acima do limite de 12 MB do
-  CI. A escolha (tirar a arquitetura x86, comprimir, um APK por arquitetura ou subir o limite)
-  fica com o Alexandre antes de o app usar o motor nativo.
+  quatro arquiteturas. Pela estimativa, o APK passa de uns 8 MB para uns 16 MB. O limite do CI
+  subiu de 12 MB para 18 MB: ainda é um app pequeno, e as outras saídas (tirar a arquitetura
+  x86, um APK por arquitetura) ou não bastavam ou mudariam a publicação e o F-Droid.
 - **iOS:** o SQLCipher conta como criptografia para a regra de exportação da Apple. É preciso
   ver o `ITSAppUsesNonExemptEncryption` antes da App Store.
 - **Testes:**

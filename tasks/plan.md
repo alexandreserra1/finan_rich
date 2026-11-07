@@ -111,6 +111,10 @@ x86_64 fica para o emulador do CI), comprimir as bibliotecas no APK (`useLegacyP
 APK por arquitetura, ou subir o limite. Até a decisão, o plugin não vai para o commit, e o app
 continua no IndexedDB (o `db.js` só usa o motor nativo quando o plugin existe).
 
+**Decisão (07/11/2026):** subir o limite do CI para 18 MB. Ainda é um app pequeno, e é a única
+opção que não muda a publicação nem o F-Droid. O plugin entrou no app; o tamanho real sai no job
+`android` do CI.
+
 ### Ponto de controle A
 - [ ] números das tarefas 1 e 2 conferidos com o Alexandre (segue ou para).
 

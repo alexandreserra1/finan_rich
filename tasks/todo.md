@@ -4,7 +4,7 @@ Detalhes, critérios de aceite e riscos em [plan.md](plan.md).
 
 ## Fase 0: provas
 - [x] Tarefa 1: SQLite WebAssembly com OPFS funciona no Chromium e no WebKit (medir tamanho e tempo)
-- [ ] Tarefa 2: plugin nativo `@capacitor-community/sqlite` compila no Android e no iOS (falta decidir o tamanho do APK)
+- [ ] Tarefa 2: plugin nativo `@capacitor-community/sqlite` compila no Android e no iOS (limite do APK subiu para 18 MB; falta o CI confirmar)
 - [ ] Ponto de controle A: números conferidos com o Alexandre
 
 ## Fase 1: web
