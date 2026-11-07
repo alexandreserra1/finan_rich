@@ -340,6 +340,9 @@ expõe `POST /api/categorizar`, que recebe só descrições e tipos (sem valores
 
 ### `internal/store/` — banco de dados (SQLite)
 
+Por que SQLite com os registros em JSON, e não DuckDB ou NoSQL:
+[decisions/ADR-001-banco-de-dados.md](decisions/ADR-001-banco-de-dados.md).
+
 | Arquivo | Função |
 |---|---|
 | `store.go` | Abre o banco (WAL, chaves estrangeiras, uma conexão), aplica as migrations em ordem, utilitários `inTx` e `collect`. |

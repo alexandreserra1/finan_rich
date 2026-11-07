@@ -339,6 +339,7 @@ e2e/                testes no navegador: offline, sincronização entre aparelho
 
 - **Um executável só.** SQLite com driver em Go puro (`modernc.org/sqlite`, sem CGO), e
   templates, CSS e JS embutidos com `embed`. Compila para qualquer sistema sem dependências.
+  Por que não DuckDB nem NoSQL: [ADR-001](docs/decisions/ADR-001-banco-de-dados.md).
 - **Poucas dependências**: o driver SQLite e o gerador de QR code. O resto é stdlib: rotas com
   `http.ServeMux` e páginas com `html/template`. O único JavaScript é o do chat e o das
   configurações.
