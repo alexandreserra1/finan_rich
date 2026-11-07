@@ -144,7 +144,7 @@ try {
   });
   await save(page, tx("depois-apagar", "Depois de apagar"));
   await page.reload();
-  await page.waitForSelector("text=Depois de apagar", { timeout: 20000 });
+  await page.waitForSelector("text=Depois de apagar", { timeout: 60000 }); // o Worker de antes pode demorar a soltar o banco
   s = await state(page);
   ok(s.moved && s.tx.includes("Depois de apagar") && !s.backup.includes("Depois de apagar"),
     `apagar os dados do aparelho e gravar de novo: continua no SQLite, sem voltar para o IndexedDB (${JSON.stringify(s)})`);
@@ -240,8 +240,10 @@ try {
   watch(fourth);
   await fourth.goto(`${B}/lancamentos`);
   await fourth.waitForSelector("#db-wait .modal-panel", { timeout: 20000 });
-  await third.close(); // o WebKit só fecha a aba quando o laço acaba (até 16 s): a nova continua esperando
-  await fourth.waitForSelector("text=Gravado na aba antiga", { timeout: 45000 });
+  await third.close();
+  // No WebKit do CI, o Worker da aba fechada segurou o arquivo por mais de 30 s: a nova
+  // continua esperando, sem prazo, e abre quando ele solta.
+  await fourth.waitForSelector("text=Gravado na aba antiga", { timeout: 120000 });
   ok(!(await fourth.$("#db-wait .modal-panel")), "aba suspensa e fechada (o celular descartou a aba): a nova abre com tudo");
 
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);

@@ -102,8 +102,9 @@ as regras em Go não mudaram.
   anterior não abre mais o banco (`VersionError`). Por isso, a cópia para o SQLite nunca deixa
   para trás o que uma aba antiga gravou (coberto por teste).
 - **Abrir o SQLite logo depois de recarregar:** o Worker da página anterior pode ainda segurar
-  os arquivos do banco por um instante. O Worker novo tenta de novo por até 30 segundos (no CI,
-  às vezes passa de 5), só nesse caso (erro `NoModificationAllowedError` no Chromium,
-  `InvalidStateError` no WebKit), e a tela de espera aparece depois de 3 segundos.
+  os arquivos do banco por um instante. O Worker novo tenta de novo, sem prazo, só nesse caso (erro
+  `NoModificationAllowedError` no Chromium, `InvalidStateError` no WebKit), e a tela de espera
+  aparece depois de 3 segundos. No WebKit do CI, o Worker de uma aba fechada segurou o arquivo
+  por mais de 30 segundos; desistir só faria a pessoa recarregar e esperar de novo.
   Abre com `preserveOnInitFailure`: no padrão do pacote, uma falha ao abrir apaga a pasta do
   banco (achado ao investigar uma falha do CI, coberto por teste).

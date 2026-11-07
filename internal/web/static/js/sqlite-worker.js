@@ -14,16 +14,18 @@ import sqlite3InitModule from "../vendor/sqlite/sqlite3.js";
 const BUSY = ["NoModificationAllowedError", "InvalidStateError"];
 
 // openPool abre o banco no OPFS. preserveOnInitFailure: sem ela, uma falha ao abrir
-// apaga a pasta do banco (o padrão do pacote). Arquivo preso: tenta de novo por até 30 s.
-// Esperar é seguro: a aba já tem a trava (db.js), então quem segura o arquivo é o Worker
-// de uma página que já saiu, e ele vai soltar (no CI, às vezes passa de 5 s).
+// apaga a pasta do banco (o padrão do pacote). Arquivo preso: tenta de novo, sem prazo
+// (a tela de espera aparece depois de 3 s, em db.js). Esperar é seguro: a aba já tem a
+// trava, então quem segura o arquivo é o Worker de uma página que já saiu, e ele vai
+// soltar. No WebKit do CI, isso passou de 30 s; desistir só faria a pessoa recarregar e
+// esperar de novo.
 async function openPool(sqlite3) {
-  for (let i = 0; ; i++) {
+  for (let i = 1; ; i++) {
     try {
       return await sqlite3.installOpfsSAHPoolVfs({ name: "finan-rich", preserveOnInitFailure: true, forceReinitIfPreviouslyFailed: true });
     } catch (e) {
-      if (!BUSY.includes(e?.name) || i === 300) throw e;
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      if (!BUSY.includes(e?.name)) throw e;
+      await new Promise((resolve) => setTimeout(resolve, Math.min(100 * i, 1000)));
     }
   }
 }
