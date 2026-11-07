@@ -315,7 +315,8 @@ de sempre (`wasmapi.ImportPreviewStatement`): buscar de novo não duplica. No co
 é `POST /api/openfinance` (`internal/web/openfinance.go`, credenciais na tabela `settings`, o
 segredo nunca volta para a tela); no app com o Open Finance configurado, roda no
 `advisor.wasm` (`askapi.OpenFinance`) e o Client Secret fica no cofre do sistema
-(`js/openfinance.js`). Nada passa por servidor do finan_rich.
+(`js/openfinance.js`). Nada passa por servidor do finan_rich: cada instalação busca só os bancos
+de quem a usa, com a conta dessa pessoa na Pluggy ([OPEN-FINANCE.md](OPEN-FINANCE.md)).
 O programa do computador busca sozinho em segundo plano (`Server.WatchOpenFinance`, chamado
 pelo `cmd/finanrich`): a cada 6 horas, mesmo com o navegador fechado, desde o dia 1º do mês
 passado, e guarda o resultado na memória (`bankCache`, que vale para a mesma data e as mesmas

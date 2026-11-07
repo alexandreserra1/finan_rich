@@ -157,7 +157,7 @@ Na nuvem, o resumo das suas finanças é enviado ao provedor junto com cada perg
 
 Pelo **Meu Pluggy**, o Open Finance oficial chega ao finan_rich sem custo. Cada pessoa usa a
 própria conta, e os dados vão do banco para o seu computador ou celular sem passar por
-servidor do finan_rich.
+servidor do finan_rich (por que é assim: [docs/OPEN-FINANCE.md](docs/OPEN-FINANCE.md)).
 
 1. Crie uma conta grátis em [dashboard.pluggy.ai](https://dashboard.pluggy.ai), crie uma
    *Application* e copie o **Client ID** e o **Client Secret**.
