@@ -30,13 +30,14 @@ export async function forget() {
   await db.setMeta("pluggy", null);
 }
 
-// fetchAccounts devolve [{ name, statement }] desde from (AAAA-MM-DD).
-export async function fetchAccounts(from) {
+// fetchAccounts devolve [{ name, statement }] desde from (AAAA-MM-DD). auto: a
+// busca automática, que aceita o que o computador buscou em segundo plano.
+export async function fetchAccounts(from, auto = false) {
   const cfg = isApp ? await config() : null;
   if (!cfg) {
     const api = await endpoint("/api/openfinance");
     if (!api) throw new Error("configure o Open Finance em Ajustes");
-    const res = await fetch(api.url, { ...api.init, method: "POST", headers: { ...api.init.headers, "Content-Type": "application/json" }, body: JSON.stringify({ from }) });
+    const res = await fetch(api.url, { ...api.init, method: "POST", headers: { ...api.init.headers, "Content-Type": "application/json" }, body: JSON.stringify({ from, auto }) });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error || `o computador respondeu ${res.status}`);
     return body;
@@ -53,12 +54,15 @@ export async function fetchAccounts(from) {
   return r.ok;
 }
 
-// Busca sozinha: com a Rich aberta, a cada 6 horas busca no banco e guarda só os
-// IDs dos lançamentos novos; o sininho avisa (finance.PendingAlerts) e a pessoa
-// revisa como sempre. Nada entra sozinho. Os já revisados (importados ou deixados
-// de fora) não voltam a contar como novos neste aparelho.
+// Busca sozinha: com a Rich aberta, busca no banco e guarda só os IDs dos
+// lançamentos novos; o sininho avisa (finance.PendingAlerts) e a pessoa revisa
+// como sempre. Nada entra sozinho. Os já revisados (importados ou deixados de
+// fora) não voltam a contar como novos neste aparelho. O app com Open Finance
+// próprio vai à Pluggy a cada 6 horas; os demais perguntam ao computador a cada
+// meia hora, e ele responde com o que buscou em segundo plano (web/openfinance.go).
 const AUTO = "pluggy-auto"; // { at: última busca que deu certo, ids: novos, seen: já revisados }
 const EVERY = 6 * 3600_000; // a Pluggy atualiza com o banco algumas vezes por dia
+const ASK = 20 * 60_000; // perguntar ao computador não vai à Pluggy; abaixo da meia hora do main.js, para perguntar a cada volta
 let auto = { at: 0, ids: [], seen: [] };
 let running = null;
 
@@ -70,10 +74,12 @@ export const pending = () => auto.ids;
 // próxima chamada.
 export function autoFetch(ledger) {
   running ??= (async () => {
+    if (isSite) return;
     auto = { ...auto, ...(await db.getMeta(AUTO, {})) };
+    const own = isApp && !!(await config());
     const age = Date.now() - auto.at; // negativo: o relógio voltou; busca de novo em vez de esperar
-    if (isSite || (age >= 0 && age < EVERY) || !((isApp && (await config())) || (await endpoint("/api/openfinance")))) return;
-    const accounts = await fetchAccounts(defaultFrom());
+    if ((age >= 0 && age < (own ? EVERY : ASK)) || !(own || (await endpoint("/api/openfinance")))) return;
+    const accounts = await fetchAccounts(defaultFrom(), true);
     const seen = new Set(auto.seen);
     auto.ids = accounts.flatMap((a) => finance.importPreviewStatement(ledger, a.statement, {}).items)
       .filter((it) => it.selected && !seen.has(it.id)).map((it) => it.id);

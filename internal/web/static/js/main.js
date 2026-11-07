@@ -358,7 +358,7 @@ if (root) {
       render();
       if (changedDuringBoot) reloadAndRender();
       autoBank();
-      setInterval(autoBank, 30 * 60_000); // o prazo de 6 horas fica no openfinance.js
+      setInterval(autoBank, 30 * 60_000); // os prazos ficam no openfinance.js
     })
     .catch((err) => {
       if (device.isSite && err.kind === "login") return closeSession(); // a sessão venceu no meio da carga

@@ -176,7 +176,7 @@ try {
   const asked = pluggyAuths;
   await page.reload();
   await bankNotice();
-  ok(pluggyAuths === asked, `abrir de novo não busca outra vez antes de 6 horas, e o aviso continua (${pluggyAuths - asked} busca a mais)`);
+  ok(pluggyAuths === asked, `abrir de novo não busca outra vez tão cedo, e o aviso continua (${pluggyAuths - asked} busca a mais)`);
   await page.click("[data-bell]:visible");
   await page.click("#avisos a[href='/importar?banco=1']");
   await page.click("[data-bank='0']");
@@ -186,8 +186,9 @@ try {
   await page.click("[data-action=import]");
   await page.waitForSelector("td:has-text('Uber *Trip')");
   ok(!(await page.textContent("#avisos")).includes("do banco"), "depois de importar, o aviso do banco some");
-  // Relógio que voltou um dia (última busca "no futuro"): busca de novo em vez de
-  // esperar, e não avisa outra vez o que ficou de fora na revisão.
+  // Relógio que voltou um dia (última busca "no futuro"): pergunta de novo em vez
+  // de esperar; o computador responde com a busca que guardou (não vai à Pluggy
+  // antes de 6 horas), e o que ficou de fora na revisão não avisa outra vez.
   await page.evaluate(async () => {
     const db = await import("/static/js/db.js");
     await db.setMeta("pluggy-auto", { ...(await db.getMeta("pluggy-auto", {})), at: Date.now() + 86_400_000 });
@@ -196,8 +197,9 @@ try {
   await page.goto(`${B}/`);
   await page.waitForFunction(async () => (await (await import("/static/js/db.js")).getMeta("pluggy-auto", {})).at <= Date.now());
   await page.waitForTimeout(300); // o sininho redesenha logo depois de gravar
-  ok(pluggyAuths > before && !(await page.textContent("#avisos")).includes("do banco"), "relógio atrasado busca de novo, e o deixado de fora na revisão não volta a avisar");
+  ok(pluggyAuths === before && !(await page.textContent("#avisos")).includes("do banco"), `relógio atrasado pergunta de novo, o computador responde com o que guardou, e o deixado de fora na revisão não volta a avisar (${pluggyAuths - before} busca a mais na Pluggy)`);
   await fetchBank();
+  ok(pluggyAuths === before + 1, "Buscar do banco vai sempre à Pluggy, sem usar o guardado");
   ok(await row("Uber *Trip").locator(".status-importado").count() === 1, "buscar do banco de novo não duplica");
 
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);

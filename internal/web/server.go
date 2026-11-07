@@ -43,6 +43,7 @@ type Server struct {
 	assetsVersion   string // impressão digital de static/ e templates/
 	pairing         pairing
 	tailscaleURL    func(context.Context) string
+	bank            bankCache // Open Finance buscado em segundo plano
 }
 
 // Options configura o servidor.

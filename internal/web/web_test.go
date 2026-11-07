@@ -47,6 +47,7 @@ type app struct {
 	t   *testing.T
 	srv *httptest.Server
 	st  *store.Store
+	s   *Server
 }
 
 func newApp(t *testing.T, ollamaURL string) *app {
@@ -62,7 +63,7 @@ func newApp(t *testing.T, ollamaURL string) *app {
 	}
 	srv := httptest.NewServer(s.Routes())
 	t.Cleanup(srv.Close)
-	return &app{t: t, srv: srv, st: st}
+	return &app{t: t, srv: srv, st: st, s: s}
 }
 
 var noRedirect = &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}

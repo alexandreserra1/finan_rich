@@ -197,7 +197,8 @@ A versão do app fica em `mobile/android/app/version.properties`: o workflow de 
   sai do celular direto para `api.pluggy.ai` (CapacitorHttp, sem CORS). Sem credenciais no
   app, mas pareado, quem busca é o computador (`/api/openfinance`). Os lançamentos passam pela
   revisão da importação e caem na conta escolhida. Com o app aberto, a busca também roda
-  sozinha a cada 6 horas e o sininho avisa o que chegou para revisar.
+  sozinha (a cada 6 horas com credenciais no app; pareado, a cada meia hora pergunta ao
+  computador, que busca em segundo plano) e o sininho avisa o que chegou para revisar.
 - **Notificações do banco** (Importar → *Notificações do banco*, só Android): o serviço
   `BankNotificationService` (um `NotificationListenerService`) guarda o texto das notificações
   de uma lista fechada de apps de banco (Nubank, Itaú, Inter, C6, BB, Bradesco, Santander,

@@ -163,7 +163,7 @@ function renderUpload() {
     <section class="import-cols">
       <section class="panel">
         <h2>Direto do banco</h2>
-        <p class="muted">Com o Open Finance configurado em Ajustes (Meu Pluggy, grátis), os lançamentos vêm do banco sem arquivo. Com a Rich aberta, ela busca sozinha a cada 6 horas e avisa no sininho o que chegou.</p>
+        <p class="muted">Com o Open Finance configurado em Ajustes (Meu Pluggy, grátis), os lançamentos vêm do banco sem arquivo. A Rich busca sozinha a cada 6 horas (o programa do computador, mesmo com o navegador fechado) e avisa no sininho o que chegou.</p>
         <form data-form="openfinance" class="bank-form">
           <label class="field">Desde <input type="date" name="from" value="${openFinance.defaultFrom()}" required></label>
           <button type="submit" class="secondary">Buscar do banco</button>

@@ -316,9 +316,14 @@ de sempre (`wasmapi.ImportPreviewStatement`): buscar de novo não duplica. No co
 segredo nunca volta para a tela); no app com o Open Finance configurado, roda no
 `advisor.wasm` (`askapi.OpenFinance`) e o Client Secret fica no cofre do sistema
 (`js/openfinance.js`). Nada passa por servidor do finan_rich.
-Com a tela aberta (app ou navegador do computador), `openFinance.autoFetch` busca sozinho a
-cada 6 horas e guarda só os IDs dos lançamentos novos da revisão (meta `pluggy-auto`); o
-sininho mostra o aviso `bank-new` (`finance.PendingAlerts`, que tira os que já entraram,
+O programa do computador busca sozinho em segundo plano (`Server.WatchOpenFinance`, chamado
+pelo `cmd/finanrich`): a cada 6 horas, mesmo com o navegador fechado, desde o dia 1º do mês
+passado, e guarda o resultado na memória (`bankCache`, que vale para a mesma data e as mesmas
+credenciais). Com a tela aberta, `openFinance.autoFetch` pergunta ao computador a cada meia
+hora com `"auto": true` e recebe o guardado (só vai à Pluggy se ele tiver mais de 6 horas);
+"Buscar do banco" vai sempre à Pluggy. No app com Open Finance próprio, o `autoFetch` vai à
+Pluggy a cada 6 horas, só com o app aberto. A tela guarda só os IDs dos lançamentos novos da
+revisão (meta `pluggy-auto`); o sininho mostra o aviso `bank-new` (`finance.PendingAlerts`, que tira os que já entraram,
 mesmo por outro aparelho) e leva a `/importar?banco=1`. Nada entra sem a revisão; os que a
 pessoa deixou de fora não avisam de novo naquele aparelho.
 
