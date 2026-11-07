@@ -29,6 +29,10 @@ func main() {
 		for _, p := range proxy.Paths {
 			mux.Handle(p, handler)
 		}
+		download := site.Download()
+		for _, p := range site.DownloadPaths {
+			mux.Handle(p, download)
+		}
 		mux.Handle("/", pages)
 		handler = mux
 	}

@@ -7,12 +7,12 @@
 import * as db from "./db.js";
 import * as device from "./device.js";
 import "./lock.js"; // app do celular: pede digital/rosto ou senha para abrir
-import { onReminderTap, scheduleReminders } from "./native.js";
+import { newVersion, onReminderTap, scheduleReminders } from "./native.js";
 import * as finance from "./finance.js";
 import * as charts from "./charts.js";
 import * as bell from "./bell.js";
 import * as sync from "./sync.js";
-import { currentMonth, flash, newId, today, toString } from "./ui.js";
+import { currentMonth, flash, newId, toast, today, toString } from "./ui.js";
 import * as dashboard from "./pages/dashboard.js";
 import * as transactions from "./pages/transactions.js";
 import * as debts from "./pages/debts.js";
@@ -211,6 +211,7 @@ updateCrumb();
 // A IA dentro do celular (wllama) saiu em 11/2026: o modelo que alguém tenha
 // baixado (~470 MB, na pasta "cache" do armazenamento do app) é apagado aqui.
 if (device.isApp) navigator.storage?.getDirectory?.().then((dir) => dir.removeEntry("cache", { recursive: true })).catch(() => {});
+newVersion().then((v) => v && toast(`Versão nova da Rich (${v}): baixe em Ajustes.`));
 
 async function load(activate = false) {
   [ledger, server] = await Promise.all([db.loadLedger(), device.server()]);

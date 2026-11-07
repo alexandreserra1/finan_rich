@@ -153,6 +153,25 @@ try {
     return checks;
   });
   for (const [cond, msg] of checks) ok(cond, msg);
+
+  // Atualização do app (native.js): avisa só quando o site publica uma versão mais nova
+  // que a instalada, e fica quieto sem conexão.
+  const up = await browser.newPage({ bypassCSP: true }); // a página /offline do computador só fala com ele; o app fala com o site
+  watchErrors(up, errors);
+  let latest = { versionName: "1.12.0", versionCode: 11200 };
+  await up.route("https://finan-rich-ia.vercel.app/baixar/versao", (r) => (latest ? r.fulfill({ json: latest, headers: { "Access-Control-Allow-Origin": "*" } }) : r.abort()));
+  await up.goto(`${B}/offline`);
+  const newVersion = () => up.evaluate(async () => {
+    document.documentElement.dataset.app = "mobile"; // como no app
+    window.Capacitor = { getPlatform: () => "android", Plugins: { App: { getInfo: async () => ({ version: "1.11.0", build: "11100" }) } } };
+    return (await import("/static/js/native.js")).newVersion();
+  });
+  ok(await newVersion() === "1.12.0", "versão nova publicada: o app avisa (1.11.0 instalada, 1.12.0 no site)");
+  latest = { versionName: "1.11.0", versionCode: 11100 };
+  ok(await newVersion() === null, "já na última versão: não avisa");
+  latest = null;
+  ok(await newVersion() === null, "sem conexão: não avisa nem dá erro");
+
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);
 } catch (err) {
   ok(false, err.message);

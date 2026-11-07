@@ -18,7 +18,7 @@ ele. As regras de negócio são Go, compiladas também para WebAssembly e usadas
 | Intermediário da IA grátis (Vercel; ou Cloud Run) | `cmd/api`, `internal/proxy`, `vercel.json` (Vercel), `scripts/deploy-proxy.sh` (Cloud Run) ([docs/IA-GRATIS.md](docs/IA-GRATIS.md)) |
 | Site (as telas do app na internet) | `site/` (servidor e `privacidade.html`), modo `-site` do `tools/mobilebuild`; vai no mesmo programa da Vercel (`cmd/api -tags sitebundle`) |
 | Testes no navegador | `e2e/*.test.mjs` (Playwright) |
-| Lojas | `fastlane/metadata/android`, `fdroid/`, `docs/DISTRIBUICAO.md` |
+| Download do app (QR code) | `site/baixar.html`, `site/download.go`, `docs/DISTRIBUICAO.md` |
 
 Arquitetura: `docs/ARCHITECTURE.md`. App do celular: `docs/MOBILE.md`. Licenças: `docs/LICENSES.md`.
 
@@ -108,7 +108,7 @@ integral como instrução do subagente. Preserve o mesmo nome, escopo e formato 
 | `security-auditor` | ameaças, OWASP, segredos, auth (pareamento, tokens, CORS, acesso pela rede) |
 | `test-engineer` | lacunas de teste: Go, WebAssembly e e2e |
 | `web-performance-auditor` | carga das telas, service worker, tamanho do wasm |
-| `release-manager` | publicar versão e manter lojas (F-Droid/IzzyOnDroid) em dia |
+| `release-manager` | publicar versão e conferir o APK publicado no R2 |
 | `cleanup` | limpar restos de build, caches e Docker sem tocar em dados |
 
 Padrão de orquestração: **fan-out em paralelo com uma etapa de junção**. O `/ship` dispara

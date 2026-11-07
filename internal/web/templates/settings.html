@@ -154,7 +154,8 @@
 
 <section class="panel" id="app">
   <div class="panel-head"><div><h2>App do celular</h2><span class="muted small">O app Android guarda os dados, abre sem internet e sincroniza pelo Wi-Fi.</span></div></div>
-  <p class="small muted">Com o app da Rich instalado (Android), o celular guarda seus dados, abre sem internet e sincroniza com este computador quando estiver no mesmo Wi-Fi. Baixe o <code>.apk</code> em <a href="{{.App.Download}}" target="_blank" rel="noopener">Rich no GitHub</a>.</p>
+  <p class="small muted">Com o app da Rich instalado (Android), o celular guarda seus dados, abre sem internet e sincroniza com este computador quando estiver no mesmo Wi-Fi. Para baixar, aponte a câmera do celular para o QR code ou abra a <a href="{{.App.Download}}" target="_blank" rel="noopener">página de download</a>.</p>
+  <img src="{{.App.DownloadQR}}" alt="QR code para baixar o app" width="174" height="174">
   {{if not .App.Base}}
     <p class="notice warn">Primeiro ligue o <a href="#acesso">acesso pelo celular</a> acima: é por esse endereço que o app conversa com este computador.</p>
   {{else if .App.Code}}

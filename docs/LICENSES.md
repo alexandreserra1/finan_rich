@@ -1,8 +1,11 @@
-# Código aberto: o que vai dentro do finan_rich
+# Bibliotecas de código aberto dentro do finan_rich
 
-O finan_rich é [MIT](../LICENSE). Tudo o que vai dentro do programa do computador e do app
-do celular também é código aberto, sem SDK fechado, sem Google Play Services, sem
-rastreamento. O CI confere isso a cada mudança (`scripts/check-licenses.sh`): uma
+O código do finan_rich é fechado: todos os direitos reservados ([LICENSE](../LICENSE); o que
+foi publicado até 7/11/2026 continua MIT). Tudo o que vai dentro do programa do computador e
+do app do celular, porém, é código aberto, sem SDK fechado, sem Google Play Services, sem
+rastreamento. As licenças abaixo permitem usar essas bibliotecas num produto fechado, desde
+que os avisos delas acompanhem o programa (por isso esta lista e os arquivos LICENSE em
+`internal/web/static/vendor`). O CI confere isso a cada mudança (`scripts/check-licenses.sh`): uma
 dependência nova com licença fora da lista (MIT, BSD, ISC, Apache-2.0, MPL-2.0) faz o
 build falhar.
 
@@ -59,7 +62,6 @@ app (`--production`), por isso não as lista.
 
 ## Distribuição
 
-Como o app não tem nenhuma peça fechada, ele pode entrar no
-[F-Droid](https://f-droid.org) (que compila a partir do código-fonte) ou no
-[IzzyOnDroid](https://apt.izzysoft.de/fdroid/) (que usa o APK do GitHub Releases). Os dois
-exigem a chave de assinatura fixa (veja `docs/MOBILE.md`).
+O app Android é baixado pela página `/baixar` do site (QR code), com o APK no Cloudflare R2;
+veja [DISTRIBUICAO.md](DISTRIBUICAO.md). O F-Droid e o IzzyOnDroid só aceitam código aberto
+e não são mais usados.

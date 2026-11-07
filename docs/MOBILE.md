@@ -18,9 +18,9 @@ no **pareamento**.
 
 ## Como usar (para quem vai instalar)
 
-1. Baixe o arquivo `.apk` da [última versão](https://github.com/alexandreserra1/finan_rich/releases/latest)
-   no celular Android e abra-o (o Android pede para permitir a instalação de apps
-   fora da Play Store).
+1. No celular Android, abra <https://finan-rich-ia.vercel.app/baixar> (ou aponte a câmera
+   para o QR code dessa página ou dos Ajustes do computador), toque em **Baixar o app** e
+   abra o arquivo (o Android pede para permitir a instalação de apps fora da Play Store).
 2. No computador, abra o finan_rich → **Ajustes → Acesso pelo celular** e ligue o acesso
    (com uma senha), se ainda não estiver ligado.
 3. Em **Ajustes → App do celular**, clique em **Parear um celular**. Aparece um QR code e
@@ -120,13 +120,11 @@ Testar o fluxo do app sem Android: `make e2e` (inclui o `e2e/app.test.mjs`).
 ## Publicação
 
 O CI compila um **APK de teste** a cada push (artefato `finan_rich-android-teste` na
-execução do workflow). A release (`release.yml`) anexa o APK à página da versão:
-
-- **Com a chave do projeto** (recomendado): o APK sai assinado sempre com a mesma chave, e
-  cada versão nova instala **por cima** da anterior, mantendo os dados do celular.
-- **Sem a chave**: sai um APK de teste (`…_android-teste.apk`), assinado com uma chave
-  temporária. Para instalar uma versão nova é preciso desinstalar a anterior (os dados
-  voltam do computador ao parear de novo; só se perde o que ainda não tinha sincronizado).
+execução do workflow). A release (`release.yml`) assina o APK com a chave do projeto e o
+publica no Cloudflare R2, de onde a página `/baixar` do site (o QR code) e o aviso de versão
+nova do app o buscam ([DISTRIBUICAO.md](DISTRIBUICAO.md)). Com a mesma chave sempre, cada
+versão nova instala **por cima** da anterior, mantendo os dados do celular; sem a chave
+(secrets abaixo), a release falha em vez de publicar um APK que não atualizaria por cima.
 
 Para criar a chave (uma vez só; **guarde o arquivo e as senhas**, sem eles não dá para
 publicar atualizações):
@@ -148,7 +146,7 @@ secrets. Sem o `gh`, ele mostra o que colar em **GitHub → Settings → Secrets
 | `ANDROID_KEY_ALIAS` | `finan_rich` |
 | `ANDROID_KEY_PASSWORD` | em `finan_rich-chave/senhas.txt` |
 
-A versão do app fica em `mobile/android/app/version.properties`: o workflow de release (Actions → Release → Run workflow) atualiza o arquivo, faz o commit na main e cria a tag (`v1.6.0` → `versionName 1.6.0`, `versionCode 10600`). O F-Droid e o IzzyOnDroid leem a versão desse arquivo.
+A versão do app fica em `mobile/android/app/version.properties`: o workflow de release (Actions → Release → Run workflow) atualiza o arquivo, faz o commit na main e cria a tag (`v1.6.0` → `versionName 1.6.0`, `versionCode 10600`).
 
 ## Recursos do celular
 
@@ -219,8 +217,7 @@ A versão do app fica em `mobile/android/app/version.properties`: o workflow de 
   (`js/banknotes.js`), `importer.ParseNotification` (Go) separa compra, Pix e transferência
   de propaganda, saldo, fatura e compra negada; o que parece lançamento vai para a revisão da
   importação e sai do aparelho depois de importado. A pessoa autoriza em Ajustes do Android →
-  *Acesso a notificações*. A Play Store exige justificar esse acesso na publicação; o F-Droid
-  aceita.
+  *Acesso a notificações*. A Play Store exigiria justificar esse acesso na publicação.
 - **Consultor dentro do app**: `js/pages/advisor.js` usa `GET/POST /api/chat` com o token do
   aparelho; a resposta vem em SSE (no app, chega inteira ao final). Respostas podem ser
   salvas como nota.
@@ -249,7 +246,7 @@ preciso a conta de desenvolvedor (anual).
 
 ## Próximos passos
 
-- **F-Droid / IzzyOnDroid**: receita, textos e capturas prontos; veja
+- **Bucket do Cloudflare R2** para o download por QR code: passo a passo em
   [DISTRIBUICAO.md](DISTRIBUICAO.md).
-- **Play Store** (taxa única) e **App Store/TestFlight** (conta Apple anual): dependem das contas.
-- **Chave de assinatura fixa do APK** (veja *Publicação* acima): para atualizar por cima.
+- **Play Store** (taxa única) e **App Store/TestFlight** (conta Apple anual): dependem das
+  contas; fora do plano enquanto a regra for não gastar.

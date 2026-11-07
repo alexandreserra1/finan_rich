@@ -9,7 +9,7 @@ import { getMeta, setMeta, siteSession, SITE_IDLE_MS } from "./db.js";
 import * as device from "./device.js";
 
 // Mesmo endereço de llm.FreeProxyURL (um teste em Go confere).
-const SERVER = "https://finan-rich-ia.vercel.app";
+export const SERVER = "https://finan-rich-ia.vercel.app";
 // No site, o próprio endereço (é o mesmo programa); no app, o servidor.
 const base = () => (device.isSite ? location.origin : SERVER);
 const SCOPE = "openid email https://www.googleapis.com/auth/drive.appdata";

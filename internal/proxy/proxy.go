@@ -3,7 +3,7 @@
 // grátis (Groq, Gemini, Cerebras, OpenRouter, Cloudflare) com as chaves que
 // ficam só no servidor. Assim nenhuma chave vai dentro do app.
 //
-// Como o app é de código aberto, qualquer um acha o endereço. Por isso:
+// O código fica à vista no GitHub e o endereço vai dentro do app: qualquer um acha. Por isso:
 //   - só passa pedido com o formato do consultor (o prompt do finan_rich);
 //   - limite de chamadas por aparelho e por IP, por hora e por dia;
 //   - o modelo e o tamanho da resposta são escolhidos aqui, não por quem chama;

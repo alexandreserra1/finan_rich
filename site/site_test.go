@@ -3,6 +3,7 @@ package site
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"testing/fstest"
 )
@@ -24,7 +25,7 @@ func TestHandler(t *testing.T) {
 		h.ServeHTTP(rec, req)
 		return rec
 	}
-	for path, want := range map[string]string{"/": "<html>app</html>", "/lancamentos": "<html>app</html>", "/privacidade.html": "política", "/static/app.js": "console.log(1)"} {
+	for path, want := range map[string]string{"/": "<html>app</html>", "/lancamentos": "<html>app</html>", "/privacidade.html": "política", "/privacidade": "política", "/static/app.js": "console.log(1)"} {
 		if rec := get(path, ""); rec.Code != http.StatusOK || rec.Body.String() != want {
 			t.Errorf("%s = %d %q", path, rec.Code, rec.Body.String())
 		}
@@ -47,5 +48,27 @@ func TestHandler(t *testing.T) {
 func TestHandlerWithoutBundle(t *testing.T) {
 	if Handler() != nil {
 		t.Error("sem a etiqueta sitebundle o programa não serve site")
+	}
+}
+
+func TestDownload(t *testing.T) {
+	h := Download()
+	get := func(path string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "https://rich.test"+path, nil))
+		return rec
+	}
+	if rec := get("/baixar/android"); rec.Code != http.StatusServiceUnavailable {
+		t.Errorf("sem o bucket configurado = %d, quer 503 (não um link quebrado)", rec.Code)
+	}
+	apkBase = "https://pub-x.r2.dev"
+	t.Cleanup(func() { apkBase = "" })
+	for path, want := range map[string]string{"/baixar/android": "https://pub-x.r2.dev/android/finan_rich.apk", "/baixar/versao": "https://pub-x.r2.dev/android/latest.json"} {
+		if rec := get(path); rec.Code != http.StatusFound || rec.Header().Get("Location") != want {
+			t.Errorf("%s = %d %q, quer %q", path, rec.Code, rec.Header().Get("Location"), want)
+		}
+	}
+	if rec := get("/baixar/qr.png"); rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "image/png" || !strings.HasPrefix(rec.Body.String(), "\x89PNG") {
+		t.Errorf("QR code = %d %q", rec.Code, rec.Header().Get("Content-Type"))
 	}
 }

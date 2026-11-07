@@ -2,11 +2,29 @@
 // time (vencimentos, achados da semana, balanço das metas). No navegador, os lembretes não existem.
 import { getMeta, setMeta } from "./db.js";
 import { isApp, pairingLink } from "./device.js";
+import { SERVER } from "./google.js";
 import { cameraAvailable, scanQR } from "./qrscan.js";
 
 const plugins = () => window.Capacitor?.Plugins || {};
 
 export const canScan = cameraAvailable;
+
+// O APK mais recente: a Release publica no Cloudflare R2 e o site aponta para lá
+// (site/download.go). Abre no navegador do celular, que baixa e instala por cima.
+export const APP_DOWNLOAD = `${SERVER}/baixar/android`;
+
+// newVersion devolve o nome da versão nova do app Android, ou null (já está na última,
+// fora do Android ou sem conexão). Compara o versionCode, que só cresce.
+export async function newVersion() {
+  if (!isApp || window.Capacitor?.getPlatform?.() !== "android" || !plugins().App) return null;
+  try {
+    const [info, res] = await Promise.all([plugins().App.getInfo(), fetch(`${SERVER}/baixar/versao`, { cache: "no-store" })]);
+    const latest = res.ok ? await res.json() : null;
+    return latest && Number(latest.versionCode) > Number(info.build) ? String(latest.versionName) : null;
+  } catch {
+    return null;
+  }
+}
 
 // scanPairingQR abre a câmera e lê o QR code dos Ajustes do computador.
 // Devolve { url, code }, null se a pessoa cancelar, ou lança erro se o QR

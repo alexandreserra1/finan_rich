@@ -74,7 +74,7 @@ npx vercel@65.1.0 firewall publish --project finan-rich-ia
   finan_rich passar a cobrar, é preciso o plano Pro ou o Cloud Run (abaixo). A resposta pode
   chegar de uma vez em vez de aparecer aos poucos.
 
-## Proteções (o app é de código aberto: qualquer um acha o endereço)
+## Proteções (o código fica à vista e o endereço vai dentro do app: qualquer um acha)
 
 - Só passa pedido com o formato do consultor (o prompt do finan_rich) ou o teste de conexão.
 - Limite por aparelho (15 chamadas por hora, 40 por dia, perto de 10 perguntas) e por rede

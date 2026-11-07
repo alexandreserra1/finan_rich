@@ -28,13 +28,15 @@ func main() {
 	if err := web.ExportApp(dir, *site); err != nil {
 		log.Fatalf("mobilebuild: %v", err)
 	}
-	if *site { // o Google exige o link da política no site
-		b, err := os.ReadFile(filepath.Join("site", "privacidade.html"))
-		if err == nil {
-			err = os.WriteFile(filepath.Join(dir, "privacidade.html"), b, 0o644)
-		}
-		if err != nil {
-			log.Fatalf("mobilebuild: política de privacidade: %v", err)
+	if *site { // a política (o Google exige o link) e a página de baixar o app
+		for _, name := range []string{"privacidade.html", "baixar.html"} {
+			b, err := os.ReadFile(filepath.Join("site", name))
+			if err == nil {
+				err = os.WriteFile(filepath.Join(dir, name), b, 0o644)
+			}
+			if err != nil {
+				log.Fatalf("mobilebuild: %s: %v", name, err)
+			}
 		}
 	}
 	// O consultor sem computador (IA na nuvem) só vai no app do celular.

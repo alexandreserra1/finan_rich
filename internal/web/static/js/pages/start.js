@@ -25,7 +25,7 @@ export function render(ctx) {
       <div class="start-body">
         <span class="eyebrow">Seu próximo capítulo</span>
         <h2>Um bom lugar<br>pra fazer planos.</h2>
-        <p class="start-lead">Entre com a sua conta Google, sem senha nova. Grátis e de código aberto.</p>
+        <p class="start-lead">Entre com a sua conta Google, sem senha nova. Grátis.</p>
         ${ctx?.expired ? html`<p class="notice warn login-note">Você ficou um tempo sem usar, então saiu da conta para proteger seus dados. Entre de novo para continuar.</p>` : ""}
         <div class="start-google" hidden>
           <button type="button" class="google" data-action="google"><span class="g" aria-hidden="true">G</span><span data-label>Entrar com Google</span></button>
@@ -34,7 +34,7 @@ export function render(ctx) {
         <ul class="start-benefits">
           ${BENEFITS.map(([svg, text]) => html`<li>${svg}<span>${text}</span></li>`)}
         </ul>
-        <p class="small faint">Prefere instalar? Há o <a href="https://github.com/alexandreserra1/finan_rich/releases/latest" rel="noopener">app Android e o programa do computador</a>.</p>
+        <p class="small faint">Prefere instalar? Há o <a href="/baixar">app Android</a> e o <a href="https://github.com/alexandreserra1/finan_rich#instalar-no-computador" rel="noopener">programa do computador</a>.</p>
         <div class="start-foot"><a href="/">← Voltar ao site</a>
           <button type="button" class="iconbtn" data-theme-toggle aria-label="Trocar o tema"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path data-theme-icon d=""/></svg></button></div>
       </div>

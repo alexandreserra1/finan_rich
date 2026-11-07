@@ -208,9 +208,11 @@ Quem quer usar sem conta usa o programa do computador ou o app do celular. Detal
 
 ### No celular
 
-**App Android** (novo): baixe o `.apk` da [última versão](https://github.com/alexandreserra1/finan_rich/releases/latest),
-instale e, no computador, vá em **Ajustes → App do celular → Parear um celular**. Aponte a
-câmera para o QR code e confirme no app. O app abre sem internet, guarda os dados no
+**App Android**: abra **https://finan-rich-ia.vercel.app/baixar** no celular, ou aponte a câmera
+para o QR code dessa página (ou dos Ajustes do programa do computador, em *App do celular*),
+baixe e instale. Quando sai versão nova, o próprio app avisa. Para parear, no computador, vá
+em **Ajustes → App do celular → Parear um celular**. Aponte a câmera para o QR code e
+confirme no app. O app abre sem internet, guarda os dados no
 celular e sincroniza com o computador pelo Wi-Fi. Detalhes em [docs/MOBILE.md](docs/MOBILE.md).
 
 **Pelo navegador** (Android ou iPhone, sem instalar nada): o finan_rich roda no seu
@@ -385,15 +387,19 @@ git tag v1.0.0 && git push origin v1.0.0
 ```
 
 Ou pelo site: **Actions → Release → Run workflow**, informando a versão. O GitHub Actions
-roda os testes, cria a tag e o GoReleaser publica os executáveis em Releases. Em seguida o
-APK do Android é compilado e anexado à mesma versão (veja [docs/MOBILE.md](docs/MOBILE.md)
-para assiná-lo com a chave do projeto).
+roda os testes, cria a tag e o GoReleaser publica os executáveis do computador em Releases.
+Em seguida o APK do Android é compilado, assinado com a chave do projeto e publicado no
+Cloudflare R2, de onde a página `/baixar` e o aviso de versão nova do app o buscam (veja
+[docs/DISTRIBUICAO.md](docs/DISTRIBUICAO.md)).
 
 ## Licença
 
-[MIT](LICENSE): pode usar, modificar e distribuir livremente, inclusive comercialmente, mantendo o aviso de copyright.
+Todos os direitos reservados ([LICENSE](LICENSE)). O código fica à vista para consulta, mas
+copiar, modificar ou distribuir precisa de autorização por escrito. O app e o programa são
+grátis para usar. O código publicado antes de 7/11/2026 (até a v1.10.0) continua sob a
+licença MIT.
 
-Todas as dependências (do programa e do app do celular) também são código aberto; a lista
-e as licenças estão em [docs/LICENSES.md](docs/LICENSES.md), e o CI confere a cada mudança.
-Como o app chega ao celular sem pagar loja (IzzyOnDroid, F-Droid e iPhone pelo Safari):
+As bibliotecas que vão dentro do programa e do app são código aberto; a lista e as licenças
+estão em [docs/LICENSES.md](docs/LICENSES.md), e o CI confere a cada mudança. Como o app
+chega ao celular sem pagar loja (QR code e iPhone pelo Safari):
 [docs/DISTRIBUICAO.md](docs/DISTRIBUICAO.md).

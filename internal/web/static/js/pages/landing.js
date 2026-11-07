@@ -164,9 +164,9 @@ export function render() {
 
       <section class="lp-band lp-secure" id="seguranca"><div class="lp-section">
         <div class="lp-top"><div><p class="lp-label">Seus dados, do seu lado</p><h2 class="lp-title">Segurança que dá<br>para <em>conferir.</em></h2></div>
-          <p>Nada de “confie em nós”: o que protege seus dados está no código, aberto para qualquer pessoa ver.</p></div>
+          <p>Nada de “confie em nós”: o que protege seus dados está no código, à vista de qualquer pessoa.</p></div>
         <div class="lp-secgrid">
-          <article><b>Código aberto</b><p>Todo o código da Rich está no GitHub. Qualquer pessoa pode ler, conferir e apontar um erro.</p><a href="${REPO}" rel="noopener">Ver o código ${ARROW}</a></article>
+          <article><b>Código à vista</b><p>Todo o código da Rich está no GitHub. Qualquer pessoa pode ler, conferir e apontar um erro.</p><a href="${REPO}" rel="noopener">Ver o código ${ARROW}</a></article>
           <article><b>Dados no seu aparelho e no seu Drive</b><p>Os lançamentos ficam no celular, no computador ou numa pasta escondida do seu Google Drive. Nenhum servidor da Rich guarda.</p></article>
           <article><b>Banco sem passar a senha pela Rich</b><p>O Open Finance vai pelo Meu Pluggy, regulado pelo Banco Central, com a sua conta. Os dados vão do banco direto para você.</p></article>
           <article><b>Bloqueio e sessão curta</b><p>No celular, a Rich pede a digital ou o rosto ao abrir. No site, entra com Google e sai sozinha depois de 30 minutos parada.</p></article>
@@ -188,7 +188,7 @@ export function render() {
           <p>As mesmas contas em todo lugar. O app e o programa funcionam até sem internet.</p></div>
         <div class="lp-dlgrid">
           <a class="lp-dl" href="${LOGIN}"><b>Navegador</b><span>Entre com Google e use agora, sem instalar nada.</span>${ARROW}</a>
-          <a class="lp-dl" href="${REPO}/releases/latest" rel="noopener"><b>Android</b><span>Baixe o app (arquivo .apk) na página de versões do GitHub.</span>${ARROW}</a>
+          <a class="lp-dl" href="/baixar"><b>Android</b><span>Baixe o app pelo QR code ou direto no celular.</span>${ARROW}</a>
           <a class="lp-dl" href="${REPO}#instalar-no-computador" rel="noopener"><b>Mac, Windows e Linux</b><span>Instale o programa com um comando no terminal. A IA pode rodar no próprio computador.</span>${ARROW}</a>
         </div>
       </div></section>
@@ -205,8 +205,8 @@ export function render() {
     <footer class="lp-foot">
       <a class="lp-brand" href="/" aria-label="Rich, início">rich<span>✳</span></a>
       <nav class="lp-foot-links" aria-label="Rodapé"><a href="#recursos">Por que Rich?</a><a href="#time">Nosso time</a><a href="#seguranca">Segurança</a><a href="#duvidas">Dúvidas</a>
-        <a href="/privacidade.html">Privacidade</a><a href="${REPO}" rel="noopener">Código no GitHub</a><a href="${REPO}/issues" rel="noopener">Fale com a gente</a><a href="${LOGIN}">Entrar</a></nav>
-      <p>© 2026 Rich · Feito no Brasil · código aberto (MIT).<br>A Rich não é banco, não faz pagamentos e não movimenta dinheiro.</p>
+        <a href="/baixar">Baixar o app</a><a href="/privacidade.html">Privacidade</a><a href="${REPO}" rel="noopener">Código no GitHub</a><a href="${REPO}/issues" rel="noopener">Fale com a gente</a><a href="${LOGIN}">Entrar</a></nav>
+      <p>© 2026 Rich · Feito no Brasil · todos os direitos reservados.<br>A Rich não é banco, não faz pagamentos e não movimenta dinheiro.</p>
     </footer>
   </div>`;
 }

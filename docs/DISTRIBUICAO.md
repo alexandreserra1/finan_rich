@@ -1,79 +1,65 @@
 # Como o app chega ao celular (sem pagar loja)
 
-| Onde | Custo | Atualiza sozinho | Situação |
+| Onde | Custo | Atualiza | Situação |
 |---|---|---|---|
-| APK no [GitHub Releases](https://github.com/alexandreserra1/finan_rich/releases) | grátis | não (baixa de novo) | ✅ já funciona |
-| [IzzyOnDroid](https://apt.izzysoft.de/fdroid/) (no app F-Droid, Droid-ify, Neo Store) | grátis | sim | ⏳ falta a chave fixa e o pedido |
-| [F-Droid](https://f-droid.org) (repositório principal) | grátis | sim | ⏳ falta a chave fixa e o pedido |
-| iPhone pelo Safari (Tela de Início) | grátis | sim (é a versão do computador) | ✅ já funciona |
-| Play Store | US$ 25 uma vez | sim | depois |
-| App Store / TestFlight | US$ 99 por ano | sim | depois |
+| **QR code / página `/baixar` do site** (APK no Cloudflare R2) | grátis | o app avisa e baixa a versão nova | ✅ pronto; falta criar o bucket (abaixo) |
+| iPhone pelo Safari (Tela de Início) | grátis | sim (é o site) | ✅ já funciona |
+| Play Store | US$ 25 uma vez | sim | não planejado (sem gasto) |
+| App Store / TestFlight | US$ 99 por ano | sim | não planejado (sem gasto) |
 
-## Antes de tudo: a chave de assinatura fixa
+O código da Rich não é mais aberto (licença em [LICENSE](../LICENSE)), então o F-Droid e o
+IzzyOnDroid, que só aceitam código aberto, saíram. Decisão e alternativas em
+[ADR-003](decisions/ADR-003-download-por-qr-code.md).
 
-As lojas abertas só aceitam o APK assinado sempre com a mesma chave (sem ela, uma versão
-nova não instala por cima da antiga). Crie e cadastre nos secrets do GitHub uma vez só:
-veja *Publicação* em [MOBILE.md](MOBILE.md). A partir daí, cada release sai como
-`finan_rich_X.Y.Z_android.apk` (sem o `-teste`).
+## Android: QR code e página de download
 
-A versão do app fica em `mobile/android/app/version.properties`. **Publique sempre pelo
-botão** (Actions → Release → Run workflow): ele atualiza esse arquivo, faz o commit na
-main e cria a tag. As lojas leem a versão desse arquivo na tag.
+1. A pessoa aponta a câmera do celular para o QR code. Ele aparece na página
+   `https://finan-rich-ia.vercel.app/baixar` (aberta no computador) e nos Ajustes do programa
+   do computador (*App do celular*). O QR abre a mesma página no celular.
+2. No celular, **Baixar o app** busca o APK (`/baixar/android` redireciona para o R2).
+3. O Android pede, uma vez, para permitir instalar apps do navegador. Depois, **Instalar**.
 
-## IzzyOnDroid
+**Versões novas:** cada release publica o APK no R2 e, por último, o `android/latest.json`.
+Ao abrir, o app confere `/baixar/versao` e, se houver versão nova, avisa e mostra em Ajustes
+o botão **Baixar a versão X**, que abre o download no navegador. O Android instala por cima
+(mesma chave de assinatura) e os dados ficam.
 
-Ele pega o APK direto do GitHub Releases, então cada release nova chega aos usuários em
-cerca de um dia. Os textos e as capturas de tela vêm de `fastlane/metadata/android`
-(pt-BR e en-US).
+Código: `site/baixar.html` (a página), `site/download.go` (rotas `/baixar/android`,
+`/baixar/versao` e `/baixar/qr.png`), `newVersion` em `js/native.js` (o aviso no app) e o job
+`android` de `.github/workflows/release.yml` (publica no R2).
 
-1. Publique uma release com a chave fixa (passo acima).
-2. Abra um pedido em <https://gitlab.com/IzzyOnDroid/repo/-/issues> (conta grátis no
-   GitLab), com o modelo de *inclusion request*. Texto sugerido:
+### Criar o bucket no Cloudflare R2 (uma vez, grátis)
 
-   > **App:** finan_rich (`io.github.alexandreserra1.finanrich`)
-   > **Source:** https://github.com/alexandreserra1/finan_rich (MIT)
-   > **APK:** GitHub Releases, `finan_rich_<version>_android.apk`
-   > **Description:** Offline-first personal finance app for Brazil (Portuguese UI):
-   > expenses, debts, goals, statement import (OFX/CSV/PDF) and a local AI advisor. Data
-   > stays on the phone and syncs only with the user's own computer (LAN or Tailscale).
-   > **Libraries:** Capacitor (MIT), AndroidX (Apache-2.0), pdf.js and jsQR
-   > (Apache-2.0), capacitor-native-biometric (MPL-2.0, AndroidX Biometric); no Google Play
-   > Services, no trackers, no ads. License check runs in CI
-   > (`scripts/check-licenses.sh`).
-   > **Metadata:** Fastlane structure in `fastlane/metadata/android` (pt-BR, en-US).
-   > **Permissions:** INTERNET (sync with the user's computer), CAMERA (scan the pairing
-   > QR code), the notification permissions added by @capacitor/local-notifications
-   > (offline debt due-date reminders), and an optional NotificationListenerService that
-   > the user enables manually: it reads only notifications from a fixed list of Brazilian
-   > bank apps to suggest transactions, and the text never leaves the phone.
+O plano grátis guarda 10 GB e o download não tem custo nem limite de tráfego.
 
-3. Responda às perguntas que aparecerem no pedido (costuma levar de dias a poucas semanas).
+1. Crie uma conta grátis em <https://dash.cloudflare.com> e abra **R2 Object Storage**
+   (o Cloudflare pede um cartão para ligar o R2, mas o plano grátis não cobra).
+2. **Create bucket**, nome `finan-rich` (ou outro).
+3. No bucket, **Settings → Public access → R2.dev subdomain → Allow**. Copie o endereço
+   (`https://pub-….r2.dev`) e me mande: ele não é segredo, vai em `site/download.go`.
+4. Em **R2 → Manage API tokens → Create API token**, permissão *Object Read & Write*, só
+   nesse bucket. Guarde o *Access Key ID* e o *Secret Access Key* (a chave nunca no chat).
+5. No GitHub, **Settings → Secrets and variables → Actions**, crie os secrets:
+   `R2_ACCOUNT_ID` (o *Account ID* do painel do R2), `R2_BUCKET` (o nome do bucket),
+   `R2_ACCESS_KEY_ID` e `R2_SECRET_ACCESS_KEY`.
 
-## F-Droid
+Sem esses secrets, a Release falha na etapa do APK (para não publicar pela metade). O
+endereço `r2.dev` tem limite de pedidos por segundo, folgado para downloads; com um domínio
+próprio no Cloudflare, dá para trocar por `download.<domínio>`.
 
-O F-Droid compila o app a partir do código, no servidor deles, e assina com a chave
-deles. A receita está em [`fdroid/io.github.alexandreserra1.finanrich.yml`](../fdroid/io.github.alexandreserra1.finanrich.yml)
-e o workflow **F-Droid** (`.github/workflows/fdroid.yml`) roda os mesmos comandos a cada
-mudança, para a gente saber antes deles se a receita quebrou.
+### A verificação de desenvolvedor do Google
 
-1. Publique a versão que está na receita (`versionName`/`commit`); se for outra, ajuste os
-   quatro campos de versão da receita.
-2. Faça um fork de <https://gitlab.com/fdroid/fdroiddata>, copie a receita para
-   `metadata/io.github.alexandreserra1.finanrich.yml` e abra o merge request (o modelo
-   deles pede para confirmar que o app é livre e sem rastreamento).
-3. Depois de aceito, o F-Droid confere as tags novas (`UpdateCheckMode: Tags`) e publica
-   as versões seguintes sozinho.
-
-A IA dentro do celular (wllama, que o F-Droid não aceitava por vir compilado do npm) saiu em
-11/2026: o APK do F-Droid e o do GitHub agora levam o mesmo conteúdo.
-
-Observação: como o F-Droid assina com a chave deles, quem instalou pelo F-Droid não
-atualiza com o APK do GitHub (e vice-versa). Para unificar, dá para tornar o build
-reproduzível e o F-Droid passa a publicar o nosso APK (campo `Binaries:` da receita).
+Desde 30/09/2026, no Brasil, o Android passou a exigir desenvolvedor verificado para apps
+de lojas participantes; em 2027 a regra chega a todos os apps em celulares certificados.
+Sem a verificação (US$ 25 e documento com foto, no Android Developer Console), quem instalar
+o APK pode cair num "fluxo avançado": ligar o modo desenvolvedor, reiniciar o celular e
+esperar 24 horas. A escolha foi não gastar (ADR-003). Caminhos grátis quando isso valer:
+o site pelo navegador, que vira ícone na tela inicial e não passa por essa regra, e a conta
+grátis de distribuição limitada (até 20 aparelhos, para testes).
 
 ## Computador: Homebrew, Scoop e winget
 
-Todos gratuitos e de código aberto. Este repositório serve de *tap* do Homebrew
+Todos gratuitos. Este repositório serve de *tap* do Homebrew
 (`Casks/`) e de *bucket* do Scoop (`bucket/`): o GoReleaser atualiza os dois a cada release
 e o workflow **Pacotes** instala, abre e desinstala nos três sistemas para conferir.
 

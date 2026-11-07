@@ -55,7 +55,7 @@ homebrew_casks:
     commit_msg_template: "Homebrew: finan_rich {{ .Tag }}"
     homepage: https://github.com/alexandreserra1/finan_rich
     description: Finanças pessoais offline, com seus dados no seu computador
-    license: MIT
+    license: Freeware
     binaries: [finanrich]
     hooks:
       post:
@@ -76,7 +76,7 @@ scoops:
     commit_msg_template: "Scoop: finan_rich {{ .Tag }}"
     homepage: https://github.com/alexandreserra1/finan_rich
     description: Finanças pessoais offline, com seus dados no seu computador
-    license: MIT
+    license: Freeware
     shortcuts: [["finanrich.exe", "finan_rich", "", "icon.ico"]]
 
 # winget (Windows): manda um pedido ao repositório da Microsoft. Só liga com o
@@ -86,7 +86,7 @@ winget:
     publisher: alexandreserra1
     package_identifier: alexandreserra1.finan_rich
     short_description: Finanças pessoais offline, com seus dados no seu computador
-    license: MIT
+    license: Freeware
     homepage: https://github.com/alexandreserra1/finan_rich
     publisher_url: https://github.com/alexandreserra1
     release_notes_url: https://github.com/alexandreserra1/finan_rich/releases/tag/{{ .Tag }}

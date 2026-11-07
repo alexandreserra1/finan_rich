@@ -88,6 +88,17 @@ try {
   // Política de privacidade (o Google exige o link).
   const privacy = await page.request.get(`${SITE}/privacidade.html`);
   ok(privacy.ok() && /drive\.appdata/.test(await privacy.text()), "política de privacidade publicada");
+  // Página de baixar o app (o QR code leva a ela), aberta sem login.
+  const dl = await browser.newPage();
+  await dl.goto(`${SITE}/baixar`);
+  const qr = await dl.request.get(`${SITE}/baixar/qr.png`);
+  const qrShown = await dl.$eval('img[src="/baixar/qr.png"]', (img) => img.complete && img.naturalWidth > 0).catch(() => false);
+  ok((await dl.textContent("h1")) === "Baixe a Rich" && qrShown && qr.headers()["content-type"] === "image/png",
+    "página /baixar sem login, com o QR code que a abre no celular");
+  const apk = await dl.request.get(`${SITE}/baixar/android`, { maxRedirects: 0 });
+  await dl.close();
+  ok(apk.status() === 503 || (apk.status() === 302 && /\/android\/finan_rich\.apk$/.test(apk.headers().location)),
+    `baixar o app: leva ao APK, ou avisa que ainda não está no ar (${apk.status()})`);
 
   // Segurança: a página do site só fala https (nada de http para a rede local).
   const csp = await page.getAttribute('meta[http-equiv="Content-Security-Policy"]', "content");

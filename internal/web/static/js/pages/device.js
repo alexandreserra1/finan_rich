@@ -9,7 +9,7 @@ import * as openFinance from "../openfinance.js";
 import * as lock from "../lock.js";
 import { resetChat } from "./advisor.js";
 import * as sync from "../sync.js";
-import { canScan, hasReminders, remindersEnabled, scanPairingQR, setRemindersEnabled } from "../native.js";
+import { APP_DOWNLOAD, canScan, hasReminders, newVersion, remindersEnabled, scanPairingQR, setRemindersEnabled } from "../native.js";
 import { html, toString } from "../ui.js";
 import { pageHead } from "./dashboard.js";
 
@@ -222,6 +222,8 @@ export function render({ server, params, ledger }) {
       ${themeCards(window.finanTheme?.get() || "auto")}
     </section>
 
+    <section class="panel" id="versao" data-new-version hidden></section>
+
     ${googleSection()}
 
     ${device.isSite ? "" : html`<section class="panel" id="parear">
@@ -300,6 +302,13 @@ export async function startSolo(ctx, to) {
 }
 
 export function bind(root, ctx) {
+  newVersion().then((v) => {
+    const box = root.querySelector("[data-new-version]");
+    if (!v || !box) return;
+    box.innerHTML = toString(html`${head(`Versão nova da Rich: ${v}`, "Baixa pelo navegador do celular e instala por cima, sem perder os dados.")}
+      <a class="button" href="${APP_DOWNLOAD}" target="_blank" rel="noopener">Baixar a versão ${v}</a>`);
+    box.hidden = false;
+  });
   if (hasReminders()) remindersEnabled().then((on) => { if (on !== remindersOn) { remindersOn = on; ctx.rerender(); } });
   root.querySelector('[data-action="scan"]')?.addEventListener("click", async () => {
     try {

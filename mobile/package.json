@@ -2,7 +2,7 @@
   "name": "finan-rich-mobile",
   "private": true,
   "description": "App do finan_rich para Android e iOS (Capacitor), com os dados no celular e sincronização com o computador.",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "scripts": {
     "www": "cd .. && go generate ./internal/web && go run ./tools/mobilebuild mobile/www",
     "sync": "npm run www && cap sync",

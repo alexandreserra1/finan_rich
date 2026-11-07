@@ -226,7 +226,7 @@ aparelho                                      servidor
 | `.gitignore` | Ignora o `.wasm` gerado, `dist/`, bancos locais, `node_modules`. |
 | `.dockerignore` | Deixa fora da imagem Docker o que não é código Go (`mobile/`, `node_modules`). |
 | `mobile/` | App Android (Capacitor). Explicado em [MOBILE.md](MOBILE.md). |
-| `LICENSE` | Licença MIT. |
+| `LICENSE` | Todos os direitos reservados (código à vista; até 7/11/2026, MIT). |
 | `README.md` | Como instalar, usar e desenvolver. |
 | `docs/` | Esta documentação e o roadmap. |
 

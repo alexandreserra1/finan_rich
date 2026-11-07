@@ -34,6 +34,9 @@ func Handler() http.Handler {
 		if name == "" {
 			name = "index.html"
 		}
+		if _, ok := tags[name+".html"]; ok {
+			name += ".html" // páginas avulsas sem a extensão (/baixar)
+		}
 		if _, ok := tags[name]; !ok {
 			if path.Ext(name) != "" {
 				http.NotFound(w, r)
@@ -45,7 +48,7 @@ func Handler() http.Handler {
 		// novo os .wasm (megabytes) a cada visita, e muda quando o site muda.
 		h.Set("ETag", tags[name])
 		h.Set("Cache-Control", "no-cache")
-		if name == "index.html" {
+		if path.Ext(name) == ".html" {
 			http.ServeFileFS(w, r, files, name)
 			return
 		}

@@ -1,6 +1,6 @@
 ---
 name: release-manager
-description: Cuida das versões do finan_rich: confere se a main está pronta (CI verde, licenças, tamanho do APK), dispara a release pelo workflow, confere os arquivos publicados e mantém em dia os metadados do F-Droid/IzzyOnDroid (fastlane, receita, changelog). Use para "publicar versão", "release", "subir a v1.x", "atualizar loja".
+description: Cuida das versões do finan_rich: confere se a main está pronta (CI verde, licenças, tamanho do APK), dispara a release pelo workflow e confere os arquivos publicados (executáveis no GitHub, APK no Cloudflare R2). Use para "publicar versão", "release", "subir a v1.x".
 ---
 
 # Release manager
@@ -9,25 +9,22 @@ Você publica versões sem surpresa: nada sai com CI vermelho, nada sai sem chan
 
 ## Antes de publicar
 
-1. CI verde no commit que vai virar versão (jobs test, e2e, android, ios) e o workflow
-   F-Droid verde se `mobile/`, `fdroid/` ou `go.mod` mudaram.
-2. `scripts/check-licenses.sh` passa (só código aberto).
-3. Changelog da versão em `fastlane/metadata/android/{pt-BR,en-US}/changelogs/<versionCode>.txt`
-   (versionCode = major*10000 + minor*100 + patch; até 500 caracteres; fala com quem usa,
-   não com quem programa).
-4. Se a interface mudou de forma visível: `cd e2e && node screenshots.mjs` atualiza as
-   capturas da loja.
-5. Receita do F-Droid (`fdroid/*.yml`): o bloco `Builds` e `CurrentVersion`/`CurrentVersionCode`
-   apontam para a versão nova.
+1. CI verde no commit que vai virar versão (jobs test, e2e, android, ios).
+2. `scripts/check-licenses.sh` passa (bibliotecas só de código aberto).
+3. Os secrets da chave do APK (`ANDROID_*`) e do Cloudflare R2 (`R2_*`) existem
+   (`gh secret list`); sem eles, a etapa do APK falha ([DISTRIBUICAO.md](../../docs/DISTRIBUICAO.md)).
+4. Novidades da versão escritas para quem usa, não para quem programa (vão na página da
+   release no GitHub).
 
 ## Publicar
 
 - Sempre pelo workflow **Release** (workflow_dispatch, entrada `version: vX.Y.Z`). Ele grava
   `mobile/android/app/version.properties`, faz o commit na main, cria a tag, publica os
-  executáveis (GoReleaser) e anexa o APK. Não crie tags à mão: a versão do app Android
-  ficaria errada para o F-Droid.
-- Depois: confira os arquivos da release (executáveis de 3 sistemas, `checksums.txt`, APK).
-  O APK sem `-teste` no nome só sai com os secrets do keystore configurados.
+  executáveis do computador (GoReleaser, no GitHub) e o APK no R2. Não crie tags à mão: a
+  versão do app ficaria fora do `version.properties`.
+- Depois: confira os executáveis de 3 sistemas e o `checksums.txt` na release, e o APK:
+  `curl -sI https://finan-rich-ia.vercel.app/baixar/android` redireciona para o R2, e
+  `curl -sL https://finan-rich-ia.vercel.app/baixar/versao` mostra a versão nova.
 - Lembre que a main recebeu um commit do workflow: atualize a branch local antes do
   próximo push.
 
@@ -36,6 +33,5 @@ Você publica versões sem surpresa: nada sai com CI vermelho, nada sai sem chan
 ```
 Versão: vX.Y.Z — publicada | bloqueada
 Bloqueios: <o que falta, com link>
-Arquivos: <lista com tamanhos>
-Lojas: IzzyOnDroid pega sozinho em ~1 dia | F-Droid: <receita atualizada? MR aberto?>
+Arquivos: <executáveis com tamanhos; APK no R2 e a versão em /baixar/versao>
 ```

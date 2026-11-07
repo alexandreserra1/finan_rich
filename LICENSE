@@ -1,21 +1,15 @@
-MIT License
+Copyright (c) 2026 alexandreserra1. Todos os direitos reservados.
 
-Copyright (c) 2026 alexandreserra1
+O código do finan_rich (Rich) está publicado para consulta. Poder ler o código
+não dá permissão para copiar, modificar, distribuir, publicar, sublicenciar ou
+vender qualquer parte dele, nem para usá-lo em outro produto, sem autorização
+por escrito do autor. O app e o programa podem ser baixados e usados de graça,
+nas versões publicadas pelo autor.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Todo o código publicado antes desta mudança de licença (7 de novembro de 2026),
+inclusive as versões até a v1.10.0, foi distribuído sob a licença MIT e continua
+sob ela para quem o recebeu.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+As bibliotecas de terceiros que acompanham o programa e o app mantêm as próprias
+licenças, listadas em docs/LICENSES.md e nos arquivos LICENSE de cada pasta em
+internal/web/static/vendor.

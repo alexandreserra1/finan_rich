@@ -34,8 +34,8 @@ jobs:
           [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Versão inválida: $VERSION (use vX.Y.Z)"; exit 1; }
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Grava a versão do app Android no código (o F-Droid e o IzzyOnDroid
-          # leem daqui) e marca esse commit com a tag.
+          # Grava a versão do app Android no código (o build.gradle lê daqui) e
+          # marca esse commit com a tag.
           v="${VERSION#v}"; IFS=. read -r major minor patch <<< "$v"
           props=mobile/android/app/version.properties
           sed -i -e "s/^versionName=.*/versionName=$v/" -e "s/^versionCode=.*/versionCode=$((major * 10000 + minor * 100 + patch))/" "$props"
@@ -54,7 +54,8 @@ jobs:
           # Opcional: abre o pedido no winget (ver docs/DISTRIBUICAO.md).
           WINGET_GITHUB_TOKEN: ${{ secrets.WINGET_GITHUB_TOKEN }}
 
-  # App Android: compila e anexa o .apk à mesma release.
+  # App Android: compila e publica o .apk no Cloudflare R2 (não no GitHub). A página
+  # /baixar do site (o QR code) e o aviso de versão nova do app apontam para lá.
   android:
     needs: release
     runs-on: ubuntu-latest
@@ -88,18 +89,31 @@ jobs:
           npx cap sync android
           export FINAN_VERSION="${TAG#v}"
           cd android
-          if [ -n "$KEYSTORE_BASE64" ]; then
-            # Assinado com a chave do projeto: atualiza por cima da versão anterior.
-            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/finan.jks"
-            FINAN_KEYSTORE_FILE="$RUNNER_TEMP/finan.jks" ./gradlew assembleRelease --no-daemon
-            cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/finan_rich_${FINAN_VERSION}_android.apk"
-          else
-            # Sem a chave (secrets não configurados): APK de teste, assinado
-            # com a chave de depuração.
-            ./gradlew assembleRelease --no-daemon
-            cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/finan_rich_${FINAN_VERSION}_android-teste.apk"
-          fi
-      - name: Anexa à release
+          # Só com a chave do projeto: assinado com outra, o app não atualiza por cima.
+          [ -n "$KEYSTORE_BASE64" ] || { echo "Faltam os secrets ANDROID_* (chave de assinatura; veja docs/MOBILE.md)"; exit 1; }
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/finan.jks"
+          FINAN_KEYSTORE_FILE="$RUNNER_TEMP/finan.jks" ./gradlew assembleRelease --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/finan_rich.apk"
+      - name: Publica no Cloudflare R2
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "$TAG" "$RUNNER_TEMP"/finan_rich_*.apk --clobber
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          # O R2 não aceita as somas de verificação que o aws-cli manda por padrão.
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          [ -n "$R2_ACCOUNT_ID" ] && [ -n "$R2_BUCKET" ] && [ -n "$AWS_ACCESS_KEY_ID" ] || { echo "Faltam os secrets R2_* (veja docs/DISTRIBUICAO.md)"; exit 1; }
+          # A mesma conta do build.gradle (a versão vem da tag).
+          name="${TAG#v}"; IFS=. read -r major minor patch <<< "$name"; code=$((major * 10000 + minor * 100 + patch))
+          apk="$RUNNER_TEMP/finan_rich.apk"
+          put() { aws s3 cp --endpoint-url "https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com" "$@"; }
+          type=application/vnd.android.package-archive
+          put "$apk" "s3://$R2_BUCKET/android/finan_rich_$name.apk" --content-type "$type"
+          put "$apk" "s3://$R2_BUCKET/android/finan_rich.apk" --content-type "$type" --cache-control no-cache \
+            --content-disposition 'attachment; filename="finan_rich.apk"'
+          # Por último: o app só vê a versão nova quando o APK dela já está lá.
+          printf '{"versionName":"%s","versionCode":%s,"sha256":"%s"}\n' "$name" "$code" "$(sha256sum "$apk" | cut -d' ' -f1)" > "$RUNNER_TEMP/latest.json"
+          put "$RUNNER_TEMP/latest.json" "s3://$R2_BUCKET/android/latest.json" --content-type application/json --cache-control no-cache

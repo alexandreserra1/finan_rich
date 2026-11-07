@@ -30,7 +30,7 @@ const (
 	pairingAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // sem 0/O e 1/I, fáceis de confundir
 	pairingLen      = 8
 	appScheme       = "finanrich" // links finanrich://parear abrem o app
-	appDownloadURL  = "https://github.com/alexandreserra1/finan_rich/releases/latest"
+	appDownloadURL  = "https://finan-rich-ia.vercel.app/baixar"
 )
 
 // pairing guarda o código ativo (só um por vez, só em memória).
@@ -234,7 +234,7 @@ func (s *Server) pairingView(ctx context.Context, base string) (map[string]any, 
 	if err != nil {
 		return nil, err
 	}
-	view := map[string]any{"Devices": devices, "Download": appDownloadURL, "Base": base}
+	view := map[string]any{"Devices": devices, "Download": appDownloadURL, "DownloadQR": qrDataURI(appDownloadURL), "Base": base}
 	if code, expires, ok := s.pairing.active(time.Now()); ok && base != "" {
 		link := pairURL(base, code)
 		view["Code"] = formatCode(code)
