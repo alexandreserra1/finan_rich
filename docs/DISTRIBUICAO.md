@@ -45,6 +45,12 @@ Vercel divide 100 GB por mês entre todos os projetos (ADR-003).
 4. No GitHub, **Settings → Secrets and variables → Actions**, crie os secrets
    `CLOUDFLARE_ACCOUNT_ID` e `CLOUDFLARE_API_TOKEN`.
 
+Antes de publicar, rode **Actions → Diagnóstico do Cloudflare → Run workflow**. Ele
+aponta secrets ausentes, espaços, quebras de linha e caracteres invisíveis, sem mostrar
+os valores. Depois consulta os projetos Pages, sem criar nem publicar nada. Uma lista
+vazia é normal antes da primeira publicação. Essa consulta confirma acesso de leitura,
+não a permissão de escrita. A Release faz a mesma checagem antes de compilar ou criar tag.
+
 A primeira Release cria o projeto `finan-rich-app` e mostra no log o endereço
 (`https://finan-rich-app.pages.dev`, ou outro, se o nome estiver ocupado). Esse endereço vai
 em `apkBase` (`site/download.go`); só então `/baixar/android` passa a baixar. Sem os

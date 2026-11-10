@@ -15,7 +15,14 @@ permissions:
   contents: write
 
 jobs:
+  cloudflare:
+    uses: ./.github/workflows/cloudflare.yml
+    secrets:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
   release:
+    needs: cloudflare
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

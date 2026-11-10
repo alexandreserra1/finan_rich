@@ -20,6 +20,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
+      - name: Testa o diagnóstico do Cloudflare sem secrets reais
+        run: node --test scripts/check-cloudflare.test.mjs
       - name: Gera as regras para o navegador (WebAssembly)
         run: go generate ./internal/web
       - name: Formatação
