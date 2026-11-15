@@ -12,7 +12,7 @@ import * as finance from "./finance.js";
 import * as charts from "./charts.js";
 import * as bell from "./bell.js";
 import * as sync from "./sync.js";
-import { currentMonth, flash, newId, toast, today, toString } from "./ui.js";
+import { closeModal, currentMonth, flash, focusPage, newId, toast, today, toString } from "./ui.js";
 import * as dashboard from "./pages/dashboard.js";
 import * as transactions from "./pages/transactions.js";
 import * as debts from "./pages/debts.js";
@@ -37,6 +37,7 @@ if (device.isApp) Object.assign(ROUTES, { "/configuracoes": devicePage, "/oauth"
 
 const root = document.getElementById("app");
 let ledger = null;
+let navigationPending = false;
 let server = null; // computador pareado (só no app do celular)
 let signedIn = false; // site: conta Google ligada e sessão ativa (sem isso, nenhuma tela do app aparece)
 let expired = false; // site: a sessão venceu por falta de uso
@@ -158,6 +159,7 @@ function render(message) {
   // menu antes de decidir entre a landing e o Painel.
   if (ledger || !page) document.documentElement.dataset.ready = "";
   if (!page || !ledger) return;
+  root?.querySelectorAll('.modal:not([hidden])').forEach(closeModal);
   refreshBell();
   document.body.classList.remove("landing-mode", "login-mode");
   if (device.isSite && !signedIn && path !== "/oauth") {
@@ -171,6 +173,7 @@ function render(message) {
     root.innerHTML = `<p id="flash" hidden></p>` + toString(view.render(ctx));
     view.bind(root, ctx);
     window.finanTheme?.apply();
+    focusNavigation();
     return;
   }
   if (!ledger.categories.length && page.needsData !== false && device.isSite) {
@@ -198,6 +201,13 @@ function render(message) {
   updateCrumb();
   window.finanTheme?.apply();
   if (message) flash(message);
+  focusNavigation();
+}
+
+function focusNavigation() {
+  if (!navigationPending || !root?.querySelector("h1")) return;
+  navigationPending = false;
+  focusPage(root);
 }
 
 // O caminho no topo do computador ("Seu espaço / Painel"): o nome da tela aberta no menu.
@@ -273,6 +283,7 @@ function navigate(url, replace = false) {
   const u = new URL(url, location.href);
   if (replace) history.replaceState(null, "", u);
   else history.pushState(null, "", u);
+  navigationPending = true;
   render();
   window.scrollTo(0, 0);
 }
@@ -363,7 +374,10 @@ document.addEventListener("click", (e) => {
   e.preventDefault();
   navigate(u.href);
 });
-window.addEventListener("popstate", () => render());
+window.addEventListener("popstate", () => {
+  navigationPending = true;
+  render();
+});
 
 if (root) {
   root.addEventListener("input", () => { dirty = true; });

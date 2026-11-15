@@ -96,19 +96,66 @@ export function iconTile(category, kind, size = 34) {
 
 // ---------- Janela (modal) e aviso com "Desfazer" (visual Esmeralda) ----------
 
+export function focusPage(root) {
+  const heading = root.querySelector("h1");
+  if (!heading) return;
+  document.title = `${heading.textContent.trim()} — Rich`;
+  if (document.activeElement?.closest('.modal:not([hidden])')) return;
+  if (root.contains(document.activeElement) && document.activeElement.matches('input, select, textarea, button, a[href], [contenteditable="true"]')) return;
+  heading.tabIndex = -1;
+  heading.focus({ preventScroll: true });
+  root.getAnimations?.().forEach((animation) => animation.cancel());
+  if (!root.animate || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const style = getComputedStyle(root);
+  root.animate([{ opacity: .7 }, { opacity: 1 }], {
+    duration: parseFloat(style.getPropertyValue("--motion-duration-enter")) || 180,
+    easing: style.getPropertyValue("--motion-ease").trim() || "ease-out",
+  });
+}
+
+function modalTargets(modal) {
+  const targets = [...modal.querySelectorAll('a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+    .filter((element) => !element.matches(":disabled") && element.tabIndex >= 0 && element.getClientRects().length && !element.closest("[hidden], [inert]"));
+  return targets.filter((element) => {
+    if (!element.matches('input[type="radio"]') || !element.name) return true;
+    const group = targets.filter((target) => target.matches('input[type="radio"]') && target.name === element.name && target.form === element.form);
+    return element === (group.find((target) => target.checked) || group[0]);
+  });
+}
+
 // openModal mostra uma janela já desenhada na tela (<div class="modal" hidden>):
 // Esc ou o fundo fecham, o foco entra nela e volta para quem abriu.
 export function openModal(modal, trigger) {
+  if (!modal.hidden) return;
   modal.hidden = false;
   document.body.classList.add("modal-open");
   // Uma janela aberta conta como formulário em uso: a sincronização não redesenha por baixo.
   modal.dispatchEvent(new Event("input", { bubbles: true }));
   const close = () => closeModal(modal);
-  modal._onKey = (e) => { if (e.key === "Escape") close(); };
+  modal._onKey = (e) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      close();
+    }
+    if (e.key !== "Tab") return;
+    e.preventDefault();
+    const targets = modalTargets(modal);
+    if (!targets.length) return;
+    const current = targets.indexOf(document.activeElement);
+    const next = current < 0 ? (e.shiftKey ? targets.length - 1 : 0)
+      : (current + (e.shiftKey ? -1 : 1) + targets.length) % targets.length;
+    targets[next].focus();
+  };
   document.addEventListener("keydown", modal._onKey);
   modal._trigger = trigger || document.activeElement;
   modal.querySelectorAll("[data-close]").forEach((el) => { el.onclick = close; });
-  (modal.querySelector("[autofocus]") || modal.querySelector("input, select, textarea, button"))?.focus();
+  const targets = modalTargets(modal);
+  const target = targets.find((element) => element.hasAttribute("autofocus")) || targets[0];
+  if (target) target.focus();
+  else {
+    modal.tabIndex = -1;
+    modal.focus();
+  }
 }
 
 export function closeModal(modal) {

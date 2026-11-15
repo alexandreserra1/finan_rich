@@ -35,6 +35,10 @@
   --top-h: 64px; --side-w: 232px; --tabbar-h: 64px;
   --font-title: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-serif: Georgia, "Times New Roman", serif;
+  --motion-duration-enter: 180ms;
+  --motion-duration-feedback: 120ms;
+  --motion-duration-press: 60ms;
+  --motion-ease: cubic-bezier(.2, .8, .2, 1);
   color-scheme: light;
 }
 :root[data-theme="dark"] {
@@ -231,7 +235,7 @@ main {
 .key.dots { border-top-style: dotted; }
 .chart-box { margin-top: .5rem; }
 .chart { position: relative; width: 100%; touch-action: pan-y; }
-.chart canvas { display: block; }
+.chart canvas { display: block; max-width: 100%; }
 .chart-box.failed .chart { display: none; }
 .chart-tip {
   position: absolute; z-index: 2; left: 0; top: 0; transform: translateX(-50%); pointer-events: none; margin: 0;
@@ -319,7 +323,7 @@ button, .btn {
   font: inherit; font-size: 13px; cursor: pointer; background: var(--primary); color: var(--primary-ink); border: 1px solid transparent;
   border-radius: 100px; padding: 0 18px; font-weight: 700; min-height: 40px;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none;
-  transition: background-color .15s, border-color .15s, transform .05s;
+  transition: background-color var(--motion-duration-feedback) ease, border-color var(--motion-duration-feedback) ease, transform var(--motion-duration-press) ease-out;
 }
 button:hover, .btn:hover { background: var(--primary-hi); color: var(--primary-ink); }
 button:active, .btn:active { transform: translateY(1px); }
@@ -907,9 +911,9 @@ button.ghost.danger:hover { background: var(--neg-soft); color: var(--neg); }
 /* Janela (modal) */
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes pop { from { opacity: 0; transform: translate(-50%, -48%) scale(.98); } to { opacity: 1; transform: translate(-50%, -50%); } }
-.modal-scrim { position: fixed; inset: 0; z-index: 40; background: var(--scrim); backdrop-filter: blur(2px); animation: fade .18s ease both; }
+.modal-scrim { position: fixed; inset: 0; z-index: 40; background: var(--scrim); backdrop-filter: blur(2px); animation: fade var(--motion-duration-enter) var(--motion-ease) both; }
 .modal-panel { position: fixed; z-index: 41; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto;
-  border: 1px solid var(--border-2); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-pop); animation: pop .22s cubic-bezier(.2, .8, .2, 1) both; }
+  border: 1px solid var(--border-2); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-pop); animation: pop var(--motion-duration-enter) var(--motion-ease) both; }
 .modal-form { display: flex; flex-direction: column; gap: 18px; padding: 24px; }
 .modal-head { display: flex; justify-content: space-between; align-items: center; }
 .modal-head h2 { margin: 0; font-size: 18px; letter-spacing: -.015em; }
@@ -936,7 +940,7 @@ body.modal-open { overflow: hidden; }
 input[type="date"] { color-scheme: inherit; }
 /* Aviso (toast) */
 .toast { position: fixed; z-index: 50; left: 50%; bottom: 28px; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; padding: 12px 14px 12px 16px;
-  border: 1px solid var(--border-2); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow-pop); font-size: 13px; animation: fade .2s ease both; }
+  border: 1px solid var(--border-2); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow-pop); font-size: 13px; animation: fade var(--motion-duration-enter) var(--motion-ease) both; max-width: calc(100vw - 32px); overflow-wrap: anywhere; }
 .toast .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
 .toast button { min-height: 28px; padding: 0 10px; border-radius: 7px; background: var(--accent-soft); color: var(--accent); font-size: 13px; }
 .toast button:hover { background: var(--accent-soft); color: var(--accent-hi); }
@@ -954,7 +958,7 @@ input[type="date"] { color-scheme: inherit; }
   .tx-filters .field { flex-basis: calc(50% - 6px); }
   /* Folha que sobe de baixo. */
   @keyframes sheet { from { transform: translateY(100%); } to { transform: none; } }
-  .modal-panel { top: auto; bottom: 0; left: 0; right: 0; transform: none; width: 100%; max-height: 92vh; border-radius: 26px 26px 0 0; border-width: 1px 0 0; animation: sheet .24s cubic-bezier(.2, .8, .2, 1) both; }
+  .modal-panel { top: auto; bottom: 0; left: 0; right: 0; transform: none; width: 100%; max-height: 92vh; border-radius: 26px 26px 0 0; border-width: 1px 0 0; animation: sheet var(--motion-duration-enter) var(--motion-ease) both; }
   .modal-panel::before { content: ""; display: block; width: 40px; height: 5px; margin: 10px auto 0; border-radius: 9px; background: var(--border-2); }
   .modal-form { padding: 12px 18px calc(28px + env(safe-area-inset-bottom)); gap: 14px; }
   .modal-foot button[type="submit"] { flex: 1; min-height: 52px; font-size: 16px; }

@@ -139,6 +139,11 @@ medir tamanho de APK/binário ou quando o disco encher; depois, `make wasm` ante
 passa quando mexeu em dependência, docs atualizadas quando o comportamento mudou, e a
 resposta final diz o que não foi verificado.
 
+Ao alterar o front-end, abra as telas afetadas no navegador, confira computador e
+celular nos temas claro e escuro, corrija os problemas encontrados e teste de novo.
+Use dados fictícios em ambiente local. Não declare validação visual só porque o
+build passou; informe telas ou aparelhos que não puderam ser verificados.
+
 <!-- ai-memory:start -->
 ## Memória de longo prazo (ai-memory)
 

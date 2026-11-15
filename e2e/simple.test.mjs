@@ -11,6 +11,7 @@ const engine = process.env.BROWSER === "webkit" ? webkit : chromiumEngine;
 const PORT = 18100 + Number(process.env.PORT_OFFSET || 0);
 const BASE = `http://127.0.0.1:${PORT}`;
 const dataDir = mkdtempSync(join(tmpdir(), "finan-e2e-simple-"));
+const screenshotDir = mkdtempSync(join(tmpdir(), "finan-front-telas-"));
 const payload = '<img src=x onerror="window.__xss=1"><svg onload="window.__xss=1">';
 const server = spawn(process.env.FINANRICH_BIN || "../dist/finanrich",
   ["-data", dataDir, "-no-browser", "-addr", `127.0.0.1:${PORT}`], {
@@ -26,6 +27,19 @@ let failures = 0;
 async function home(page) {
   await page.goto(`${BASE}/`);
   await page.waitForSelector("main h1");
+}
+
+async function capture(page, name) {
+  await page.waitForFunction(() => [...document.querySelectorAll("#app .chart canvas")]
+    .every((canvas) => window.Chart?.getChart(canvas) || canvas.closest(".chart-box.failed")));
+  await page.evaluate(() => {
+    document.querySelectorAll("#app .chart canvas").forEach((canvas) => {
+      const chart = window.Chart?.getChart(canvas);
+      chart?.stop();
+      chart?.update("none");
+    });
+  });
+  await page.screenshot({ path: join(screenshotDir, name), fullPage: true, animations: "disabled" });
 }
 
 async function check(name, verify, withDebts = false) {
@@ -82,7 +96,51 @@ async function check(name, verify, withDebts = false) {
     console.log(`OK    ${name}`);
   } catch (error) {
     failures++;
-    console.error(`FALHA ${name}: ${error.message}`);
+    console.error(`FALHA ${name} [${page.url()}, ${page.viewportSize()?.width} px]: ${error.message}`);
+    try {
+      const diagnostics = await page.evaluate(() => {
+        const selector = (element) => {
+          const parts = [];
+          while (element) {
+            if (element.id) {
+              parts.unshift(`#${CSS.escape(element.id)}`);
+              break;
+            }
+            const position = element.parentElement ? Array.from(element.parentElement.children).indexOf(element) + 1 : 1;
+            parts.unshift(`${element.localName}:nth-child(${position})`);
+            element = element.parentElement;
+          }
+          return parts.join(" > ");
+        };
+        const viewport = document.documentElement.clientWidth;
+        const overflowing = Array.from(document.body.querySelectorAll("*")).flatMap((element) => {
+          const bounds = element.getBoundingClientRect();
+          if (!element.getClientRects().length || bounds.width === 0 || bounds.height === 0) return [];
+          if (bounds.left >= 0 && bounds.right <= viewport) return [];
+          return [{ selector: selector(element), width: bounds.width, scrollWidth: element.scrollWidth,
+            left: bounds.left, right: bounds.right }];
+        });
+        return { path: location.pathname, title: document.title, viewport, scrollWidth: document.documentElement.scrollWidth,
+          focused: selector(document.activeElement),
+          headings: Array.from(document.querySelectorAll("#app h1")).map((heading) => ({
+            text: heading.textContent.trim(), tabindex: heading.getAttribute("tabindex"), focused: heading === document.activeElement,
+          })),
+          overflowCount: overflowing.length,
+          overflowCandidates: overflowing.sort((first, second) => second.right - first.right || first.left - second.left).slice(0, 20) };
+      });
+      console.error(`DIAGNÓSTICO ${name}: ${JSON.stringify(diagnostics, null, 2)}`);
+    } catch (diagnosticError) {
+      console.error(`Não foi possível coletar o diagnóstico: ${diagnosticError.message}`);
+    }
+    try {
+      const captureDir = mkdtempSync(join("/tmp", "finan-e2e-simple-falha-"));
+      const scenario = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").slice(0, 100);
+      const capturePath = join(captureDir, `${scenario}-${page.viewportSize()?.width}px.png`);
+      await page.screenshot({ path: capturePath, fullPage: true, timeout: 5000 });
+      console.error(`CAPTURA ${name}: ${capturePath}`);
+    } catch (captureError) {
+      console.error(`Não foi possível salvar a captura: ${captureError.message}`);
+    }
   } finally {
     await context.close();
   }
@@ -99,6 +157,210 @@ try {
   }
   assert.ok(ready, "servidor local deve iniciar");
   browser = await engine.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
+
+  for (const [width, theme] of [[390, "claro"], [390, "escuro"], [1200, "claro"], [1200, "escuro"]]) {
+    await check(`links SPA levam foco e título à tela, sem estouro em ${width} px no tema ${theme}`, async (page) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.evaluate((theme) => { localStorage.setItem("tema", theme); window.finanTheme.apply(); }, theme);
+      await capture(page, `${width}-${theme}-inicio.png`);
+      await page.evaluate(() => { window.__spaDocument = true; });
+      for (const path of ["/lancamentos", "/contas", "/dividas", "/metas", "/categorias", "/analise", "/chat", "/notas", "/importar", "/exportar", "/"]) {
+        console.log(`ROTA links SPA: ${path} em ${width} px`);
+        const link = page.locator(`nav.tabs a[href="${path}"]:not(.side-brand)`);
+        if (!(await link.isVisible())) await page.locator("[data-menu]:visible").click();
+        await link.click();
+        await page.waitForURL(`${BASE}${path}`);
+        await page.waitForFunction(() => {
+          const heading = document.querySelector("#app h1");
+          return heading && document.activeElement === heading && document.title === `${heading.textContent.trim()} — Rich`;
+        });
+        assert.equal(await page.locator("#app h1").getAttribute("tabindex"), "-1", `${path}: título deve receber foco por código`);
+        assert.equal(await link.getAttribute("aria-current"), "page", `${path}: menu deve indicar a tela atual`);
+        assert.equal(await page.evaluate(() => window.__spaDocument), true, `${path}: navegação não deve recarregar o documento`);
+        await page.evaluate(() => document.fonts.ready);
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
+          `${path}: não deve haver rolagem horizontal em ${width} px`);
+        await capture(page, `${width}-${theme}-${path.slice(1) || "inicio"}.png`);
+      }
+      const settings = page.locator('nav.tabs a[href="/configuracoes"]');
+      console.log(`ROTA Ajustes do servidor: /configuracoes em ${width} px`);
+      if (!(await settings.isVisible())) await page.locator("[data-menu]:visible").click();
+      await settings.click();
+      await page.waitForURL(`${BASE}/configuracoes`);
+      await page.waitForSelector("main h1");
+      assert.equal(await page.locator("main h1").innerText(), "Do seu jeito. Mesmo.");
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
+        `Ajustes do servidor: não deve haver rolagem horizontal em ${width} px`);
+      await capture(page, `${width}-${theme}-configuracoes.png`);
+    });
+  }
+
+  await check("voltar e avançar no histórico SPA restauram foco e título", async (page) => {
+    await page.evaluate(() => { window.__spaDocument = true; });
+    for (const path of ["/contas", "/metas"]) {
+      await page.locator(`nav.tabs a[href="${path}"]`).click();
+      await page.waitForURL(`${BASE}${path}`);
+      await page.waitForSelector("#app h1");
+    }
+    for (const [direction, path] of [["goBack", "/contas"], ["goForward", "/metas"]]) {
+      console.log(`ROTA histórico ${direction}: ${path}`);
+      await page[direction]();
+      await page.waitForURL(`${BASE}${path}`);
+      await page.waitForFunction(() => {
+        const heading = document.querySelector("#app h1");
+        return heading && document.activeElement === heading && document.title === `${heading.textContent.trim()} — Rich`;
+      });
+      assert.equal(await page.locator("#app h1").getAttribute("tabindex"), "-1");
+      assert.equal(await page.evaluate(() => window.__spaDocument), true, "histórico não deve recarregar o documento");
+    }
+  });
+
+  await check("focusPage exportado foca o título e atualiza o nome da aba", async (page) => {
+    const result = await page.evaluate(async () => {
+      const { focusPage } = await import("/static/js/ui.js");
+      const root = document.getElementById("app");
+      const heading = root.querySelector("h1");
+      document.querySelector('nav.tabs a[href="/contas"]').focus();
+      document.title = "Título anterior";
+      await focusPage(root);
+      return { focused: document.activeElement === heading, tabindex: heading.getAttribute("tabindex"),
+        title: document.title, expectedTitle: `${heading.textContent.trim()} — Rich` };
+    });
+    assert.equal(result.focused, true);
+    assert.equal(result.tabindex, "-1");
+    assert.equal(result.title, result.expectedTitle);
+  });
+
+  await check("focusPage preserva um campo que a tela já colocou em foco", async (page) => {
+    assert.equal(await page.evaluate(async () => {
+      const { focusPage } = await import("/static/js/ui.js");
+      const root = document.getElementById("app");
+      const field = document.createElement("input");
+      root.append(field);
+      field.focus();
+      focusPage(root);
+      return document.activeElement === field;
+    }), true);
+  });
+
+  for (const [path, action, modalId] of [
+    ["/lancamentos", "new-tx", "tx-modal"],
+    ["/contas", "new-account", "account-modal"],
+    ["/dividas", "new-debt", "debt-modal"],
+    ["/metas", "new-goal", "goal-modal"],
+  ]) {
+    await check(`${modalId}: Tab e Shift+Tab ficam no modal; Escape devolve foco`, async (page) => {
+      await page.locator(`nav.tabs a[href="${path}"]`).click();
+      const trigger = page.locator(`[data-action="${action}"]:visible`).first();
+      await trigger.click();
+      const modal = page.locator(`#${modalId}`);
+      await modal.locator(".modal-panel").waitFor();
+      assert.ok(await modal.evaluate((element) => element.contains(document.activeElement)), "abrir deve levar foco ao modal");
+      const focusable = modal.locator('a[href], button, input:not([type="hidden"]), select, textarea, [tabindex]');
+      const count = await focusable.evaluateAll((elements) => elements.filter((element) =>
+        !element.disabled && element.tabIndex >= 0 && element.getClientRects().length > 0).length);
+      assert.ok(count > 1, "modal deve ter controles para exercitar a navegação");
+      if (modalId === "account-modal") {
+        const selected = modal.locator('input[type="radio"][name="kind"]:checked');
+        await selected.focus();
+        await page.keyboard.press("Tab");
+        assert.ok(await modal.evaluate((element) => element.contains(document.activeElement)), "Tab deve continuar dentro da janela");
+        assert.equal(await selected.evaluate((element) => document.activeElement.name === element.name), false,
+          "Tab deve sair do grupo de opções; setas continuam escolhendo o tipo da conta");
+      }
+      for (const key of ["Tab", "Shift+Tab"]) {
+        await focusable.evaluateAll((elements, key) => {
+          const controls = elements.filter((element) => !element.disabled && element.tabIndex >= 0 && element.getClientRects().length > 0);
+          (key === "Tab" ? controls[controls.length - 1] : controls[0]).focus();
+        }, key);
+        for (let step = 0; step <= count; step++) {
+          await page.keyboard.press(key);
+          assert.ok(await modal.evaluate((element) => element.contains(document.activeElement)), `${key} não deve sair do modal`);
+          if (step === 0) {
+            assert.ok(await focusable.evaluateAll((elements, key) => {
+              const controls = elements.filter((element) => !element.disabled && element.tabIndex >= 0 && element.getClientRects().length > 0);
+              return document.activeElement === (key === "Tab" ? controls[0] : controls[controls.length - 1]);
+            }, key), `${key} deve circular entre o primeiro e o último controle`);
+          }
+        }
+      }
+      await page.keyboard.press("Escape");
+      await modal.waitFor({ state: "hidden" });
+      assert.ok(await trigger.evaluate((element) => document.activeElement === element), "Escape deve devolver foco ao disparador");
+    });
+  }
+
+  await check("voltar com modal aberto libera o teclado e a rolagem", async (page) => {
+    await page.locator('nav.tabs a[href="/contas"]').click();
+    await page.locator('nav.tabs a[href="/lancamentos"]').click();
+    await page.locator('[data-action="new-tx"]:visible').first().click();
+    await page.locator("#tx-modal .modal-panel").waitFor();
+    await page.goBack();
+    await page.waitForURL(`${BASE}/contas`);
+    assert.equal(await page.locator("body").evaluate((element) => element.classList.contains("modal-open")), false,
+      "modal removido não deve manter o bloqueio de rolagem");
+    assert.equal(await page.locator("#app h1").evaluate((element) => element.dispatchEvent(new KeyboardEvent("keydown", {
+      key: "Tab", bubbles: true, cancelable: true,
+    }))), true, "o listener do modal anterior não deve cancelar Tab");
+    await page.keyboard.press("Tab");
+  });
+
+  await check("focusPage não rouba foco de modal já aberto", async (page) => {
+    await page.locator('nav.tabs a[href="/lancamentos"]').click();
+    const trigger = page.locator('[data-action="new-tx"]:visible').first();
+    await trigger.click();
+    await page.locator("#tx-modal .modal-panel").waitFor();
+    const keptFocus = await page.evaluate(async () => {
+      const { focusPage } = await import("/static/js/ui.js");
+      const active = document.activeElement;
+      await focusPage(document.getElementById("app"));
+      return document.querySelector("#tx-modal").contains(active) && document.activeElement === active;
+    });
+    assert.equal(keptFocus, true, "o controle ativo do modal deve continuar com foco");
+    await page.keyboard.press("Escape");
+    await page.locator("#tx-modal").waitFor({ state: "hidden" });
+    assert.ok(await trigger.evaluate((element) => document.activeElement === element));
+  });
+
+  await check("movimento reduzido não inicia Web Animations na navegação SPA", async (page) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.evaluate(() => {
+      window.__navigationAnimations = 0;
+      const animate = Element.prototype.animate;
+      Element.prototype.animate = function (...args) {
+        window.__navigationAnimations++;
+        return animate.apply(this, args);
+      };
+    });
+    for (const path of ["/contas", "/metas"]) {
+      await page.locator(`nav.tabs a[href="${path}"]`).click();
+      await page.waitForURL(`${BASE}${path}`);
+      await page.waitForSelector("#app h1");
+    }
+    await page.goBack();
+    await page.waitForURL(`${BASE}/contas`);
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert.equal(await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches), true);
+    assert.equal(await page.evaluate(() => window.__navigationAnimations), 0, "links e histórico devem respeitar menos movimento");
+  });
+
+  for (const [theme, bg, text] of [["claro", "#f7f6f0", "#252627"], ["escuro", "#17191d", "#f5f2de"]]) {
+    await check(`tokens de movimento existem sem mudar as cores do tema ${theme}`, async (page) => {
+      await page.evaluate((theme) => { localStorage.setItem("tema", theme); window.finanTheme.apply(); }, theme);
+      const styles = await page.evaluate(() => {
+        const root = getComputedStyle(document.documentElement);
+        return Object.fromEntries(["--motion-duration-enter", "--motion-duration-feedback", "--motion-ease",
+          "--bg", "--text", "--primary", "--yellow"].map((name) => [name, root.getPropertyValue(name).trim()]));
+      });
+      for (const token of ["--motion-duration-enter", "--motion-duration-feedback", "--motion-ease"]) {
+        assert.ok(styles[token], `${token} deve existir e não ser vazio`);
+      }
+      assert.equal(styles["--bg"], bg);
+      assert.equal(styles["--text"], text);
+      assert.equal(styles["--primary"], "#233cec");
+      assert.equal(styles["--yellow"], "#f5efab");
+    });
+  }
 
   await check("Início mostra dinheiro agora, semana e até três insights compactos", async (page) => {
     assert.ok(await page.locator('[data-section="money-now"]').isVisible(), "falta a seção Seu dinheiro agora");
@@ -284,4 +546,5 @@ try {
   rmSync(dataDir, { recursive: true, force: true });
 }
 console.log(failures ? `\n${failures} falha(s)` : "\nTudo certo.");
+console.log(`Capturas das telas com dados fictícios: ${screenshotDir}`);
 process.exitCode = failures ? 1 : 0;
