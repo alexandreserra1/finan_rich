@@ -16,11 +16,11 @@ export const needsData = false;
 
 export function render({ params }) {
   if (params.get("error")) {
-    return html`<section class="start"><h1>Login cancelado</h1>
-      <p class="muted">O Google não completou o login (${params.get("error")}). Seus dados continuam como estavam.</p>
+    return html`<section class="oauth-state"><h1 data-oauth-title>Login cancelado</h1>
+      <p class="muted" aria-live="polite">O Google não completou o login (${params.get("error")}). Seus dados continuam como estavam.</p>
       <p><a href="/">Voltar</a></p></section>`;
   }
-  return html`<section class="start"><h1>Entrando com Google…</h1><p class="muted" data-oauth-status>Só um instante.</p></section>`;
+  return html`<section class="oauth-state"><h1 data-oauth-title>Entrando com Google…</h1><p class="muted" data-oauth-status aria-live="polite">Só um instante.</p></section>`;
 }
 
 // relay devolve o endereço para onde mandar a volta do login, ou "" se é aqui.
@@ -37,12 +37,14 @@ export function relay(params, native) {
 }
 
 const handled = new Set(); // a tela se redesenha quando os dados chegam: o login roda uma vez só
+let completing = null;
 
 export async function bind(root, ctx) {
   const status = root.querySelector("[data-oauth-status]");
   const state = ctx.params.get("state") || "";
-  if (!status || handled.has(state)) return;
-  handled.add(state);
+  const resuming = ctx.params.get("retomar") === "1";
+  if (!status || (!resuming && handled.has(state))) return;
+  if (!resuming) handled.add(state);
   try {
     const target = relay(ctx.params, !!window.Capacitor?.isNativePlatform?.());
     if (target) {
@@ -50,16 +52,62 @@ export async function bind(root, ctx) {
       location.replace(target);
       return;
     }
-    await google.finish(ctx.params.get("code"), state);
-    history.replaceState(null, "", "/"); // o "voltar" não repete o login
-    status.textContent = "Trazendo seus dados do Google Drive…";
-    await sync.sync();
-    if (!(await loadLedger()).categories.length) await startSolo(ctx, "/"); // primeira vez: conta nova, sem dados no Drive
-    else await ctx.refresh();
-    sync.soon(); // grava no Drive o que este aparelho já tinha
-    ctx.flash("Conectado ao Google. Seus dados ficam no seu Drive.");
+    if (resuming) {
+      if (!(await google.session()).signedIn) throw new Error("Sua sessão venceu. Entre de novo com Google.");
+    } else {
+      await google.finish(ctx.params.get("code"), state);
+    }
+    history.replaceState(null, "", "/oauth?retomar=1"); // o "voltar" não repete o login
+    const retry = document.createElement("button");
+    retry.type = "button";
+    retry.textContent = "Tentar sincronizar de novo";
+    status.after(retry);
+    const complete = async () => {
+      retry.hidden = true;
+      const title = root.querySelector("[data-oauth-title]");
+      if (title) title.textContent = "Trazendo seus dados…";
+      status.classList.remove("neg");
+      status.textContent = "Trazendo seus dados do Google Drive…";
+      try {
+        if (!completing) {
+          completing = (async () => {
+            await sync.sync();
+            if (sync.state.status !== "ok") throw new Error(sync.state.message || "Não foi possível trazer seus dados do Google Drive. Tente de novo.");
+            history.replaceState(null, "", "/");
+            if (!(await loadLedger()).categories.length) await startSolo(ctx, "/"); // primeira vez: conta nova, sem dados no Drive
+            else await ctx.refresh();
+            sync.soon(); // grava no Drive o que este aparelho já tinha
+            ctx.flash("Conectado ao Google. Seus dados ficam no seu Drive.");
+          })().finally(() => { completing = null; });
+        }
+        await completing;
+        retry.remove();
+      } catch (err) {
+        if (title) title.textContent = "Não foi possível sincronizar";
+        status.textContent = err.message;
+        status.classList.add("neg");
+        retry.hidden = false;
+      }
+    };
+    retry.addEventListener("click", complete);
+    await complete();
   } catch (err) {
-    status.textContent = err.message;
+    const title = root.querySelector("[data-oauth-title]");
+    if (title) title.textContent = "Não foi possível entrar";
+    const configurationError = /invalid_client|client secret/i.test(err.message);
+    status.textContent = configurationError
+      ? "O login com Google está temporariamente indisponível por um problema de configuração. Tente novamente mais tarde."
+      : err.message;
     status.classList.add("neg");
+    if (configurationError) {
+      const details = document.createElement("details");
+      const summary = document.createElement("summary");
+      summary.textContent = "Detalhes técnicos";
+      const message = document.createElement("p");
+      message.textContent = err.message;
+      details.append(summary, message);
+      status.after(details);
+    }
+    status.parentElement.insertAdjacentHTML("beforeend", '<p><a href="/?entrar=1">Tentar de novo</a> · <a href="/">Voltar</a></p>');
   }
 }

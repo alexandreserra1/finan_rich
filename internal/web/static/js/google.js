@@ -18,6 +18,9 @@ const vault = () => window.Capacitor?.Plugins?.NativeBiometric;
 
 let clientId; // undefined: ainda não perguntou ao servidor; "": login não configurado lá
 let access = null; // { token, exp }
+let generation = 0;
+let signingOut = false;
+let finishingGeneration = null;
 
 // available diz se o login com Google está ligado no servidor (as variáveis
 // GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET na Vercel). Só no app e no site.
@@ -110,21 +113,36 @@ function email(idToken) {
 
 // finish termina o login com o código que o Google devolveu à página /oauth.
 export async function finish(code, state) {
+  const previous = generation;
   const pending = await getMeta("google-pending", null);
+  checkGeneration(previous);
   if (!pending || pending.state !== state || Date.now() - pending.at > 15 * 60_000) {
     throw new Error("o login expirou ou não começou neste aparelho; tente de novo");
   }
-  await setMeta("google-pending", null);
-  const { ok, data } = await post("/oauth/token", { code, verifier: pending.verifier, redirectUri: base() + "/oauth" });
-  if (!ok || !data.access_token) throw new Error("o Google recusou o login (" + (data.error_description || data.error?.message || data.error || "tente de novo") + ")");
-  if (!data.refresh_token && !data.cookie) throw new Error("o Google não mandou a permissão para manter você conectado; tente de novo");
-  access = { token: data.access_token, exp: Date.now() + (data.expires_in || 3600) * 1000 };
-  if (data.refresh_token) await saveRefresh(data.refresh_token);
-  // No site o token ficou no cookie; aqui só o e-mail. No app, no cofre do sistema.
-  await setMeta("google", { email: email(data.id_token || ""), refresh: vault() || data.cookie ? null : data.refresh_token });
-  const now = Date.now();
-  await setMeta("site-active", now); // a sessão do site começa agora
-  sessionDeadline = now + IDLE_MS;
+  const current = ++generation;
+  finishingGeneration = current;
+  signingOut = false;
+  access = null;
+  try {
+    await setMeta("google-pending", null);
+    checkGeneration(current);
+    const { ok, data } = await post("/oauth/token", { code, verifier: pending.verifier, redirectUri: base() + "/oauth" });
+    checkGeneration(current);
+    if (!ok || !data.access_token) throw new Error("o Google recusou o login (" + (data.error_description || data.error?.message || data.error || "tente de novo") + ")");
+    if (!data.refresh_token && !data.cookie) throw new Error("o Google não mandou a permissão para manter você conectado; tente de novo");
+    if (data.refresh_token) await saveRefresh(data.refresh_token);
+    checkGeneration(current);
+    // No site o token ficou no cookie; aqui só o e-mail. No app, no cofre do sistema.
+    await setMeta("google", { email: email(data.id_token || ""), refresh: vault() || data.cookie ? null : data.refresh_token });
+    checkGeneration(current);
+    const now = Date.now();
+    await setMeta("site-active", now); // a sessão do site começa agora
+    checkGeneration(current);
+    access = { token: data.access_token, exp: Date.now() + (data.expires_in || 3600) * 1000 };
+    sessionDeadline = now + IDLE_MS;
+  } finally {
+    if (finishingGeneration === current) finishingGeneration = null;
+  }
 }
 
 async function saveRefresh(token) {
@@ -144,23 +162,34 @@ async function refreshToken() {
 
 const loginError = () => Object.assign(new Error("entre de novo com Google"), { kind: "google" });
 
+function checkGeneration(current) {
+  if (current !== generation) throw loginError();
+}
+
 // token devolve um token de acesso válido, renovando quando passa de 1 hora.
 export async function token() {
+  if (signingOut || finishingGeneration !== null) throw loginError();
+  const current = generation;
   if (access && access.exp > Date.now() + 60_000) return access.token;
   const refresh = await refreshToken(); // no site, vazio: o intermediário lê o cookie
+  checkGeneration(current);
   if (!refresh && !device.isSite) throw loginError();
   if (!(await getMeta("google", null))) throw loginError();
+  checkGeneration(current);
   const { ok, status, data } = await post("/oauth/refresh", refresh ? { refreshToken: refresh } : {});
+  checkGeneration(current);
   if (status === 400 || status === 401) { // a pessoa tirou o acesso na conta Google
-    await forget();
+    await forget(current);
     throw loginError();
   }
   if (!ok || !data.access_token) throw new Error("não foi possível falar com o Google agora");
-  access = { token: data.access_token, exp: Date.now() + (data.expires_in || 3600) * 1000 };
   if (device.isSite && refresh) { // quem entrou antes do cookie: o token foi para o cookie; sai daqui
     const a = await getMeta("google", null);
+    checkGeneration(current);
     if (a) await setMeta("google", { ...a, refresh: null });
+    checkGeneration(current);
   }
+  access = { token: data.access_token, exp: Date.now() + (data.expires_in || 3600) * 1000 };
   return access.token;
 }
 
@@ -169,25 +198,33 @@ export function expire() {
   access = null;
 }
 
-async function forget() {
+async function forget(current) {
+  checkGeneration(current);
+  current = ++generation;
   access = null;
   await setMeta("google", null);
+  checkGeneration(current);
   await setMeta("drive", null);
+  checkGeneration(current);
   if (vault()) await vault().deleteData({ key: VAULT_KEY }).catch(() => {});
 }
 
 // signOut desliga a conta: revoga o acesso no Google e apaga o token daqui.
 // Os dados continuam neste aparelho e no Drive.
 export async function signOut() {
+  const current = ++generation;
+  signingOut = true;
+  access = null;
   if (device.isSite) { // o intermediário apaga o cookie e revoga no Google
     await post("/oauth/logout", {}).catch(() => {});
-    return forget();
+    return forget(current);
   }
   const refresh = await refreshToken();
+  checkGeneration(current);
   if (refresh) {
     fetch("https://oauth2.googleapis.com/revoke", {
       method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "token=" + encodeURIComponent(refresh),
     }).catch(() => {});
   }
-  await forget();
+  await forget(current);
 }

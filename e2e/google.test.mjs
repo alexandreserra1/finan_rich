@@ -8,6 +8,7 @@ const chromium = process.env.BROWSER === "webkit" ? webkit : chromiumEngine; // 
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";
+import { readFile } from "node:fs/promises";
 import { watchErrors } from "./errors.mjs";
 
 const BIN = process.env.SITE_BIN || "../dist/finansite";
@@ -66,6 +67,12 @@ const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers
 const json = (route, status, data) => route.fulfill({ status, headers: { ...cors, "Content-Type": "application/json" }, body: JSON.stringify(data) });
 let contexts = 0;
 async function fakeGoogle(context) {
+  await context.route(`${SITE}/static/js/**`, async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (!["/static/js/google.js", "/static/js/pages/oauth.js"].includes(path)) return route.continue();
+    const body = await readFile(new URL(`../internal/web${path}`, import.meta.url), "utf8");
+    return route.fulfill({ status: 200, contentType: "text/javascript; charset=utf-8", body });
+  });
   // Cada navegador sai de um IP seu (na Vercel, o X-Forwarded-For): o limite das
   // rotas /oauth do intermediário (60 por hora por IP) vale por pessoa, não para o teste todo.
   const ip = `203.0.113.${++contexts}`;
@@ -133,7 +140,7 @@ async function login(page) {
     await logStatus(page, "retorno OAuth");
     throw error;
   }
-  await page.waitForSelector(".cards, .welcome", { timeout: 20000 });
+  await page.waitForSelector(".dash-kpis, .welcome", { timeout: 20000 });
 }
 async function addTransaction(page, desc, amount) {
   await page.goto(`${SITE}/lancamentos`);
@@ -185,6 +192,58 @@ async function logStatus(page, stage) {
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 const errors = [];
 try {
+  for (const description of ["The provided client secret is invalid.", "invalid_client"]) for (const width of [390, 1440]) for (const colorScheme of ["light", "dark"]) {
+    const invalidContext = await browser.newContext({ viewport: { width, height: 900 }, colorScheme });
+    await fakeGoogle(invalidContext);
+    await invalidContext.route(`${SITE}/static/app.css`, async (route) => route.fulfill({ contentType: "text/css", body: await readFile(new URL("../internal/web/static/app.css", import.meta.url), "utf8") }));
+    await invalidContext.route(`${SITE}/oauth/token`, (route) => json(route, 400, { error: "invalid_client", error_description: description }));
+    const invalidPage = await invalidContext.newPage();
+    watchErrors(invalidPage, errors, (e) => "Configuração inválida: " + e.message);
+    await invalidPage.goto(`${SITE}/?entrar=1`);
+    await invalidPage.waitForSelector(".start-google:not([hidden]) [data-action=google]");
+    await invalidPage.click("[data-action=google]");
+    await invalidPage.waitForSelector(".oauth-state [data-oauth-status].neg");
+    ok(await invalidPage.locator("[data-oauth-title]").textContent() === "Não foi possível entrar", "falha de configuração muda o título do retorno OAuth");
+    ok(await invalidPage.locator('[data-oauth-status][aria-live="polite"]').textContent().then((text) => text.includes("temporariamente indisponível") && text.includes("configuração")),
+      "erro de cliente OAuth mostra aviso claro de configuração temporariamente indisponível");
+    ok(await invalidPage.locator(".oauth-state details").textContent().then((text) => text.includes(description)) && await invalidPage.locator(".oauth-state details").getAttribute("open") === null,
+      "detalhe técnico fica recolhido, sem substituir o aviso claro");
+    ok(await invalidPage.locator('.oauth-state a[href="/?entrar=1"]').count() === 1 && await invalidPage.locator('.oauth-state a[href="/"]').count() === 1,
+      "falha no login oferece tentar de novo e voltar");
+    ok(await invalidPage.evaluate(async () => !(await (await import("/static/js/db.js")).getMeta("google", null))), "erro de configuração não cria conta local");
+    const geometry = await invalidPage.locator(".oauth-state").boundingBox();
+    ok(geometry && geometry.x >= 0 && geometry.width <= 640 && geometry.x + geometry.width <= width && await invalidPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+      `invalid_client, ${width}, ${colorScheme}: estado centralizado cabe na tela sem overflow`);
+    if (description !== "invalid_client") await invalidPage.screenshot({ path: `/tmp/finan-invalid-client-${width}-${colorScheme}.png` });
+    await invalidContext.close();
+  }
+
+  const resumeContext = await browser.newContext();
+  await fakeGoogle(resumeContext);
+  const resumePage = await resumeContext.newPage();
+  watchErrors(resumePage, errors, (e) => "Retomada: " + e.message);
+  const exchangesWithoutSession = exchanges.length;
+  await resumePage.goto(`${SITE}/oauth?retomar=1`);
+  await resumePage.waitForSelector("[data-oauth-status].neg");
+  ok(await resumePage.locator("[data-oauth-title]").textContent() === "Não foi possível entrar" && exchanges.length === exchangesWithoutSession,
+    "retomada sem sessão válida pede novo login sem trocar código");
+  drive.down = true;
+  await resumePage.goto(`${SITE}/?entrar=1`);
+  await resumePage.waitForSelector(".start-google:not([hidden]) [data-action=google]");
+  await resumePage.click("[data-action=google]");
+  await resumePage.waitForSelector("[data-oauth-status].neg");
+  ok(new URL(resumePage.url()).pathname === "/oauth" && new URL(resumePage.url()).search === "?retomar=1", "falha inicial mantém URL segura para retomar sem código PKCE");
+  const exchangesBeforeReload = exchanges.filter((exchange) => exchange.grant_type === "authorization_code").length;
+  await resumePage.reload();
+  await resumePage.waitForSelector("[data-oauth-status].neg", { timeout: 5000 });
+  ok(await resumePage.evaluate(async () => !(await (await import("/static/js/db.js")).loadLedger()).categories.length), "recarga com Drive indisponível não inicializa conta nova");
+  drive.down = false;
+  await resumePage.getByRole("button", { name: "Tentar sincronizar de novo" }).click();
+  await resumePage.waitForSelector(".dash-kpis, .welcome");
+  ok(await resumePage.evaluate(async () => (await (await import("/static/js/db.js")).loadLedger()).categories.length > 0), "conta nova cria categorias depois da retomada com sync ok");
+  ok(exchanges.filter((exchange) => exchange.grant_type === "authorization_code").length === exchangesBeforeReload && new URL(resumePage.url()).pathname === "/", "recarga retoma sessão e inicializa só após sync ok, sem repetir exchange");
+  await resumeContext.close();
+
   // Pessoa no celular (A): entra com Google, conta nova, começa do zero.
   const ctxA = await browser.newContext({ ...devices["Pixel 7"] });
   await fakeGoogle(ctxA);
@@ -197,6 +256,38 @@ try {
   await addTransaction(a, "Mercado do Google", "123,45");
   await until(() => inDrive("Mercado do Google")?.amountCents === 12345, "lançamento de A chegou ao Drive");
   ok(!!inDrive("Mercado do Google"), "lançamento de A gravado no arquivo do Drive");
+  for (const [screen, colorScheme] of [["computador", "light"], ["computador", "dark"], ["celular", "light"], ["celular", "dark"]]) {
+    const retryContext = await browser.newContext({ ...(screen === "celular" ? devices["Pixel 7"] : { viewport: { width: 1280, height: 900 } }), colorScheme });
+    await fakeGoogle(retryContext);
+    const retryPage = await retryContext.newPage();
+    watchErrors(retryPage, errors, (e) => "Nova tentativa: " + e.message);
+    drive.down = true;
+    await retryPage.goto(`${SITE}/?entrar=1`);
+    await retryPage.waitForSelector(".start-google:not([hidden]) [data-action=google]");
+    await retryPage.click("[data-action=google]");
+    await retryPage.waitForSelector("[data-oauth-status].neg");
+    ok(await retryPage.locator("[data-oauth-title]").textContent() === "Não foi possível sincronizar", "falha no Drive não mantém título de carregamento");
+    ok(await retryPage.evaluate(async () => !(await (await import("/static/js/db.js")).loadLedger()).categories.length),
+      "Drive fora do ar no callback não cria categorias locais");
+    ok(!(await retryPage.locator("#flash:has-text('Conectado ao Google')").count()), "callback com falha não anuncia sucesso");
+    const retryButton = retryPage.getByRole("button", { name: "Tentar sincronizar de novo" });
+    ok(await retryButton.isVisible(), `${screen}, ${colorScheme}: botão de nova tentativa visível`);
+    const retryBounds = await retryButton.boundingBox();
+    const viewport = retryPage.viewportSize();
+    ok(retryBounds && retryBounds.x >= 0 && retryBounds.y >= 0 && retryBounds.x + retryBounds.width <= viewport.width && retryBounds.y + retryBounds.height <= viewport.height,
+      `${screen}, ${colorScheme}: botão de nova tentativa cabe na tela`);
+    await retryPage.screenshot({ path: `/tmp/finan-oauth-${screen}-${colorScheme}.png` });
+    const exchangesBeforeRetry = exchanges.length;
+    drive.down = false;
+    if (screen === "computador" && colorScheme === "light") {
+      await retryPage.evaluate(async () => (await import("/static/js/sync.js")).sync());
+    } else await retryButton.click();
+    await retryPage.waitForSelector(".dash-kpis");
+    ok(exchanges.length === exchangesBeforeRetry, "retry sincroniza sem trocar o código OAuth novamente");
+    ok(await retryPage.evaluate(async () => (await (await import("/static/js/db.js")).loadLedger()).transactions.some((item) => item.description === "Mercado do Google")),
+      "retry traz os dados existentes no Drive");
+    await retryContext.close();
+  }
   const meta = await a.evaluate(async () => (await import("/static/js/db.js")).getMeta("google", null));
   const dump = await a.evaluate(async () => JSON.stringify(await (await import("/static/js/db.js")).getMeta("google", null)) + document.cookie);
   const rt = (await ctxA.cookies()).find((c) => c.name === "__Host-finan_rt");

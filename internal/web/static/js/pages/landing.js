@@ -5,7 +5,7 @@
 // O conteúdo aparece logo de cara: o movimento ao rolar é só enfeite (sem buracos se a
 // página carregar devagar ou com "menos movimento" ligado).
 import * as device from "../device.js";
-import { html, raw, tilt, toString } from "../ui.js";
+import { animateContent, html, raw, tilt, toString } from "../ui.js";
 
 export const needsData = false;
 
@@ -49,13 +49,13 @@ const COMPARE = [
   ["Senha do banco", "Nunca. O Open Finance vai pelo Meu Pluggy, com a sua conta", "Alguns pedem acesso à conta"],
   ["Preço", "Grátis, sem plano pago", "Muitos cobram plano para o completo"],
   ["Anúncios", "Nenhum", "Alguns mostram"],
-  ["Código", "Aberto: qualquer pessoa confere", "Fechado"],
+  ["Código", "Publicado para consulta; app gratuito", "Depende do aplicativo"],
   ["Sem internet", "Abre e lança mesmo assim", "Normalmente precisa de conexão"],
 ];
 
 const FAQ = [
   ["O que é a Rich?", "Um app de finanças pessoais com um time que conversa sobre os seus números: Otávio organiza o mês e as dívidas, Lia olha os hábitos e o orçamento, Tito cuida das metas. As contas são feitas pelo app; a IA explica e aconselha."],
-  ["É grátis mesmo?", "Sim. A Rich não cobra nada: sem plano e sem anúncio. O código é aberto, e a IA pode rodar de graça no seu computador ou com uma chave grátis sua."],
+  ["É grátis mesmo?", "Sim. A Rich não cobra nada: sem plano e sem anúncio. O código está publicado para consulta, sob licença própria. A IA pode rodar no seu computador ou com uma chave grátis sua."],
   ["Onde ficam os meus dados?", "No seu aparelho e, se você entrar com Google, numa pasta escondida do seu próprio Drive, que só a Rich usa. Nenhum servidor da Rich guarda seus lançamentos."],
   ["Preciso criar conta?", "No site, você entra com a sua conta Google (sem senha nova). No app do celular e no programa do computador, não precisa de conta: o aparelho é seu."],
   ["Conecta com o meu banco?", "Sim, pelo Open Finance do Meu Pluggy, de graça e com a sua conta: os dados vão do banco direto para o seu aparelho. Você também pode importar o extrato (OFX, CSV ou a fatura em PDF)."],
@@ -136,6 +136,7 @@ export function render() {
 
       <section class="lp-band lp-wallet"><div class="lp-section lp-walletgrid">
         <div class="lp-walletstage">
+          <div class="lp-walletart">
           <span class="lp-orbit" aria-hidden="true"></span>
           <div class="rich-card" data-tilt role="img" aria-label="Cartão ilustrativo Rich azul, com chip e numeração mascarada. Não é um cartão emitido.">
             <div class="card-orbits" aria-hidden="true"></div>
@@ -143,6 +144,7 @@ export function render() {
             <div class="rc-chiprow">${raw('<svg class="rc-chip" viewBox="0 0 52 40" aria-hidden="true"><rect x="1" y="1" width="50" height="38" rx="8" fill="#dac994" stroke="#b4a16a"/><path d="M18 1v11H1m50 0H34V1M18 39V28H1m50 0H34v11M18 12h16v16H18zM1 20h17m16 0h17" fill="none" stroke="#998752"/></svg><svg class="rc-contactless" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9q3 3 0 6m4-9q6 6 0 12m4-15q9 9 0 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>')}</div>
             <div class="rc-number"><span>••••</span><span>••••</span><span>••••</span><span>••••</span></div>
             <div class="rc-bottom"><span>MAIS VIDA. MAIS PLANOS.</span><span class="rc-mark" aria-hidden="true">✳</span></div>
+          </div>
           </div>
           <span class="lp-walletnote">bonito de ver.<br><em>fácil de entender.</em> ↗</span>
         </div>
@@ -225,6 +227,7 @@ export function bind(root) {
     });
     panel.setAttribute("aria-labelledby", `lp-tab-${mode}`);
     panel.innerHTML = toString(DEMOS[mode]);
+    animateContent(panel);
     const range = panel.querySelector("[data-monthly]");
     range?.addEventListener("input", () => {
       const v = Number(range.value);

@@ -239,7 +239,7 @@ try {
   await page.click(".welcome button[type=submit]");
   await page.waitForSelector(".welcome:has-text('Passo 2 de 4')");
   await page.click(".welcome [data-action=finish]");
-  await page.waitForSelector(".cards.has-hero");
+  await page.waitForSelector(".home-overview .primary");
   const solo = await page.evaluate(async () => (await import("/static/js/db.js")).loadLedger());
   ok(solo.recurring.some((r) => r.amountCents === 300000 && r.categoryId === "padrao-salario") && solo.prefs.some((p) => p.id === "primeiro-uso"),
     "primeiro uso guiado funciona só no celular (salário recorrente salvo no aparelho)");

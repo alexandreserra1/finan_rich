@@ -158,7 +158,7 @@ try {
   assert.ok(ready, "servidor local deve iniciar");
   browser = await engine.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 
-  for (const [width, theme] of [[390, "claro"], [390, "escuro"], [1200, "claro"], [1200, "escuro"]]) {
+  for (const [width, theme] of [390, 768, 1440, 1920].flatMap((width) => [[width, "claro"], [width, "escuro"]])) {
     await check(`links SPA levam foco e título à tela, sem estouro em ${width} px no tema ${theme}`, async (page) => {
       await page.setViewportSize({ width, height: 900 });
       await page.evaluate((theme) => { localStorage.setItem("tema", theme); window.finanTheme.apply(); }, theme);

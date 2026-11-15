@@ -104,10 +104,14 @@ export function focusPage(root) {
   if (root.contains(document.activeElement) && document.activeElement.matches('input, select, textarea, button, a[href], [contenteditable="true"]')) return;
   heading.tabIndex = -1;
   heading.focus({ preventScroll: true });
-  root.getAnimations?.().forEach((animation) => animation.cancel());
-  if (!root.animate || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const style = getComputedStyle(root);
-  root.animate([{ opacity: .7 }, { opacity: 1 }], {
+  animateContent(root);
+}
+
+export function animateContent(element) {
+  element.getAnimations?.().forEach((animation) => animation.cancel());
+  if (!element.animate || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const style = getComputedStyle(element);
+  element.animate([{ opacity: .85 }, { opacity: 1 }], {
     duration: parseFloat(style.getPropertyValue("--motion-duration-enter")) || 180,
     easing: style.getPropertyValue("--motion-ease").trim() || "ease-out",
   });

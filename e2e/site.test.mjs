@@ -6,6 +6,9 @@ import { chromium as chromiumEngine, devices, webkit } from "playwright";
 const chromium = process.env.BROWSER === "webkit" ? webkit : chromiumEngine; // BROWSER=webkit: o motor do Safari
 import { spawn } from "node:child_process";
 import { watchErrors } from "./errors.mjs";
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const BIN = process.env.SITE_BIN || "../dist/finansite";
 const OFF = Number(process.env.PORT_OFFSET || 0); // PORT_OFFSET=100: roda ao lado de outra cópia do repositório
@@ -21,6 +24,135 @@ const openTx = async (page) => {
   if (await page.locator("#tx-modal .modal-panel").isVisible()) return;
   await page.locator('[data-action="new-tx"]:visible').first().click();
   await page.waitForSelector("#tx-modal .modal-panel");
+};
+
+const checkLandingVisual = async (browser) => {
+  const screenshots = await mkdtemp(join(tmpdir(), "rich-landing-ficticia-"));
+  console.log(`Screenshots da landing com dados explicitamente fictícios: ${screenshots}`);
+  for (const width of [390, 768, 1440, 1920]) {
+    for (const colorScheme of ["light", "dark"]) {
+      const context = await browser.newContext({ viewport: { width, height: 1000 }, colorScheme });
+      const page = await context.newPage();
+      const errors = [];
+      watchErrors(page, errors);
+      try {
+        await page.goto(`${SITE}/`);
+        await page.waitForSelector(".landing .lp-dashboard");
+        await page.evaluate(() => document.fonts.ready);
+        ok(await page.getAttribute("html", "data-theme") === colorScheme, `${width}px: tema ${colorScheme} aplicado`);
+        ok(await page.locator(".lp-democopy .lp-fine").innerText() === "Demonstração com dados fictícios. Nenhuma conta conectada.",
+          `${width}px/${colorScheme}: a demonstração identifica os dados fictícios`);
+        for (const mode of ["gastos", "metas", "resumo"]) {
+          const label = `${width}px/${colorScheme}/${mode}`;
+          try {
+            await page.locator(`#lp-tab-${mode}`).click();
+            await page.mouse.move(0, 0);
+            await page.waitForFunction((mode) => {
+              const panel = document.querySelector(".lp-dashboard");
+              return panel.getAttribute("aria-labelledby") === `lp-tab-${mode}` &&
+                document.querySelector(`#lp-tab-${mode}`).getAttribute("aria-selected") === "true" &&
+                panel.querySelector({ gastos: ".lp-chart", metas: ".lp-goalresult", resumo: ".lp-receipt" }[mode]);
+            }, mode);
+            await page.evaluate(() => document.fonts.ready);
+            await page.waitForFunction(() => {
+              const elements = [...document.querySelectorAll(".lp-dashboard, .lp-dashboard *, .lp-walletnote, .lp-walletstage .rich-card, .lp-pill.light, .lp-tab")];
+              const moving = elements.some((element) => element.getAnimations().some((animation) =>
+                ["running", "pending"].includes(animation.playState) && animation.effect.getComputedTiming().iterations !== Infinity));
+              const snapshot = JSON.stringify(elements.map((element) => {
+                const rect = element.getBoundingClientRect();
+                const style = getComputedStyle(element);
+                return [rect.x, rect.y, rect.width, rect.height, style.color, style.backgroundColor, style.transform];
+              }));
+              const previous = window.__landingVisualStable;
+              const frames = !moving && previous?.snapshot === snapshot ? previous.frames + 1 : 0;
+              window.__landingVisualStable = { snapshot, frames };
+              return frames >= 4;
+            }, undefined, { polling: "raf", timeout: 10000 });
+            await page.screenshot({ path: join(screenshots, `${width}-${colorScheme}-${mode}.png`), fullPage: true });
+            if (mode === "gastos") {
+              await page.locator(".lp-demo").screenshot({ path: join(screenshots, `${width}-${colorScheme}-demo.png`) });
+              await page.locator(".lp-walletstage").screenshot({ path: join(screenshots, `${width}-${colorScheme}-cartao.png`) });
+            }
+            const result = await page.evaluate(() => {
+              const panel = document.querySelector(".lp-dashboard");
+              const card = document.querySelector(".lp-walletstage .rich-card").getBoundingClientRect();
+              const note = document.querySelector(".lp-walletnote").getBoundingClientRect();
+              const parseColor = (value) => {
+                const channels = value.match(/[\d.]+/g)?.map(Number);
+                if (!/^rgba?\(/.test(value) || !channels || channels.length < 3) throw new Error(`Cor não suportada: ${value}`);
+                return [...channels.slice(0, 3), channels[3] ?? 1];
+              };
+              const composite = (front, back) => front.slice(0, 3).map((channel, index) => channel * front[3] + back[index] * (1 - front[3]));
+              const luminance = (color) => color.map((channel) => {
+                const value = channel / 255;
+                return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+              }).reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0);
+              const contrastIssues = [];
+              const overflowIssues = [];
+              let dashboardTexts = 0;
+              let buttonTexts = 0;
+              const roots = [panel, ...document.querySelectorAll('.lp-pill.light, .lp-tab[aria-selected="true"]')];
+              for (const root of roots) {
+                const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+                while (walker.nextNode()) {
+                  const node = walker.currentNode;
+                  const text = node.textContent.trim();
+                  const element = node.parentElement;
+                  if (!text || !element.checkVisibility({ visibilityProperty: true, opacityProperty: true })) continue;
+                  const range = document.createRange();
+                  range.selectNodeContents(node);
+                  const rect = range.getBoundingClientRect();
+                  if (!rect.width || !rect.height) continue;
+                  if (root === panel) dashboardTexts++; else buttonTexts++;
+                  if (rect.left < 0 || rect.right > document.documentElement.clientWidth) overflowIssues.push(text);
+                  const layers = [];
+                  let opacity = 1;
+                  for (let ancestor = element; ancestor; ancestor = ancestor.parentElement) {
+                    const style = getComputedStyle(ancestor);
+                    opacity *= Number(style.opacity);
+                    const bounds = ancestor.getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+                    if (centerX < bounds.left || centerX > bounds.right || centerY < bounds.top || centerY > bounds.bottom) continue;
+                    if (style.backgroundImage !== "none") throw new Error(`Fundo não uniforme em ${text}: ${style.backgroundImage}`);
+                    layers.push(parseColor(style.backgroundColor));
+                  }
+                  const background = layers.reverse().reduce((back, front) => composite(front, back), [255, 255, 255]);
+                  const style = getComputedStyle(element);
+                  const foreground = parseColor(style.color);
+                  foreground[3] *= opacity;
+                  const textLight = luminance(composite(foreground, background));
+                  const backLight = luminance(background);
+                  const ratio = (Math.max(textLight, backLight) + 0.05) / (Math.min(textLight, backLight) + 0.05);
+                  const size = parseFloat(style.fontSize);
+                  const minimum = size >= 24 || (size >= 18.6667 && Number(style.fontWeight) >= 700) ? 3 : 4.5;
+                  if (ratio < minimum) contrastIssues.push({ text, ratio: Number(ratio.toFixed(2)), minimum, color: style.color, background });
+                }
+              }
+              return {
+                documentWidth: document.documentElement.scrollWidth,
+                viewportWidth: document.documentElement.clientWidth,
+                panelWidth: panel.clientWidth, panelScrollWidth: panel.scrollWidth,
+                gap: note.top - card.bottom, dashboardTexts, buttonTexts, contrastIssues, overflowIssues,
+              };
+            });
+            ok(result.documentWidth <= result.viewportWidth && result.panelScrollWidth <= result.panelWidth && result.overflowIssues.length === 0,
+              `${label}: sem overflow da página, painel ou textos (${JSON.stringify(result)})`);
+            ok(result.dashboardTexts > 0 && result.buttonTexts > 0 && result.contrastIssues.length === 0,
+              `${label}: textos do painel e botões claros com contraste WCAG AA (${JSON.stringify(result.contrastIssues)})`);
+            ok(result.gap >= 20, `${label}: anotação abaixo e fora do cartão, com pelo menos 20px de respiro (${result.gap.toFixed(2)}px)`);
+          } catch (err) {
+            ok(false, `${label}: ${err.message}`);
+          }
+        }
+        ok(errors.length === 0, `${width}px/${colorScheme}: sem erros de JavaScript ${JSON.stringify(errors)}`);
+      } catch (err) {
+        ok(false, `${width}px/${colorScheme}: ${err.message}`);
+      } finally {
+        await context.close();
+      }
+    }
+  }
 };
 
 const server = spawn(BIN, [], { env: { ...process.env, PORT: String(PORT), GROQ_API_KEY: "teste", FINAN_PROXY_UPSTREAM: "http://127.0.0.1:9" }, stdio: "ignore" });
@@ -111,6 +243,7 @@ try {
   ok((await fetch(`${SITE}/static/nao-existe.js`)).status === 404, "arquivo que não existe dá 404, não a página do app");
 
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);
+  await checkLandingVisual(browser);
 } catch (err) {
   ok(false, err.message);
 } finally {

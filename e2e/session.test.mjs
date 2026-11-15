@@ -95,6 +95,179 @@ async function touch(page, force, expected, expectedSession, expectedTimestamp) 
 
 try {
   browser = await engine.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
+  await test("troca de código suspensa não permite renovação concorrente", async (page) => {
+    const result = await page.evaluate(async () => {
+      const db = await import("/static/js/db.js");
+      const google = await import("/static/js/google.js");
+      await db.setMeta("google", { email: "antiga@exemplo.test" });
+      await db.setMeta("google-pending", { state: "web.teste", verifier: "falso", at: Date.now() });
+      let releaseLogin, started, renewals = 0;
+      const ready = new Promise((resolve) => { started = resolve; });
+      const response = new Promise((resolve) => { releaseLogin = resolve; });
+      window.fetch = async (url) => {
+        if (url.endsWith("/oauth/token")) { started(); return response; }
+        renewals++;
+        return new Response("{}", { status: 401 });
+      };
+      const login = google.finish("codigo-falso", "web.teste").then(() => "ok", (error) => error.kind);
+      await ready;
+      await google.token().catch(() => {});
+      releaseLogin(new Response(JSON.stringify({ access_token: "acesso-novo-falso", cookie: true })));
+      return { login: await login, renewals, account: !!(await db.getMeta("google", null)), token: await google.token().catch((error) => error.kind) };
+    });
+    assert.deepEqual(result, { login: "ok", renewals: 0, account: true, token: "acesso-novo-falso" });
+  });
+  for (const action of ["login", "logout"]) {
+    for (const responseStatus of [200, 400, 401]) {
+      await test(`renovação atrasada ${responseStatus} não altera ${action} novo`, async (page) => {
+        const result = await page.evaluate(async ({ action, responseStatus }) => {
+          const db = await import("/static/js/db.js");
+          const google = await import("/static/js/google.js");
+          await db.setMeta("google", { email: "antiga@exemplo.test" });
+          await db.setMeta("google-pending", { state: "web.teste", verifier: "verificador-falso", at: Date.now() });
+          let releaseRefresh, started;
+          const ready = new Promise((resolve) => { started = resolve; });
+          const response = new Promise((resolve) => { releaseRefresh = resolve; });
+          const requests = [];
+          window.fetch = async (url) => {
+            requests.push(url);
+            if (url.endsWith("/oauth/refresh")) { started(); return response; }
+            return new Response(JSON.stringify({ access_token: "acesso-novo-falso", cookie: true }), { status: 200 });
+          };
+          const old = google.token().then((token) => ({ token }), (error) => ({ kind: error.kind }));
+          await ready;
+          if (action === "login") await google.finish("codigo-falso", "web.teste");
+          else await google.signOut();
+          await db.setMeta("drive", { version: "nova" });
+          releaseRefresh(new Response(JSON.stringify({ access_token: "acesso-antigo-falso" }), { status: responseStatus }));
+          const stale = await old;
+          const before = requests.length;
+          const token = await google.token().catch((error) => error.kind);
+          return { stale, token, account: !!(await db.getMeta("google", null)), drive: await db.getMeta("drive", null), requestsAfter: requests.length - before };
+        }, { action, responseStatus });
+        assert.deepEqual(result.stale, { kind: "google" }, "resultado antigo deve ser recusado");
+        assert.equal(result.account, action === "login", "resultado antigo não muda a conta atual");
+        assert.deepEqual(result.drive, { version: "nova" }, "resultado antigo não apaga metadados novos");
+        assert.equal(result.token, action === "login" ? "acesso-novo-falso" : "google", "logout não ressuscita token antigo");
+        assert.equal(result.requestsAfter, 0, "consulta seguinte não usa renovação para esconder token perdido");
+      });
+    }
+  }
+
+  for (const syncStatus of ["error", "offline", "google", "ok"]) {
+    await test(`callback OAuth com sync ${syncStatus} só inicializa após sucesso`, async (page) => {
+      const source = await readFile(new URL("../internal/web/static/js/pages/oauth.js", import.meta.url), "utf8");
+      const result = await page.evaluate(async ({ source, syncStatus }) => {
+        const calls = [];
+        window.__oauthTest = {
+          loadLedger: async () => { calls.push("dados"); return { categories: [] }; },
+          google: { finish: async () => { calls.push("login"); } },
+          sync: { state: { status: syncStatus, message: "Falha falsa de sincronização" }, sync: async () => { calls.push("sync"); }, soon: () => { calls.push("agendar"); } },
+          html: () => "",
+          startSolo: async () => { calls.push("iniciar"); },
+        };
+        const moduleSource = source.replace(/^import .*;\n/gm, "");
+        const url = URL.createObjectURL(new Blob(["const { loadLedger, google, sync, html, startSolo } = window.__oauthTest;\n", moduleSource], { type: "text/javascript" }));
+        try {
+          const oauth = await import(url);
+          document.body.innerHTML = '<p data-oauth-status></p>';
+          await oauth.bind(document.body, { params: new URLSearchParams({ state: "web.teste", code: "codigo-falso" }), flash: () => { calls.push("sucesso"); } });
+          const first = { calls: [...calls], error: document.querySelector("[data-oauth-status]").classList.contains("neg"), text: document.querySelector("[data-oauth-status]").textContent };
+          if (syncStatus !== "ok") {
+            window.__oauthTest.sync.state.status = "ok";
+            document.querySelector("button").click();
+            for (let attempt = 0; attempt < 20 && !calls.includes("sucesso"); attempt++) await new Promise((resolve) => setTimeout(resolve, 0));
+          }
+          return { ...first, recovered: calls, retryRemoved: !document.querySelector("button") };
+        } finally {
+          URL.revokeObjectURL(url);
+          delete window.__oauthTest;
+        }
+      }, { source, syncStatus });
+      assert.deepEqual(result.calls, syncStatus === "ok" ? ["login", "sync", "dados", "iniciar", "agendar", "sucesso"] : ["login", "sync"]);
+      assert.equal(result.error, syncStatus !== "ok");
+      if (syncStatus !== "ok") assert.match(result.text, /Falha falsa/);
+      assert.deepEqual(result.recovered, syncStatus === "ok" ? result.calls : ["login", "sync", "sync", "dados", "iniciar", "agendar", "sucesso"], "retry não troca o código de login outra vez");
+      assert.equal(result.retryRemoved, true);
+    });
+  }
+
+  await test("retomada remonta após falha e compartilha conclusão concorrente", async (page) => {
+    const source = await readFile(new URL("../internal/web/static/js/pages/oauth.js", import.meta.url), "utf8");
+    const result = await page.evaluate(async (source) => {
+      const calls = [];
+      window.__oauthTest = {
+        loadLedger: async () => ({ categories: [{}] }),
+        google: { finish: async () => { calls.push("login"); }, session: async () => ({ signedIn: true }) },
+        sync: { state: { status: "error" }, sync: async () => { calls.push("sync"); }, soon: () => {} },
+        html: () => "", startSolo: async () => { calls.push("iniciar"); },
+      };
+      const url = URL.createObjectURL(new Blob(["const { loadLedger, google, sync, html, startSolo } = window.__oauthTest;\n", source.replace(/^import .*;\n/gm, "")], { type: "text/javascript" }));
+      try {
+        const oauth = await import(url);
+        const mount = () => { document.body.innerHTML = '<p data-oauth-status></p>'; return document.body; };
+        const ctx = { params: new URLSearchParams({ state: "web.teste", code: "falso" }), refresh: async () => { calls.push("abrir"); }, flash: () => { calls.push("sucesso"); } };
+        await oauth.bind(mount(), ctx);
+        window.__oauthTest.sync.state.status = "ok";
+        ctx.params = new URLSearchParams({ retomar: "1" });
+        await Promise.all([oauth.bind(mount(), ctx), oauth.bind(mount(), ctx)]);
+        return calls;
+      } finally {
+        URL.revokeObjectURL(url);
+        delete window.__oauthTest;
+      }
+    }, source);
+    assert.deepEqual(result, ["login", "sync", "sync", "abrir", "sucesso"]);
+  });
+
+  await test("logout pendente bloqueia token em cache e não apaga login posterior", async (page) => {
+    const result = await page.evaluate(async () => {
+      const db = await import("/static/js/db.js");
+      const google = await import("/static/js/google.js");
+      let releaseLogout, started;
+      const ready = new Promise((resolve) => { started = resolve; });
+      const response = new Promise((resolve) => { releaseLogout = resolve; });
+      window.fetch = async (url) => {
+        if (url.endsWith("/oauth/logout")) { started(); return response; }
+        return new Response(JSON.stringify({ access_token: "acesso-novo-falso", cookie: true }));
+      };
+      const finish = async (state) => {
+        await db.setMeta("google-pending", { state, verifier: "falso", at: Date.now() });
+        await google.finish("codigo-falso", state);
+      };
+      await finish("web.primeiro");
+      const logout = google.signOut().catch((error) => error.kind);
+      await ready;
+      const duringLogout = await google.token().catch((error) => error.kind);
+      await finish("web.segundo");
+      releaseLogout(new Response("{}"));
+      await logout;
+      return { duringLogout, account: !!(await db.getMeta("google", null)), token: await google.token() };
+    });
+    assert.deepEqual(result, { duringLogout: "google", account: true, token: "acesso-novo-falso" });
+  });
+
+  await test("resposta de login anterior ao logout não reabre a sessão", async (page) => {
+    const result = await page.evaluate(async () => {
+      const db = await import("/static/js/db.js");
+      const google = await import("/static/js/google.js");
+      await db.setMeta("google-pending", { state: "web.teste", verifier: "falso", at: Date.now() });
+      let releaseLogin, started;
+      const ready = new Promise((resolve) => { started = resolve; });
+      const response = new Promise((resolve) => { releaseLogin = resolve; });
+      window.fetch = async (url) => {
+        if (url.endsWith("/oauth/token")) { started(); return response; }
+        return new Response("{}");
+      };
+      const login = google.finish("codigo-falso", "web.teste").catch((error) => error.kind);
+      await ready;
+      await google.signOut();
+      releaseLogin(new Response(JSON.stringify({ access_token: "acesso-antigo-falso", cookie: true })));
+      return { login: await login, account: await db.getMeta("google", null), token: await google.token().catch((error) => error.kind) };
+    });
+    assert.deepEqual(result, { login: "google", account: null, token: "google" });
+  });
+
   for (const force of [false, true]) {
     for (const kind of ["vencida", "limite exato", "ausente", "string", "NaN", "Infinity", "futuro", "fracionário", "inteiro inseguro", "zero", "negativo", "objeto"]) {
       await test(`${kind}: markActive(${force}) recusa sem gravar`, async (page) => {

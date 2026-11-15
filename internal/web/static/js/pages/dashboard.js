@@ -65,12 +65,14 @@ export function render(ctx) {
     ${pageHead("Seu dinheiro, sem complicar.", month, { kicker: "Início", sub: "O essencial primeiro. Os detalhes ficam a um toque." })}
     <section class="home-money" data-section="money-now" aria-labelledby="home-money-title">
       <h2 id="home-money-title">${current ? "Seu dinheiro agora" : finance.monthLabel(month)}</h2>
-      <div class="cards has-hero dash-kpis metricgrid three">
+      <div class="cards home-overview dash-kpis">
         ${metric(home?.hasAccounts ? "Saldo das contas cadastradas" : "Saldo do mês", money(home?.hasAccounts ? home.accountsCents : summary.balanceCents),
           home?.hasAccounts ? `Saldo do mês: ${money(summary.balanceCents)}. Não é dinheiro livre.` : "Entradas menos saídas registradas. Não é saldo bancário.",
           { primary: true, href: home?.hasAccounts ? "/contas" : "/lancamentos" })}
-        ${metric("Entradas do mês", money(summary.inCents), "O que entrou nos registros deste mês", { href: "/lancamentos?tipo=entrada" })}
-        ${metric("Saídas do mês", money(summary.outCents), "O que saiu nos registros deste mês", { href: "/lancamentos?tipo=saida" })}
+        <div class="home-flow" role="group" aria-label="Entradas e saídas registradas no mês">
+          ${metric("Entradas do mês", money(summary.inCents), "O que entrou nos registros deste mês", { href: "/lancamentos?tipo=entrada" })}
+          ${metric("Saídas do mês", money(summary.outCents), "O que saiu nos registros deste mês", { href: "/lancamentos?tipo=saida" })}
+        </div>
       </div>
       ${home ? html`<div class="panel home-estimate">
         <div><h3>Estimativa de orçamento</h3>

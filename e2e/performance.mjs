@@ -80,6 +80,29 @@ try {
   const samples = [];
   for (let sample = 0; sample < 5; sample++) {
     const context = await browser.newContext({ viewport: { width: 1200, height: 900 }, serviceWorkers: "block" });
+    await context.addInitScript(() => {
+      window.__vitals = { lcpMs: null, cls: 0, maiorEventoMs: null };
+      let windowStart = 0, lastShift = 0, windowScore = 0;
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) window.__vitals.lcpMs = Math.round(entry.startTime);
+      }).observe({ type: "largest-contentful-paint", buffered: true });
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (entry.hadRecentInput) continue;
+          if (entry.startTime - lastShift < 1000 && entry.startTime - windowStart < 5000) windowScore += entry.value;
+          else { windowStart = entry.startTime; windowScore = entry.value; }
+          lastShift = entry.startTime;
+          window.__vitals.cls = Math.max(window.__vitals.cls, windowScore);
+        }
+      }).observe({ type: "layout-shift", buffered: true });
+      if (PerformanceObserver.supportedEntryTypes.includes("event")) {
+        new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            if (entry.interactionId) window.__vitals.maiorEventoMs = Math.max(window.__vitals.maiorEventoMs || 0, entry.duration);
+          }
+        }).observe({ type: "event", buffered: true, durationThreshold: 16 });
+      }
+    });
     const page = await context.newPage();
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
@@ -97,14 +120,22 @@ try {
           recursosBytes: performance.getEntriesByType("resource").reduce((sum, entry) => sum + entry.transferSize, 0),
         };
       });
-      samples.push({ sample: sample + 1, mode, ...result });
+      await page.locator('.home-actions a[href="/lancamentos?novo=1"]').click();
+      await page.waitForSelector("#tx-modal .modal-panel");
+      const vitals = await page.evaluate(async () => {
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        return window.__vitals;
+      });
+      assert.ok(Number.isFinite(vitals.cls) && vitals.cls >= 0, "CLS deve ser uma medição válida");
+      assert.ok(vitals.lcpMs === null || vitals.lcpMs >= 0, "LCP deve ser não negativo quando disponível");
+      samples.push({ sample: sample + 1, mode, ...result, ...vitals });
     }
     assert.deepEqual(errors, [], "erros de JavaScript durante a medição");
     await context.close();
   }
   console.log(JSON.stringify({
     ambiente: { sistema: platform(), arquitetura: arch(), processador: cpus()[0]?.model, navegador: browser.version() },
-    cenario: "Computador local, 5 mil despesas no mês, sem limitação de CPU/rede. Service worker bloqueado; recarga mantém IndexedDB e cache HTTP. Não mede login/Drive nem celular real.",
+    cenario: "Computador local, 5 mil despesas no mês, sem limitação de CPU/rede. Service worker bloqueado; recarga mantém IndexedDB e cache HTTP. Não mede login/Drive nem celular real. LCP e CLS de laboratório; maiorEventoMs mede só a abertura do formulário, não o INP real da população. Null significa que não houve amostra disponível.",
     samples,
     medianas: ["primeira-abertura", "recarga"].map((mode) => ({
       mode, painelMs: samples.filter((sample) => sample.mode === mode).map((sample) => sample.painelMs).sort((first, second) => first - second)[2],
