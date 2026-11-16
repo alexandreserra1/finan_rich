@@ -1,8 +1,6 @@
 module github.com/alexandreserra1/finan_rich
 
-go 1.26.0
-
-toolchain go1.26.10
+go 1.26.11
 
 require (
 	modernc.org/sqlite v1.61.0
