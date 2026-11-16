@@ -13,7 +13,7 @@
 // trusted: outras origens que também não barram a página, como o computador
 // pareado com o app (responde a /api/ com Access-Control-Allow-Origin: *). Lá,
 // a falha de acesso também só pode ser o cancelamento.
-const CANCELLED = /cannot load (\S+) due to access control checks/;
+const CANCELLED = /cannot load (\S+) due to access control checks/i; // o console escreve "Cannot"
 
 const origin = (url) => {
   try {
@@ -23,11 +23,25 @@ const origin = (url) => {
   }
 };
 
+// O mesmo cancelamento aparece de outro jeito quando é um módulo (ex.: o Worker do SQLite
+// importando sqlite3.js): o WebKit registra no console "Cannot load <url> due to access
+// control checks" e, no mesmo instante, um pageerror "Importing a module script failed."
+// sem pilha. O app trata (volta para o IndexedDB e avisa no console). Só é descartado se o
+// cancelamento do console foi de um arquivo do mesmo endereço, há até 2 s, nessa página.
+const MODULE_FAILED = /^Importing a module script failed\.?$/;
+
 export function watchErrors(page, errors, format = (e) => e.message, trusted = []) {
+  let lastCancel = -Infinity;
+  page.on("console", (m) => {
+    const url = CANCELLED.exec(m.text())?.[1];
+    const here = origin(page.url());
+    if (url && here && here !== "null" && origin(url) === here) lastCancel = Date.now();
+  });
   page.on("pageerror", (e) => {
     const url = CANCELLED.exec(e.stack || `${e.name}:/${e.message}`)?.[1];
     const here = origin(page.url());
     if (url && here && here !== "null" && [here, ...trusted].includes(origin(url))) return;
+    if (MODULE_FAILED.test(e.message) && Date.now() - lastCancel < 2000) return;
     errors.push(format(e));
   });
 }
