@@ -108,4 +108,8 @@ de produção precisam ser testados em HTTPS real. A captura WebKit injeta um es
 que a CSP bloqueia: o teste confere especificamente essa violação de instrumentação,
 sem ignorar outros erros do aplicativo nem relaxar a CSP.
 
+Se o logout atingir limite de taxa, o cookie deste navegador é apagado mesmo
+assim, mas a chamada de revogação no Google não é executada. Nesse caso, para
+retirar a permissão do provedor, use as permissões de aplicativos da Conta Google.
+
 Referência: [tratamento oficial de erros do Drive](https://developers.google.com/workspace/drive/api/guides/handle-errors).

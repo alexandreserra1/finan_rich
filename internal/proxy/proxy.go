@@ -165,13 +165,19 @@ var Paths = []string{"/healthz", "/chat/completions", "/v1/chat/completions", "/
 
 // New devolve o handler HTTP do intermediário.
 func New(cfg Config) http.Handler {
+	return newProxy(cfg, time.Now)
+}
+
+func newProxy(cfg Config, now func() time.Time) http.Handler {
 	if cfg.Client == nil {
 		cfg.Client = &http.Client{Timeout: 3 * time.Minute}
 	}
 	if len(cfg.Providers) == 0 && cfg.Upstream != "" {
 		cfg.Providers = []Provider{{Name: "groq", Upstream: cfg.Upstream, APIKey: cfg.APIKey, Models: cfg.Models, StreamUsage: true}}
 	}
-	h := &handler{cfg: cfg, limiter: newLimiter(time.Now), oauthLimiter: newLimiter(time.Now), models: map[string]cachedModels{}}
+	h := &handler{cfg: cfg, limiter: newLimiter(now), oauthLimiter: newLimiter(now),
+		chatBurst:  newTokenBucket(5, time.Second, maxBurstKeys, now),
+		oauthBurst: newTokenBucket(10, 6*time.Second, maxBurstKeys, now), models: map[string]cachedModels{}}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "ok") })
 	mux.HandleFunc("POST /chat/completions", h.chat)
@@ -187,6 +193,8 @@ type handler struct {
 	cfg          Config
 	limiter      *limiter
 	oauthLimiter *limiter // separado: entrar com Google não gasta a cota do consultor
+	chatBurst    *tokenBucket
+	oauthBurst   *tokenBucket
 
 	mu      sync.Mutex
 	models  map[string]cachedModels // por provedor: os modelos que ele ainda tem
@@ -311,6 +319,10 @@ func (h *handler) available(p Provider) []string {
 func free(id string) bool { return strings.HasSuffix(id, ":free") || id == "openrouter/free" }
 
 func (h *handler) chat(w http.ResponseWriter, r *http.Request) {
+	if wait := h.chatBurst.allow(clientIP(r)); wait > 0 {
+		rateLimited(w, "muitas perguntas seguidas; espere um pouco", wait)
+		return
+	}
 	raw, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBody))
 	if err != nil {
 		fail(w, http.StatusRequestEntityTooLarge, "pedido grande demais")
@@ -326,8 +338,8 @@ func (h *handler) chat(w http.ResponseWriter, r *http.Request) {
 	if len(device) > 64 {
 		device = device[:64]
 	}
-	if msg := h.limiter.allow(device, clientIP(r), h.cfg.Limits); msg != "" {
-		fail(w, http.StatusTooManyRequests, msg)
+	if msg, wait := h.limiter.allowWithRetry(device, clientIP(r), h.cfg.Limits); msg != "" {
+		rateLimited(w, msg, wait)
 		return
 	}
 	body["max_tokens"] = json.RawMessage(capTokens(body["max_tokens"]))
@@ -530,6 +542,7 @@ func cors(next http.Handler) http.Handler {
 		h.Set("Access-Control-Allow-Origin", "*")
 		h.Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
 		h.Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+		h.Set("Access-Control-Expose-Headers", "Retry-After")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
 			return
@@ -569,6 +582,11 @@ func newLimiter(now func() time.Time) *limiter {
 
 // allow devolve "" se pode, ou a mensagem para a pessoa.
 func (l *limiter) allow(device, ip string, lim Limits) string {
+	msg, _ := l.allowWithRetry(device, ip, lim)
+	return msg
+}
+
+func (l *limiter) allowWithRetry(device, ip string, lim Limits) (string, time.Duration) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	now := l.now()
@@ -597,12 +615,10 @@ func (l *limiter) allow(device, ip string, lim Limits) string {
 		}
 		return c
 	}
-	if parsed := net.ParseIP(ip); parsed != nil && parsed.To4() == nil {
-		ip = parsed.Mask(net.CIDRMask(64, 128)).String() + "/64" // IPv6: a casa tem o /64 inteiro
-	}
+	ip = limitIP(ip)
 	ipc := get("ip:" + ip)
 	if ipc == nil {
-		return "o consultor grátis está com movimento demais agora; tente mais tarde ou use sua própria chave grátis em Ajustes"
+		return "o consultor grátis está com movimento demais agora; tente mais tarde ou use sua própria chave grátis em Ajustes", time.Unix(day, 0).Add(24 * time.Hour).Sub(now)
 	}
 	if _, seen := l.counts["dev:"+device]; device != "" && !seen {
 		if ipc.devices >= maxDevicesPerIP {
@@ -616,19 +632,30 @@ func (l *limiter) allow(device, ip string, lim Limits) string {
 	}
 	dev := get("dev:" + device)
 	if dev == nil {
-		return "o consultor grátis está com movimento demais agora; tente mais tarde ou use sua própria chave grátis em Ajustes"
+		return "o consultor grátis está com movimento demais agora; tente mais tarde ou use sua própria chave grátis em Ajustes", time.Unix(day, 0).Add(24 * time.Hour).Sub(now)
 	}
+	waitFor := func(c *count, hourLimit, dayLimit int) time.Duration {
+		var wait time.Duration
+		if c.inHour >= hourLimit {
+			wait = time.Unix(hour, 0).Add(time.Hour).Sub(now)
+		}
+		if c.inDay >= dayLimit {
+			wait = max(wait, time.Unix(day, 0).Add(24*time.Hour).Sub(now))
+		}
+		return wait
+	}
+	wait := max(waitFor(ipc, lim.IPHour, lim.IPDay), waitFor(dev, lim.DeviceHour, lim.DeviceDay))
 	if ipc.inHour >= lim.IPHour || ipc.inDay >= lim.IPDay {
-		return "muitas perguntas desta rede ao consultor grátis; tente mais tarde ou use sua própria chave grátis em Ajustes"
+		return "muitas perguntas desta rede ao consultor grátis; tente mais tarde ou use sua própria chave grátis em Ajustes", wait
 	}
 	if dev.inHour >= lim.DeviceHour || dev.inDay >= lim.DeviceDay {
-		return "o consultor grátis chegou ao limite deste aparelho por hoje; tente amanhã ou use sua própria chave grátis em Ajustes"
+		return "o consultor grátis chegou ao limite deste aparelho por hoje; tente amanhã ou use sua própria chave grátis em Ajustes", wait
 	}
 	dev.inHour++
 	dev.inDay++
 	ipc.inHour++
 	ipc.inDay++
-	return ""
+	return "", 0
 }
 
 // lastLive diz se não sobra nenhuma tentativa na fila (as dos provedores

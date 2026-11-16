@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestOAuthRelay(t *testing.T) {
@@ -78,7 +79,8 @@ func TestOAuthRelay(t *testing.T) {
 func TestOAuthRateLimit(t *testing.T) {
 	google := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`{}`)) }))
 	defer google.Close()
-	h := New(Config{Upstream: "http://127.0.0.1:9", Models: []string{"m"}, Limits: DefaultLimits, GoogleClientID: "id", GoogleClientSecret: "s", GoogleTokenURL: google.URL})
+	now := time.Date(2026, 10, 22, 10, 0, 0, 0, time.UTC)
+	h := newProxy(Config{Upstream: "http://127.0.0.1:9", Models: []string{"m"}, Limits: DefaultLimits, GoogleClientID: "id", GoogleClientSecret: "s", GoogleTokenURL: google.URL}, func() time.Time { return now })
 	last := 0
 	for i := 0; i < oauthLimits.DeviceHour+1; i++ {
 		req := httptest.NewRequest("POST", "/oauth/refresh", strings.NewReader(`{"refreshToken":"r"}`))
@@ -86,6 +88,13 @@ func TestOAuthRateLimit(t *testing.T) {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
 		last = rec.Code
+		if i < oauthLimits.DeviceHour && last != http.StatusOK {
+			t.Fatalf("pedido %d recusado antes da cota: %d", i+1, last)
+		}
+		if i == oauthLimits.DeviceHour {
+			assertLimited(t, rec, "3420")
+		}
+		now = now.Add(6 * time.Second)
 	}
 	if last != http.StatusTooManyRequests {
 		t.Errorf("depois do limite = %d, quer 429", last)

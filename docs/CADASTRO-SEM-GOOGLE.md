@@ -268,6 +268,7 @@ cadastro seguro concluído antes de substituir esses contratos e testar duas
 contas, abas concorrentes e respostas atrasadas.
 
 Como preparar o projeto: [SUPABASE-CONFIGURACAO.md](SUPABASE-CONFIGURACAO.md).
+Políticas e contratos antiabuso: [LIMITACAO-DE-TAXAS.md](LIMITACAO-DE-TAXAS.md).
 
 ## Referências primárias
 
