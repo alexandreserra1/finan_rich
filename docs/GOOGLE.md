@@ -71,3 +71,41 @@ Pronto: o botão "Entrar com Google" aparece nas boas-vindas e em Ajustes. Sem a
 
 Trocar a chave secreta: crie outra no mesmo cliente, troque `GOOGLE_CLIENT_SECRET` na Vercel,
 Redeploy, e apague a antiga.
+
+## O login terminou, mas o Drive respondeu 403
+
+O login e o acesso ao Drive são etapas diferentes. Trocar a chave do cliente não
+ativa a API nem concede uma permissão recusada. O código HTTP sozinho não diz a
+causa; a Rich agora distingue os motivos estruturados retornados pelo Google,
+sem exibir mensagens privadas da resposta.
+
+| Motivo do Google | O que fazer |
+|---|---|
+| `accessNotConfigured` ou `SERVICE_DISABLED` | Selecione o projeto do mesmo cliente OAuth. Em APIs e serviços → Biblioteca → Google Drive API, clique em Ativar. Aguarde a ativação e tente sincronizar de novo. Configurar o escopo na tela de consentimento não ativa a API. |
+| `insufficientPermissions` ou `ACCESS_TOKEN_SCOPE_INSUFFICIENT` | Use “Entrar de novo e permitir acesso” e aceite o acesso à pasta de dados do app. Não é preciso dar acesso a todos os arquivos do Drive. |
+| `storageQuotaExceeded` | Libere espaço no Drive e tente sincronizar de novo. |
+| Limite de uso | Espere antes de repetir. Entrar de novo não remove o limite do Google. |
+| `403` sem motivo reconhecido | Confira restrições da conta ou da organização e a configuração do projeto. Não presumir que a senha está errada. |
+
+Se precisar investigar pelo navegador, em Rede/Network abra somente a resposta
+da chamada para `www.googleapis.com/drive/v3/files`. Consulte `error.errors[].reason`
+ou `error.details[].reason`. Compartilhe apenas esse identificador, sem cabeçalhos,
+Authorization, tokens, cookies, códigos OAuth, Client Secret ou arquivos HAR.
+
+Uma falha não apaga a conta, os registros, a fila pendente nem o arquivo no Drive.
+A Rich também não cria categorias vazias como substituto dos dados que não baixou.
+Só erros de escopo oferecem reconexão; erros de configuração continuam aguardando
+o ajuste no projeto, sem repetir automaticamente o login.
+
+Testes locais usam Google e Drive simulados. Abrir `/oauth/config` com status 200
+confirma apenas que o servidor possui uma configuração, não que a credencial ou
+a sincronização real funcionam.
+
+A fixture OAuth dos testes devolve uma página de navegação, pois o WebKit não
+aceita o redirecionamento 302 interceptado pelo Playwright. No teste local HTTP,
+o WebKit também recebe um cookie de renovação falso pela fixture; cookies Secure
+de produção precisam ser testados em HTTPS real. A captura WebKit injeta um estilo
+que a CSP bloqueia: o teste confere especificamente essa violação de instrumentação,
+sem ignorar outros erros do aplicativo nem relaxar a CSP.
+
+Referência: [tratamento oficial de erros do Drive](https://developers.google.com/workspace/drive/api/guides/handle-errors).

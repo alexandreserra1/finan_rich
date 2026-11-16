@@ -19,7 +19,7 @@ let timer = null;
 
 // status: "ok" | "syncing" | "offline" | "login" | "unpaired" | "google" | "error"
 // notice: aviso do computador nesta sincronização (ex.: categoria em uso não apagada).
-export const state = { status: "syncing", pending: 0, lastSync: null, message: "", notice: "" };
+export const state = { status: "syncing", pending: 0, lastSync: null, message: "", notice: "", recovery: "" };
 
 function emit(dataChanged = false) {
   window.dispatchEvent(new CustomEvent("finan-sync", { detail: { ...state, dataChanged } }));
@@ -117,6 +117,7 @@ export async function sync() {
   }
   running = (async () => {
     state.status = "syncing";
+    state.recovery = "";
     emit();
     try {
       do {
@@ -130,7 +131,7 @@ export async function sync() {
     } catch (err) {
       state.pending = (await pending()).length;
       if (err.kind === "login" || err.kind === "unpaired" || err.kind === "google") state.status = err.kind;
-      else if (err.kind === "error") { state.status = "error"; state.message = err.message; }
+      else if (err.kind === "error") { state.status = "error"; state.message = err.message; state.recovery = err.recovery || ""; }
       else state.status = "offline"; // fetch falhou: sem conexão com o computador
       emit();
     } finally {

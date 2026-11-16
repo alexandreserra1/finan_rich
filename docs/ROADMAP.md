@@ -3,6 +3,18 @@
 Ideias para as próximas versões, com o que já foi pensado sobre cada uma.
 A arquitetura atual está em [ARCHITECTURE.md](ARCHITECTURE.md).
 
+## Cadastro sem Google (proposta de 16/11/2026)
+
+Plano de identidade, backend, tabelas, contratos e isolamento por pessoa em
+[CADASTRO-SEM-GOOGLE.md](CADASTRO-SEM-GOOGLE.md). Não está habilitado nem aplicado
+ao banco de produção. Supabase Auth foi aprovado; falta criar o projeto e configurar
+e-mails e armazenamento: autenticar por e-mail não oferece sozinho a sincronização
+do Drive. A base de perfis e sessões tem teste de contrato em PostgreSQL isolado.
+
+Antes de abrir o cadastro, precisamos isolar o banco local por identidade,
+validar recuperação e revogação, testar acesso cruzado e atualizar a política
+se houver armazenamento financeiro na nuvem Rich.
+
 ## Experiência simples (05/11/2026)
 
 Entregue o Início enxuto, o resumo de sete dias, até três insights com ação, a navegação

@@ -15,7 +15,31 @@ const UPLOAD = "https://www.googleapis.com/upload/drive/v3/files";
 async function call(url, init = {}) {
   const res = await fetch(url, { ...init, headers: { ...init.headers, Authorization: `Bearer ${await google.token()}` } });
   if (res.status === 401) google.expire(); // o próximo pedido renova o token
-  if (!res.ok) throw Object.assign(new Error(`o Google Drive respondeu ${res.status}; tente de novo`), { kind: "error" });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    const error = body?.error;
+    const reasons = [
+      ...(Array.isArray(error?.errors) ? error.errors.map((item) => item?.reason) : []),
+      ...(Array.isArray(error?.details) ? error.details.filter((item) => item?.["@type"] === "type.googleapis.com/google.rpc.ErrorInfo").map((item) => item.reason) : []),
+    ];
+    let message = `o Google Drive respondeu ${res.status}; tente de novo`;
+    let recovery = "";
+    if (res.status === 403) {
+      if (reasons.some((reason) => ["accessNotConfigured", "SERVICE_DISABLED"].includes(reason))) {
+        message = "A API do Google Drive não está ativada no projeto do login da Rich. Quem administra o site precisa ativá-la no Google Cloud e tentar novamente.";
+      } else if (reasons.some((reason) => ["insufficientPermissions", "ACCESS_TOKEN_SCOPE_INSUFFICIENT"].includes(reason))) {
+        message = "A Rich não recebeu permissão para usar a pasta de dados do app no seu Google Drive. Você precisa entrar de novo com Google e permitir esse acesso.";
+        recovery = "google";
+      } else if (reasons.includes("storageQuotaExceeded")) {
+        message = "O armazenamento do seu Google Drive está cheio. Libere espaço e tente sincronizar novamente. Seus dados continuam neste aparelho.";
+      } else if (reasons.some((reason) => ["rateLimitExceeded", "userRateLimitExceeded", "dailyLimitExceeded"].includes(reason))) {
+        message = "O Google Drive atingiu um limite de uso. Espere um pouco antes de tentar sincronizar novamente. Seus dados continuam neste aparelho.";
+      } else {
+        message = "O Google Drive recusou o acesso (403). Confira as permissões da conta e a configuração do projeto antes de tentar novamente.";
+      }
+    }
+    throw Object.assign(new Error(message), { kind: "error", recovery });
+  }
   return res;
 }
 

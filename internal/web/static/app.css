@@ -1785,6 +1785,7 @@ a.card.metric:hover { transform: translateY(-3px); box-shadow: 0 12px 25px rgb(3
 .oauth-state h1 { margin: 0 0 20px; font-size: clamp(28px, 4vw, 40px); line-height: 1.15; letter-spacing: -.035em; }
 .oauth-state p { line-height: 1.7; overflow-wrap: anywhere; }
 .oauth-state a { display: inline-block; margin: 12px 20px 0 0; }
+.oauth-state a.btn { display: inline-flex; margin-right: 0; text-align: center; }
 .oauth-state details { margin-top: 24px; color: var(--muted); font-size: 13px; }
 .oauth-state summary { cursor: pointer; }
 .home-overview { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
