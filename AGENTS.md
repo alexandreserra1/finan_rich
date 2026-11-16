@@ -46,8 +46,11 @@ scripts/clean.sh   # limpeza (veja "Limpeza" abaixo)
 - Dependência nova: só código aberto (MIT/BSD/ISC/Apache/MPL; fontes também SIL OFL) e só se
   não der com o que já existe; `scripts/check-licenses.sh` barra o resto.
 - Versão é publicada só pelo workflow Release (ele grava `version.properties` e cria a tag).
-- Ao concluir alterações verificadas, faça commit e push para o remoto. Inclua somente
-  arquivos da tarefa; preserve dados locais, arquivos gerados e mudanças de outros trabalhos.
+- Ao concluir alterações verificadas, faça commit e push em uma branch da tarefa e abra
+  automaticamente um Pull Request no GitHub (o MR deste projeto). Não faça merge nem
+  push direto na main sem pedido explícito. Inclua somente arquivos da tarefa; preserve
+  dados locais, arquivos gerados e mudanças de outros trabalhos. Informe os testes e
+  bloqueios no PR; nunca contorne checks ou proteção de branch para publicar.
 - Nunca versionar `dist/`, `mobile/www`, `finance.wasm`, bancos `*.db`, `.env`, keystores.
 - IA só grátis ou no computador da pessoa (Ollama, LM Studio). Não adicionar provedor pago
   nem SDK de provedor: tudo fala o formato OpenAI (`internal/llm/openai.go`) ou o do Ollama.

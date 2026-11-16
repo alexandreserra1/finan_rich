@@ -95,8 +95,7 @@ func (h *handler) oauthStart(w http.ResponseWriter, r *http.Request, in any) boo
 		fail(w, http.StatusNotFound, "o login com Google ainda não foi configurado")
 		return false
 	}
-	if msg := h.oauthLimiter.allow("", clientIP(r), oauthLimits); msg != "" {
-		fail(w, http.StatusTooManyRequests, "muitas tentativas de entrar; espere um pouco")
+	if !h.oauthAllow(w, r, "muitas tentativas de entrar; espere um pouco") {
 		return false
 	}
 	if json.NewDecoder(http.MaxBytesReader(w, r.Body, maxOAuthBody)).Decode(in) != nil {
@@ -146,8 +145,8 @@ func (h *handler) oauthRelay(w http.ResponseWriter, r *http.Request, form url.Va
 
 // oauthLogout (site): apaga o cookie e revoga o acesso no Google.
 func (h *handler) oauthLogout(w http.ResponseWriter, r *http.Request) {
-	if msg := h.oauthLimiter.allow("", clientIP(r), oauthLimits); msg != "" {
-		fail(w, http.StatusTooManyRequests, "muitas tentativas; espere um pouco")
+	setRT(w, "", -1)
+	if !h.oauthAllow(w, r, "O cookie deste navegador foi apagado. O acesso no Google não foi revogado por limite de tentativas; você pode removê-lo nas permissões da sua Conta Google.") {
 		return
 	}
 	if c, err := r.Cookie(rtCookie); err == nil && c.Value != "" {
@@ -162,8 +161,20 @@ func (h *handler) oauthLogout(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	setRT(w, "", -1)
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Write([]byte(`{"ok":true}`))
+}
+
+func (h *handler) oauthAllow(w http.ResponseWriter, r *http.Request, message string) bool {
+	ip := clientIP(r)
+	if wait := h.oauthBurst.allow(ip); wait > 0 {
+		rateLimited(w, message, wait)
+		return false
+	}
+	if msg, wait := h.oauthLimiter.allowWithRetry("", ip, oauthLimits); msg != "" {
+		rateLimited(w, message, wait)
+		return false
+	}
+	return true
 }

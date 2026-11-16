@@ -62,7 +62,10 @@ export async function bind(root, ctx) {
     retry.type = "button";
     retry.textContent = "Tentar sincronizar de novo";
     status.after(retry);
+    let reconnect = null;
     const complete = async () => {
+      reconnect?.remove();
+      reconnect = null;
       retry.hidden = true;
       const title = root.querySelector("[data-oauth-title]");
       if (title) title.textContent = "Trazendo seus dados…";
@@ -86,7 +89,27 @@ export async function bind(root, ctx) {
         if (title) title.textContent = "Não foi possível sincronizar";
         status.textContent = err.message;
         status.classList.add("neg");
-        retry.hidden = false;
+        retry.hidden = sync.state.recovery === "google";
+        if (retry.hidden) {
+          const link = document.createElement("a");
+          reconnect = link;
+          link.href = "/?entrar=1";
+          link.dataset.oauthReconnect = "";
+          link.className = "btn";
+          link.textContent = "Entrar de novo e permitir acesso";
+          link.addEventListener("click", async (event) => {
+            event.preventDefault();
+            if (link.getAttribute("aria-disabled") === "true") return;
+            link.setAttribute("aria-disabled", "true");
+            try {
+              await google.signIn("web");
+            } catch (error) {
+              status.textContent = error.message;
+              link.removeAttribute("aria-disabled");
+            }
+          });
+          retry.after(reconnect);
+        }
       }
     };
     retry.addEventListener("click", complete);

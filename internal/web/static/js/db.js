@@ -23,8 +23,28 @@ export { SITE_IDLE_MS } from "./db-idb.js";
 
 const LOCK = "finan-rich-db";
 let backend = null;
+let epoch = 0;
+let operations = Promise.resolve();
+let resetFailure = null;
 
 const store = () => (backend ??= choose());
+
+export const databaseEpoch = () => epoch;
+export function checkEpoch(expected) {
+  if (expected !== epoch) throw Object.assign(new Error("Os dados deste aparelho foram apagados. Sincronize de novo."), { kind: "reset" });
+}
+
+const access = (operation, expected) => {
+  const result = operations.then(() => {
+    if (resetFailure) throw resetFailure;
+    return store();
+  }).then((bank) => {
+    if (expected !== undefined) checkEpoch(expected);
+    return operation(bank);
+  });
+  operations = result.catch(() => {});
+  return result;
+};
 
 async function choose() {
   const app = window.Capacitor?.isNativePlatform?.();
@@ -150,15 +170,25 @@ async function takeLock() {
   waitScreen(false);
 }
 
-export const loadLedger = () => store().then((b) => b.loadLedger());
-export const allRecords = () => store().then((b) => b.allRecords());
-export const saveManyLocal = (items) => store().then((b) => b.saveManyLocal(items));
-export const saveLocal = (type, record) => store().then((b) => b.saveLocal(type, record));
-export const applyRemote = (changes) => store().then((b) => b.applyRemote(changes));
-export const pending = () => store().then((b) => b.pending());
-export const clearSent = (sent) => store().then((b) => b.clearSent(sent));
-export const getMeta = (key, fallback) => store().then((b) => b.getMeta(key, fallback));
-export const setMeta = (key, value) => store().then((b) => b.setMeta(key, value));
-export const siteSession = (renew = false, force = false) => store().then((b) => b.siteSession(renew, force));
-export const wipe = () => store().then((b) => b.wipe());
-export const dump = () => store().then((b) => b.dump());
+export const loadLedger = () => access((bank) => bank.loadLedger());
+export const allRecords = (expected) => access((bank) => bank.allRecords(), expected);
+export const saveManyLocal = (items) => access((bank) => bank.saveManyLocal(items));
+export const saveLocal = (type, record) => access((bank) => bank.saveLocal(type, record));
+export const applyRemote = (changes, expected) => access((bank) => bank.applyRemote(changes), expected);
+export const pending = (expected) => access((bank) => bank.pending(), expected);
+export const clearSent = (sent, expected) => access((bank) => bank.clearSent(sent), expected);
+export const getMeta = (key, fallback, expected) => access((bank) => bank.getMeta(key, fallback), expected);
+export const setMeta = (key, value, expected) => access((bank) => bank.setMeta(key, value), expected);
+export const siteSession = (renew = false, force = false) => access((bank) => bank.siteSession(renew, force));
+export function wipe() {
+  epoch++;
+  return access(async (bank) => {
+    try {
+      await bank.wipe();
+    } catch (error) {
+      resetFailure = error;
+      throw error;
+    }
+  });
+}
+export const dump = () => access((bank) => bank.dump());

@@ -51,3 +51,37 @@ page.emit("pageerror", msg("http://127.0.0.1:18097/api/sync"));
 assert.equal(errors.length, 1);
 
 console.log("Tudo certo.");
+
+// Carga de módulo cancelada (Worker do SQLite importando sqlite3.js no WebKit do CI, 16/11):
+// o console avisa do cancelamento de um arquivo do mesmo endereço e, junto, vem o pageerror
+// sem pilha. Só esse par é descartado.
+const consoleMsg = (text) => ({ text: () => text });
+page = fakePage("http://127.0.0.1:18097/configuracoes");
+errors = [];
+watchErrors(page, errors);
+page.emit("console", consoleMsg("Cannot load http://127.0.0.1:18097/static/vendor/sqlite/sqlite3.js due to access control checks."));
+page.emit("pageerror", { name: "TypeError", message: "Importing a module script failed.", stack: "" });
+assert.deepEqual(errors, [], "módulo cancelado com o aviso do console não entra");
+// Sem o aviso de cancelamento, a mesma falha continua sendo erro de verdade.
+page = fakePage("http://127.0.0.1:18097/configuracoes");
+errors = [];
+watchErrors(page, errors);
+page.emit("pageerror", { name: "TypeError", message: "Importing a module script failed.", stack: "" });
+assert.equal(errors.length, 1, "módulo que falha sem cancelamento continua valendo");
+// O cancelamento é de outro endereço: não vale.
+page = fakePage("http://127.0.0.1:18097/configuracoes");
+errors = [];
+watchErrors(page, errors);
+page.emit("console", consoleMsg("Cannot load https://exemplo.com/x.js due to access control checks."));
+page.emit("pageerror", { name: "TypeError", message: "Importing a module script failed.", stack: "" });
+assert.equal(errors.length, 1, "cancelamento de outro endereço não perdoa");
+// O aviso é antigo (mais de 2 s): não vale.
+page = fakePage("http://127.0.0.1:18097/configuracoes");
+errors = [];
+watchErrors(page, errors);
+const real = Date.now;
+page.emit("console", consoleMsg("Cannot load http://127.0.0.1:18097/static/a.js due to access control checks."));
+Date.now = () => real() + 3000;
+page.emit("pageerror", { name: "TypeError", message: "Importing a module script failed.", stack: "" });
+Date.now = real;
+assert.equal(errors.length, 1, "aviso de mais de 2 s atrás não perdoa");

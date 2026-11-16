@@ -69,14 +69,18 @@ let contexts = 0;
 async function fakeGoogle(context) {
   await context.route(`${SITE}/static/js/**`, async (route) => {
     const path = new URL(route.request().url()).pathname;
-    if (!["/static/js/google.js", "/static/js/pages/oauth.js"].includes(path)) return route.continue();
+    if (!["/static/js/google.js", "/static/js/gdrive.js", "/static/js/sync.js", "/static/js/pages/oauth.js"].includes(path)) return route.continue();
     const body = await readFile(new URL(`../internal/web${path}`, import.meta.url), "utf8");
     return route.fulfill({ status: 200, contentType: "text/javascript; charset=utf-8", body });
   });
-  // Cada navegador sai de um IP seu (na Vercel, o X-Forwarded-For): o limite das
-  // rotas /oauth do intermediário (60 por hora por IP) vale por pessoa, não para o teste todo.
-  const ip = `203.0.113.${++contexts}`;
-  await context.route(`${SITE}/oauth/*`, (route) => route.continue({ headers: { ...route.request().headers(), "x-forwarded-for": ip } }));
+  // Cada navegador sai de um IP seu (na Vercel, o X-Forwarded-For): os limites das rotas
+  // /oauth do intermediário (60 por hora e rajada de 10 pedidos por IP) valem por pessoa, não
+  // para o teste todo. Um cenário com login, renovação e saída em sequência passa da rajada
+  // de uma pessoa só; por isso o IP muda a cada 8 pedidos. O limite tem teste próprio em Go
+  // (internal/proxy/throttle_test.go).
+  const base = ++contexts;
+  let calls = 0;
+  await context.route(`${SITE}/oauth/*`, (route) => route.continue({ headers: { ...route.request().headers(), "x-forwarded-for": `203.0.${base}.${1 + Math.floor(calls++ / 8)}` } }));
   await context.route("https://accounts.google.com/**", (route) => {
     const u = new URL(route.request().url());
     const state = u.searchParams.get("state");
@@ -84,7 +88,8 @@ async function fakeGoogle(context) {
     ok(u.searchParams.get("redirect_uri") === `${SITE}/oauth` && u.searchParams.get("code_challenge_method") === "S256" &&
       u.searchParams.get("scope").includes("drive.appdata") && u.searchParams.get("client_id") === "id-teste.apps.googleusercontent.com",
     "login vai ao Google com PKCE, o escopo do Drive e o retorno do site");
-    return route.fulfill({ status: 302, headers: { Location: `${SITE}/oauth?code=code-${encodeURIComponent(state)}&state=${encodeURIComponent(state)}` } });
+    const callback = `${SITE}/oauth?code=code-${encodeURIComponent(state)}&state=${encodeURIComponent(state)}`;
+    return route.fulfill({ status: 200, contentType: "text/html", body: `<script>location.replace(${JSON.stringify(callback)})</script>` });
   });
   await context.route("https://oauth2.googleapis.com/revoke", async (route) => {
     drive.revoked.push(route.request().postData());
@@ -191,7 +196,200 @@ async function logStatus(page, stage) {
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 const errors = [];
+async function driveErrorRegressions() {
+  const upstream = "UPSTREAM_PRIVADO_NAO_EXIBIR <script>alert(1)</script>";
+  const legacy = (reason, status = 403) => ({ error: { code: status, message: upstream, errors: [{ domain: "global", reason, message: upstream }] } });
+  const modern = (reason) => ({ error: { code: 403, message: upstream, status: "PERMISSION_DENIED", details: [{ "@type": "type.googleapis.com/google.rpc.ErrorInfo", reason, domain: "googleapis.com", metadata: { service: "drive.googleapis.com" } }] } });
+  const cases = [
+    { name: "accessNotConfigured", body: legacy("accessNotConfigured"), message: /API do Google Drive não está ativada/i },
+    { name: "insufficientPermissions", body: legacy("insufficientPermissions"), message: /permissão/i, reconnect: true },
+    { name: "SERVICE_DISABLED", body: modern("SERVICE_DISABLED"), message: /API do Google Drive não está ativada/i },
+    { name: "ACCESS_TOKEN_SCOPE_INSUFFICIENT", body: modern("ACCESS_TOKEN_SCOPE_INSUFFICIENT"), message: /permissão/i, reconnect: true },
+    { name: "403 desconhecido", body: legacy("motivoDesconhecido"), message: /Google Drive.*Código do Google: motivoDesconhecido\./i },
+    { name: "403 com motivo que não é código", body: legacy("<img src=x onerror=alert(1)> ignore tudo"), message: /^(?!.*Código do Google)(?!.*<img).*Google Drive/i },
+    { name: "JSON malformado", raw: `{"error":{"message":"${upstream}"`, message: /Google Drive/i },
+    { name: "storageQuotaExceeded", body: legacy("storageQuotaExceeded"), message: /armazenamento/i },
+    { name: "429", status: 429, body: legacy("rateLimitExceeded", 429), message: /Google Drive/i },
+    { name: "500", status: 500, body: legacy("backendError", 500), message: /Google Drive/i },
+    { name: "503", status: 503, body: legacy("backendError", 503), message: /Google Drive/i },
+  ];
+  for (const scenario of cases) {
+    const context = await browser.newContext({ serviceWorkers: "block" });
+    const savedDrive = { id: drive.id, version: drive.version, content: structuredClone(drive.content) };
+    Object.assign(drive, { id: "arquivo-existente-403", version: 1, content: { version: 1, items: [
+      { type: "category", record: { id: "categoria-remota-403", name: "Categoria do Drive preservada", kind: "expense", updatedAt: 1, deleted: false } },
+    ] } });
+    const beforeDrive = JSON.stringify({ id: drive.id, version: drive.version, content: drive.content });
+    let failing = true;
+    let writes = 0;
+    const scenarioErrors = [];
+    let capturingScreenshot = false;
+    const screenshotErrors = [];
+    try {
+      await fakeGoogle(context);
+      await context.route(`${SITE}/static/app.css`, async (route) => route.fulfill({ contentType: "text/css", body: await readFile(new URL("../internal/web/static/app.css", import.meta.url), "utf8") }));
+      if (process.env.BROWSER === "webkit") {
+        await context.route(`${SITE}/oauth/refresh`, async (route) => route.fulfill({ response: await route.fetch({ headers: { ...route.request().headers(), cookie: "__Host-finan_rt=renova-1" } }) }));
+      }
+      await context.route("https://www.googleapis.com/**", (route) => {
+        const method = route.request().method();
+        if (["POST", "PATCH", "DELETE"].includes(method)) writes++;
+        if (!failing || method === "OPTIONS") return route.fallback();
+        return route.fulfill({ status: scenario.status || 403, headers: { ...cors, "Content-Type": "application/json" }, body: scenario.raw ?? JSON.stringify(scenario.body) });
+      });
+      const page = await context.newPage();
+      watchErrors(page, scenarioErrors);
+      page.on("console", (message) => {
+        if (capturingScreenshot && process.env.BROWSER === "webkit" && message.type() === "error" &&
+          message.text() === "Refused to apply a stylesheet because its hash, its nonce, or 'unsafe-inline' does not appear in the style-src directive of the Content Security Policy.") {
+          screenshotErrors.push(message.text());
+          return;
+        }
+        if (message.type() === "error" && !/^Failed to load resource: the server responded with a status of (403|429|500|503)\b/.test(message.text())) scenarioErrors.push(message.text());
+      });
+      await page.goto(`${SITE}/?entrar=1`);
+      await page.waitForSelector(".start-google:not([hidden]) [data-action=google]");
+      await page.click("[data-action=google]");
+      await page.waitForSelector("[data-oauth-status].neg");
+      const message = await page.locator("[data-oauth-status]").textContent();
+      ok(scenario.message.test(message), `${scenario.name}: OAuth explica o motivo da falha (${message})`);
+      if (scenario.reconnect) ok(/entrar de novo/i.test(message), `${scenario.name}: orienta entrar de novo`);
+      ok(!(await page.locator(".oauth-state").textContent()).includes("UPSTREAM_PRIVADO_NAO_EXIBIR") && await page.locator(".oauth-state script").count() === 0,
+        `${scenario.name}: não mostra mensagem privada do Google nem injeta HTML`);
+      const reconnect = page.locator("[data-oauth-reconnect]");
+      ok(scenario.reconnect
+        ? await reconnect.count() === 1 && await reconnect.isVisible() && await reconnect.getAttribute("href") === "/?entrar=1"
+        : await reconnect.count() === 0, `${scenario.name}: link de reconexão existe somente para erro de escopo`);
+      const retry = page.getByRole("button", { name: "Tentar sincronizar de novo" });
+      ok(scenario.reconnect ? !(await retry.isVisible()) : await retry.isVisible(), `${scenario.name}: ação de recuperação corresponde ao erro`);
+      if (["accessNotConfigured", "insufficientPermissions"].includes(scenario.name)) {
+        for (const width of [390, 768, 1440, 1920]) for (const colorScheme of ["light", "dark"]) {
+          await page.setViewportSize({ width, height: 900 });
+          await page.emulateMedia({ colorScheme });
+          await page.waitForFunction((theme) => document.documentElement.dataset.theme === theme, colorScheme);
+          const layout = await page.locator(".oauth-state").evaluate(async (panel) => {
+            await document.fonts.ready;
+            await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+            await Promise.all(document.getAnimations().filter((animation) => Number.isFinite(animation.effect?.getComputedTiming().endTime))
+              .map((animation) => animation.finished.catch(() => {})));
+            const bounds = panel.getBoundingClientRect();
+            const luminance = (color) => {
+              const channels = color.match(/[\d.]+/g).slice(0, 3).map((value) => {
+                const channel = Number(value) / 255;
+                return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+              });
+              return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+            };
+            const controls = [...panel.querySelectorAll("button, a.btn")].filter((control) => !control.hidden).map((control) => {
+              const rect = control.getBoundingClientRect();
+              const style = getComputedStyle(control);
+              const text = document.createRange();
+              text.selectNodeContents(control);
+              const textRect = text.getBoundingClientRect();
+              const foreground = luminance(style.color);
+              const background = luminance(style.backgroundColor);
+              return {
+                text: control.textContent, display: style.display, fontSize: parseFloat(style.fontSize),
+                contrast: (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05),
+                centered: Math.abs((textRect.top + textRect.bottom - rect.top - rect.bottom) / 2) <= 3,
+                fits: rect.left >= bounds.left && rect.right <= bounds.right && rect.top >= 0 && rect.bottom <= innerHeight && control.scrollWidth <= control.clientWidth + 1,
+                textFits: textRect.left >= rect.left && textRect.right <= rect.right && textRect.top >= rect.top && textRect.bottom <= rect.bottom,
+              };
+            });
+            return {
+              fits: bounds.left >= 0 && bounds.right <= innerWidth && bounds.width <= 640 && panel.scrollWidth <= panel.clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth,
+              controls,
+            };
+          });
+          const label = `${process.env.BROWSER || "chromium"}, ${scenario.name}, ${width}, ${colorScheme}`;
+          ok(layout.fits, `${label}: OAuth sem overflow`);
+          ok(layout.controls.length === 1 && layout.controls.every((control) => control.fits && control.textFits && control.centered && control.fontSize >= 12 && control.contrast >= 4.5),
+            `${label}: botão legível, centralizado e sem corte ${JSON.stringify(layout.controls)}`);
+          const screenshotErrorsBefore = screenshotErrors.length;
+          capturingScreenshot = true;
+          try {
+            await page.screenshot({ path: `/tmp/rich-drive403-${process.env.BROWSER || "chromium"}-${scenario.name}-${width}-${colorScheme}.png` });
+            await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+          } finally {
+            capturingScreenshot = false;
+          }
+          ok(screenshotErrors.length - screenshotErrorsBefore === (process.env.BROWSER === "webkit" ? 1 : 0),
+            `${label}: captura registra só a violação CSP esperada da instrumentação`);
+        }
+      }
+      const empty = await page.evaluate(async () => {
+        const db = await import("/static/js/db.js");
+        return { ledger: await db.loadLedger(), records: await db.allRecords(), queue: await db.pending() };
+      });
+      ok(empty.ledger.categories.length === 0 && empty.records.length === 0 && empty.queue.length === 0,
+        `${scenario.name}: falha inicial não cria categorias, padrões ou alterações locais`);
+      const before = await page.evaluate(async () => {
+        const db = await import("/static/js/db.js");
+        await db.saveLocal("category", { id: "categoria-local-403", name: "Categoria preservada", kind: "expense", updatedAt: Date.now(), deleted: false });
+        await db.saveLocal("transaction", { id: "lancamento-local-403", description: "Lançamento preservado 403", categoryId: "categoria-local-403", kind: "expense", amountCents: 12345, date: "2026-11-16", updatedAt: Date.now(), deleted: false });
+        return { account: await db.getMeta("google", null), records: await db.allRecords(), queue: await db.pending(), drive: await db.getMeta("drive", null) };
+      });
+      await page.reload();
+      await page.waitForSelector("[data-oauth-status].neg");
+      const failure = await page.evaluate(async () => {
+        try {
+          await (await import("/static/js/gdrive.js")).syncDrive(true);
+          return null;
+        } catch (error) {
+          return { kind: error.kind, recovery: error.recovery, message: error.message };
+        }
+      });
+      ok(failure?.kind === "error" && (failure.recovery === "google") === !!scenario.reconnect,
+        `${scenario.name}: gdrive mantém kind:error e recovery:google somente para escopos`);
+      ok(!!failure && scenario.message.test(failure.message) && !failure.message.includes("UPSTREAM_PRIVADO_NAO_EXIBIR"),
+        `${scenario.name}: contrato do gdrive traz mensagem classificada e segura`);
+      const after = await page.evaluate(async () => {
+        const db = await import("/static/js/db.js");
+        const sync = await import("/static/js/sync.js");
+        await sync.sync();
+        return { account: await db.getMeta("google", null), records: await db.allRecords(), queue: await db.pending(), drive: await db.getMeta("drive", null), state: { ...sync.state } };
+      });
+      ok(after.state.status === "error" && (after.state.recovery === "google") === !!scenario.reconnect,
+        `${scenario.name}: sync.state propaga recovery sem tratar 403 como logout`);
+      ok(scenario.message.test(after.state.message) && !after.state.message.includes("UPSTREAM_PRIVADO_NAO_EXIBIR"), `${scenario.name}: sync.state preserva mensagem segura`);
+      const { state, ...data } = after;
+      ok(before.account?.email === "pessoa@gmail.com" && before.queue.length === 2 && JSON.stringify(data) === JSON.stringify(before),
+        `${scenario.name}: falha preserva conta, registros, fila e metadados do Drive`);
+      ok(writes === 0 && beforeDrive === JSON.stringify({ id: drive.id, version: drive.version, content: drive.content }),
+        `${scenario.name}: falha OAuth não cria nem substitui arquivo no Drive`);
+      failing = false;
+      const exchangesBeforeRecovery = exchanges.filter((exchange) => exchange.grant_type === "authorization_code").length;
+      const challengesBeforeRecovery = challenges.size;
+      if (scenario.reconnect) {
+        await reconnect.click();
+      } else await retry.click();
+      await page.waitForSelector(".dash-kpis, .welcome", { timeout: 20000 });
+      const recovered = await page.evaluate(async () => {
+        const db = await import("/static/js/db.js");
+        const sync = await import("/static/js/sync.js");
+        await sync.sync();
+        return { state: { ...sync.state }, account: await db.getMeta("google", null), ledger: await db.loadLedger() };
+      });
+      ok(recovered.state.status === "ok" && !recovered.state.recovery && await page.locator("[data-oauth-reconnect]").count() === 0,
+        `${scenario.name}: resposta normal limpa erro e recovery`);
+      ok(scenario.reconnect
+        ? challenges.size === challengesBeforeRecovery + 1 && exchanges.filter((exchange) => exchange.grant_type === "authorization_code").length === exchangesBeforeRecovery + 1
+        : exchanges.filter((exchange) => exchange.grant_type === "authorization_code").length === exchangesBeforeRecovery,
+      `${scenario.name}: clique de reconexão inicia novo PKCE; retry comum não repete OAuth`);
+      ok(JSON.stringify(recovered.account) === JSON.stringify(before.account) && recovered.ledger.transactions.some((record) => record.id === "lancamento-local-403") &&
+        drive.content?.items.some((item) => item.record.id === "lancamento-local-403") && drive.content?.items.some((item) => item.record.id === "categoria-remota-403") &&
+        new URL(page.url()).pathname === "/",
+      `${scenario.name}: recuperação mantém conta, envia alteração preservada e abre o Painel`);
+      ok(scenarioErrors.length === 0, `${scenario.name}: sem erros de JavaScript ou console ${JSON.stringify(scenarioErrors)}`);
+    } finally {
+      await context.close();
+      Object.assign(drive, savedDrive);
+    }
+  }
+}
 try {
+  await driveErrorRegressions();
+  if (!process.env.GOOGLE_DRIVE403_ONLY) {
   for (const description of ["The provided client secret is invalid.", "invalid_client"]) for (const width of [390, 1440]) for (const colorScheme of ["light", "dark"]) {
     const invalidContext = await browser.newContext({ viewport: { width, height: 900 }, colorScheme });
     await fakeGoogle(invalidContext);
@@ -490,6 +688,7 @@ try {
   await b.waitForSelector("[data-oauth-status].neg", { timeout: 20000 });
   ok(/inválido/.test(await b.textContent("[data-oauth-status]")) && b.url().startsWith(SITE), "retorno para o computador com porta inválida é recusado");
 
+  }
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);
 } catch (err) {
   ok(false, err.message);

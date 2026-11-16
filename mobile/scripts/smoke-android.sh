@@ -26,8 +26,13 @@ for i in $(seq 1 45); do
     # mesmo jeito. Pega, por exemplo, a biblioteca nativa sem alinhamento de 16 KB. A
     # imagem google_apis deixa ler a pasta do app como root.
     adb root >/dev/null && sleep 2 && adb wait-for-device
+    # O app abre o banco um pouco depois de mostrar a tela inicial (no CI, uns 4 s): espera.
+    for j in $(seq 1 15); do
+      adb shell ls "/data/data/$PKG/databases/" 2>/dev/null | grep -q "finanSQLite.db" && break
+      sleep 2
+    done
     if ! adb shell ls "/data/data/$PKG/databases/" | grep -q "finanSQLite.db"; then
-      echo "FALHA: o banco SQLite nativo não foi criado"
+      echo "FALHA: o banco SQLite nativo não foi criado em 30 s"
       adb logcat -d | grep -iE "sqlite|UnsatisfiedLink|dlopen|Capacitor" | tail -40 || true
       exit 1
     fi
