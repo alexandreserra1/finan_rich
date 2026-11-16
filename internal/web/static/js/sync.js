@@ -7,7 +7,7 @@
 // volta, a cada 30 segundos e logo depois de cada alteração local. Sem
 // conexão, nada se perde: a fila fica guardada até dar certo.
 
-import { applyRemote, clearSent, getMeta, pending, setMeta } from "./db.js";
+import { applyRemote, checkEpoch, clearSent, databaseEpoch, getMeta, pending, setMeta } from "./db.js";
 import { endpoint } from "./device.js";
 import { syncDrive } from "./gdrive.js";
 import * as google from "./google.js";
@@ -36,25 +36,30 @@ const BATCH = 2000;
 
 let localChanged = false; // houve alteração aqui desde a última rodada do Drive
 
-async function round() {
-  const out = await pending();
+async function round(epoch) {
+  const out = await pending(epoch);
+  checkEpoch(epoch);
   state.pending = out.length;
-  let cursor = await getMeta("cursor", 0);
+  let cursor = await getMeta("cursor", 0, epoch);
+  checkEpoch(epoch);
   let changed = false;
   const notices = [];
   let toSend = out.filter((c) => !unsupported.has(c.type));
   const linked = await google.account();
+  checkEpoch(epoch);
   if (linked) {
     const touched = localChanged;
     localChanged = false;
     try {
-      changed = await syncDrive(touched, learnClock);
+      changed = await syncDrive(touched, (now, sentAt) => learnClock(now, sentAt, epoch), epoch);
+      checkEpoch(epoch);
     } catch (err) {
       localChanged ||= touched; // tenta de novo na próxima rodada
       throw err;
     }
   }
   const api = await endpoint("/api/sync");
+  checkEpoch(epoch);
   if (!api && linked) return changed;
   if (!api) throw Object.assign(new Error("unpaired"), { kind: "unpaired" });
   for (;;) {
@@ -65,8 +70,10 @@ async function round() {
       headers: { ...api.init.headers, "Content-Type": "application/json" },
       body: JSON.stringify({ cursor, changes: toSend.slice(0, BATCH).map(({ type, record }) => ({ type, record })) }),
     });
+    checkEpoch(epoch);
     if (res.status === 401) throw Object.assign(new Error("login"), { kind: "login" });
     const body = await res.json().catch(() => ({}));
+    checkEpoch(epoch);
     const unknownType = res.status === 422 && /tipo "(\w+)"/.exec(body.error || "")?.[1];
     if (unknownType && !unsupported.has(unknownType) && toSend.some((c) => c.type === unknownType)) {
       unsupported.add(unknownType);
@@ -74,18 +81,24 @@ async function round() {
       continue;
     }
     if (!res.ok) throw Object.assign(new Error(body.error || res.statusText), { kind: "error" });
-    if (body.now) learnClock(body.now, sentAt);
+    if (body.now) await learnClock(body.now, sentAt, epoch);
+    checkEpoch(epoch);
     notices.push(...(body.notices || []));
     if (toSend.length) {
-      await clearSent(toSend.slice(0, BATCH));
+      await clearSent(toSend.slice(0, BATCH), epoch);
+      checkEpoch(epoch);
       toSend = toSend.slice(BATCH);
     }
-    if (await applyRemote(body.changes || [])) changed = true;
+    if (await applyRemote(body.changes || [], epoch)) changed = true;
+    checkEpoch(epoch);
     cursor = body.cursor;
-    await setMeta("cursor", cursor);
+    await setMeta("cursor", cursor, epoch);
+    checkEpoch(epoch);
     if (!body.more && !toSend.length) break;
   }
-  state.pending = (await pending()).length;
+  const remaining = await pending(epoch);
+  checkEpoch(epoch);
+  state.pending = remaining.length;
   state.notice = notices.join(" ");
   state.message = unsupported.size ? `Atualize a Rich do computador para sincronizar ${[...unsupported].map((t) => ({ note: "as notas", transfer: "as transferências" })[t] || "tudo").join(" e ")}.` : "";
   return changed;
@@ -98,12 +111,16 @@ async function round() {
 // errado, uma edição feita depois, sem conexão, perderia para uma mais antiga
 // de outro aparelho (docs/passo-a-passo.md, 1.3).
 let clockOffset = 0;
-getMeta("clock-offset", 0).then((v) => { clockOffset = v || 0; }).catch(() => {});
+const initialEpoch = databaseEpoch();
+getMeta("clock-offset", 0, initialEpoch).then((v) => { checkEpoch(initialEpoch); clockOffset = v || 0; }).catch(() => {});
 
-function learnClock(serverNow, sentAt) {
+async function learnClock(serverNow, sentAt, epoch) {
+  checkEpoch(epoch);
   const off = serverNow - (sentAt + Date.now()) / 2; // metade da ida e volta
-  clockOffset = Math.abs(off) > 2000 ? Math.round(off) : 0; // até 2 s é ruído da rede
-  setMeta("clock-offset", clockOffset).catch(() => {});
+  const nextOffset = Math.abs(off) > 2000 ? Math.round(off) : 0;
+  await setMeta("clock-offset", nextOffset, epoch);
+  checkEpoch(epoch);
+  clockOffset = nextOffset; // até 2 s é ruído da rede
 }
 
 // stamp é o updatedAt de uma edição: a hora certa (pelo computador) e sempre
@@ -115,6 +132,7 @@ export async function sync() {
     again = true;
     return running;
   }
+  const epoch = databaseEpoch();
   running = (async () => {
     state.status = "syncing";
     state.recovery = "";
@@ -122,14 +140,36 @@ export async function sync() {
     try {
       do {
         again = false;
-        const changed = await round();
+        const changed = await round(epoch);
+        checkEpoch(epoch);
         state.status = "ok";
         state.lastSync = new Date();
         emit(changed);
         state.notice = "";
       } while (again);
     } catch (err) {
-      state.pending = (await pending()).length;
+      const currentEpoch = databaseEpoch();
+      let remaining;
+      try {
+        remaining = await pending(currentEpoch);
+        checkEpoch(currentEpoch);
+      } catch (error) {
+        state.status = "error";
+        state.message = error.message;
+        state.recovery = "";
+        emit();
+        return;
+      }
+      state.pending = remaining.length;
+      if (epoch !== currentEpoch) {
+        clockOffset = 0;
+        state.status = "error";
+        state.message = "Os dados deste aparelho foram apagados. Sincronize de novo.";
+        state.recovery = "";
+        state.notice = "";
+        emit();
+        return;
+      }
       if (err.kind === "login" || err.kind === "unpaired" || err.kind === "google") state.status = err.kind;
       else if (err.kind === "error") { state.status = "error"; state.message = err.message; state.recovery = err.recovery || ""; }
       else state.status = "offline"; // fetch falhou: sem conexão com o computador

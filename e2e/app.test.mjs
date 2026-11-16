@@ -26,9 +26,11 @@ const APP = `http://127.0.0.1:${APP_PORT}`;
 const dataDir = mkdtempSync(join(tmpdir(), "finan-e2e-app-"));
 let server = null;
 let failures = 0;
+let stage = "início";
 
 const ok = (cond, msg) => {
   console.log(`${cond ? "OK   " : "FALHA"} ${msg}`);
+  stage = msg;
   if (!cond) failures++;
 };
 // Abre a janela de novo lançamento (se ainda não estiver aberta).
@@ -187,22 +189,51 @@ try {
   const page = await ctx.newPage();
   const errors = [];
   const logs = [];
-  const recordError = (page, error) => { // o texto guardado: o endereço e a pilha do erro
-    const detail = `${page.url()}\n${error.stack || error.message}`;
-    console.error(detail);
-    return detail;
+  const pages = new Map();
+  const listen = (p, name, collected = errors) => {
+    const events = [];
+    pages.set(p, { name, events });
+    const record = (event, detail) => {
+      const entry = { time: new Date().toISOString(), page: name, url: p.url(), stage, event, ...detail };
+      events.push(entry);
+      if (events.length > 30) events.shift();
+      logs.push(JSON.stringify(entry));
+      return entry;
+    };
+    watchErrors(p, collected, (error) => {
+      const detail = JSON.stringify({ ...record("pageerror", {
+        message: error.message, stack: error.stack || "", closed: p.isClosed(),
+      }), recent: events.slice() });
+      if (collected === errors) console.error(detail);
+      return detail;
+    }, [B]);
+    p.on("console", (message) => record("console", {
+      type: message.type(), message: message.text(), location: message.location(),
+    }));
+    p.on("request", (request) => {
+      if (request.resourceType() === "script") record("module-request", { request: request.url() });
+    });
+    p.on("response", (response) => {
+      if (response.request().resourceType() === "script" || response.status() >= 400) {
+        record("response", { request: response.url(), status: response.status(), contentType: response.headers()["content-type"] });
+      }
+    });
+    p.on("requestfailed", (request) => record("requestfailed", {
+      request: request.url(), resourceType: request.resourceType(), failure: request.failure()?.errorText,
+    }));
+    p.on("framenavigated", (frame) => {
+      if (frame === p.mainFrame()) record("navigation", { destination: frame.url() });
+    });
+    p.on("close", () => record("close", {}));
   };
-  watchErrors(page, errors, (error) => recordError(page, error), [B]); // B: o computador pareado
-  // O diagnóstico de uma falha mostra todas as páginas abertas (a falha pode ser em qualquer uma).
-  const listen = (p) => {
-    p.on("console", (m) => logs.push(`[${m.type()}] ${m.text()}`));
-    p.on("requestfailed", (r) => logs.push(`[falhou] ${r.url()} ${r.failure()?.errorText}`));
-  };
-  listen(page);
+  listen(page, "app principal");
   globalThis.dumpPage = async () => {
     console.log("--- diagnóstico ---");
-    for (const p of browser.contexts().flatMap((c) => c.pages())) {
-      console.log("url:", p.url(), "| status:", await p.textContent("#sync-status").catch(() => "?"));
+    for (const [p, { name, events }] of pages) {
+      console.log("página:", name, "| url:", p.url(), "| fechada:", p.isClosed());
+      console.log(events.map((event) => JSON.stringify(event)).join("\n"));
+      if (p.isClosed()) continue;
+      console.log("status:", await p.textContent("#sync-status").catch(() => "?"));
       console.log("tela:", (await p.innerText("body").catch(() => "")).slice(0, 600));
     }
     console.log(logs.slice(-15).join("\n"));
@@ -620,7 +651,7 @@ try {
 
   // O mesmo no consultor do computador (tela do navegador).
   const desk = await browser.newPage();
-  watchErrors(desk, errors, (error) => recordError(desk, error));
+  listen(desk, "consultor no computador");
   await desk.goto(`${B}/chat`);
   await desk.waitForSelector(".proposal");
   const before = await desk.locator(".proposal").count(); // os da conversa do celular também aparecem aqui
@@ -694,8 +725,7 @@ try {
     return route.fulfill({ headers, body: JSON.stringify({ next: null, results: [{ id: "n1", description: "Padaria do Zé", amount: 18.9, date: `${url.searchParams.get("dateFrom")}T09:00:00.000Z`, type: "DEBIT", status: "POSTED" }] }) });
   });
   const of = await ofCtx.newPage();
-  watchErrors(of, errors, (error) => recordError(of, error), [B]); // B: o computador pareado
-  listen(of);
+  listen(of, "Open Finance no app");
   await of.goto(`${APP}/configuracoes`);
   await of.click("[data-action=solo]");
   await of.waitForSelector("form[data-form=transaction]", { state: "attached", timeout: 20000 });
@@ -761,7 +791,7 @@ try {
     } } };
   });
   const rem = await remCtx.newPage();
-  watchErrors(rem, errors, (error) => recordError(rem, error), [B]); // B: o computador pareado
+  listen(rem, "lembretes");
   rem.on("dialog", (d) => d.accept());
   await rem.goto(`${APP}/configuracoes`);
   await rem.click("[data-action=solo]");
@@ -795,7 +825,7 @@ try {
   const safariCtx = await browser.newContext({ viewport: { width: 1200, height: 900 } });
   await safariCtx.addInitScript(() => { const real = CSS.supports.bind(CSS); CSS.supports = (p, v) => (p === "field-sizing" ? false : real(p, v)); });
   const saf = await safariCtx.newPage();
-  watchErrors(saf, errors, (error) => recordError(saf, error), [B]); // B: o computador pareado
+  listen(saf, "Safari sem field-sizing");
   await saf.goto(`${B}/chat`);
   await saf.evaluate(() => window.finanSync());
   const box = saf.locator("textarea[name=message]");
@@ -810,13 +840,29 @@ try {
 
   const errorCtx = await browser.newContext();
   const errorPage = await errorCtx.newPage();
+  const expectedErrors = [];
+  listen(errorPage, "falhas provocadas pelo teste", expectedErrors);
   await errorPage.goto(`${APP}/configuracoes`);
   await errorPage.waitForSelector("[data-action=solo]");
   const unexpectedError = errorPage.waitForEvent("pageerror", { timeout: 10000 });
   await errorPage.evaluate(() => { Promise.reject(new TypeError("network error")); });
   ok((await unexpectedError).message.includes("network error"), "erro de rede fora do consultor continua visível, sem filtro global");
+  stage = "importação de módulo com pedido abortado";
+  const missingModule = `${APP}/static/js/modulo-inexistente-e2e.js`;
+  await errorCtx.route(missingModule, (route) => route.abort("failed"));
+  const importError = errorPage.waitForEvent("pageerror", { timeout: 10000 });
+  await errorPage.evaluate((url) => {
+    import(url).catch((error) => { setTimeout(() => { throw error; }, 0); });
+  }, missingModule);
+  await importError;
+  const diagnostic = JSON.parse(expectedErrors.at(-1));
+  ok(expectedErrors.length === 2 && diagnostic.url === errorPage.url() && diagnostic.stage === stage &&
+    typeof diagnostic.stack === "string" && diagnostic.recent.some((event) =>
+      event.event === "requestfailed" && event.request === missingModule && event.failure),
+  "importação inválida continua sendo erro e registra página, etapa, pilha e pedido falho");
   await errorCtx.close();
 
+  if (errors.length || failures) await globalThis.dumpPage();
   ok(errors.length === 0, `sem erros de JavaScript ${JSON.stringify(errors)}`);
 } catch (err) {
   ok(false, err.message);

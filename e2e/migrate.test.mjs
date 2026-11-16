@@ -137,6 +137,7 @@ try {
   await page.waitForSelector("text=Feito na segunda aba", { timeout: 20000 });
   await second.waitForSelector("#elsewhere [data-use-here]", { timeout: 10000 });
   ok(true, "Usar aqui: a aba antiga volta a usar o banco, vê o que a outra gravou, e a outra avisa");
+  await second.close();
   // Apagar os dados do aparelho (como "Esquecer este aparelho") e gravar de novo.
   await page.evaluate(async () => {
     const db = await import("/static/js/db.js");

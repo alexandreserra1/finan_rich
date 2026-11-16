@@ -73,10 +73,14 @@ async function fakeGoogle(context) {
     const body = await readFile(new URL(`../internal/web${path}`, import.meta.url), "utf8");
     return route.fulfill({ status: 200, contentType: "text/javascript; charset=utf-8", body });
   });
-  // Cada navegador sai de um IP seu (na Vercel, o X-Forwarded-For): o limite das
-  // rotas /oauth do intermediário (60 por hora por IP) vale por pessoa, não para o teste todo.
-  const ip = `203.0.113.${++contexts}`;
-  await context.route(`${SITE}/oauth/*`, (route) => route.continue({ headers: { ...route.request().headers(), "x-forwarded-for": ip } }));
+  // Cada navegador sai de um IP seu (na Vercel, o X-Forwarded-For): os limites das rotas
+  // /oauth do intermediário (60 por hora e rajada de 10 pedidos por IP) valem por pessoa, não
+  // para o teste todo. Um cenário com login, renovação e saída em sequência passa da rajada
+  // de uma pessoa só; por isso o IP muda a cada 8 pedidos. O limite tem teste próprio em Go
+  // (internal/proxy/throttle_test.go).
+  const base = ++contexts;
+  let calls = 0;
+  await context.route(`${SITE}/oauth/*`, (route) => route.continue({ headers: { ...route.request().headers(), "x-forwarded-for": `203.0.${base}.${1 + Math.floor(calls++ / 8)}` } }));
   await context.route("https://accounts.google.com/**", (route) => {
     const u = new URL(route.request().url());
     const state = u.searchParams.get("state");
