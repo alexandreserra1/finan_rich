@@ -85,7 +85,7 @@ sem exibir mensagens privadas da resposta.
 | `insufficientPermissions` ou `ACCESS_TOKEN_SCOPE_INSUFFICIENT` | Use “Entrar de novo e permitir acesso” e aceite o acesso à pasta de dados do app. Não é preciso dar acesso a todos os arquivos do Drive. |
 | `storageQuotaExceeded` | Libere espaço no Drive e tente sincronizar de novo. |
 | Limite de uso | Espere antes de repetir. Entrar de novo não remove o limite do Google. |
-| `403` sem motivo reconhecido | Confira restrições da conta ou da organização e a configuração do projeto. Não presumir que a senha está errada. |
+| `403` sem motivo reconhecido | A mensagem mostra "Código do Google: …" (ex.: `forbidden`). Passe só esse código; ele diz a causa. Confira restrições da conta ou da organização e a configuração do projeto. Não presumir que a senha está errada. |
 
 Se precisar investigar pelo navegador, em Rede/Network abra somente a resposta
 da chamada para `www.googleapis.com/drive/v3/files`. Consulte `error.errors[].reason`

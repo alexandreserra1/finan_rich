@@ -40,7 +40,10 @@ async function call(url, init, epoch) {
       } else if (reasons.some((reason) => ["rateLimitExceeded", "userRateLimitExceeded", "dailyLimitExceeded"].includes(reason))) {
         message = "O Google Drive atingiu um limite de uso. Espere um pouco antes de tentar sincronizar novamente. Seus dados continuam neste aparelho.";
       } else {
-        message = "O Google Drive recusou o acesso (403). Confira as permissões da conta e a configuração do projeto antes de tentar novamente.";
+        // O código do Google (ex.: "forbidden") é só um identificador, sem dado pessoal: mostrá-lo
+        // deixa a pessoa dizer a causa sem abrir o Network. Só entra o que tem cara de código.
+        const codes = [...new Set(reasons.filter((reason) => typeof reason === "string" && /^[A-Za-z0-9_.-]{1,60}$/.test(reason)))];
+        message = `O Google Drive recusou o acesso (403). Confira as permissões da conta e a configuração do projeto antes de tentar novamente.${codes.length ? ` Código do Google: ${codes.join(", ")}.` : ""}`;
       }
     }
     throw Object.assign(new Error(message), { kind: "error", recovery });
