@@ -513,6 +513,18 @@ try {
   await page.getByRole("button", { name: "Mais", exact: true }).click();
   await page.waitForSelector("body.menu-open nav.tabs a[href='/chat']");
   ok(await page.locator("[data-menu]").getAttribute("aria-expanded") === "true", "Mais informa que o menu está aberto");
+  // O item da página atual no menu aberto precisa ser legível nos dois temas (no escuro ficava
+  // amarelo sobre amarelo: o texto sumia).
+  for (const theme of ["light", "dark"]) {
+    await page.evaluate((t) => { document.documentElement.dataset.theme = t; }, theme);
+    await page.waitForTimeout(600); // as cores têm transição
+    const [text, back] = await page.evaluate(() => {
+      const s = getComputedStyle(document.querySelector("body.menu-open .tabs a[aria-current=page]"));
+      return [s.color, s.backgroundColor];
+    });
+    ok(text !== back, `menu aberto, tema ${theme}: o item atual não some no próprio fundo (${text} sobre ${back})`);
+  }
+  await page.evaluate(() => { delete document.documentElement.dataset.theme; });
   await page.click("nav.tabs a[href='/chat']");
   await page.waitForSelector("form[data-form=ask]", { timeout: 15000 });
   ok(await page.locator("body.menu-open").count() === 0 && await page.locator("[data-menu]").getAttribute("aria-expanded") === "false",

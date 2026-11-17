@@ -63,6 +63,34 @@ arquivos, correção, testes, regressões e prevenção. Nunca inclua credenciai
   do erro (TypeError ou texto do servidor); o teste agora confere só a classe.
 - Risco restante: não conferido no iPhone físico. Símbolos →, ← e ↑ ficam como texto.
 
+## ENG-006 — Item atual do menu lateral some no tema escuro (celular)
+
+- Esperado: no menu aberto, a página atual aparece em amarelo com texto escuro.
+- Observado (print do iPhone): faixa amarela vazia, sem texto nem ícone.
+- Causa confirmada: `:root[data-theme="dark"] .tabs a[aria-current]` (cor amarela, para a barra
+  de baixo) tem mais peso que `body.menu-open .tabs a[aria-current]`; texto e fundo ficaram
+  `rgb(245, 239, 171)`. Medido pelo teste antes da correção.
+- Correção: regra do menu aberto repetida com o prefixo do tema escuro (`app.css`).
+- Teste: `e2e/app.test.mjs` compara cor e fundo do item atual nos temas claro e escuro.
+- Armadilha: o e2e do app lê `mobile/www`, que é gerado; sem `go run ./tools/mobilebuild
+  mobile/www` o teste usa o CSS antigo e engana.
+- Desktop: a barra lateral usa a regra sem a sobreposição do escuro (só no celular); não
+  conferido no navegador.
+
+## ENG-007 — Auditoria das ferramentas barrada por aviso sem correção (picomatch)
+
+- Observado: o job `engineering` do CI falhou no PR #25 com `npm audit --audit-level=high`:
+  `picomatch` (GHSA-fc5q-39xc-vjpf, ReDoS), puxado por `@fission-ai/openspec` 2.0.0.
+- Causa confirmada: o aviso vale para `picomatch <= 4.0.7`, e a 4.0.7 é a versão mais nova em
+  17/11/2026. `npm audit fix` não resolve; `--force` só rebaixaria o OpenSpec.
+- Decisão (autorizada pelo Alexandre em 17/11/2026): liberar só esse aviso até 17/12/2026, em
+  `scripts/audit-tools.mjs`. Qualquer outro aviso alto ou crítico continua barrando, e a
+  liberação vencida volta a barrar. O app (`mobile/`) segue com `npm audit` puro.
+- Risco aceito: o picomatch roda só no CI e na máquina de quem desenvolve, com padrões do
+  próprio repositório; não vai para o app nem para o site.
+- Teste: `scripts/audit-tools.test.mjs` (dentro do prazo, vencido, aviso novo, aviso moderado).
+- Ao vencer: conferir se saiu versão corrigida do picomatch ou do OpenSpec e tirar a liberação.
+
 ## Modelo para novos incidentes
 
 Use identificador estável, data e status. Separe hipótese de causa confirmada. Informe

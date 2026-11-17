@@ -430,7 +430,8 @@ body:not(.has-nav) > main { width: 100%; padding: 1.5rem 1.25rem; }
     flex-direction: column; justify-content: flex-start; gap: 2px; padding: calc(22px + env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom)); overflow-y: auto; }
   body.menu-open .tabs a { flex: none; flex-direction: row; justify-content: flex-start; gap: 12px; font-size: 14px; min-height: 44px; padding: 10px 13px; }
   body.menu-open .tabs a .icon { width: 19px; height: 19px; padding: 0; background: transparent; }
-  body.menu-open .tabs a[aria-current="page"] { background: var(--yellow); color: var(--yellow-ink); }
+  body.menu-open .tabs a[aria-current="page"],
+  :root[data-theme="dark"] body.menu-open .tabs a[aria-current="page"] { background: var(--yellow); color: var(--yellow-ink); } /* o 2º vence a regra do escuro de cima (amarelo sobre amarelo) */
   body.menu-open .tabs .tab-extra, body.menu-open .tabs .nav-label, body.menu-open .tabs .side-brand { display: flex; }
   body.menu-open .tabs a .tab-long { position: static; width: auto; height: auto; clip: auto; }
   body.menu-open .tabs a .tab-short { display: none; }

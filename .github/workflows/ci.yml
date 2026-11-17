@@ -22,14 +22,14 @@ jobs:
       - name: Instala ferramentas locais sem scripts de instalação
         run: npm ci --prefix tools/engineering --ignore-scripts --no-fund --no-audit
       - name: Testa os gates e a correção controlada
-        run: node --test scripts/engineering.test.mjs scripts/document-assets.test.mjs scripts/ios-validation.test.mjs
+        run: node --test scripts/engineering.test.mjs scripts/document-assets.test.mjs scripts/ios-validation.test.mjs scripts/audit-tools.test.mjs
       - name: Valida contratos e mudanças
         env:
           OPENSPEC_TELEMETRY: '0'
           DO_NOT_TRACK: '1'
         run: tools/engineering/node_modules/.bin/openspec validate --all --strict
       - name: Verifica vulnerabilidades das ferramentas
-        run: npm audit --prefix tools/engineering --audit-level=high
+        run: node scripts/audit-tools.mjs # alta ou crítica barra; liberações têm prazo no próprio script
 
   test:
     runs-on: ubuntu-latest
