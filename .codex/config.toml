@@ -1,0 +1,11 @@
+[mcp_servers.rich-playwright]
+command = "sh"
+args = ["-c", 'exec node "$(git rev-parse --show-toplevel)/scripts/engineering-mcp.mjs" playwright']
+startup_timeout_sec = 30
+tool_timeout_sec = 60
+
+[mcp_servers.rich-devtools]
+command = "sh"
+args = ["-c", 'exec node "$(git rev-parse --show-toplevel)/scripts/engineering-mcp.mjs" devtools']
+startup_timeout_sec = 30
+tool_timeout_sec = 60

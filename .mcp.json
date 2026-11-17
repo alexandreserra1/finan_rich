@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "rich-playwright": {
+      "command": "sh",
+      "args": ["-c", "exec node \"$(git rev-parse --show-toplevel)/scripts/engineering-mcp.mjs\" playwright"]
+    },
+    "rich-devtools": {
+      "command": "sh",
+      "args": ["-c", "exec node \"$(git rev-parse --show-toplevel)/scripts/engineering-mcp.mjs\" devtools"]
+    }
+  }
+}

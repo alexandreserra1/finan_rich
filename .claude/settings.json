@@ -1,0 +1,6 @@
+{
+  "hooks": {
+    "SessionStart": [{ "hooks": [{ "type": "command", "command": "node \"$(git rev-parse --show-toplevel)/scripts/engineering-hooks.mjs\" start", "timeout": 15 }] }],
+    "Stop": [{ "hooks": [{ "type": "command", "command": "node \"$(git rev-parse --show-toplevel)/scripts/engineering-hooks.mjs\" stop", "timeout": 60 }] }]
+  }
+}

@@ -3,6 +3,20 @@
 Ideias para as próximas versões, com o que já foi pensado sobre cada uma.
 A arquitetura atual está em [ARCHITECTURE.md](ARCHITECTURE.md).
 
+## Importação sem provedor bancário (16/11/2026)
+
+A implementação local acrescenta XLSX, imagens PNG/JPEG/WebP e PDF digitalizado à
+importação existente. A prévia permite corrigir datas, valores, sentido e categorias;
+OCR exige selecionar as linhas após conferir. Somente os registros confirmados
+alimentam os painéis. Limites, segurança, testes e pendências estão em
+[IMPORTACAO-DOCUMENTOS.md](IMPORTACAO-DOCUMENTOS.md).
+
+O Android também recebe um documento pelo Compartilhar, com pendência temporária,
+bloqueio e revisão explícita; veja [COMPARTILHAR-DOCUMENTOS.md](COMPARTILHAR-DOCUMENTOS.md).
+Ainda precisam de etapa própria: receber pelo menu Compartilhar do iOS,
+validar documentos e desempenho em aparelhos reais e ampliar layouts com exemplos
+anonimizados. Isso não representa uma integração comercial com Open Finance.
+
 ## Cadastro sem Google (proposta de 16/11/2026)
 
 Plano de identidade, backend, tabelas, contratos e isolamento por pessoa em
@@ -27,6 +41,10 @@ Plano, limites, testes e pendência média de sessão em
 regra universal de saldo disponível não entraram sem requisitos próprios.
 
 ## App mobile
+
+A validação nativa do iPhone sem Xcode local está descrita em
+[VALIDACAO-IOS.md](VALIDACAO-IOS.md): scheme de testes UI, simulador no GitHub e evidências.
+O resultado remoto precisa ser conferido antes de considerar a validação aprovada.
 
 > **Status:** app Android desde a v1.2; na v1.5, leitor de QR, consultor dentro do app,
 > lembretes de vencimento (notificações locais), projeto iOS compilado no CI e teste do APK

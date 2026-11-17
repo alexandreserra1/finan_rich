@@ -15,6 +15,9 @@
 
 # Mapa do código (graphify), gerado
 graphify-out/
+/.artifacts/
+/tools/engineering/node_modules/
+/tools/import-assets/node_modules/
 
 # Chaves de provedor de IA no computador (só por garantia: nunca vão para o repositório)
 *.key
