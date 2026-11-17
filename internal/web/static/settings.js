@@ -59,7 +59,7 @@
       const res = await fetch("/configuracoes/testar", { method: "POST" });
       result.textContent = await res.text();
     } catch (err) {
-      result.textContent = "❌ " + err.message;
+      result.textContent = "Não funcionou: " + err.message;
     } finally {
       e.target.disabled = false;
     }

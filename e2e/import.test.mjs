@@ -127,7 +127,7 @@ try {
   await page.waitForSelector(".import-table");
   ok(await page.locator("select.needs").count() === 1 && await page.isVisible("[data-action=ai]"), "lançamento sem categoria pede escolha e oferece a IA");
   await page.click("[data-action=ai]");
-  await page.waitForSelector("p.neg:has-text('❌')", { timeout: 30000 });
+  await page.waitForSelector("p.neg", { timeout: 30000 });
   ok(true, "sem IA disponível, mostra o motivo");
   await page.click("[data-action=import]");
   ok(await page.isVisible(".flash.err:has-text('escolha a categoria')"), "não importa sem categoria");

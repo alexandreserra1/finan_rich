@@ -124,7 +124,7 @@ export function render({ ledger }) {
         </tbody>
       </table></div>
 
-      ${state.aiMessage ? html`<p class="small ${state.aiMessage.startsWith("❌") ? "neg" : "muted"}">${state.aiMessage}</p>` : ""}
+      ${state.aiMessage ? html`<p class="small ${state.aiError ? "neg" : "muted"}">${state.aiMessage}</p>` : ""}
       <div class="row-actions">
         <button type="button" data-action="import" ${selected.length ? "" : "disabled"}>Importar ${selected.length} lançamento${selected.length === 1 ? "" : "s"}</button>
         ${missing ? html`<button type="button" class="secondary" data-action="ai">Sugerir com IA (${missing} sem categoria)</button>` : ""}
@@ -374,9 +374,11 @@ export function bind(root, ctx) {
       todo.forEach((it, i) => {
         if (body.categories?.[i]) { it.categoryId = body.categories[i]; it.reason = "ia"; filled++; }
       });
+      state.aiError = false;
       state.aiMessage = `A IA sugeriu ${filled} de ${todo.length}. Confira antes de importar.`;
     } catch (err) {
-      state.aiMessage = "❌ " + (err instanceof TypeError ? "sem conexão com o computador; a IA roda lá" : err.message);
+      state.aiError = true; // sem emoji: no iPhone ele vira figura colorida; a cor vem da classe "neg"
+      state.aiMessage = err instanceof TypeError ? "Sem conexão com o computador; a IA roda lá." : err.message;
     }
     rerender();
   });
