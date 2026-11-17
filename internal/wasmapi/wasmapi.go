@@ -311,7 +311,11 @@ func ImportPreviewText(ledgerJSON, text, optionsJSON, today string) string {
 	if err != nil {
 		day = time.Now()
 	}
-	st, err := importer.ParseText(text, day)
+	kind := o.DocumentKind
+	if kind == "" {
+		kind = "auto"
+	}
+	st, err := importer.ParseDocumentKind(text, day, kind)
 	if err != nil {
 		return reply(nil, err)
 	}

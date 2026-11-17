@@ -93,14 +93,14 @@ func TestParseAmountAndDate(t *testing.T) {
 	amounts := map[string]int64{
 		"1.234,56": 123456, "-1.234,56": -123456, "1234.56": 123456, "R$ 1.234,56": 123456, "(87,50)": -8750,
 		"87,50 D": -8750, "87,50 C": 8750, "3.500": 350000, "1.234.567": 123456700, "-12.3456": -1234, "45": 4500,
-		"1,234.56": 123456, "100-": -10000,
+		"1,234.56": 123456, "100-": -10000, "-45,90 D": -4590, "(-87,50)": -8750, "-100-": -10000,
 	}
 	for in, want := range amounts {
 		if got, ok := parseAmount(in); !ok || got != want {
 			t.Errorf("parseAmount(%q) = %d, %v; quer %d", in, got, ok, want)
 		}
 	}
-	for _, bad := range []string{"", "abc", "R$", "12,3x"} {
+	for _, bad := range []string{"", "abc", "R$", "12,3x", "-87,50 C", "(87,50) C"} {
 		if _, ok := parseAmount(bad); ok {
 			t.Errorf("parseAmount(%q) deveria falhar", bad)
 		}

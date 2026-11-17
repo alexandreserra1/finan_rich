@@ -8,6 +8,7 @@ package importer
 import (
 	"bytes"
 	"errors"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -33,10 +34,19 @@ type Statement struct {
 	Rows     []Row
 }
 
-var ErrUnknownFile = errors.New("não reconheci o arquivo: envie o extrato em OFX ou CSV (o banco oferece em \"exportar extrato\")")
+var ErrUnknownFile = errors.New("não reconheci o arquivo: envie o extrato em OFX, CSV ou XLSX (o banco oferece em \"exportar extrato\")")
 
 // Parse lê um extrato. O formato vem do conteúdo, não do nome do arquivo.
 func Parse(data []byte) (Statement, error) {
+	if len(data) > 8*1024*1024 {
+		return Statement{}, errors.New("o arquivo excede o limite de 8 MB; exporte um período menor")
+	}
+	if bytes.HasPrefix(data, []byte{0xd0, 0xcf, 0x11, 0xe0}) || bytes.HasPrefix(data, []byte{0x09, 0x08}) {
+		return Statement{}, errors.New("o formato XLS antigo não é aceito; exporte a planilha como XLSX ou CSV")
+	}
+	if bytes.HasPrefix(data, []byte("PK")) {
+		return parseXLSX(data)
+	}
 	text := toUTF8(data)
 	head := strings.ToUpper(text[:min(len(text), 2000)])
 	if strings.Contains(head, "OFXHEADER") || strings.Contains(head, "<OFX>") || strings.Contains(strings.ToUpper(text), "<STMTTRN>") {
@@ -79,18 +89,23 @@ func parseAmount(s string) (int64, bool) {
 		neg, s = true, s[1:len(s)-1]
 	}
 	upper := strings.ToUpper(s)
+	credit := false
 	switch {
 	case strings.HasSuffix(upper, " D"), strings.HasSuffix(upper, "D") && len(upper) > 1 && isDigit(upper[len(upper)-2]):
 		neg, s = true, strings.TrimSpace(s[:len(s)-1])
 	case strings.HasSuffix(upper, " C"):
+		credit = true
 		s = strings.TrimSpace(s[:len(s)-1])
 	}
 	s = strings.NewReplacer("R$", "", "r$", "", " ", "", "+", "").Replace(s)
 	if strings.HasPrefix(s, "-") {
-		neg, s = !neg, s[1:]
+		neg, s = true, s[1:]
 	}
 	if strings.HasSuffix(s, "-") {
-		neg, s = !neg, s[:len(s)-1]
+		neg, s = true, s[:len(s)-1]
+	}
+	if credit && neg {
+		return 0, false
 	}
 	if s == "" {
 		return 0, false
@@ -128,6 +143,9 @@ func parseAmount(s string) (int64, bool) {
 		return 0, false
 	}
 	cents, _ := strconv.ParseInt(frac, 10, 64)
+	if whole > (math.MaxInt64-cents)/100 {
+		return 0, false
+	}
 	v := whole*100 + cents
 	if neg {
 		v = -v
