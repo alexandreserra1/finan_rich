@@ -9,6 +9,28 @@ permissions:
   contents: read
 
 jobs:
+  engineering:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tools/engineering/package-lock.json
+      - name: Instala ferramentas locais sem scripts de instalação
+        run: npm ci --prefix tools/engineering --ignore-scripts --no-fund --no-audit
+      - name: Testa os gates e a correção controlada
+        run: node --test scripts/engineering.test.mjs scripts/document-assets.test.mjs scripts/ios-validation.test.mjs
+      - name: Valida contratos e mudanças
+        env:
+          OPENSPEC_TELEMETRY: '0'
+          DO_NOT_TRACK: '1'
+        run: tools/engineering/node_modules/.bin/openspec validate --all --strict
+      - name: Verifica vulnerabilidades das ferramentas
+        run: npm audit --prefix tools/engineering --audit-level=high
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 15 # normal: 2 min; teste travado não fica horas rodando
@@ -88,6 +110,17 @@ jobs:
           else
             FINANRICH_BIN=../dist/finanrich APP_WWW=../mobile/www SITE_BIN=../dist/finansite npm test
           fi
+      - name: Guarda capturas com dados fictícios para revisão visual
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rich-visual-${{ matrix.browser }}
+          path: |
+            /tmp/rich-landing-ficticia-*/*.png
+            .artifacts/document-import/**/*.png
+            .artifacts/android-share/**/*.png
+          if-no-files-found: warn
+          retention-days: 7
 
   android:
     runs-on: ubuntu-latest
@@ -127,6 +160,9 @@ jobs:
         with:
           name: finan_rich-android-teste
           path: mobile/android/app/build/outputs/apk/release/app-release.apk
+      - name: Compila os testes do recebimento de documentos
+        working-directory: mobile/android
+        run: ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon
       # O app abre de verdade num emulador Android (WebView + WebAssembly).
       - name: Habilita KVM para o emulador
         run: |
@@ -145,7 +181,27 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           working-directory: mobile
-          script: ./scripts/smoke-android.sh android/app/build/outputs/apk/release/app-release.apk
+          script: |
+            ./scripts/smoke-android.sh android/app/build/outputs/apk/release/app-release.apk
+            adb uninstall io.github.alexandreserra1.finanrich
+            adb install android/app/build/outputs/apk/debug/app-debug.apk
+            adb install android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            adb logcat -c
+            adb shell am instrument -w -r -e class io.github.alexandreserra1.finanrich.SharedDocumentsInstrumentedTest io.github.alexandreserra1.finanrich.test/androidx.test.runner.AndroidJUnitRunner | tee /tmp/rich-shared-documents-android.log
+            grep -Eq 'OK \([1-9][0-9]* tests?\)' /tmp/rich-shared-documents-android.log
+            adb logcat -d -s Capacitor/Console > /tmp/rich-shared-documents-console.log
+            if grep -q '"base64"' /tmp/rich-shared-documents-console.log; then exit 1; fi
+            adb pull /sdcard/Android/data/io.github.alexandreserra1.finanrich/files/share-preview.png /tmp/rich-shared-document-preview.png
+      - name: Guarda a revisão fictícia no emulador
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rich-android-compartilhamento
+          path: |
+            /tmp/rich-shared-documents-android.log
+            /tmp/rich-shared-document-preview.png
+          if-no-files-found: warn
+          retention-days: 7
 
   ios:
     runs-on: macos-latest
@@ -166,6 +222,30 @@ jobs:
           set -o pipefail
           npm ci --no-audit --no-fund
           npx cap sync ios
+          mkdir -p ../.artifacts/ios-validation
           xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-            CODE_SIGNING_ALLOWED=NO build | tail -30
+            -derivedDataPath "$RUNNER_TEMP/rich-ios" \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee ../.artifacts/ios-validation/build.log | tail -30
+      - name: Abre e navega no iPhone simulado
+        working-directory: mobile
+        run: |
+          set -o pipefail
+          DEVICE=$(xcrun simctl list devices available --json | node ../scripts/select-ios-simulator.mjs)
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination "platform=iOS Simulator,id=$DEVICE" \
+            -derivedDataPath "$RUNNER_TEMP/rich-ios" \
+            -resultBundlePath ../.artifacts/ios-validation/resultado.xcresult \
+            -parallel-testing-enabled NO -only-testing:AppUITests \
+            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee ../.artifacts/ios-validation/test.log | tail -50
+      - name: Guarda evidências do simulador iPhone
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rich-ios-validacao
+          path: |
+            .artifacts/ios-validation/build.log
+            .artifacts/ios-validation/test.log
+            .artifacts/ios-validation/resultado.xcresult
+          if-no-files-found: warn
+          retention-days: 7

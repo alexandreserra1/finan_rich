@@ -31,6 +31,25 @@
                 <data android:scheme="finanrich" />
             </intent-filter>
 
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/pdf" />
+                <data android:mimeType="text/csv" />
+                <data android:mimeType="application/csv" />
+                <data android:mimeType="application/x-csv" />
+                <data android:mimeType="application/ofx" />
+                <data android:mimeType="application/x-ofx" />
+                <data android:mimeType="application/vnd.intu.qfx" />
+                <data android:mimeType="application/qfx" />
+                <data android:mimeType="application/x-qfx" />
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+                <data android:mimeType="image/png" />
+                <data android:mimeType="image/jpeg" />
+                <data android:mimeType="image/webp" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+
         </activity>
 
         <!-- Notificações dos apps de banco viram lançamentos a revisar. Só o

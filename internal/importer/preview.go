@@ -14,7 +14,10 @@ import (
 type Options struct {
 	// Invert troca entradas e saídas. nil = automático: inverte as faturas de
 	// cartão em CSV, onde o valor positivo é gasto.
-	Invert *bool `json:"invert"`
+	Invert        *bool  `json:"invert"`
+	AccountID     string `json:"accountId"`
+	DocumentKind  string `json:"documentKind"`
+	RequireReview bool   `json:"requireReview"`
 }
 
 // Status de cada linha na revisão.
@@ -65,21 +68,40 @@ func Build(l domain.Ledger, st Statement, o Options) Preview {
 	cats := newCategoryMatcher(l)
 	existing := map[string]bool{}
 	for _, t := range l.Transactions {
-		existing[t.ID] = true
+		if o.AccountID == "" || t.AccountID == o.AccountID {
+			existing[t.ID] = true
+		}
 	}
-	manual := manualIndex(l)
+	manual := manualIndex(l, o.AccountID)
 	seen := map[string]int{}
+	ids := make([]string, len(st.Rows))
+	reserved := map[string]bool{}
+	for index, row := range st.Rows {
+		ids[index] = importID(st, row, seen)
+		if o.AccountID != "" && !existing[ids[index]] {
+			sum := sha256.Sum256([]byte(o.AccountID + "|" + ids[index]))
+			ids[index] = "imp-" + hex.EncodeToString(sum[:12])
+		}
+		reserved[ids[index]] = true
+	}
+	imported := importedIdx{}
+	for _, transaction := range l.ActiveTransactions() {
+		if strings.HasPrefix(transaction.ID, "imp-") && !reserved[transaction.ID] && transaction.AccountID == o.AccountID {
+			key := manualTx{transaction.Date, transaction.Kind, transaction.AmountCents}
+			imported[key] = append(imported[key], transaction.Description)
+		}
+	}
 
-	for _, r := range st.Rows {
+	for index, r := range st.Rows {
 		amount := r.AmountCents
 		if p.Inverted {
 			amount = -amount
 		}
-		it := Item{Date: r.Date, Description: r.Description, Kind: domain.KindSaida, AmountCents: abs(amount), Status: StatusNew, Selected: true}
+		it := Item{Date: r.Date, Description: r.Description, Kind: domain.KindSaida, AmountCents: abs(amount), Status: StatusNew, Selected: !o.RequireReview}
 		if amount > 0 {
 			it.Kind = domain.KindEntrada
 		}
-		it.ID = importID(st, r, seen)
+		it.ID = ids[index]
 
 		switch {
 		case existing[it.ID]:
@@ -87,7 +109,7 @@ func Build(l domain.Ledger, st Statement, o Options) Preview {
 		case isBillPayment(r.Description):
 			it.Status, it.Selected = StatusBillPay, false
 		default:
-			if manual.take(it) {
+			if imported.take(it) || manual.take(it) {
 				it.Status, it.Selected = StatusDuplicate, false
 			}
 		}
@@ -142,10 +164,10 @@ type manualIdx map[manualTx]int
 // manualIndex conta os lançamentos digitados (não importados) por data, tipo e
 // valor: o banco descreve "SUPERMERCADO XYZ" e a pessoa digitou "Mercado",
 // então a descrição não ajuda a comparar.
-func manualIndex(l domain.Ledger) manualIdx {
+func manualIndex(l domain.Ledger, accountID string) manualIdx {
 	idx := manualIdx{}
 	for _, t := range l.ActiveTransactions() {
-		if !strings.HasPrefix(t.ID, "imp-") {
+		if !strings.HasPrefix(t.ID, "imp-") && (accountID == "" || t.AccountID == accountID) {
 			idx[manualTx{t.Date, t.Kind, t.AmountCents}]++
 		}
 	}
@@ -158,6 +180,30 @@ func (m manualIdx) take(it Item) bool {
 	if m[k] > 0 {
 		m[k]--
 		return true
+	}
+	return false
+}
+
+type importedIdx map[manualTx][]string
+
+func (imported importedIdx) take(item Item) bool {
+	key := manualTx{item.Date, item.Kind, item.AmountCents}
+	description := normalize(item.Description)
+	if description == "" {
+		return false
+	}
+	signature := DescKey(item.Description)
+	for _, exact := range []bool{true, false} {
+		for index, candidate := range imported[key] {
+			matches := normalize(candidate) == description
+			if !exact {
+				matches = signature != "" && signature == DescKey(candidate)
+			}
+			if matches {
+				imported[key] = append(imported[key][:index], imported[key][index+1:]...)
+				return true
+			}
+		}
 	}
 	return false
 }

@@ -74,14 +74,14 @@ try {
   await page.waitForSelector(".import-table");
   ok(await page.isChecked("[data-action=invert]"), "fatura em CSV é reconhecida (valores positivos = gastos)");
   ok((await row("Ifood *Ifood").locator("td.num").textContent()).includes("−R$ 52,30"), "iFood entra como gasto");
-  ok(await row("Ifood *Ifood").locator("select option:checked").textContent() === "Restaurantes e delivery · Desejos", "iFood sugerido em Restaurantes e delivery");
-  ok(await row("Drogasil 123").locator("select option:checked").textContent() === "Saúde · Necessidades", "Drogasil sugerido em Saúde");
+  ok(await row("Ifood *Ifood").locator('[data-field="categoryId"] option:checked').textContent() === "Restaurantes e delivery · Desejos", "iFood sugerido em Restaurantes e delivery");
+  ok(await row("Drogasil 123").locator('[data-field="categoryId"] option:checked').textContent() === "Saúde · Necessidades", "Drogasil sugerido em Saúde");
   ok(!(await row("Pagamento recebido").locator("input[type=checkbox]").isChecked()), "pagamento da fatura vem desmarcado");
   ok(await row("Pagamento recebido").locator(".status-fatura").count() === 1, "pagamento da fatura é explicado");
 
   // "Supermercado Boa Compra" vira Mercado pela palavra-chave; "Amazon" em Compras.
   // Muda a categoria de um e importa.
-  await row("Supermercado Boa Compra").locator("select").selectOption({ label: "Mercado · Necessidades" });
+  await row("Supermercado Boa Compra").locator('[data-field="categoryId"]').selectOption({ label: "Mercado · Necessidades" });
   const missing = await page.locator("select.needs").count();
   ok(missing === 0, `nenhum marcado sem categoria (${missing})`);
   await page.click("[data-action=import]");
@@ -104,8 +104,8 @@ try {
   await page.setInputFiles("input[name=statement]", `${TESTDATA}/itau.ofx`);
   await page.waitForSelector(".import-table");
   ok(await page.locator('input[value="PÃO DE AÇÚCAR 123"]').count() === 1, "OFX em Windows-1252 com acentos certos");
-  ok(await row("SALARIO EMPRESA X").locator("select option:checked").textContent() === "Salário", "salário reconhecido");
-  ok(await row("ALUGUEL - TED JOAO IMOVEIS").locator("select option:checked").textContent() === "Moradia · Necessidades", "aluguel sugerido em Moradia");
+  ok(await row("SALARIO EMPRESA X").locator('[data-field="categoryId"] option:checked').textContent() === "Salário", "salário reconhecido");
+  ok(await row("ALUGUEL - TED JOAO IMOVEIS").locator('[data-field="categoryId"] option:checked').textContent() === "Moradia · Necessidades", "aluguel sugerido em Moradia");
   ok(await page.locator("select.needs").count() === 0, "tudo marcado tem categoria sugerida");
   await page.click("[data-action=import]");
   await page.waitForSelector(".flash.ok:has-text('importados')", { timeout: 10000 });
@@ -118,7 +118,7 @@ try {
   await page.setInputFiles("input[name=statement]", { name: "novo.csv", mimeType: "text/csv", buffer: Buffer.from("Data,Valor,Descrição\n20/10/2026,-99.90,Compra no débito - SUPERMERCADO BOA COMPRA\n") });
   await page.waitForSelector(".import-table");
   const learned = row("Compra no débito - SUPERMERCADO BOA COMPRA");
-  ok(await learned.locator("select option:checked").textContent() === "Mercado · Necessidades" && (await learned.textContent()).includes("pelo seu histórico"),
+  ok(await learned.locator('[data-field="categoryId"] option:checked').textContent() === "Mercado · Necessidades" && (await learned.textContent()).includes("pelo seu histórico"),
     "aprende com a correção anterior (histórico)");
 
   // Desconhecido: pede a categoria e oferece a IA; sem IA configurada, explica.
@@ -127,7 +127,7 @@ try {
   await page.waitForSelector(".import-table");
   ok(await page.locator("select.needs").count() === 1 && await page.isVisible("[data-action=ai]"), "lançamento sem categoria pede escolha e oferece a IA");
   await page.click("[data-action=ai]");
-  await page.waitForSelector("p.neg:has-text('❌')", { timeout: 30000 });
+  await page.waitForSelector("p.neg", { timeout: 30000 });
   ok(true, "sem IA disponível, mostra o motivo");
   await page.click("[data-action=import]");
   ok(await page.isVisible(".flash.err:has-text('escolha a categoria')"), "não importa sem categoria");
@@ -150,7 +150,7 @@ try {
   ok(await safari.locator(".import-table tbody tr").count() === 5, "fatura em PDF no Safari (sem for await em ReadableStream)");
   await safari.close();
   ok(!(await row("Pagamento recebido").locator("input[type=checkbox]").isChecked()), "pagamento da fatura (PDF) vem desmarcado");
-  ok(await row("Amazon Marketplace - Parcela 2/10").locator("select option:checked").textContent() === "Compras · Desejos", "parcela da Amazon sugerida em Compras");
+  ok(await row("Amazon Marketplace - Parcela 2/10").locator('[data-field="categoryId"] option:checked').textContent() === "Compras · Desejos", "parcela da Amazon sugerida em Compras");
 
   // Open Finance: configura em Ajustes, busca do banco, revisa e importa; buscar de novo não duplica.
   await page.goto(`${B}/configuracoes`);

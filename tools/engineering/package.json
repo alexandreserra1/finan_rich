@@ -1,0 +1,17 @@
+{
+  "name": "rich-engineering",
+  "private": true,
+  "description": "Ferramentas locais de especificação e inspeção do Rich, fora do app",
+  "type": "module",
+  "engines": { "node": ">=22.12.0" },
+  "scripts": {
+    "test": "node --test ../../scripts/engineering.test.mjs",
+    "specs": "openspec validate --all --strict"
+  },
+  "devDependencies": {
+    "@fission-ai/openspec": "2.0.0",
+    "@playwright/mcp": "0.0.85",
+    "chrome-devtools-mcp": "1.13.0",
+    "yaml": "2.9.1"
+  }
+}

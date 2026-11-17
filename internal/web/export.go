@@ -66,6 +66,9 @@ func ExportApp(dir string, site bool) error {
 		if !site && strings.HasPrefix(d.Name(), "team-") {
 			return nil // retratos do time: só a landing do site usa (o APK fica menor)
 		}
+		if !site && (d.Name() == "rich-hero.webp" || d.Name() == "rich-og.jpg") {
+			return nil
+		}
 		target := filepath.Join(dir, filepath.FromSlash(path))
 		if d.IsDir() {
 			return os.MkdirAll(target, 0o755)

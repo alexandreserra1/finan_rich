@@ -1,6 +1,6 @@
 {{define "content"}}
 <section class="panel login">
-  <p class="brand big">rich<span>✳</span></p>
+  <p class="brand big">rich<span>{{template "rich-mark"}}</span></p>
   <p class="muted">Digite a senha de acesso definida no computador onde a Rich está instalada.</p>
   <form method="post" action="/entrar">
     <input type="hidden" name="volta" value="{{.Return}}">

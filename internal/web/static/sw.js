@@ -12,6 +12,7 @@ const VERSION = "finan-__VERSION__";
 const APP_ROUTES = ["/", "/lancamentos", "/dividas", "/categorias", "/notas", "/exportar", "/importar", "/metas", "/analise"];
 APP_ROUTES.push("/contas");
 const PRECACHE = [
+  "/static/illustrations.svg",
   ...APP_ROUTES, "/offline",
   "/static/app.css", "/static/app.js", "/static/settings.js", "/static/favicon.svg", "/static/img/time/otavio-mini.webp", "/static/img/time/lia-mini.webp", "/static/img/time/tito-mini.webp", "/static/img/time/otavio.webp", "/static/img/time/lia.webp", "/static/img/time/tito.webp", "/static/vendor/rich-fonts/DMSans-Variable.woff2", "/static/vendor/rich-fonts/Manrope-Variable.woff2",
   "/static/icons/icon-192.png", "/static/finance.wasm",
@@ -32,6 +33,8 @@ const PRECACHE = [
   "/static/js/theme.js",
   "/static/js/openfinance.js",
   "/static/js/banknotes.js",
+  "/static/js/document-reader.js", "/static/js/ocr.js", "/static/js/ocr-worker.js",
+  "/static/js/shared-documents.js",
   "/static/js/charts.js",
   "/static/vendor/chartjs/chart.umd.min.js",
   "/static/js/sqlite-worker.js", "/static/js/db-idb.js", "/static/js/db-sqlite.js", "/static/js/sqlite-native.js", "/static/vendor/sqlite/sqlite3.js", "/static/vendor/sqlite/sqlite3.wasm",
@@ -65,6 +68,18 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET" || url.origin !== location.origin) return;
 
   if (url.pathname.startsWith("/static/")) {
+    if (url.pathname.startsWith("/static/vendor/ocr/")) {
+      event.respondWith(caches.match(req).then(async (cached) => {
+        if (cached) return cached;
+        const response = await fetch(req);
+        if (response.ok && !response.redirected) {
+          const cache = await caches.open(VERSION);
+          await cache.put(req, response.clone());
+        }
+        return response;
+      }));
+      return;
+    }
     event.respondWith(caches.match(req, { ignoreSearch: true }).then((hit) => hit || fetch(req)));
     return;
   }

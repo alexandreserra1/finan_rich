@@ -30,6 +30,7 @@ import * as landing from "./pages/landing.js";
 import * as google from "./google.js";
 import * as openFinance from "./openfinance.js";
 import * as oauthPage from "./pages/oauth.js";
+import * as sharedDocuments from "./shared-documents.js";
 
 const ROUTES = { "/": dashboard, "/lancamentos": transactions, "/dividas": debts, "/categorias": categories, "/notas": notes, "/exportar": exportPage, "/importar": importPage, "/metas": goals, "/analise": insights, "/chat": advisor };
 ROUTES["/contas"] = accounts;
@@ -98,6 +99,8 @@ document.querySelectorAll('form[action="/sair"]').forEach((form) => form.addEven
     return;
   }
   advisor.clearDraft();
+  importPage.clearReview();
+  await sharedDocuments.clear();
   await db.wipe();
   form.submit();
 }));
@@ -154,6 +157,7 @@ function upsert(list, record) {
 
 function render(message) {
   const path = location.pathname;
+  if (path !== "/importar") importPage.cancelReading();
   const page = ROUTES[path];
   // Site: a moldura do app fica escondida até aqui (app.css), para não piscar o
   // menu antes de decidir entre a landing e o Painel.
@@ -164,6 +168,7 @@ function render(message) {
   document.body.classList.remove("landing-mode", "login-mode");
   if (device.isSite && !signedIn && path !== "/oauth") {
     advisor.clearDraft();
+    importPage.clearReview();
     // Site sem login: nenhuma tela do app, nem por endereço digitado. Endereço
     // de dentro do app (/dividas…) vira o login; "/" mostra a landing.
     if (path !== "/") history.replaceState(null, "", "/?entrar=1");
@@ -186,11 +191,13 @@ function render(message) {
       : sync.state.status === "offline"
         ? `<p class="notice warn">Este aparelho ainda não tem seus dados. Conecte-se ao computador onde a Rich está aberta uma vez para baixá-los; depois ele funciona sem conexão.</p>`
         : `<p class="muted loading">Baixando seus dados…</p>`;
+    sharedDocuments.mount(root, context(path, new URLSearchParams(location.search)));
     return;
   }
   const ctx = context(path, new URLSearchParams(location.search));
   root.innerHTML = `<p id="flash" hidden></p>` + toString(page.render(ctx));
   page.bind?.(root, ctx);
+  sharedDocuments.mount(root, ctx);
   charts.mount(root);
   dirty = false;
   rerenderPending = false;
@@ -298,6 +305,7 @@ function closeSession() {
   dirty = false;
   rerenderPending = false;
   advisor.clearDraft();
+  importPage.clearReview();
   history.replaceState(null, "", "/?entrar=1"); // o login com o aviso; o ícone da pantera ainda leva à landing
   render();
 }
@@ -390,7 +398,8 @@ if (root) {
   // sincronização que terminou durante a carga já gravou no aparelho.
   finance.load()
     .then(() => load(true))
-    .then(() => {
+    .then(async () => {
+      await sharedDocuments.start();
       booted = true;
       render();
       if (changedDuringBoot) reloadAndRender();

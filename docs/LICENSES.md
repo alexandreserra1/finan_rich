@@ -32,6 +32,12 @@ Excel, CSV, PDF, OFX e a leitura de faturas são código nosso (sem bibliotecas)
 
 ## App do celular
 
+OCR local usa Tesseract.js-core 6.1.2 e o modelo português tessdata_fast 4.1.0,
+ambos Apache-2.0. Recursos, licença, origem e hashes ficam em
+`internal/web/static/vendor/ocr`. Não usa SDK fechado nem envia imagens para terceiros.
+O wrapper próprio mantém somente um worker encerrável e o motor LSTM portátil, para
+não duplicar recursos SIMD/legados e preservar o limite de tamanho do aplicativo.
+
 | Dependência | Para quê | Licença |
 |---|---|---|
 | Capacitor 8 (`core`, `android`, `ios`, `cli`) | casca nativa com WebView | MIT |

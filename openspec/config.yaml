@@ -1,0 +1,12 @@
+schema: spec-driven
+context: |
+  Rich é offline-first: regras e dinheiro em Go/int64, telas em JavaScript sem framework,
+  SQLite no computador, Wasm no navegador e Capacitor no celular. Consulte AGENTS.md,
+  docs/ARCHITECTURE.md e docs/engineering/README.md. Preserve os dados locais e o design.
+  Documentos em português; Requirement, Scenario, MUST, WHEN e THEN são palavras do formato.
+  Não faça push, merge, deploy, migração destrutiva ou chamada a bancos reais automaticamente.
+rules:
+  proposal:
+    - Diferencie fatos verificados, hipóteses e pendências externas.
+  tasks:
+    - Cada tarefa tem verificação reproduzível e respeita as fronteiras do domínio.

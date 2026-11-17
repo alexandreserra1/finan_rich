@@ -18,6 +18,9 @@ export function html(strings, ...values) {
 }
 export const toString = (h) => h[RAW];
 
+export const richMark = raw('<svg class="rich-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><use href="/static/illustrations.svg#rich-mark"/></svg>');
+export const diagonalArrow = raw('<svg class="diagonal-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="/static/illustrations.svg#diagonal-arrow"/></svg>');
+
 // newId cria um UUID. crypto.randomUUID só existe em https/localhost; pelo
 // Wi-Fi (http) usamos getRandomValues, que funciona em qualquer contexto.
 export function newId() {

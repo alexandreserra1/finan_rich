@@ -32,7 +32,7 @@
 <body{{if $nav}} class="has-nav"{{end}}>
 {{if $nav}}
 <header class="top">
-  <a class="brand" href="/" aria-label="Rich, ir para o painel">rich<span>✳</span></a>
+  <a class="brand" href="/" aria-label="Rich, ir para o painel">rich<span>{{template "rich-mark"}}</span></a>
   <p class="crumb"><span>Seu espaço</span><span aria-hidden="true">/</span><b data-crumb></b></p>
   <div class="top-actions">
     <span id="sync-status" class="sync-pill" data-sync-status role="status" hidden></span>
@@ -44,7 +44,7 @@
   </div>
 </header>
 <nav class="tabs" id="menu" aria-label="Menu principal">
-  <a class="brand side-brand" href="/" aria-label="Rich, ir para o painel">rich<span>✳</span></a>
+  <a class="brand side-brand" href="/" aria-label="Rich, ir para o painel">rich<span>{{template "rich-mark"}}</span></a>
   <span class="nav-label">Dia a dia</span>
   <a href="/" class="tab-main" aria-label="Início" {{if eq .Page "dashboard"}}aria-current="page"{{end}}>{{template "icon" "grid"}}<span>Início</span></a>
   <a href="/lancamentos" class="tab-main" aria-label="Movimentos" {{if eq .Page "transactions"}}aria-current="page"{{end}}>{{template "icon" "swap"}}<span>Movimentos</span></a>

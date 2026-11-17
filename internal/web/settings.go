@@ -112,12 +112,12 @@ func (s *Server) testAI(w http.ResponseWriter, r *http.Request) {
 			{Role: llm.RoleUser, Content: llm.PingMessage},
 		}}, func(string) {})
 		if err == nil {
-			w.Write([]byte("✅ Funcionou em " + time.Since(start).Round(100*time.Millisecond).String() + ". Resposta: " + reply.Text))
+			w.Write([]byte("Funcionou em " + time.Since(start).Round(100*time.Millisecond).String() + ". Resposta: " + reply.Text))
 			return
 		}
 	}
 	w.WriteHeader(http.StatusBadGateway)
-	w.Write([]byte("❌ " + err.Error()))
+	w.Write([]byte("Não funcionou: " + err.Error()))
 }
 
 // pullModel baixa o modelo configurado no Ollama, enviando o progresso em SSE.

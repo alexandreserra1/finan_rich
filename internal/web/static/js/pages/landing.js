@@ -5,7 +5,7 @@
 // O conteúdo aparece logo de cara: o movimento ao rolar é só enfeite (sem buracos se a
 // página carregar devagar ou com "menos movimento" ligado).
 import * as device from "../device.js";
-import { animateContent, html, raw, tilt, toString } from "../ui.js";
+import { animateContent, diagonalArrow, html, raw, richMark, tilt, toString } from "../ui.js";
 
 export const needsData = false;
 
@@ -15,7 +15,7 @@ export const show = (ctx, signedIn) => device.isSite && !signedIn && !ctx.params
 const LOGIN = "/?entrar=1";
 const IMG = "/static/img/";
 const REPO = "https://github.com/alexandreserra1/finan_rich";
-const ARROW = raw('<span class="lp-arrow" aria-hidden="true">↗</span>');
+const ARROW = html`<span class="lp-arrow" aria-hidden="true">${diagonalArrow}</span>`;
 const MOON = "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z";
 
 // O time: os mesmos de finance.Team (aqui com o texto do site e a frase de cada um).
@@ -27,19 +27,19 @@ const TEAM = [
 
 // Exemplos da seção "Na prática" (dados fictícios, marcados como exemplo na tela).
 const DEMO_BARS = [["MAI", 78], ["JUN", 68], ["JUL", 92], ["AGO", 73], ["SET", 71], ["OUT", 57]];
-const demoHead = html`<div class="lp-dash-head"><b>Oi, vamos olhar sua grana? ✳</b><span>EXEMPLO</span></div>`;
+const demoHead = html`<div class="lp-dash-head"><b>Oi, vamos olhar sua grana? ${richMark}</b><span>EXEMPLO</span></div>`;
 const DEMOS = {
   gastos: html`${demoHead}<p class="lp-dash-label">Gastos em outubro</p><p class="lp-balance">R$ 2.480<small>,00</small></p>
     <div class="lp-chart" role="img" aria-label="Gastos de maio a outubro, em exemplo: o último mês é o menor.">${DEMO_BARS.map(([m, h]) => html`<span class="lp-bar" style="height: ${h}%"><i>${m}</i></span>`)}</div>
-    <p class="lp-insight">✳ <strong>Opa, sobrou mais.</strong> Seus gastos caíram R$ 370 em relação a setembro. Que tal dar um destino pra essa diferença?</p>`,
-  metas: html`${demoHead}<div class="lp-goaldemo"><h3>☀ Próxima parada: férias</h3><p class="lp-faint">Você já tem R$ 3.600 dos R$ 5.000.</p>
+    <p class="lp-insight">${richMark} <strong>Opa, sobrou mais.</strong> Seus gastos caíram R$ 370 em relação a setembro. Que tal dar um destino pra essa diferença?</p>`,
+  metas: html`${demoHead}<div class="lp-goaldemo"><h3>Próxima parada: férias</h3><p class="lp-faint">Você já tem R$ 3.600 dos R$ 5.000.</p>
     <span class="lp-progress"><i style="width: 72%"></i></span>
     <label for="lp-monthly">Quanto guardar por mês? <b data-amount>R$ 350</b></label>
     <input id="lp-monthly" type="range" min="50" max="1000" step="50" value="350" data-monthly>
-    <p class="lp-dash-label">Sua meta fica pronta em</p><p class="lp-goalresult" aria-live="polite" data-months>4 meses ✨</p>
+    <p class="lp-dash-label">Sua meta fica pronta em</p><p class="lp-goalresult" aria-live="polite" data-months>4 meses</p>
     <p class="lp-insight">Um plano que cabe no seu ritmo. Simulação sem rendimentos.</p></div>`,
   resumo: html`${demoHead}<p class="lp-dash-label">Saldo do mês · outubro</p><p class="lp-balance">R$ 1.520<small>,00</small></p>
-    <div class="lp-receipt flat"><div><span>↙ Entrou na conta</span><b>R$ 4.000</b></div><div><span>↗ Gastos do mês</span><b>R$ 2.480</b></div><div><span>✳ Disponível no mês</span><b>R$ 1.520</b></div></div>
+    <div class="lp-receipt flat"><div><span>Entrou na conta</span><b>R$ 4.000</b></div><div><span>${diagonalArrow} Gastos do mês</span><b>R$ 2.480</b></div><div><span>${richMark} Disponível no mês</span><b>R$ 1.520</b></div></div>
     <p class="lp-insight">Seu dinheiro conta uma história. Você gastou <strong>62% da renda</strong> neste exemplo. O restante pode ganhar um plano.</p>`,
 };
 
@@ -65,7 +65,7 @@ const FAQ = [
 export function render() {
   return html`<div class="landing" data-landing>
     <nav class="lp-nav" aria-label="Navegação principal">
-      <a class="lp-brand" href="/" aria-label="Rich, início">rich<span>✳</span></a>
+      <a class="lp-brand" href="/" aria-label="Rich, início">rich<span>${richMark}</span></a>
       <div class="lp-links"><a href="#recursos">Por que Rich?</a><a href="#demo">Na prática</a><a href="#time">Nosso time</a><a href="#duvidas">Dúvidas</a></div>
       <div class="lp-nav-actions">
         <button type="button" class="lp-theme" data-theme-toggle aria-label="Trocar o tema"><svg viewBox="0 0 24 24" aria-hidden="true"><path data-theme-icon d="${MOON}"/></svg></button>
@@ -85,13 +85,13 @@ export function render() {
         </div>
         <div class="lp-scene">
           <div class="lp-photo"><img src="${IMG}rich-hero.webp" width="1122" height="1402" alt="Personagem da campanha Rich sorrindo, sentada em uma poltrona amarela" fetchpriority="high"><span>MAIS VIDA FORA DA PLANILHA.</span></div>
-          <span class="lp-sticker" aria-hidden="true">a vida<br><em>cabe aqui.</em> ✳</span>
-          <div class="lp-convo"><img src="${IMG}time/lia-mini.webp" alt="" width="46" height="46"><div><small>LIA · HÁBITOS & ORÇAMENTO</small><p>Sua grana precisa de um plano.<br><b>Você, de um respiro.</b></p></div><span aria-hidden="true">✳</span></div>
-          <div class="lp-goalfloat"><span>UM PLANO DE CADA VEZ ↗</span><b>Próxima parada: férias.</b><span class="lp-progress"><i></i></span><small>R$ 3.600 de R$ 5.000 · exemplo</small></div>
+          <span class="lp-sticker" aria-hidden="true">a vida<br><em>cabe aqui.</em> ${richMark}</span>
+          <div class="lp-convo"><img src="${IMG}time/lia-mini.webp" alt="" width="46" height="46"><div><small>LIA · HÁBITOS & ORÇAMENTO</small><p>Sua grana precisa de um plano.<br><b>Você, de um respiro.</b></p></div><span aria-hidden="true">${richMark}</span></div>
+          <div class="lp-goalfloat"><span>UM PLANO DE CADA VEZ ${diagonalArrow}</span><b>Próxima parada: férias.</b><span class="lp-progress"><i></i></span><small>R$ 3.600 de R$ 5.000 · exemplo</small></div>
         </div>
       </section>
 
-      <div class="lp-ribbon" aria-hidden="true"><div><span>Seu dinheiro. Suas regras.</span><span>✳</span><span>Menos perrengue, mais planos.</span><span>✳</span><span>A vida acontece fora da planilha.</span><span>✳</span></div></div>
+      <div class="lp-ribbon" aria-hidden="true"><div><span>Seu dinheiro. Suas regras.</span><span>${richMark}</span><span>Menos perrengue, mais planos.</span><span>${richMark}</span><span>A vida acontece fora da planilha.</span><span>${richMark}</span></div></div>
 
       <section class="lp-band lp-paper" id="recursos"><div class="lp-section">
         <p class="lp-label">Paz financeira tem outro jeito</p>
@@ -100,13 +100,13 @@ export function render() {
         <div class="lp-features">
           <article class="lp-feature"><span class="lp-num">01 / ENTENDA SUA GRANA</span><h3>O sumiço do salário?<br>Caso resolvido.</h3>
             <p>Veja o que entra, o que sai e aqueles pequenos gastos que adoram passar despercebidos.</p>
-            <div class="lp-art lp-receipt"><div><span>☕ Um cafezinho aqui</span><b>R$ 18</b></div><div><span>🍔 Um delivery ali</span><b>R$ 45</b></div><div><span>▶ Aquela assinatura</span><b>R$ 29</b></div><div><span>Agora fez sentido.</span><b>R$ 92</b></div></div></article>
+            <div class="lp-art lp-receipt"><div><span>Um cafezinho aqui</span><b>R$ 18</b></div><div><span>Um delivery ali</span><b>R$ 45</b></div><div><span>Aquela assinatura</span><b>R$ 29</b></div><div><span>Agora fez sentido.</span><b>R$ 92</b></div></div></article>
           <article class="lp-feature"><span class="lp-num">02 / TIRE OS PLANOS DO PAPEL</span><h3>Seu “um dia”<br>pode ter uma data.</h3>
             <p>A viagem, a reserva, o próximo capítulo. Divida uma grande meta em pequenos passos.</p>
-            <div class="lp-art lp-target"><div class="lp-coin">✳</div><small>um pouquinho hoje. um mundão amanhã.</small></div></article>
+            <div class="lp-art lp-target"><div class="lp-coin">${richMark}</div><small>um pouquinho hoje. um mundão amanhã.</small></div></article>
           <article class="lp-feature"><span class="lp-num">03 / RESPIRE MAIS TRANQUILO</span><h3>Mais clareza.<br>Menos susto.</h3>
             <p>Encontre espaço no orçamento sem precisar abrir mão de tudo que faz a vida ser boa.</p>
-            <div class="lp-art lp-note"><b>✳ Ei, olha essa possibilidade.</b><span>Revisar duas assinaturas pode abrir espaço pra sua próxima meta. Vamos dar uma olhada?</span></div></article>
+            <div class="lp-art lp-note"><b>${richMark} Ei, olha essa possibilidade.</b><span>Revisar duas assinaturas pode abrir espaço pra sua próxima meta. Vamos dar uma olhada?</span></div></article>
         </div>
       </div></section>
 
@@ -114,8 +114,8 @@ export function render() {
         <div class="lp-top"><div><p class="lp-label">Um time. Vários jeitos de ajudar.</p><h2 class="lp-title">Números com contexto.<br>Conversas com <em>personalidade.</em></h2></div>
           <p>Cada momento pede uma conversa. Escolha por onde começar a organizar sua vida financeira.</p></div>
         <div class="lp-people-grid">${TEAM.map((t) => html`<article class="lp-agent">
-          <div class="lp-agent-photo"><img src="${IMG}time/${t.id}.webp" alt="Retrato ilustrativo de ${t.name}, personagem virtual da Rich" width="640" height="640" loading="lazy"><span>${t.label}</span><i aria-hidden="true">✳</i></div>
-          <div class="lp-agent-copy"><h3>${t.name}<span aria-hidden="true">↗</span></h3><p>“${t.say}”</p><a href="${LOGIN}">${t.cta} ${ARROW}</a></div>
+          <div class="lp-agent-photo"><img src="${IMG}time/${t.id}.webp" alt="Retrato ilustrativo de ${t.name}, personagem virtual da Rich" width="640" height="640" loading="lazy"><span>${t.label}</span><i aria-hidden="true">${richMark}</i></div>
+          <div class="lp-agent-copy"><h3>${t.name}<span aria-hidden="true">${diagonalArrow}</span></h3><p>“${t.say}”</p><a href="${LOGIN}">${t.cta} ${ARROW}</a></div>
         </article>`)}</div>
         <p class="lp-artnote">Otávio, Lia e Tito são personagens virtuais com retratos gerados por IA. As contas são feitas pelo app; a IA explica e aconselha.</p>
       </div></section>
@@ -140,13 +140,13 @@ export function render() {
           <span class="lp-orbit" aria-hidden="true"></span>
           <div class="rich-card" data-tilt role="img" aria-label="Cartão ilustrativo Rich azul, com chip e numeração mascarada. Não é um cartão emitido.">
             <div class="card-orbits" aria-hidden="true"></div>
-            <div class="rc-top"><span class="rc-logo">rich<span>✳</span></span><span class="rc-tag">SEU JEITO.</span></div>
+            <div class="rc-top"><span class="rc-logo">rich<span>${richMark}</span></span><span class="rc-tag">SEU JEITO.</span></div>
             <div class="rc-chiprow">${raw('<svg class="rc-chip" viewBox="0 0 52 40" aria-hidden="true"><rect x="1" y="1" width="50" height="38" rx="8" fill="#dac994" stroke="#b4a16a"/><path d="M18 1v11H1m50 0H34V1M18 39V28H1m50 0H34v11M18 12h16v16H18zM1 20h17m16 0h17" fill="none" stroke="#998752"/></svg><svg class="rc-contactless" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9q3 3 0 6m4-9q6 6 0 12m4-15q9 9 0 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>')}</div>
             <div class="rc-number"><span>••••</span><span>••••</span><span>••••</span><span>••••</span></div>
-            <div class="rc-bottom"><span>MAIS VIDA. MAIS PLANOS.</span><span class="rc-mark" aria-hidden="true">✳</span></div>
+            <div class="rc-bottom"><span>MAIS VIDA. MAIS PLANOS.</span><span class="rc-mark" aria-hidden="true">${richMark}</span></div>
           </div>
           </div>
-          <span class="lp-walletnote">bonito de ver.<br><em>fácil de entender.</em> ↗</span>
+          <span class="lp-walletnote">bonito de ver.<br><em>fácil de entender.</em> ${diagonalArrow}</span>
         </div>
         <div class="lp-walletcopy"><p class="lp-label">O cartão entra. A surpresa sai.</p><h2 class="lp-title">Seu cartão.<br>Uma visão <em>mais clara.</em></h2>
           <p>Compras registradas, fechamento e vencimento no mesmo lugar. Para você saber o que vem pela frente, antes da fatura chegar.</p>
@@ -160,7 +160,7 @@ export function render() {
           <p>A Rich roda no seu aparelho e guarda os dados no seu Drive. Sem servidor guardando seus dados, não tem conta para pagar, nem dado para vender.</p></div>
         <div class="lp-compare-wrap"><table class="lp-compare">
           <thead><tr><th scope="col"><span class="sr-only">O quê</span></th><th scope="col">Rich</th><th scope="col">Comum em apps de finanças</th></tr></thead>
-          <tbody>${COMPARE.map(([what, rich, other]) => html`<tr><th scope="row">${what}</th><td><span class="lp-yes" aria-hidden="true">✳</span>${rich}</td><td>${other}</td></tr>`)}</tbody>
+          <tbody>${COMPARE.map(([what, rich, other]) => html`<tr><th scope="row">${what}</th><td data-label="Rich"><span class="lp-yes" aria-hidden="true">${richMark}</span>${rich}</td><td data-label="Outros">${other}</td></tr>`)}</tbody>
         </table></div>
       </div></section>
 
@@ -176,7 +176,7 @@ export function render() {
       </div></section>
 
       <section class="lp-band lp-how" id="como"><div class="lp-section lp-howgrid">
-        <div class="lp-quoteart" aria-hidden="true"><span class="lp-bigstar">✳</span><div class="lp-sticky">Dinheiro é<br>um assunto.<br>Não um tabu.</div></div>
+        <div class="lp-quoteart" aria-hidden="true"><span class="lp-bigstar">${richMark}</span><div class="lp-sticky">Dinheiro é<br>um assunto.<br>Não um tabu.</div></div>
         <div><p class="lp-label">Um passo de cada vez</p><h2 class="lp-title">Descomplicar<br>é o <em>primeiro passo.</em></h2>
           <div class="lp-steps">
             <div class="lp-step"><span>01</span><div><h3>Entenda o seu momento</h3><p>Comece pelo que você já sabe: quanto recebe e para onde sua grana está indo.</p></div></div>
@@ -201,11 +201,11 @@ export function render() {
       </div></section>
 
       <section class="lp-closing"><p class="lp-label">Um novo papo com o seu dinheiro</p><h2>Menos aperto.<br>Mais <em>possibilidades.</em></h2>
-        <p>O próximo capítulo da sua grana começa com você.</p><a class="lp-pill blue" href="${LOGIN}">Quero experimentar ${ARROW}</a></section>
+        <span class="lp-closing-mark first" aria-hidden="true">${richMark}</span><span class="lp-closing-mark last" aria-hidden="true">${richMark}</span><p>O próximo capítulo da sua grana começa com você.</p><a class="lp-pill blue" href="${LOGIN}">Quero experimentar ${ARROW}</a></section>
     </div>
 
     <footer class="lp-foot">
-      <a class="lp-brand" href="/" aria-label="Rich, início">rich<span>✳</span></a>
+      <a class="lp-brand" href="/" aria-label="Rich, início">rich<span>${richMark}</span></a>
       <nav class="lp-foot-links" aria-label="Rodapé"><a href="#recursos">Por que Rich?</a><a href="#time">Nosso time</a><a href="#seguranca">Segurança</a><a href="#duvidas">Dúvidas</a>
         <a href="/baixar">Baixar o app</a><a href="/privacidade.html">Privacidade</a><a href="${REPO}" rel="noopener">Código no GitHub</a><a href="${REPO}/issues" rel="noopener">Fale com a gente</a><a href="${LOGIN}">Entrar</a></nav>
       <p>© 2026 Rich · Feito no Brasil · todos os direitos reservados.<br>A Rich não é banco, não faz pagamentos e não movimenta dinheiro.</p>
@@ -233,7 +233,7 @@ export function bind(root) {
       const v = Number(range.value);
       panel.querySelector("[data-amount]").textContent = v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
       const n = Math.ceil(1400 / v); // faltam R$ 1.400 (de R$ 3.600 para R$ 5.000), sem rendimentos
-      panel.querySelector("[data-months]").textContent = `${n} ${n === 1 ? "mês" : "meses"} ✨`;
+      panel.querySelector("[data-months]").textContent = `${n} ${n === 1 ? "mês" : "meses"}`;
     });
   };
   tabs.forEach((t, i) => {

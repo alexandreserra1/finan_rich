@@ -12,5 +12,13 @@ skills e um ajuste em `commands/test.md` para usar os testes Playwright do proje
 
 Próprios do projeto: agentes `cleanup` e `release-manager`, skill `cleanup`.
 
+Engenharia compartilhada (16/11/2026): OpenSpec 2.0.0 (MIT) gerou as seis skills
+`openspec-*` em `.agents/skills`, ligadas ao Claude. Playwright MCP 0.0.85 e Chrome
+DevTools MCP 1.13.0 usam Apache-2.0. Pacotes e licenças transitivas ficam no lockfile de
+`tools/engineering`; são ferramentas locais, não dependências do produto. As personas
+`architecture-reviewer`, `frontend-design-reviewer`, `backend-reviewer`, `root-cause-analyst`,
+`knowledge-maintainer` e a skill `rich-engineering` são próprias do projeto. Superpowers
+já está habilitado nos perfis locais do Claude e não foi copiado nem reinstalado aqui.
+
 Para atualizar: clonar os repositórios, copiar as mesmas pastas por cima e repetir os dois
 ajustes acima.

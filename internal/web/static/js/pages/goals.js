@@ -4,7 +4,7 @@
 // (somas, quanto por mês, o que gravar ao guardar) vêm do Go (finance.GoalsPage,
 // GoalPlan e Contribution).
 import * as finance from "../finance.js";
-import { BUCKETS, centsInput, closeModal, html, openModal, raw, today, toast } from "../ui.js";
+import { BUCKETS, centsInput, closeModal, html, openModal, raw, richMark, today, toast } from "../ui.js";
 import { PLUS, metric, pageHead } from "./dashboard.js";
 
 const CLOSE = raw('<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>');
@@ -31,7 +31,7 @@ const ART = ["yellow", "pink", "lilac"];
 function goalCard(g, m, cats, i) {
   const [label, tone] = status(g);
   return html`<article class="goal-card ${g.done ? "done" : ""} ${g.late ? "late" : ""}">
-    <div class="goal-art ${ART[i % 3]}" aria-hidden="true">${i % 3 === 0 ? SUN : html`<span>✳</span>`}</div>
+    <div class="goal-art ${ART[i % 3]}" aria-hidden="true">${i % 3 === 0 ? SUN : html`<span>${richMark}</span>`}</div>
     <div class="goal-top"><h2>${g.name}</h2><button type="button" class="iconbtn goal-edit" data-edit="${g.id}" aria-label="Editar ${g.name}">${PENCIL}</button></div>
     <strong class="goal-amount">${m(g.progressCents)}</strong>
     <span class="small muted">de ${m(g.targetCents)} · ${g.pct}% do caminho${g.categoryId && cats[g.categoryId] ? ` · aportes de ${cats[g.categoryId]}` : ""}</span>

@@ -371,6 +371,8 @@ export function bind(root, ctx) {
 
 // forgetHere apaga tudo deste aparelho: conta Google, chaves, pareamento e o banco.
 async function forgetHere() {
+  await (await import("../shared-documents.js")).clear();
+  (await import("./import.js")).clearReview();
   await google.signOut(); // a conta Google sai antes do banco (o token está nele)
   gState = undefined;
   await cloud.forget(); // a chave da IA no cofre do sistema também

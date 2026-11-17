@@ -83,3 +83,17 @@ func TestGoogleUsesFreeProxyURL(t *testing.T) {
 		t.Errorf("google.js deve usar o endereço de llm.FreeProxyURL (%s)", llm.FreeProxyURL)
 	}
 }
+func TestPublicImagesOnlyInSite(t *testing.T) {
+	for _, site := range []bool{false, true} {
+		directory := t.TempDir()
+		if err := ExportApp(directory, site); err != nil {
+			t.Fatal(err)
+		}
+		for _, name := range []string{"rich-hero.webp", "rich-og.jpg"} {
+			_, err := os.Stat(filepath.Join(directory, "static", "img", name))
+			if site && err != nil || !site && !os.IsNotExist(err) {
+				t.Errorf("imagem %s, site=%v: %v", name, site, err)
+			}
+		}
+	}
+}
