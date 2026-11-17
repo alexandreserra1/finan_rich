@@ -7,6 +7,7 @@
 // O bloqueio protege de quem pega o celular desbloqueado; ele não cifra os
 // dados guardados no aparelho.
 import * as db from "./db.js";
+import { richMark, toString } from "./ui.js";
 import { isApp } from "./device.js";
 import * as cloud from "./cloud-ai.js";
 import { clear as clearSharedDocuments } from "./shared-documents.js";
@@ -70,7 +71,7 @@ function lock() {
   overlay.setAttribute("aria-modal", "true");
   overlay.setAttribute("aria-labelledby", "app-lock-title");
   overlay.innerHTML = `<section class="panel login">
-    <p class="brand big">rich<span>✳</span></p>
+    <p class="brand big">rich<span>${toString(richMark)}</span></p>
     <h2 id="app-lock-title">App bloqueado</h2>
     <button type="button" data-lock="bio" hidden>Usar digital ou rosto</button>
     <form data-lock="pin">

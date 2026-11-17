@@ -1,5 +1,5 @@
 import * as finance from "../finance.js";
-import { askLink, html, iconTile, raw, shiftMonth, today } from "../ui.js";
+import { askLink, diagonalArrow, html, iconTile, raw, richMark, shiftMonth, today } from "../ui.js";
 import { chart } from "../charts.js";
 import * as welcome from "./welcome.js";
 import { stageDraft } from "./advisor.js";
@@ -24,7 +24,7 @@ export function pageHead(title, month, { kicker = "", actions = "", sub = "" } =
 export const PLUS = raw('<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>');
 
 
-const ARROW = "↗";
+const ARROW = diagonalArrow;
 const shortDate = (date) => `${date.slice(8, 10)}/${date.slice(5, 7)}`;
 
 export function metric(label, value, note, { primary = false, href = "", cls = "", extra = "" } = {}) {
@@ -131,7 +131,7 @@ export function render(ctx) {
     </section>
 
     ${goals.length ? html`<section class="panel home-goal"><div class="panel-head"><h2>Seu próximo objetivo</h2><a href="/metas">Ver metas ${ARROW}</a></div>
-      <div class="goal-rows">${goals.map((goal) => html`<a class="goalrow" href="/metas"><span class="row"><b>✳ ${goal.name}</b><span class="small num">${goal.pct}%</span></span><span class="progress"><i style="width: ${Math.min(goal.pct, 100)}%"></i></span><span class="row small num"><span>${money(goal.progressCents)}</span><span>de ${money(goal.targetCents)}</span></span></a>`)}</div>
+      <div class="goal-rows">${goals.map((goal) => html`<a class="goalrow" href="/metas"><span class="row"><b>${richMark} ${goal.name}</b><span class="small num">${goal.pct}%</span></span><span class="progress"><i style="width: ${Math.min(goal.pct, 100)}%"></i></span><span class="row small num"><span>${money(goal.progressCents)}</span><span>de ${money(goal.targetCents)}</span></span></a>`)}</div>
     </section>` : ""}
   `;
 }

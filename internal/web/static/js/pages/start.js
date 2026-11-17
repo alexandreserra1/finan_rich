@@ -2,7 +2,7 @@
 // (main.js), e o "Usar sem conta" não existe aqui: o computador de quem abre o
 // site pode ser de outra pessoa. Os dados ficam no Drive da própria pessoa.
 import * as google from "../google.js";
-import { html, raw } from "../ui.js";
+import { html, raw, richMark } from "../ui.js";
 
 export const needsData = false;
 
@@ -16,9 +16,9 @@ const BENEFITS = [
 export function render(ctx) {
   return html`<section class="start">
     <div class="start-story">
-      <a class="brand" href="/" aria-label="Rich, voltar ao início">rich<span>✳</span></a>
+      <a class="brand" href="/" aria-label="Rich, voltar ao início">rich<span>${richMark}</span></a>
       <h1>Mais espaço<br>para a vida.<br><em>Menos aperto.</em></h1>
-      <div class="start-photo" aria-hidden="true"><img src="/static/img/rich-hero.webp" alt="" width="230" height="280"><span>✳</span></div>
+      <div class="start-photo" aria-hidden="true"><img src="/static/img/rich-hero.webp" alt="" width="230" height="280"><span>${richMark}</span></div>
       <p>Seu dinheiro não precisa ser um mistério. Um passo de cada vez, a gente organiza essa conversa.</p>
     </div>
     <div class="start-main">

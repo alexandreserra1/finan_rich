@@ -2,7 +2,7 @@
 // cartão (pelo dia de fechamento) e o patrimônio mês a mês. As contas são de
 // finance.Accounts e finance.NetWorth (Go, pelo WebAssembly); aqui só desenha.
 import * as finance from "../finance.js";
-import { centsInput, closeModal, html, openModal, raw, tilt, today, toast } from "../ui.js";
+import { centsInput, closeModal, diagonalArrow, html, openModal, raw, richMark, tilt, today, toast } from "../ui.js";
 import { PLUS, metric, pageHead } from "./dashboard.js";
 import { chart } from "../charts.js";
 
@@ -182,10 +182,10 @@ export function render({ ledger }) {
       <div class="credit-stage">
         <button type="button" class="rich-card card-tile" data-tilt data-edit="${a.id}" aria-label="Editar ${a.name}">
           <span class="card-orbits" aria-hidden="true"></span>
-          <span class="rc-top"><span class="rc-logo">rich<span>✳</span></span><span class="rc-tag">${a.name}</span></span>
+          <span class="rc-top"><span class="rc-logo">rich<span>${richMark}</span></span><span class="rc-tag">${a.name}</span></span>
           <span class="rc-chiprow" aria-hidden="true">${CHIP}</span>
           <span class="rc-number" aria-hidden="true"><span>••••</span><span>••••</span><span>••••</span><span>••••</span></span>
-          <span class="rc-bottom"><span class="card-tile-open">${a.balanceCents < 0 ? `${m(-a.balanceCents)} em aberto` : a.balanceCents > 0 ? `${m(a.balanceCents)} de crédito` : "Nada em aberto"}</span><span class="rc-mark" aria-hidden="true">✳</span></span>
+          <span class="rc-bottom"><span class="card-tile-open">${a.balanceCents < 0 ? `${m(-a.balanceCents)} em aberto` : a.balanceCents > 0 ? `${m(a.balanceCents)} de crédito` : "Nada em aberto"}</span><span class="rc-mark" aria-hidden="true">${richMark}</span></span>
         </button>
       </div>
       <div class="credit-info">
@@ -205,7 +205,7 @@ export function render({ ledger }) {
       <strong class="acct-name">${a.name}</strong>
       <strong class="numberbig ${a.balanceCents < 0 ? "neg" : ""}">${m(a.balanceCents)}</strong>
       <span class="small muted">Saldo inicial: ${m(ledger.accounts.find((x) => x.id === a.id)?.initialCents || 0)}</span>
-      <span class="account-foot"><span>Saldo pelos lançamentos</span><span aria-hidden="true">↗</span></span>
+      <span class="account-foot"><span>Saldo pelos lançamentos</span><span aria-hidden="true">${diagonalArrow}</span></span>
     </button>`)}</section>` : ""}
 
     ${v.accounts.length > 1 ? html`<section class="panel transfers">

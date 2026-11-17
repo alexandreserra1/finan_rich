@@ -12,6 +12,7 @@ const VERSION = "finan-__VERSION__";
 const APP_ROUTES = ["/", "/lancamentos", "/dividas", "/categorias", "/notas", "/exportar", "/importar", "/metas", "/analise"];
 APP_ROUTES.push("/contas");
 const PRECACHE = [
+  "/static/illustrations.svg",
   ...APP_ROUTES, "/offline",
   "/static/app.css", "/static/app.js", "/static/settings.js", "/static/favicon.svg", "/static/img/time/otavio-mini.webp", "/static/img/time/lia-mini.webp", "/static/img/time/tito-mini.webp", "/static/img/time/otavio.webp", "/static/img/time/lia.webp", "/static/img/time/tito.webp", "/static/vendor/rich-fonts/DMSans-Variable.woff2", "/static/vendor/rich-fonts/Manrope-Variable.woff2",
   "/static/icons/icon-192.png", "/static/finance.wasm",

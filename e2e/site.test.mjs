@@ -26,10 +26,47 @@ const openTx = async (page) => {
   await page.waitForSelector("#tx-modal .modal-panel");
 };
 
+const checkVectorIcons = async (page, selector, label) => {
+  const result = await page.locator(selector).evaluate((root) => {
+    const emojiProne = /[\u2194-\u2199\u21A9\u21AA\u2600-\u27BF\uFE0F]|\p{Emoji_Presentation}/u;
+    const issues = [];
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (!node.parentElement.closest("script, style") && emojiProne.test(node.textContent)) {
+        issues.push(node.textContent.trim());
+      }
+    }
+    for (const element of [root, ...root.querySelectorAll("*")]) {
+      for (const pseudo of ["::before", "::after"]) {
+        const content = getComputedStyle(element, pseudo).content;
+        if (emojiProne.test(content)) issues.push(`${element.className.baseVal ?? element.className}${pseudo}: ${content}`);
+      }
+    }
+    const brand = root.querySelector(".lp-brand svg, .brand svg");
+    let brandContrast = 0;
+    if (brand) {
+      const channels = (value) => value.match(/[\d.]+/g).slice(0, 3).map(Number);
+      const luminance = (color) => channels(color).map((channel) => {
+        const value = channel / 255;
+        return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+      }).reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0);
+      let background = brand.parentElement;
+      while (background.parentElement && getComputedStyle(background).backgroundColor === "rgba(0, 0, 0, 0)") background = background.parentElement;
+      const front = luminance(getComputedStyle(brand).color);
+      const back = luminance(getComputedStyle(background).backgroundColor);
+      brandContrast = (Math.max(front, back) + 0.05) / (Math.min(front, back) + 0.05);
+    }
+    return { issues, brandSvg: !!brand, brandContrast };
+  });
+  ok(result.issues.length === 0 && result.brandSvg && result.brandContrast >= 3,
+    `${label}: marca em SVG e nenhum símbolo Unicode sujeito a emoji no texto ou nos pseudo-elementos (${JSON.stringify(result)})`);
+};
+
 const checkLandingVisual = async (browser) => {
   const screenshots = await mkdtemp(join(tmpdir(), "rich-landing-ficticia-"));
   console.log(`Screenshots da landing com dados explicitamente fictícios: ${screenshots}`);
-  for (const width of [390, 768, 1440, 1920]) {
+  for (const width of [360, 390, 600, 768, 1440, 1920]) {
     for (const colorScheme of ["light", "dark"]) {
       const context = await browser.newContext({ viewport: { width, height: 1000 }, colorScheme });
       const page = await context.newPage();
@@ -39,9 +76,58 @@ const checkLandingVisual = async (browser) => {
         await page.goto(`${SITE}/`);
         await page.waitForSelector(".landing .lp-dashboard");
         await page.evaluate(() => document.fonts.ready);
+        for (const photo of await page.locator('.landing img[loading="lazy"]').all()) {
+          await photo.scrollIntoViewIfNeeded();
+          await photo.evaluate((element) => element.decode());
+        }
         ok(await page.getAttribute("html", "data-theme") === colorScheme, `${width}px: tema ${colorScheme} aplicado`);
         ok(await page.locator(".lp-democopy .lp-fine").innerText() === "Demonstração com dados fictícios. Nenhuma conta conectada.",
           `${width}px/${colorScheme}: a demonstração identifica os dados fictícios`);
+        if (width <= 600) {
+          const mobile = await page.evaluate(() => {
+            const convo = document.querySelector(".lp-convo");
+            const goal = document.querySelector(".lp-goalfloat").getBoundingClientRect();
+            const walker = document.createTreeWalker(convo, NodeFilter.SHOW_TEXT);
+            const overlaps = [];
+            let textRects = 0;
+            while (walker.nextNode()) {
+              const node = walker.currentNode;
+              if (!node.textContent.trim()) continue;
+              const range = document.createRange();
+              range.selectNodeContents(node);
+              for (const rect of range.getClientRects()) {
+                if (!rect.width || !rect.height) continue;
+                textRects++;
+                if (Math.min(rect.right, goal.right) - Math.max(rect.left, goal.left) > 1 &&
+                    Math.min(rect.bottom, goal.bottom) - Math.max(rect.top, goal.top) > 1) overlaps.push(node.textContent.trim());
+              }
+            }
+            const rows = [...document.querySelectorAll(".lp-compare tbody tr")];
+            const comparison = rows.map((row) => {
+              const cells = [...row.querySelectorAll("td")];
+              const stacked = cells.some((cell) => getComputedStyle(cell).display !== "table-cell");
+              return {
+                heading: !!row.querySelector('th[scope="row"]')?.textContent.trim(),
+                cells: cells.length,
+                valid: cells.every((cell, index) => {
+                  const rect = cell.getBoundingClientRect();
+                  if (!cell.textContent.trim() || !rect.width || !rect.height || rect.left < -1 ||
+                      rect.right > document.documentElement.clientWidth + 1 || cell.scrollWidth > cell.clientWidth + 1) return false;
+                  if (!stacked) return true;
+                  const before = getComputedStyle(cell, "::before");
+                  const expected = ["Rich", "Outros"][index];
+                  return cell.dataset.label === expected && before.content.replace(/^["']|["']$/g, "") === expected &&
+                    before.display !== "none" && before.visibility === "visible" && Number(before.opacity) > 0;
+                }),
+              };
+            });
+            return { textRects, overlaps, goalVisible: goal.width > 0 && goal.height > 0, comparison };
+          });
+          ok(mobile.textRects > 0 && mobile.goalVisible && mobile.overlaps.length === 0,
+            `${width}px/${colorScheme}: o cartão de meta não cobre o texto da conversa (${JSON.stringify(mobile.overlaps)})`);
+          ok(mobile.comparison.length > 0 && mobile.comparison.every((row) => row.heading && row.cells === 2 && row.valid),
+            `${width}px/${colorScheme}: comparação legível, sem corte e com labels Rich/Outros em cada célula quando empilhada (${JSON.stringify(mobile.comparison)})`);
+        }
         for (const mode of ["gastos", "metas", "resumo"]) {
           const label = `${width}px/${colorScheme}/${mode}`;
           try {
@@ -54,6 +140,7 @@ const checkLandingVisual = async (browser) => {
                 panel.querySelector({ gastos: ".lp-chart", metas: ".lp-goalresult", resumo: ".lp-receipt" }[mode]);
             }, mode);
             await page.evaluate(() => document.fonts.ready);
+            await checkVectorIcons(page, ".landing", label);
             await page.waitForFunction(() => {
               const elements = [...document.querySelectorAll(".lp-dashboard, .lp-dashboard *, .lp-walletnote, .lp-walletstage .rich-card, .lp-pill.light, .lp-tab")];
               const moving = elements.some((element) => element.getAnimations().some((animation) =>
@@ -145,6 +232,27 @@ const checkLandingVisual = async (browser) => {
             ok(false, `${label}: ${err.message}`);
           }
         }
+        await page.goto(`${SITE}/?entrar=1`);
+        await page.waitForSelector(".start [data-unavailable]:not([hidden])");
+        await page.evaluate(() => document.fonts.ready);
+        await checkVectorIcons(page, ".start", `${width}px/${colorScheme}/login`);
+        const headingFocus = await page.locator(".start h1").evaluate((heading) => {
+          heading.tabIndex = -1;
+          heading.focus({ preventScroll: true });
+          const style = getComputedStyle(heading);
+          return document.activeElement === heading && (style.outlineStyle === "none" || parseFloat(style.outlineWidth) === 0);
+        });
+        ok(headingFocus, `${width}px/${colorScheme}: h1 do login recebe foco programático sem contorno retangular`);
+        await page.keyboard.press(process.env.BROWSER === "webkit" && process.platform === "darwin" ? "Alt+Tab" : "Tab");
+        const keyboardFocus = await page.evaluate(() => {
+          const element = document.activeElement;
+          const style = getComputedStyle(element);
+          return element.matches('.start a[href], .start button:not([disabled])') && element.matches(":focus-visible") &&
+            style.outlineStyle !== "none" && style.outlineStyle !== "hidden" && parseFloat(style.outlineWidth) > 0 &&
+            style.outlineColor !== "transparent" && !/^rgba\(.*,[\s]*0\)$/.test(style.outlineColor);
+        });
+        ok(keyboardFocus, `${width}px/${colorScheme}: Tab mantém foco visível em link ou botão do login`);
+        await page.screenshot({ path: join(screenshots, `${width}-${colorScheme}-login.png`), fullPage: true });
         ok(errors.length === 0, `${width}px/${colorScheme}: sem erros de JavaScript ${JSON.stringify(errors)}`);
       } catch (err) {
         ok(false, `${width}px/${colorScheme}: ${err.message}`);
