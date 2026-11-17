@@ -6,6 +6,7 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(SharedDocumentsPlugin.class);
         registerPlugin(BankNotificationsPlugin.class); // plugin do próprio app: registra antes de abrir
         super.onCreate(savedInstanceState);
     }

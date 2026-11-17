@@ -9,6 +9,7 @@
 import * as db from "./db.js";
 import { isApp } from "./device.js";
 import * as cloud from "./cloud-ai.js";
+import { clear as clearSharedDocuments } from "./shared-documents.js";
 
 const AWAY_MS = 60_000; // fora do app por mais que isso: pede de novo
 const ITERATIONS = 600_000;
@@ -151,6 +152,8 @@ async function askBiometry(msg) {
 async function forgot() {
   if (!confirm("Esqueceu a senha do app? Dá para tirar o bloqueio apagando os dados deste celular. Os que já estão no computador continuam lá e voltam ao conectar de novo. Apagar?")) return;
   await cloud.forget().catch(() => {});
+  await clearSharedDocuments();
+  (await import("./pages/import.js")).clearReview();
   await db.wipe();
   location.reload();
 }

@@ -32,6 +32,8 @@ const PRECACHE = [
   "/static/js/theme.js",
   "/static/js/openfinance.js",
   "/static/js/banknotes.js",
+  "/static/js/document-reader.js", "/static/js/ocr.js", "/static/js/ocr-worker.js",
+  "/static/js/shared-documents.js",
   "/static/js/charts.js",
   "/static/vendor/chartjs/chart.umd.min.js",
   "/static/js/sqlite-worker.js", "/static/js/db-idb.js", "/static/js/db-sqlite.js", "/static/js/sqlite-native.js", "/static/vendor/sqlite/sqlite3.js", "/static/vendor/sqlite/sqlite3.wasm",
@@ -65,6 +67,18 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET" || url.origin !== location.origin) return;
 
   if (url.pathname.startsWith("/static/")) {
+    if (url.pathname.startsWith("/static/vendor/ocr/")) {
+      event.respondWith(caches.match(req).then(async (cached) => {
+        if (cached) return cached;
+        const response = await fetch(req);
+        if (response.ok && !response.redirected) {
+          const cache = await caches.open(VERSION);
+          await cache.put(req, response.clone());
+        }
+        return response;
+      }));
+      return;
+    }
     event.respondWith(caches.match(req, { ignoreSearch: true }).then((hit) => hit || fetch(req)));
     return;
   }

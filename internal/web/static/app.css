@@ -579,8 +579,6 @@ label.file-button.primary-file:hover { background: var(--primary-hi); }
 .import-table select { min-height: 36px; padding: .3rem .5rem; min-width: 170px; }
 .import-table select.needs { border-color: var(--warn); box-shadow: 0 0 0 2px color-mix(in srgb, var(--warn) 25%, transparent); }
 .import-table td small { display: block; margin-top: .2rem; }
-.import-table tr.off td { opacity: .55; }
-.import-table tr.off td:first-child { opacity: 1; }
 .import-table input[type="checkbox"] { width: 18px; height: 18px; min-height: 0; }
 .tag.status-importado, .tag.status-fatura { --c: var(--muted); }
 .tag.status-duplicado { --c: var(--warn); }
@@ -1837,4 +1835,16 @@ a.card.metric:hover { transform: translateY(-3px); box-shadow: 0 12px 25px rgb(3
   .home-overview > .primary { min-height: 200px; }
   .home-quick-row { flex-direction: column; }
   .home-actions .btn { flex: 1 1 140px; text-align: center; white-space: normal; }
+}
+.document-text { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 18rem; overflow: auto; padding: 1rem; font-size: .85rem; }
+.import-table input[data-field="date"] { width: 9rem; max-width: 100%; }
+.import-table input[data-field="amountCents"] { width: 8rem; max-width: 100%; }
+.import-value { display: grid; grid-template-columns: 8rem 7rem; gap: .4rem; }
+.import-value > span { grid-column: 1 / -1; }
+.import-value select { width: 100%; min-width: 0; }
+@media (max-width: 720px) {
+  .import-table td[data-label="Data"], .import-table td[data-label="Valor"] { flex-wrap: wrap; }
+  .import-table td[data-label="Data"] input { flex: 0 0 9rem; min-width: 0; }
+  .import-value { flex: 1 1 100%; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .import-value input[data-field="amountCents"] { width: 100%; min-width: 0; }
 }

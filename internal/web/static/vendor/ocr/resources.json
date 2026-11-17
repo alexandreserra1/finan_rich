@@ -1,0 +1,18 @@
+{
+  "tesseract-core-lstm.js": {
+    "bytes": 124747,
+    "sha256": "48a3ee8e00924cb8c7f0cc0d099b1318fea120af56b3ee8fb3a70dd2311806c2"
+  },
+  "tesseract-core-lstm.wasm": {
+    "bytes": 2871085,
+    "sha256": "220e2e87551edccb85519796a170469f8ab2a8055216789e3b8b1ada18b7bc2b"
+  },
+  "LICENSE": {
+    "bytes": 11357,
+    "sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1"
+  },
+  "por.traineddata": {
+    "bytes": 1982756,
+    "sha256": "c4932b937207a9514b7514d518b931a99938c02a28a5a5a553f8599ed58b7deb"
+  }
+}

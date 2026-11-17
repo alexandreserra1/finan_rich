@@ -1,0 +1,9 @@
+{
+  "name": "rich-import-assets",
+  "private": true,
+  "description": "Recursos locais de OCR; somente os arquivos necessários são copiados para o app",
+  "type": "module",
+  "devDependencies": {
+    "tesseract.js-core": "6.1.2"
+  }
+}

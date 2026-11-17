@@ -6,9 +6,10 @@ import * as db from "../db.js";
 import * as finance from "../finance.js";
 import * as sync from "../sync.js";
 import { endpoint } from "../device.js";
-import { isPDF, pdfText } from "../pdftext.js";
+import { readDocument } from "../document-reader.js";
 import * as openFinance from "../openfinance.js";
 import * as bankNotes from "../banknotes.js";
+import * as sharedDocuments from "../shared-documents.js";
 import { BUCKETS, html, today } from "../ui.js";
 import { pageHead } from "./dashboard.js";
 
@@ -17,6 +18,16 @@ export const needsData = false;
 // O extrato em revisão fica aqui (e não na tela): a tela é redesenhada quando
 // chegam dados da sincronização, e a revisão não pode se perder.
 let state = null; // { fileName, base64, text (PDF) ou statement (Open Finance), preview, aiMessage, accountId } ou { bank: [{ name, statement }] }
+let reading = null;
+
+export function cancelReading() {
+  reading?.controller.abort();
+  reading = null;
+}
+export function clearReview() {
+  cancelReading();
+  state = null;
+}
 
 const liveAccounts = (ledger) => ledger.accounts.filter((a) => !a.deleted).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
 
@@ -33,10 +44,13 @@ async function guessAccount(ledger, preview) {
 // buildPreview lê o arquivo guardado no estado (OFX/CSV em base64, ou o texto
 // já extraído do PDF) com as opções da tela.
 function buildPreview(ledger, s, options) {
-  if (s.statement) return finance.importPreviewStatement(ledger, s.statement, options);
-  return s.text != null
+  s.options = { ...s.options, ...options, accountId: s.accountId || "", documentKind: s.documentKind || "auto", requireReview: !!s.requireReview };
+  options = s.options;
+  const preview = s.statement ? finance.importPreviewStatement(ledger, s.statement, options) : s.text != null
     ? finance.importPreviewText(ledger, s.text, options, today())
     : finance.importPreview(ledger, s.base64, options);
+  if (preview.items.some((item) => !Number.isSafeInteger(item.amountCents))) throw new Error("Um valor do documento ultrapassa a precisão segura do navegador. Confira a origem antes de importar.");
+  return preview;
 }
 
 const STATUS = {
@@ -62,6 +76,7 @@ const steps = (at) => html`<ol class="import-steps">${["Escolher origem", "Revis
 const head = (at) => html`${pageHead("Traga sua história financeira.", null, { sub: "Revise cada linha antes de transformar um arquivo em lançamentos." })}${steps(at)}`;
 
 export function render({ ledger }) {
+  if (reading) return html`${head(1)}<section class="panel" aria-busy="true"><h2>Preparando seu documento</h2><p data-import-progress role="status" aria-live="polite">${reading.progress}</p><p class="muted">A leitura acontece neste aparelho. Nenhum lançamento foi salvo.</p><button type="button" class="secondary" data-action="cancel-reading">Cancelar leitura</button></section>`;
   if (!state) return renderUpload();
   if (state.bank) return renderBank();
   const { preview } = state;
@@ -78,8 +93,13 @@ export function render({ ledger }) {
         <h2>${state.fileName}</h2>
         <button type="button" class="secondary" data-action="cancel">Escolher outro arquivo</button>
       </div>
-      <p class="muted">${items.length} lançamentos de ${fmtDate(preview.from)} a ${fmtDate(preview.to)}${counts.importado ? ` · ${counts.importado} já importados antes` : ""}${counts.duplicado ? ` · ${counts.duplicado} parecem já lançados à mão` : ""}${counts.fatura ? ` · ${counts.fatura} pagamento de fatura` : ""}.
+      <p class="muted">${items.length} lançamento${items.length === 1 ? "" : "s"} de ${fmtDate(preview.from)} a ${fmtDate(preview.to)}${counts.importado ? ` · ${counts.importado} já importados antes` : ""}${counts.duplicado ? ` · ${counts.duplicado} parecem já registrados` : ""}${counts.fatura ? ` · ${counts.fatura} pagamento de fatura` : ""}.
         Os desmarcados não entram; revise e marque se quiser.</p>
+      ${state.source ? html`<p class="small muted">Origem: ${state.source}. A prévia não foi salva.</p>` : ""}
+      ${preview.format === "xlsx" ? html`<p class="notice">Esta prévia contém somente a primeira aba financeira reconhecida da planilha. Outras abas não foram somadas nem importadas.</p>` : ""}
+      ${state.requireReview ? html`<p class="notice">O documento foi lido por reconhecimento de imagem. Os lançamentos começam desmarcados: confira datas, valores e sentido antes de selecionar. A leitura pode conter erros e não representa um saldo bancário confirmado.</p>` : ""}
+      ${state.mixed ? html`<p class="notice">Este PDF mistura texto e imagens. Confira a prévia com o original: nem toda imagem representa uma movimentação e a extração pode estar incompleta.</p>` : ""}
+      ${state.text != null ? html`<details><summary>Conferir texto extraído</summary><pre class="document-text">${state.text}</pre></details>` : ""}
       ${preview.cardBill ? html`<p class="notice">${preview.inverted ? "Parece uma fatura de cartão: os valores positivos foram tratados como gastos." : "Este arquivo parece uma fatura de cartão."} Os pagamentos da fatura vêm desmarcados, porque os gastos já aparecem um a um.</p>` : ""}
       <label class="check"><input type="checkbox" data-action="invert" ${preview.inverted ? "checked" : ""}> Inverter entradas e saídas (use se os gastos aparecerem como entradas)</label>
       ${ledger.accounts.some((a) => !a.deleted) ? html`<label class="import-account">De qual conta ou cartão é este arquivo?
@@ -94,10 +114,10 @@ export function render({ ledger }) {
         <tbody>
           ${items.map((it, i) => html`<tr class="${it.selected ? "" : "off"}">
             <td><input type="checkbox" data-row="${i}" data-field="selected" ${it.selected ? "checked" : ""} ${it.status === "importado" ? "disabled" : ""} aria-label="Importar este lançamento"></td>
-            <td data-label="Data" class="nowrap">${fmtDate(it.date)}</td>
+            <td data-label="Data" class="nowrap"><input type="date" data-row="${i}" data-field="date" value="${it.date}" aria-label="Data do lançamento"></td>
             <td class="primary"><input data-row="${i}" data-field="description" value="${it.description}" aria-label="Descrição">
               ${STATUS[it.status] ? html`<small class="tag status-${it.status}">${STATUS[it.status]}</small>` : ""}</td>
-            <td data-label="Valor" class="num nowrap ${it.kind === "entrada" ? "pos" : "neg"}">${it.kind === "entrada" ? "+" : "−"}${m(it.amountCents)}</td>
+            <td data-label="Valor" class="num nowrap ${it.kind === "entrada" ? "pos" : "neg"}"><div class="import-value"><span>${it.kind === "entrada" ? "+" : "−"}${m(it.amountCents)}</span><input data-row="${i}" data-field="amountCents" value="${m(it.amountCents)}" inputmode="decimal" aria-label="Valor do lançamento"><select data-row="${i}" data-field="kind" aria-label="Sentido do lançamento"><option value="saida" ${it.kind === "saida" ? "selected" : ""}>Saída</option><option value="entrada" ${it.kind === "entrada" ? "selected" : ""}>Entrada</option></select></div></td>
             <td data-label="Categoria"><select data-row="${i}" data-field="categoryId" class="${it.selected && !it.categoryId ? "needs" : ""}" aria-label="Categoria">${categoryOptions(ledger, it.kind, it.categoryId)}</select>
               ${it.reason && it.categoryId ? html`<small class="muted">${REASON[it.reason] || it.reason}</small>` : ""}</td>
           </tr>`)}
@@ -137,8 +157,10 @@ function renderUpload() {
         <div class="drop-zone">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 15v6h16v-6"/></svg>
           <strong>Escolha o extrato ou a fatura para revisar</strong>
-          <span class="muted small">OFX, CSV ou fatura em PDF, lidos neste aparelho. O arquivo não vai para a internet.</span>
-          <label class="button file-button primary-file">Escolher arquivo <input type="file" name="statement" accept=".ofx,.qfx,.csv,.txt,.pdf,text/csv,application/x-ofx,application/pdf" class="visually-hidden"></label>
+          <span class="muted small">OFX, CSV, XLSX, PDF, PNG, JPEG ou WebP de até 8 MB. A leitura acontece neste aparelho, sem enviar o documento.</span>
+          <label>Tipo de documento<select name="document-kind"><option value="auto">Reconhecer automaticamente</option><option value="extrato">Extrato da conta</option><option value="fatura">Fatura de cartão</option><option value="comprovante">Comprovante de pagamento ou recebimento</option></select></label>
+          <label class="button file-button primary-file">Escolher arquivo <input type="file" name="statement" accept=".ofx,.qfx,.csv,.xlsx,.txt,.pdf,.png,.jpg,.jpeg,.webp,text/csv,application/x-ofx,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/png,image/jpeg,image/webp" class="visually-hidden"></label>
+          <span class="small muted">Fotos e páginas digitalizadas usam reconhecimento de texto e exigem conferência. No site, os recursos são baixados do próprio Rich no primeiro uso.</span>
         </div>
         <details class="banks">
           <summary>Onde encontro o extrato no meu banco?</summary>
@@ -154,7 +176,7 @@ function renderUpload() {
       <section class="panel import-why">
         <h2 class="big-h2">Você escolhe o que entra.</h2>
         <dl>
-          <div><dt>Sem duplicar sua história</dt><dd>O que já foi importado, o que parece lançado à mão e os pagamentos de fatura vêm desmarcados.</dd></div>
+          <div><dt>Sem duplicar sua história</dt><dd>O que já foi importado, o que parece já registrado e os pagamentos de fatura vêm desmarcados.</dd></div>
           <div><dt>Categorias com contexto</dt><dd>A Rich sugere a categoria pela descrição e pelo seu histórico, e aprende com as suas correções. Revise antes de confirmar.</dd></div>
           <div><dt>Importação por iniciativa sua</dt><dd>Nada entra sozinho: cada arquivo, busca no banco ou notificação passa pela sua revisão.</dd></div>
         </dl>
@@ -182,28 +204,47 @@ function renderUpload() {
 
 export function bind(root, ctx) {
   const rerender = () => ctx.rerender();
-  root.querySelector('input[name="statement"]')?.addEventListener("change", async (e) => {
-    const file = e.target.files[0];
-    e.target.value = "";
-    if (!file) return;
+  root.querySelector('[data-action="cancel-reading"]')?.addEventListener("click", () => { reading?.controller.abort(); reading = null; rerender(); });
+  if (reading) return;
+  const openFile = async (source, documentKind) => {
+    const controller = new AbortController();
+    const operation = { controller, progress: "Abrindo o documento…" };
+    let failure;
+    reading = operation;
+    const deadline = setTimeout(() => controller.abort(), 120000);
+    rerender();
     try {
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      const next = { fileName: file.name, aiMessage: "" };
-      if (isPDF(bytes)) {
-        ctx.flash("Lendo o PDF…");
-        next.text = await pdfText(bytes, (msg) => prompt(msg));
-      } else {
-        next.base64 = toBase64(bytes);
-      }
+      const file = typeof source === "function" ? await source() : source;
+      controller.signal.throwIfAborted();
+      const extracted = await readDocument(file, { signal: controller.signal, askPassword: (message) => prompt(message), onProgress: (message) => {
+        operation.progress = message;
+        const progress = document.querySelector("[data-import-progress]");
+        if (progress && reading === operation) progress.textContent = message;
+      } });
+      controller.signal.throwIfAborted();
+      const next = { fileName: file.name, aiMessage: "", documentKind, ...extracted };
       next.preview = buildPreview(ctx.ledger, next, {});
       next.accountId = await guessAccount(ctx.ledger, next.preview);
+      next.preview = buildPreview(ctx.ledger, next, {});
+      if (reading !== operation) return;
       state = next;
-      rerender();
     } catch (err) {
-      state = null;
-      ctx.error(err);
+      if (reading === operation) { state = null; failure = controller.signal.aborted ? new Error("Leitura interrompida. Nenhum lançamento foi salvo; tente um documento menor.") : err; }
+    } finally {
+      clearTimeout(deadline);
+      if (reading === operation) { reading = null; rerender(); if (failure) ctx.error(failure); }
     }
+  };
+  root.querySelector('input[name="statement"]')?.addEventListener("change", (event) => {
+    const file = event.target.files[0];
+    event.target.value = "";
+    if (file) void openFile(file, root.querySelector('[name="document-kind"]').value);
   });
+  const received = sharedDocuments.takeRequest();
+  if (received && !reading && (!state || confirm("Já existe um documento em revisão. Descartar essa prévia e abrir o documento recebido? Nenhum lançamento da prévia será salvo."))) {
+    void openFile(() => sharedDocuments.readFile(received), "auto");
+    return;
+  }
   root.querySelector('[data-form="openfinance"]')?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const button = e.target.querySelector("button");
@@ -253,6 +294,7 @@ export function bind(root, ctx) {
         const next = { fileName: name, statement, aiMessage: "" };
         next.preview = buildPreview(ctx.ledger, next, {});
         next.accountId = await guessAccount(ctx.ledger, next.preview);
+        next.preview = buildPreview(ctx.ledger, next, {});
         state = next;
         rerender();
       } catch (err) {
@@ -272,7 +314,19 @@ export function bind(root, ctx) {
       ctx.error(err);
     }
   });
-  root.querySelector('[data-action="account"]')?.addEventListener("change", (e) => { state.accountId = e.target.value; });
+  root.querySelector('[data-action="account"]')?.addEventListener("change", (e) => {
+    const previous = state.preview.items;
+    state.accountId = e.target.value;
+    const refreshed = buildPreview(ctx.ledger, state, {});
+    refreshed.items.forEach((item, index) => {
+      const edited = previous[index];
+      if (!edited) return;
+      Object.assign(item, { date: edited.date, description: edited.description, amountCents: edited.amountCents, kind: edited.kind, categoryId: edited.categoryId, reason: edited.reason });
+      item.selected = edited.selected && item.status !== "importado" && (item.status === "novo" || edited.status === item.status);
+    });
+    state.preview = refreshed;
+    rerender();
+  });
   root.querySelector('[data-action="all"]').addEventListener("change", (e) => {
     for (const it of items) if (it.status !== "importado") it.selected = e.target.checked;
     rerender();
@@ -282,6 +336,15 @@ export function bind(root, ctx) {
     const field = el.dataset.field;
     if (field === "selected") it.selected = el.checked;
     else if (field === "categoryId") { it.categoryId = el.value; it.reason = el.value ? "" : it.reason; }
+    else if (field === "amountCents") {
+      try {
+        const amount = finance.parseMoney(el.value);
+        if (!Number.isSafeInteger(amount)) throw new Error("Este valor ultrapassa a precisão segura do navegador. Confira o documento.");
+        if (amount <= 0) throw new Error("Informe um valor maior que zero.");
+        it.amountCents = amount;
+      } catch (error) { ctx.error(error); el.value = finance.money(it.amountCents); }
+    }
+    else if (field === "kind") { it.kind = el.value; it.categoryId = ""; it.reason = ""; }
     else it[field] = el.value.trim() || it[field];
     if (field !== "description") rerender();
   }));
@@ -350,10 +413,4 @@ export function bind(root, ctx) {
       ctx.error(err);
     }
   });
-}
-
-function toBase64(bytes) {
-  let s = "";
-  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(s);
 }

@@ -2,6 +2,7 @@
   "appId": "io.github.alexandreserra1.finanrich",
   "appName": "Rich",
   "webDir": "www",
+  "loggingBehavior": "none",
   "android": {
     "allowMixedContent": false
   },
