@@ -49,6 +49,20 @@ arquivos, correção, testes, regressões e prevenção. Nunca inclua credenciai
   a mesma garantia para árvores de processos no Windows não foi validada.
 - Status: corrigido localmente; não altera nem encerra processos iniciados pela pessoa.
 
+## ENG-005 — Emojis ❌ e ✅ nas mensagens viram figura colorida no iPhone
+
+- Esperado: mensagem de erro em texto, com a cor vinda do CSS, igual em qualquer aparelho.
+- Observado: prints do iPhone mostraram a marca e as setas como emojis (já corrigidos pelo
+  Codex no PR #24, com SVG). Uma busca depois achou ❌ e ✅ em `import.js`, `settings.js` e
+  `internal/web/settings.go`.
+- Causa confirmada: o Safari troca esses caracteres por emoji colorido; a marca de erro
+  também era lida com `startsWith("❌")`, ligando o estilo ao emoji.
+- Correção: texto puro; `state.aiError` decide a classe `neg`; teste e2e usa `p.neg`.
+- Testes: `make test`, `e2e/import.test.mjs` e `node scripts/engineering.mjs check affected`.
+- Falhou no caminho: o seletor `has-text('Sem conexão')` expirou, porque a mensagem depende
+  do erro (TypeError ou texto do servidor); o teste agora confere só a classe.
+- Risco restante: não conferido no iPhone físico. Símbolos →, ← e ↑ ficam como texto.
+
 ## Modelo para novos incidentes
 
 Use identificador estável, data e status. Separe hipótese de causa confirmada. Informe
