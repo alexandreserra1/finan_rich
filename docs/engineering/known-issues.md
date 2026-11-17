@@ -63,6 +63,20 @@ arquivos, correção, testes, regressões e prevenção. Nunca inclua credenciai
   do erro (TypeError ou texto do servidor); o teste agora confere só a classe.
 - Risco restante: não conferido no iPhone físico. Símbolos →, ← e ↑ ficam como texto.
 
+## ENG-006 — Item atual do menu lateral some no tema escuro (celular)
+
+- Esperado: no menu aberto, a página atual aparece em amarelo com texto escuro.
+- Observado (print do iPhone): faixa amarela vazia, sem texto nem ícone.
+- Causa confirmada: `:root[data-theme="dark"] .tabs a[aria-current]` (cor amarela, para a barra
+  de baixo) tem mais peso que `body.menu-open .tabs a[aria-current]`; texto e fundo ficaram
+  `rgb(245, 239, 171)`. Medido pelo teste antes da correção.
+- Correção: regra do menu aberto repetida com o prefixo do tema escuro (`app.css`).
+- Teste: `e2e/app.test.mjs` compara cor e fundo do item atual nos temas claro e escuro.
+- Armadilha: o e2e do app lê `mobile/www`, que é gerado; sem `go run ./tools/mobilebuild
+  mobile/www` o teste usa o CSS antigo e engana.
+- Desktop: a barra lateral usa a regra sem a sobreposição do escuro (só no celular); não
+  conferido no navegador.
+
 ## Modelo para novos incidentes
 
 Use identificador estável, data e status. Separe hipótese de causa confirmada. Informe
