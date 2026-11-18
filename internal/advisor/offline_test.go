@@ -11,6 +11,7 @@ import (
 	"github.com/alexandreserra1/finan_rich/internal/domain"
 	"github.com/alexandreserra1/finan_rich/internal/finance"
 	"github.com/alexandreserra1/finan_rich/internal/llm"
+	"github.com/alexandreserra1/finan_rich/internal/rates"
 )
 
 func offlineQ(agent, text string) Question {
@@ -88,9 +89,10 @@ func TestPrepared(t *testing.T) {
 			t.Errorf("%s %q = %v", c.agent, c.text, got)
 		}
 	}
-	for agent, list := range Suggestions {
-		if len(list) == 0 {
-			t.Errorf("%s sem sugestões", agent)
+	// As sugestões de sempre do Otávio (finance.Suggestions) têm resposta pronta, sem IA.
+	for _, q := range append(finance.DefaultSuggestions["otavio"], "Qual é o meu maior problema agora?") {
+		if !Prepared(Question{Agent: "otavio", Text: q}) {
+			t.Errorf("%q sem resposta pronta", q)
 		}
 	}
 }
@@ -261,4 +263,38 @@ func TestLiaAllowanceWithoutIncome(t *testing.T) {
 		Transactions: []domain.Transaction{{Meta: domain.Meta{ID: "t", UpdatedAt: 1}, Kind: domain.KindSaida, Description: "Feira", AmountCents: 5000, CategoryID: "m", Date: "2026-10-03"}}},
 		Today: time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC), Agent: "lia", Text: "Quanto ainda posso gastar?"}
 	wantAll(t, "lia sem renda", Offline(q), "Ainda não há renda neste mês", "Lance a entrada")
+}
+
+// Taxas do Banco Central: vão nos dados da IA e respondem sozinhas "qual a selic hoje?".
+func TestRates(t *testing.T) {
+	r := rates.Rates{SelicBP: 1375, CDIBP: 1365, IPCABP: 463, IPCAMonth: "2026-10", Date: "2026-11-17"}
+	q := offlineQ("otavio", "qual é a taxa Selic hoje?")
+	if Prepared(q) {
+		t.Error("sem taxas, a pergunta vai para a IA")
+	}
+	q.Rates = r
+	if !Prepared(q) || Offline(q) != r.Text() {
+		t.Errorf("com taxas, o app responde: %v %q", Prepared(q), Offline(q))
+	}
+	for _, text := range []string{"quanto está o CDI?", "qual a inflação?", "Qual o IPCA agora?"} {
+		if q.Text = text; !Prepared(q) {
+			t.Errorf("%q sem resposta pronta", text)
+		}
+	}
+	for _, text := range []string{"vale a pena investir no CDI com a selic assim?", "qual a selic do meu banco?"} {
+		if q.Text = text; Prepared(q) {
+			t.Errorf("%q é pedido de conselho: vai para a IA", text)
+		}
+	}
+	f := &fakeProvider{}
+	q.Text, q.Anonymize = "vale a pena o tesouro selic?", true
+	if _, err := Answer(context.Background(), f, q, func(string) {}, func(Proposal) {}); err != nil {
+		t.Fatal(err)
+	}
+	if last := f.got.Messages[len(f.got.Messages)-1].Content; !strings.Contains(last, "Selic 13,75% ao ano") {
+		t.Errorf("as taxas não foram nos dados:\n%s", last)
+	}
+	if !strings.Contains(SystemPrompt, "Taxas do Banco Central") {
+		t.Error("as instruções não falam das taxas de hoje")
+	}
 }

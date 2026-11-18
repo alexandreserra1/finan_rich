@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/config"
+	"github.com/alexandreserra1/finan_rich/internal/rates"
 	"github.com/alexandreserra1/finan_rich/internal/store"
 	"github.com/alexandreserra1/finan_rich/internal/web"
 )
@@ -67,8 +68,9 @@ func run(args []string) error {
 	reload := make(chan struct{}, 1)
 	srv, err := web.New(st, web.Options{
 		AIPreset: cfg.AIPreset, AIDefaults: cfg.AI, Port: port, Password: cfg.Password,
-		OnQuit:  stop,
-		Version: updateVersion(),
+		OnQuit:   stop,
+		Version:  updateVersion(),
+		RatesURL: rates.BaseURL,
 		OnNetworkChange: func() {
 			select {
 			case reload <- struct{}{}:

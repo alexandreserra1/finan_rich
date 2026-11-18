@@ -37,6 +37,7 @@ type Server struct {
 	port            string
 	envPasswordHash string // senha de FINAN_PASSWORD (modo servidor), já com hash
 	limiter         *auth.Limiter
+	rates           ratesCache // taxas do Banco Central para o consultor
 	onNetworkChange func()
 	onQuit          func()
 	updates         *updateChecker
@@ -62,6 +63,9 @@ type Options struct {
 	// Version é a versão rodando, para avisar quando sair uma nova; vazia
 	// desliga o aviso.
 	Version string
+	// RatesURL é a API do Banco Central (rates.BaseURL) para o consultor saber a
+	// Selic, o CDI e o IPCA do dia; vazia desliga (testes).
+	RatesURL string
 }
 
 var funcs = template.FuncMap{
@@ -88,6 +92,7 @@ func New(st *store.Store, opts Options) (*Server, error) {
 		updates:         newUpdateCheckerIf(opts.Version),
 		assetsVersion:   assetsFingerprint(),
 		tailscaleURL:    tailscaleURL,
+		rates:           ratesCache{url: opts.RatesURL},
 	}
 	if _, err := staticFS.ReadFile("static/finance.wasm"); err != nil {
 		return nil, errors.New("static/finance.wasm não encontrado: rode 'go generate ./internal/web' (ou 'make wasm') antes de compilar")

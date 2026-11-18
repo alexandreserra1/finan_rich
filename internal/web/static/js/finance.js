@@ -67,6 +67,7 @@ export const team = () => unwrap(window.finan.team());
 export const route = (question) => unwrap(window.finan.route(question));
 // O que Otávio (dívidas), Tito (metas) e Lia (gastos) têm a dizer hoje.
 export const briefings = (ledger, day) => unwrap(window.finan.briefings(JSON.stringify(ledger), day));
+export const suggestions = (ledger, day, agent) => unwrap(window.finan.suggestions(JSON.stringify(ledger), day, agent));
 // Tela Metas: as metas e as somas do topo; a prévia da janela; o que gravar ao guardar dinheiro.
 export const goalsPage = (ledger, day) => unwrap(window.finan.goalsPage(JSON.stringify(ledger), day));
 export const goalPlan = (remainingCents, deadline, day) => unwrap(window.finan.goalPlan(remainingCents, deadline, day));

@@ -3,9 +3,15 @@ package llm
 import (
 	"bufio"
 	"bytes"
+	"errors"
+	"fmt"
 	"io"
 	"strings"
 )
+
+// ErrConnectionLost: a conexão caiu no meio da resposta. Cada navegador descreve com
+// um texto (o fetch do Go em WebAssembly repassa "network error", "Load failed"...).
+var ErrConnectionLost = errors.New("a conexão com a IA caiu no meio da resposta")
 
 // readLines chama fn para cada linha não vazia de r. Serve para NDJSON (Ollama)
 // e Server-Sent Events (OpenAI). Linhas de até 1 MB são aceitas.
@@ -20,6 +26,9 @@ func readLines(r io.Reader, fn func(line []byte) error) error {
 		if err := fn(line); err != nil {
 			return err
 		}
+	}
+	if err := sc.Err(); err != nil && !errors.Is(err, bufio.ErrTooLong) {
+		return fmt.Errorf("%w: %v", ErrConnectionLost, err)
 	}
 	return sc.Err()
 }

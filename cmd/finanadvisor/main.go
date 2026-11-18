@@ -71,9 +71,13 @@ func main() {
 		}),
 		// offline: a resposta do app, sem IA (IA fora ou sem internet);
 		// numbers: as contas do personagem, mostradas na hora enquanto a IA escreve.
-		"offline":         js.FuncOf(func(_ js.Value, a []js.Value) any { return askapi.Offline(str(a, 0)) }),
-		"numbers":         js.FuncOf(func(_ js.Value, a []js.Value) any { return askapi.Numbers(str(a, 0)) }),
-		"cloudPresets":    js.FuncOf(func(js.Value, []js.Value) any { return askapi.CloudPresets() }),
+		"offline":      js.FuncOf(func(_ js.Value, a []js.Value) any { return askapi.Offline(str(a, 0)) }),
+		"numbers":      js.FuncOf(func(_ js.Value, a []js.Value) any { return askapi.Numbers(str(a, 0)) }),
+		"cloudPresets": js.FuncOf(func(js.Value, []js.Value) any { return askapi.CloudPresets() }),
+		// rates: Selic, CDI e IPCA do Banco Central (cloud-ai.js guarda uma vez por dia).
+		"rates": js.FuncOf(func(js.Value, []js.Value) any {
+			return promise(func() string { return askapi.Rates(context.Background()) })
+		}),
 		"proposalApplied": js.FuncOf(func(_ js.Value, a []js.Value) any { return askapi.ProposalApplied(str(a, 0), str(a, 1)) }),
 	}
 	js.Global().Set("finanAdvisor", js.ValueOf(api))

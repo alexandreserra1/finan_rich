@@ -274,6 +274,7 @@ aparelho                                      servidor
 | `merchants.go` | `TopMerchants`: gastos por estabelecimento nos últimos 12 meses (para o consultor). |
 | `agents.go` | `Team`: os personagens do time (id, nome e papel; o retrato fica em `static/img/time/<id>.webp`). Cada tipo de aviso de `Alerts` tem um dono (Otávio avisa vencimentos e a dívida que cresce, Lia os orçamentos, a divisão do salário e o gasto fora do padrão, Tito as metas). `Route` diz de quem é o assunto de uma pergunta. |
 | `briefings.go` | `Briefings`: o cartão "O que o time viu" do Painel, sem IA. Otávio diz a dívida a atacar e quando tudo acaba pagando o mínimo, Tito quanto guardar por mês em cada meta, Lia a categoria mais acima da média, as assinaturas de desejos por ano e a maior economia possível (até 3 linhas cada). Cada resumo traz `Ask`, com resposta pronta. |
+| `briefings.go` (sugestões) | `Suggestions`: as perguntas sugeridas na tela do Consultor, pelos dados (a dívida mais cara, a categoria que disparou, a meta atrasada; sem nada cadastrado, `StartQuestion`, o começo do zero), completadas pelas de sempre (`DefaultSuggestions`) sem as que não se aplicam. |
 | `monthplan.go` | `PlanMonth`: parcelas mínimas pendentes, sobra livre, quanto pagar na dívida de maior juros. |
 | `view.go` | `Dashboard` e `Debts`: o que cada tela mostra, já calculado, em structs com tags JSON (o que o navegador recebe). |
 | `finance_test.go` | Testes de todas as regras com casos de valores conhecidos. |
@@ -384,22 +385,31 @@ Tabelas atuais:
 
 | Arquivo | Função |
 |---|---|
-| `llm.go` | Interface `Provider` (`Chat` com streaming), `Config`, `New` (escolhe a implementação), cliente HTTP compartilhado. |
+| `llm.go` | Interface `Provider` (`Chat` com streaming), `Config`, `New` (escolhe a implementação), cliente HTTP compartilhado. `Friendly` é o motivo da falha que aparece na tela (provedor, rede e prazo em palavras do dia a dia, sem endereço). |
 | `ollama.go` | Ollama pela API nativa: contexto de 8192 tokens, `think: false`, temperatura 0,7; lista e baixa modelos; distingue "não instalado", "lento" e "precisa de login" (modelos `:cloud`). |
 | `openai.go` | Qualquer API no formato `/v1/chat/completions` (a IA grátis da Rich, Groq, Gemini, OpenRouter, LM Studio). |
 | `stream.go` | Leitura de NDJSON/SSE e o filtro que remove `<think>…</think>` mesmo partido entre pedaços. |
 | `presets.go` | Opções prontas da tela de Ajustes (Ollama, Ollama Cloud, Groq, Gemini, OpenRouter, outro compatível). Só opções grátis: as pagas (Claude e DeepSeek) saíram em 11/2026. |
 | `*_test.go` | Cada provedor contra um servidor falso que imita a API real. |
 
+### `internal/rates/` — taxas do dia
+
+`Fetch` busca no Banco Central (API pública do SGS, sem chave, sem nenhum dado da pessoa) a
+meta da Selic (série 432), o CDI anualizado (4389) e o IPCA em 12 meses (13522), em
+pontos-base. `Text` é a linha que vai nos dados do consultor, com a data. O computador guarda
+por 6 horas (`internal/web/rates.go`; falhou, tenta de novo em 10 minutos e espera no máximo
+2 s por pergunta); o app e o site, por dia (`cloud-ai.js`, pelo `advisor.wasm`).
+
 ### `internal/advisor/` — o consultor
 
 | Arquivo | Função |
 |---|---|
-| `advisor.go` | System prompt, `BuildRequest` (histórico das últimas 12 mensagens + pergunta com o retrato) e `Ask`. |
+| `advisor.go` | System prompt, `BuildRequest` (histórico das últimas 12 mensagens, o resumo das mais antigas em `<conversa_anterior>`, feito sem IA, e a pergunta com o retrato e as taxas do dia) e `Ask`. Com o Otávio, "Me ajuda a começar do zero?" (`finance.StartQuestion`) liga o começo do zero até a 4ª resposta: as instruções pedem renda, contas fixas, dívidas e meta, uma por vez, e só as ferramentas de criar vão (`criar_conta_fixa` cria recorrências). |
+| `onboarding_test.go` | O começo do zero e a ferramenta `criar_conta_fixa`. |
 | `snapshot.go` | `BuildFacts` (calcula tudo com o `finance`) e `Snapshot` (texto com as contas prontas e os pontos de atenção). |
 | `personas.go` | O jeito de cada personagem do time aconselhar (a voz que vai nas instruções), as ferramentas de cada um e `SnapshotFor`: só as seções do resumo que o personagem usa (metade do tamanho; o Otávio recebe tudo). |
 | `persona_tools.go` | As ferramentas próprias do time, todas só de leitura e com as contas do `finance`: `simular_dividas` (Otávio: valor a mais por mês, ordem, mês em que fica livre, comparado com o mínimo e com a outra ordem), `simular_meta` (Tito: quanto por mês até um prazo, ou quando chega guardando X), `achados` e `comparar_meses` (Lia) e `proximos_vencimentos` (Otávio: parcelas, faturas, contas fixas e orçamentos perto do teto). A IA escolhe a ferramenta e os valores; o número sai sempre do Go. Como modelo pequeno ou grátis às vezes pula a ferramenta, `prefetch` já roda antes a conta principal do personagem (com o valor citado na pergunta, se houver) e manda junto dos dados como "Contas prontas"; a IA do celular, que não usa ferramentas, também recebe. |
-| `offline.go` | Resposta sem IA. `Offline` monta, só com as contas do Go e os nomes reais (não sai do aparelho), a resposta de cada personagem: Otávio (resumo do mês e o maior problema, o plano das dívidas e o mês em que fica livre, ou o que vence, conforme a pergunta), Tito (quanto guardar por mês em cada meta e a reserva) e Lia (até 3 achados, ou quanto ainda cabe no mês e nos orçamentos). `Answer` usa quando a IA falha por qualquer motivo (`Fallback`, com o aviso "A IA não respondeu agora") e, sem chamar a IA, nas sugestões que só precisam de contas (`Prepared`). `OverLimit` reconhece o limite (429 e o 413 de cota por minuto do Groq): no grátis do finan_rich, a tela mostra o caminho para a chave grátis da própria pessoa. No app, o `advisor.wasm` expõe `offline` para quando nem a rede responde. |
+| `offline.go` | Resposta sem IA. `Offline` monta, só com as contas do Go e os nomes reais (não sai do aparelho), a resposta de cada personagem: Otávio (resumo do mês e o maior problema, o plano das dívidas e o mês em que fica livre, ou o que vence, conforme a pergunta), Tito (quanto guardar por mês em cada meta e a reserva) e Lia (até 3 achados, ou quanto ainda cabe no mês e nos orçamentos). `Answer` usa quando a IA falha por qualquer motivo (`Fallback`, com o aviso "A IA não respondeu agora") e, sem chamar a IA, nas sugestões que só precisam de contas (`Prepared`). A pergunta curta da taxa ("qual a selic hoje?") também tem resposta pronta quando há taxas (`internal/rates`). `OverLimit` reconhece o limite (429 e o 413 de cota por minuto do Groq): no grátis do finan_rich, a tela mostra o caminho para a chave grátis da própria pessoa. No app, o `advisor.wasm` expõe `offline` para quando nem a rede responde. |
 
 ### `internal/auth/` — senha e sessões
 

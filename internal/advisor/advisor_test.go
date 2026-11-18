@@ -40,6 +40,35 @@ func TestBuildRequestKeepsRecentHistory(t *testing.T) {
 	}
 }
 
+// O que passa do limite não some: vira um resumo curto (sem chamar a IA) na pergunta.
+func TestBuildRequestSummarizesOlderHistory(t *testing.T) {
+	var history []llm.Message
+	for i := range 40 { // 80 mensagens: 68 ficam de fora
+		history = append(history,
+			llm.Message{Role: llm.RoleUser, Content: fmt.Sprintf("pergunta %d sobre a **Loja AB**", i)},
+			llm.Message{Role: llm.RoleAssistant, Content: fmt.Sprintf("**Resposta %d.**\n\n%s", i, strings.Repeat("texto longo ", 40))})
+	}
+	last := BuildRequest(history, "e agora?", "RETRATO").Messages
+	got := last[len(last)-1].Content
+	for _, want := range []string{"<conversa_anterior>", "- Pessoa: pergunta 33 sobre a Loja AB", "- Consultor: Resposta 33. texto longo", "- Pessoa: pergunta 28"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("resumo sem %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "pergunta 27 ") || strings.Contains(got, "pergunta 34 ") {
+		t.Errorf("o resumo leva só as 12 falas antes do histórico:\n%s", got)
+	}
+	if n := len(got[:strings.Index(got, "</conversa_anterior>")]); n > 12*200 {
+		t.Errorf("resumo grande demais: %d letras", n)
+	}
+	if got := BuildRequest(history[:4], "q", "").Messages; strings.Contains(got[len(got)-1].Content, "conversa_anterior") {
+		t.Error("conversa curta não tem resumo")
+	}
+	if !strings.Contains(SystemPrompt, "<conversa_anterior>") {
+		t.Error("as instruções não explicam o resumo")
+	}
+}
+
 func TestBuildRequestStartsWithUser(t *testing.T) {
 	history := []llm.Message{
 		{Role: llm.RoleAssistant, Content: "órfã"},
