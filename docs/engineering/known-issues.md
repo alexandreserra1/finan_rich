@@ -96,3 +96,23 @@ arquivos, correção, testes, regressões e prevenção. Nunca inclua credenciai
 Use identificador estável, data e status. Separe hipótese de causa confirmada. Informe
 comando reproduzível, evidência, correção, testes executados, possíveis regressões e risco
 restante. Referencie a mudança OpenSpec e arquivos relevantes, sem copiar a arquitetura.
+
+## ENG-008 — WebKit do CI preso no apt e iOS sem máquina macOS
+
+- Esperado: os jobs `e2e (webkit)` e `ios` terminam em minutos.
+- Observado em 16/11 e 18/11/2026: o WebKit caía com `exit code 124` ao baixar 125 MB de
+  bibliotecas pelo apt (espelhos do Ubuntu a poucos KB/s nas duas tentativas de 5 min). O
+  iOS era cancelado com 15 min de fila, sem `runner_name` e sem nenhum passo.
+- Causa confirmada do WebKit: depender do apt. Um cache dos `.deb` não resolvia: a chave
+  saía sem hash (o `package-lock` do e2e não está no git) e o `actions/cache` só grava quando
+  o job passa.
+- Correção do WebKit: o job roda na imagem `mcr.microsoft.com/playwright:v1.64.1-noble`, na
+  mesma versão do e2e (`.github/workflows/ci.yml`). No contêiner, o git precisa de
+  `safe.directory`, senão o `go generate` cai em "error obtaining VCS status". Ao subir o
+  Playwright do e2e, suba também a tag da imagem.
+- iOS: fila do GitHub para `macos-latest` (`macos-26-arm64`); nas rodadas boas a espera foi de
+  5 a 10 min. Não é defeito do código: confira `runner_name` vazio e rode de novo só o job.
+  Se virar rotina, fixar uma imagem com mais máquinas (ex.: `macos-15`) exige conferir o
+  Xcode.
+- Também visto em 18/11: um push no PR não gerou o evento `pull_request` (mergeabilidade
+  `UNKNOWN`); `gh workflow run ci.yml --ref <branch>` roda o mesmo CI no mesmo commit.
