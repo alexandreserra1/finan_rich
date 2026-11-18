@@ -134,7 +134,8 @@ func TestPromptsNameRealActions(t *testing.T) {
 	if !strings.Contains(goal, "total") || !strings.Contains(goal, "não o valor por mês") {
 		t.Errorf("criar_meta não explica que o valor é o total: %s", goal)
 	}
-	for _, want := range []string{"Registrar pagamento", "Registrar aporte", "Nunca invente botões"} {
+	// "Quanto gastei com iFood?" pede o número, não um plano em passos.
+	for _, want := range []string{"Registrar pagamento", "Registrar aporte", "Nunca invente botões", "Pergunta direta", "Sem plano em passos"} {
 		if !strings.Contains(SystemPrompt, want) {
 			t.Errorf("instruções sem %q", want)
 		}

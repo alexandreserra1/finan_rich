@@ -57,8 +57,9 @@ type evalCase struct {
 	never []string // expressões que não podem aparecer
 }
 
-// Todas as respostas (menos a piada) também precisam começar pela conclusão
-// em negrito e terminar com um próximo passo no app: ver personal abaixo.
+// Os pedidos de conselho também precisam começar pela conclusão em negrito e
+// terminar com um próximo passo no app; as perguntas diretas, ser curtas: ver
+// personal e direct abaixo.
 var evalCases = []evalCase{
 	{"o que eu faço com meu dinheiro?", []string{`cart[aã]o|d[ií]vida`, `14\s?%|448`, `\n\s*1\.`, `reserva`}, nil},
 	{"onde posso economizar?", []string{`ifood|delivery`, `660|330|R\$\s?\d{3}`, `assinatura|netflix`}, nil},
@@ -88,8 +89,12 @@ var teamEvalCases = []struct {
 	{"otavio", evalCase{"o que vence nos próximos 20 dias?", []string{`aluguel`, `cart[aã]o`, `10/11|dia 10`}, []string{`\n\s*3\.`}}},
 }
 
-// personal: formato pedido nas instruções (conclusão primeiro, próximo passo no app).
-var personal = []string{`^\s*\*\*`, `no app|app:|registr|crie|cadastr`}
+// personal: formato pedido nas instruções para conselho (conclusão primeiro,
+// próximo passo no app). Pergunta direta (direct) pede só a resposta, curta.
+var (
+	personal = []string{`^\s*\*\*`, `no app|app:|registr|crie|cadastr`}
+	direct   = regexp.MustCompile(`(?i)quanto gastei|selic|vence`)
+)
 
 func TestEval(t *testing.T) {
 	key := os.Getenv("FINAN_EVAL_KEY")
@@ -142,7 +147,16 @@ func TestEval(t *testing.T) {
 		}
 		var fails []string
 		must := c.must
-		if !strings.Contains(c.q, "piada") && !strings.Contains(c.q, "vence") { // vencimento: resposta curta, sem plano
+		switch {
+		case strings.Contains(c.q, "piada"):
+		case direct.MatchString(c.q): // pergunta direta: resposta curta, sem plano
+			total++
+			if n := len(strings.Fields(answer)); n <= 90 {
+				passed++
+			} else {
+				fails = append(fails, fmt.Sprintf("pergunta direta com %d palavras", n))
+			}
+		default:
 			must = append(append([]string{}, must...), personal...)
 		}
 		for _, re := range must {

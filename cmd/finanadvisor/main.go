@@ -44,9 +44,15 @@ func main() {
 	}
 	api := map[string]any{
 		// ask chama a IA pela rede: devolve uma Promise (a tela não pode travar).
+		// O 2º argumento (opcional) recebe a resposta aos poucos, já com os nomes.
 		"ask": js.FuncOf(func(_ js.Value, a []js.Value) any {
 			req := str(a, 0)
-			return promise(func() string { return askapi.Ask(context.Background(), req) })
+			var onText func(string)
+			if len(a) > 1 && a[1].Type() == js.TypeFunction {
+				fn := a[1]
+				onText = func(s string) { fn.Invoke(s) }
+			}
+			return promise(func() string { return askapi.Ask(context.Background(), req, onText) })
 		}),
 		// checkKey testa a chave (uma pergunta mínima, sem dados): Promise também.
 		"checkKey": js.FuncOf(func(_ js.Value, a []js.Value) any {

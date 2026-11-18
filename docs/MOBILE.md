@@ -169,7 +169,8 @@ A versão do app fica em `mobile/android/app/version.properties`: o workflow de 
     CPF, se ela voltou numa resposta). As categorias padrão ("Mercado", "Aluguel") ficam: são
     genéricas. Os apelidos de loja são letras do mesmo tamanho, para a lista por
     estabelecimento e a busca não juntarem lojas diferentes. A IA vê valores, datas e
-    categorias. Na volta, o app troca os apelidos pelos nomes, e os cartões
+    categorias. Na volta, o app troca os apelidos pelos nomes enquanto a resposta chega
+    (um apelido partido entre dois pedaços espera o resto), e os cartões
     gravam sempre o nome verdadeiro (pelo ID do registro). Regras em `advisor/anon.go`.
   - **chave no cofre do sistema**: no app, a chave da IA fica no Android Keystore / iOS
     Keychain, pelo plugin [capacitor-native-biometric](https://github.com/Cap-go/capacitor-native-biometric)

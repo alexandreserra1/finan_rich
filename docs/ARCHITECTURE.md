@@ -152,11 +152,14 @@ aparelho                                      servidor
    consultor pergunta de novo sem elas.
    Quando a IA configurada é de nuvem (`llm.IsLocal` falso), `advisor.Answer` anonimiza antes
    (`advisor/anon.go`): lojas, dívidas, credores e metas viram apelidos, as notas ficam de fora,
-   e a resposta e as propostas voltam com os nomes verdadeiros. O app do celular sem computador
-   usa o mesmo caminho em WebAssembly (`internal/askapi`, `cmd/finanadvisor`).
+   e a resposta e as propostas voltam com os nomes verdadeiros. A resposta aparece aos poucos:
+   `RevealStream` só segura o fim que ainda pode ser um apelido partido entre dois pedaços. O
+   app do celular sem computador usa o mesmo caminho em WebAssembly (`internal/askapi`,
+   `cmd/finanadvisor`), com uma função JS que recebe os pedaços.
 4. **"Treinamento" em finanças** (sem mexer nos pesos do modelo, o que os planos grátis não
    permitem): as instruções (`advisor.SystemPrompt`) pedem respostas personalizadas (números
-   do usuário, conclusão primeiro, plano com R$ e prazo, próximo passo no app) e seguem a
+   do usuário; pergunta direta em até 3 frases, sem plano; conselho com conclusão primeiro,
+   plano com R$ e prazo e próximo passo no app) e seguem a
    ordem de prioridades; a pergunta leva um bloco `<conhecimento>` com até 2 temas da base
    `advisor/knowledge.go` (dívidas, reserva, investimentos, orçamento, cartão, compras
    grandes, dinheiro extra, golpes; regras do Brasil, sem taxas do dia). A avaliação

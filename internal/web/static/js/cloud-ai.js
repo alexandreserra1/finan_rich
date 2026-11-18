@@ -147,7 +147,8 @@ export async function presets() {
 }
 
 // ask pergunta à IA na nuvem: { answer, proposals }. Sempre anonimizado.
-export async function ask(ledger, history, question, agent = "otavio") {
+// onText recebe a resposta aos poucos, já com os nomes de volta.
+export async function ask(ledger, history, question, agent = "otavio", onText = () => {}) {
   const cfg = await config();
   if (!ready(cfg)) throw new Error("configure a IA na nuvem em Ajustes do app");
   await loadAdvisor();
@@ -158,7 +159,7 @@ export async function ask(ledger, history, question, agent = "otavio") {
     anonymize: true,
     agent,
   };
-  return unwrap(await window.finanAdvisor.ask(JSON.stringify(req)));
+  return unwrap(await window.finanAdvisor.ask(JSON.stringify(req), onText));
 }
 
 // Resposta do app, sem IA (regras em Go, advisor.wasm): { answer, proposals, app },

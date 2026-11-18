@@ -156,6 +156,11 @@ const cloudAI = createServer((req, res) => {
     if (last.role === "tool") return send({ content: last.content.startsWith("Pronto") ? "Deixei pronto para você confirmar." : "Na " + question.match(/Loja [A-Z]{2,}/)?.[0] + " você gastou " + last.content.match(/Saídas: (R\$ [\d.,]+)/)?.[1] + "." });
     if (/demora/i.test(question)) return setTimeout(() => send({ content: SLOW }), 2500);
     const shop = question.match(/Loja [A-Z]{2,}/)?.[0];
+    // Streaming: o apelido chega partido ("Loj" + "a AB") e o resto vem 1,5 s depois.
+    if (/aos poucos/i.test(question)) {
+      res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: "Primeiro pedaço sobre a " + shop.slice(0, 3) } }] })}\n\n`);
+      return setTimeout(() => send({ content: shop.slice(3) + " e o resto." }), 1500);
+    }
     if (shop) return call("buscar_lancamentos", { texto: shop });
     if (/pão/i.test(question)) return call("propor_lancamento", { descricao: "Pão", valor: "8,50", categoria: "Mercado" });
     send({ content: "Oi!" });
@@ -357,6 +362,15 @@ try {
   await page.click(".proposal:has-text('Pão') button");
   await page.waitForSelector(".proposal:has-text('Pão') button:has-text('Adicionado')", { timeout: 10000 });
   ok(true, "pela nuvem, a proposta também vira cartão e grava neste celular");
+
+  // A resposta da nuvem aparece aos poucos, já com o nome verdadeiro; o apelido partido nunca aparece.
+  await page.fill("textarea[name=message]", "Conta aos poucos da Feira");
+  await page.click("form[data-form=ask] button");
+  await page.waitForSelector(".msg.pending .partial:has-text('Primeiro pedaço')", { timeout: 30000 });
+  const partial = await page.textContent(".msg.pending .partial");
+  await page.waitForSelector(".msg.assistant:not(.pending):has-text('Feira e o resto')", { timeout: 30000 });
+  const streamedAnswer = await page.textContent(".msg.assistant >> nth=-1");
+  ok(!/Loj/.test(partial) && !/Loja/.test(streamedAnswer), `pela nuvem, a resposta chega aos poucos sem mostrar apelido (antes: "${partial.trim()}"; fim: "${streamedAnswer.trim()}")`);
 
   // A internet cai no meio da resposta: o Otávio responde com as contas do app
   // (sem IA), não fica em "Pensando…" e não guarda a resposta pela metade.

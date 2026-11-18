@@ -234,7 +234,8 @@ async function ask(ctx, question) {
   if (chat.numbers) ctx.rerender();
   try {
     if (chat.cloud) {
-      const reply = await cloud.ask(ctx.ledger, chat.history.slice(0, -1), question, agent);
+      let streamed = ""; // a resposta aos poucos; no fim vale a resposta inteira (reply)
+      const reply = await cloud.ask(ctx.ledger, chat.history.slice(0, -1), question, agent, (t) => showPartial((streamed += t)));
       chat.partial = "";
       chat.history.push(assistantMessage(reply, agent, chat.numbers));
       suggestHandoff(question, agent);
