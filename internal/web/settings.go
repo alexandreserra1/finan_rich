@@ -52,6 +52,7 @@ func (s *Server) settings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data["App"] = app
+	data["AccessLog"], _ = s.store.AccessLog(ctx, 30)
 	s.render(w, r, "settings", data)
 }
 
@@ -92,6 +93,9 @@ func (s *Server) saveSettings(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	err = s.saveAISettings(ctx, ai)
+	if err == nil && ai.APIKey != current.APIKey {
+		s.logAccess(r, "Chave da IA trocada")
+	}
 	back := "/configuracoes"
 	if r.FormValue("volta") == "/chat" { // o "Usar este modelo" do aviso do Consultor
 		back = "/chat"

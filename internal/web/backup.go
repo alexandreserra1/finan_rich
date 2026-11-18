@@ -22,6 +22,7 @@ func (s *Server) backupDB(w http.ResponseWriter, r *http.Request) {
 		serverError(w, err)
 		return
 	}
+	s.logAccess(r, "Backup do banco baixado")
 	name := "rich_" + time.Now().Format("2006-01-02") + ".db"
 	w.Header().Set("Content-Type", "application/vnd.sqlite3")
 	w.Header().Set("Content-Disposition", `attachment; filename="`+name+`"`)

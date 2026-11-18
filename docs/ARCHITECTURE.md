@@ -434,7 +434,8 @@ Código Go:
 | `server.go` | `New(store, Options)`, rotas, renderização de templates, middlewares (segurança, CSRF, log), service worker com a impressão digital dos arquivos. |
 | `api.go` | `POST /api/sync`. |
 | `access.go` | Login, sessões, `requireAuth` (cookie ou token do app), ligar/desligar o acesso pelo celular. |
-| `backup.go` | `GET /configuracoes/backup.db`: cópia completa do banco (`VACUUM INTO`), com configurações e chat. |
+| `accesslog.go` | `logAccess`: o registro de acesso dos Ajustes (entradas pela rede, senha errada, pareamento, troca de senha, backup, troca da chave da IA e do Open Finance), com o endereço de quem fez; guarda os últimos 200 (`store.LogAccess`). Mapa de segurança: [SEGURANCA.md](SEGURANCA.md). |
+| `backup.go` | `GET /configuracoes/backup.db`: cópia do banco (`store.BackupTo`, `VACUUM INTO`), com configurações e chat, sem os segredos em texto puro (chave da IA, segredo do Pluggy), as sessões e os aparelhos pareados. |
 | `pairing.go` | Pareamento do app do celular: código, página `/parear`, `POST /api/parear`, token do aparelho, CORS de `/api/`. |
 | `export.go` | `ExportApp`: grava as telas do app (casco + `static/`) para o Capacitor. |
 | `lan.go` | Endereços da rede local para o celular e QR code. |

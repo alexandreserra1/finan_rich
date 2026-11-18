@@ -11,6 +11,7 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"os"
 	"sort"
 
 	_ "modernc.org/sqlite" // registra o driver "sqlite"
@@ -112,9 +113,31 @@ func collect[T any](rows *sql.Rows, err error, scan func(*sql.Rows) (T, error)) 
 	return out, rows.Err()
 }
 
-// BackupTo grava uma cópia completa e consistente do banco em path (que não
-// pode existir), mesmo com o app em uso.
+// BackupTo grava uma cópia consistente do banco em path (que não pode existir),
+// mesmo com o app em uso. Ficam de fora os segredos em texto puro (a chave da IA e
+// o segredo do Pluggy: depois de restaurar, a pessoa digita de novo), as sessões e
+// os aparelhos pareados (o celular pareia de novo). A cópia intermediária é apagada;
+// o VACUUM INTO final só copia o que sobrou, então o texto apagado não fica no arquivo.
 func (s *Store) BackupTo(ctx context.Context, path string) error {
-	_, err := s.db.ExecContext(ctx, `VACUUM INTO ?`, path)
+	tmp := path + ".parcial"
+	if _, err := s.db.ExecContext(ctx, `VACUUM INTO ?`, tmp); err != nil {
+		return err
+	}
+	defer os.Remove(tmp)
+	db, err := sql.Open("sqlite", tmp)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	for _, q := range []string{
+		`UPDATE settings SET value = '' WHERE key IN ('ai_api_key', 'pluggy_client_secret')`,
+		`DELETE FROM sessions`,
+		`DELETE FROM devices`,
+	} {
+		if _, err := db.ExecContext(ctx, q); err != nil {
+			return err
+		}
+	}
+	_, err = db.ExecContext(ctx, `VACUUM INTO ?`, path)
 	return err
 }

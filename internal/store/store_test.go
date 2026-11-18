@@ -1,10 +1,13 @@
 package store
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -403,5 +406,75 @@ func TestTransfersSync(t *testing.T) {
 	bad.ID, bad.ToAccountID = "p2", "bank"
 	if _, err := s.ApplyChanges(ctx, []Change{change(t, TypeTransfer, bad)}); !errors.Is(err, ErrInvalidChange) {
 		t.Errorf("transferência para a mesma conta deveria ser recusada: %v", err)
+	}
+}
+
+// O backup leva os dados, mas não os segredos em texto puro (chave da IA, segredo do
+// Pluggy) nem as sessões e aparelhos: quem receber o arquivo não usa a conta de ninguém.
+// O teste lê os bytes do arquivo: páginas apagadas do SQLite ainda guardariam o texto.
+func TestBackupLeavesSecretsOut(t *testing.T) {
+	ctx := context.Background()
+	s := newTestStore(t)
+	s.SaveSettings(ctx, "ai_", map[string]string{"api_key": "segredo-da-ia-123", "model": "qwen3:4b"})
+	s.SaveSettings(ctx, "pluggy_", map[string]string{"client_id": "id-publico", "client_secret": "segredo-do-pluggy-456"})
+	s.CreateSession(ctx, "sessao-1", time.Now().Add(time.Hour))
+	s.CreateDevice(ctx, "Celular", "hash-do-aparelho")
+	if _, err := s.ApplyChanges(ctx, []Change{change(t, domain.TypeTransaction, txRecord("t1", 1, "Padaria do Zé"))}); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "backup.db")
+	if err := s.BackupTo(ctx, path); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, secret := range []string{"segredo-da-ia-123", "segredo-do-pluggy-456", "hash-do-aparelho"} {
+		if bytes.Contains(raw, []byte(secret)) {
+			t.Errorf("o backup ainda tem %q", secret)
+		}
+	}
+	b, err := Open(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer b.Close()
+	ai, _ := b.Settings(ctx, "ai_")
+	pluggy, _ := b.Settings(ctx, "pluggy_")
+	l, _ := b.Ledger(ctx)
+	devices, _ := b.Devices(ctx)
+	if ai["model"] != "qwen3:4b" || ai["api_key"] != "" || pluggy["client_id"] != "id-publico" || pluggy["client_secret"] != "" || len(devices) != 0 {
+		t.Errorf("ai %v, pluggy %v, aparelhos %v", ai, pluggy, devices)
+	}
+	if len(l.Transactions) != 1 || l.Transactions[0].Description != "Padaria do Zé" {
+		t.Errorf("os dados não foram para o backup: %+v", l.Transactions)
+	}
+	if ok, _ := b.SessionValid(ctx, "sessao-1", time.Now()); ok {
+		t.Error("a sessão foi para o backup")
+	}
+	// O banco em uso continua com tudo.
+	if live, _ := s.Settings(ctx, "ai_"); live["api_key"] != "segredo-da-ia-123" {
+		t.Error("o backup mexeu no banco em uso")
+	}
+}
+
+// Registro de acesso: os eventos de segurança mais recentes primeiro, com teto.
+func TestAccessLog(t *testing.T) {
+	ctx := context.Background()
+	s := newTestStore(t)
+	for i := range maxAccessLog + 5 {
+		if err := s.LogAccess(ctx, "login_falhou", fmt.Sprintf("192.168.0.%d", i%250)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	s.LogAccess(ctx, "aparelho_pareado", "192.168.0.7")
+	got, err := s.AccessLog(ctx, 3)
+	if err != nil || len(got) != 3 || got[0].Event != "aparelho_pareado" || got[0].IP != "192.168.0.7" || got[0].At.IsZero() {
+		t.Fatalf("AccessLog = %+v, %v", got, err)
+	}
+	all, _ := s.AccessLog(ctx, 10_000)
+	if len(all) != maxAccessLog {
+		t.Errorf("guardou %d eventos, quer %d (o mais antigo sai)", len(all), maxAccessLog)
 	}
 }
