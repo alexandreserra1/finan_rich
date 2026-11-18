@@ -89,9 +89,10 @@ func askReply(r advisor.Reply, preset string) AskReply {
 }
 
 // Ask responde à pergunta. Bloqueia até a resposta: quem chama no navegador
-// roda numa goroutine e devolve uma Promise (cmd/finanwasm). Se a IA falhar,
-// a resposta é a do app, sem IA (advisor.Fallback).
-func Ask(ctx context.Context, reqJSON string) string {
+// roda numa goroutine e devolve uma Promise (cmd/finanadvisor). onText recebe
+// a resposta aos poucos, já com os nomes (nil: só a resposta inteira no fim).
+// Se a IA falhar, a resposta é a do app, sem IA (advisor.Fallback).
+func Ask(ctx context.Context, reqJSON string, onText func(string)) string {
 	var req AskRequest
 	if err := json.Unmarshal([]byte(reqJSON), &req); err != nil {
 		return reply(nil, err)
@@ -100,7 +101,10 @@ func Ask(ctx context.Context, reqJSON string) string {
 	if err != nil {
 		return reply(nil, err)
 	}
-	r, err := advisor.Answer(ctx, p, req.question(), func(string) {}, func(advisor.Proposal) {})
+	if onText == nil {
+		onText = func(string) {}
+	}
+	r, err := advisor.Answer(ctx, p, req.question(), onText, func(advisor.Proposal) {})
 	if err != nil {
 		return reply(nil, err)
 	}
@@ -194,7 +198,7 @@ func CloudPresets() string {
 	var out []map[string]any
 	for _, p := range llm.All() {
 		if free := p.ID == llm.FreeID; free || p.Kind == llm.KindOpenAI && p.NeedsKey {
-			out = append(out, map[string]any{"id": p.ID, "name": p.Name, "description": p.Description, "model": p.Model, "models": p.Models, "keyUrl": p.KeyURL, "keySteps": p.KeySteps, "free": free})
+			out = append(out, map[string]any{"id": p.ID, "name": p.Name, "description": p.Description, "model": p.Model, "models": p.Models, "keyUrl": p.KeyURL, "keySteps": p.KeySteps, "free": free, "baseUrl": p.BaseURL})
 		}
 	}
 	return reply(out, nil)

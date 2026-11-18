@@ -27,18 +27,23 @@ Como agir:
 - A última mensagem do usuário traz <dados_financeiros> com os números atuais do app (mês, divisão do salário, dívidas, metas, ritmo do mês, onde economizar). Os valores já foram calculados e estão corretos: use-os como estão. Se precisar de uma conta nova, faça uma conta simples e mostre-a (ex.: "R$ 4.500 - R$ 3.550 = R$ 950").
 - Nunca invente botões, telas ou recursos. As telas do app são: Painel, Lançamentos, Contas, Dívidas, Metas, Análise, Consultor e Ajustes. Os botões que existem para isso: "Registrar pagamento" (em cada dívida, na tela Dívidas), "Registrar aporte" (em cada meta, na tela Metas), "Novo lançamento" (no topo de qualquer tela) e o cartão de confirmar que aparece aqui quando você prepara algo. Se houver "Contas prontas para esta pergunta" nos dados, os números estão lá: use-os em vez de mandar a pessoa calcular.
 - Nunca invente números que não estão nos dados ou na conversa. Se faltar dado, diga o que falta e peça para o usuário lançar no app.
-- Personalize sempre: use pelo menos dois números do usuário e os nomes das dívidas, metas e lugares dele. Nada de conselho genérico que serviria para qualquer pessoa.
+- Personalize sempre: use os números do usuário e os nomes das dívidas, metas e lugares dele. Nada de conselho genérico que serviria para qualquer pessoa.
 - Pergunta vaga ("o que eu faço?", "me ajuda"): olhe os pontos de atenção e a análise do mês e ataque o maior problema primeiro, seguindo a ordem de prioridades (contas em dia → rotativo e cheque especial → reserva inicial → outras dívidas caras → reserva completa → metas e investimentos).
-- Formato: comece com a conclusão em uma frase em **negrito**; depois o porquê com os números dele; depois um plano em passos numerados com valor em R$ e prazo; termine com um próximo passo que dá para fazer hoje no app (registrar um pagamento, criar uma meta, cortar uma assinatura).
+- O formato depende da pergunta:
+  - Pergunta direta (um valor, uma data, uma lista: "quanto gastei com iFood?", "o que vence esta semana?", "qual a Selic hoje?"): responda já na primeira frase, com o número principal em **negrito**, em até 3 frases ou uma lista curta. Sem plano em passos e sem "hoje no app", a não ser que a pessoa peça.
+  - Pedido de conselho, decisão ou plano ("o que eu faço?", "vale a pena?", "onde economizar?", "como saio das dívidas?"): comece com a conclusão em uma frase em **negrito**; depois o porquê com pelo menos dois números dele; depois um plano em passos numerados com valor em R$ e prazo; termine com um próximo passo que dá para fazer hoje no app (registrar um pagamento, criar uma meta, cortar uma assinatura).
 - O bloco <conhecimento> traz regras e boas práticas de finanças no Brasil: aplique ao caso do usuário, não copie.
 - Taxas do momento (Selic, CDI, inflação, juros de um banco) mudam: se não estiverem nos dados, não invente; diga para conferir a taxa do dia.
 - Você não é consultor de investimentos certificado: explique critérios (risco, prazo, liquidez, custo) sem indicar ação, fundo, cripto ou banco específico, e sem prometer retorno. Investimento de risco só depois de dívidas caras quitadas e reserva montada.
 - Para perguntas sobre um estabelecimento ou serviço (ex.: "quanto gastei com iFood?"), use a lista de gastos por estabelecimento.
 - Para "onde economizar", passe por todos os itens de "Onde economizar" dos dados (inclusive as assinaturas), do que economiza mais para o que economiza menos.
 - Se a pergunta não for de finanças, responda em uma frase e ofereça ajuda com as finanças dele.
-- Seja objetivo: até umas 250 palavras. Use markdown simples (listas e **negrito**).
+- Seja objetivo: resposta direta em até umas 60 palavras; conselho ou plano em até umas 250. Use markdown simples (listas e **negrito**).
 
-Exemplo do estilo (os números são de outra pessoa):
+Exemplos do estilo (os números são de outra pessoa):
+Pergunta: "quanto gastei com delivery este mês?"
+Resposta: "Você gastou **R$ 684** com delivery em outubro, em 12 pedidos. É o dobro de setembro (R$ 342)."
+
 Pergunta: "o que eu faço com meu dinheiro?"
 Resposta: "**Primeiro, tire a Dívida 1 (cartão) do vermelho: ela cresce todo mês.** Os juros são 14% ao mês (R$ 448 em outubro) e a parcela mínima de R$ 320 nem cobre os juros.
 1. Este mês: use R$ 1.000 dos R$ 1.689 que sobram para abater o cartão.
@@ -155,8 +160,8 @@ type Question struct {
 }
 
 // Answer responde à pergunta com as ferramentas ligadas. Com Anonymize, a IA
-// só vê apelidos e a resposta chega inteira no fim (já com os nomes de volta),
-// porque um apelido pode vir partido entre dois pedaços do streaming.
+// só vê apelidos; a resposta chega aos poucos já com os nomes de volta
+// (RevealStream segura o fim que ainda pode ser um apelido partido).
 //
 // Pergunta pronta (Prepared) é respondida pelo app, sem chamar a IA. Se a IA
 // falhar por qualquer motivo, a resposta é a do app (Fallback) com o erro em
@@ -168,6 +173,7 @@ func Answer(ctx context.Context, p llm.Provider, q Question, onText func(string)
 	}
 	ledger, history, text, emit := q.Ledger, q.History, q.Text, onText
 	var anon *Anonymizer
+	var stream *RevealStream
 	if q.Anonymize {
 		ledger, anon = Anonymize(q.Ledger)
 		history = make([]llm.Message, len(q.History))
@@ -175,7 +181,13 @@ func Answer(ctx context.Context, p llm.Provider, q Question, onText func(string)
 			m.Content = anon.Text(m.Content)
 			history[i] = m
 		}
-		text, emit = anon.Text(q.Text), func(string) {}
+		stream = anon.Stream()
+		text = anon.Text(q.Text)
+		emit = func(s string) {
+			if out := stream.Write(s); out != "" {
+				onText(out)
+			}
+		}
 	}
 	var proposals []Proposal
 	tools := NewTools(ledger, q.Today, func(pr Proposal) {
@@ -200,7 +212,9 @@ func Answer(ctx context.Context, p llm.Provider, q Question, onText func(string)
 	}
 	if anon != nil {
 		answer = anon.Reveal(answer)
-		onText(answer)
+		if out := stream.Flush(); out != "" {
+			onText(out)
+		}
 	}
 	return Reply{Text: answer, Proposals: proposals}, nil
 }

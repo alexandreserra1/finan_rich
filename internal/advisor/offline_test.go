@@ -36,6 +36,8 @@ func TestOfflineByPersona(t *testing.T) {
 	if strings.Contains(due, "Aluguel") {
 		t.Errorf("aluguel (dia 25) fica fora da semana:\n%s", due)
 	}
+	// "Quanto gastei com uber?" sem IA: o total do lugar, não o resumo do mês.
+	wantAll(t, "otávio (lugar)", Offline(offlineQ("otavio", "quanto gastei com uber?")), "Gastos com Uber: R$ 20,00 em outubro de 2026")
 	month := Offline(offlineQ("otavio", "Como foi meu mês?"))
 	wantAll(t, "otávio (mês)", month, "outubro de 2026", "Restaurantes e delivery", "Lia")
 	q := offlineQ("otavio", "Qual é o meu maior problema agora?")
@@ -106,6 +108,34 @@ func (c *countingProvider) Chat(_ context.Context, _ llm.Request, onText func(st
 	}
 	onText(c.text)
 	return llm.Reply{Text: c.text}, nil
+}
+
+// chunkedLLM manda a resposta em pedaços, como o streaming da IA na nuvem.
+type chunkedLLM struct{ chunks []string }
+
+func (c chunkedLLM) Chat(_ context.Context, _ llm.Request, onText func(string)) (llm.Reply, error) {
+	for _, s := range c.chunks {
+		onText(s)
+	}
+	return llm.Reply{Text: strings.Join(c.chunks, "")}, nil
+}
+
+// Com apelidos (IA na nuvem), a resposta também chega aos poucos, já com os nomes.
+func TestAnswerStreamsAnonymized(t *testing.T) {
+	q := offlineQ("otavio", "e agora, o que faço?")
+	q.Anonymize = true
+	p := chunkedLLM{[]string{"**Pague a Dív", "ida 1 primeiro.**", " Ela tem os juros", " mais altos."}}
+	var pieces []string
+	r, err := Answer(context.Background(), p, q, func(s string) { pieces = append(pieces, s) }, func(Proposal) {})
+	if err != nil || r.App {
+		t.Fatalf("r=%+v err=%v", r, err)
+	}
+	if len(pieces) < 2 {
+		t.Errorf("chegou tudo de uma vez: %q", pieces)
+	}
+	if got := strings.TrimSpace(strings.Join(pieces, "")); got != r.Text || !strings.Contains(got, "Cartão") || strings.Contains(got, "Dívida 1") {
+		t.Errorf("na tela %q, resposta %q", got, r.Text)
+	}
 }
 
 func TestAnswerPreparedSkipsAI(t *testing.T) {

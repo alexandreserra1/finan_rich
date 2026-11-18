@@ -7,7 +7,9 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/alexandreserra1/finan_rich/internal/domain"
 	"github.com/alexandreserra1/finan_rich/internal/importer"
@@ -25,6 +27,10 @@ type Anonymizer struct {
 	display map[string]string            // apelido → nome para mostrar
 	records map[string]map[string]string // ID do registro → campo → texto original
 	alias   map[string]map[string]string // ID do registro → campo → apelido usado
+
+	once    sync.Once // o Reveal roda a cada pedaço do streaming: o regex é montado uma vez
+	re      *regexp.Regexp
+	byLower map[string]string
 }
 
 type phrase struct {
@@ -243,17 +249,85 @@ func (a *Anonymizer) Reveal(s string) string {
 	if len(a.display) == 0 {
 		return s
 	}
-	aliases := make([]string, 0, len(a.display))
-	byLower := make(map[string]string, len(a.display))
-	for al, name := range a.display {
-		aliases = append(aliases, regexp.QuoteMeta(al))
-		byLower[strings.ToLower(al)] = name
+	a.once.Do(func() {
+		aliases := make([]string, 0, len(a.display))
+		a.byLower = make(map[string]string, len(a.display))
+		for al, name := range a.display {
+			aliases = append(aliases, regexp.QuoteMeta(al))
+			a.byLower[strings.ToLower(al)] = name
+		}
+		// "Loja 12" antes de "Loja 1"; palavra inteira e sem ligar para maiúsculas
+		// (o modelo às vezes escreve "loja AB"), para "Dívida 12" não virar "Dívida 1" + "2".
+		slices.SortFunc(aliases, func(x, y string) int { return len(y) - len(x) })
+		a.re = regexp.MustCompile(`(?i)\b(?:` + strings.Join(aliases, "|") + `)\b`)
+	})
+	return a.re.ReplaceAllStringFunc(s, func(m string) string { return a.byLower[strings.ToLower(m)] })
+}
+
+// RevealStream mostra a resposta da IA aos poucos, já com os nomes de volta.
+// Um apelido pode chegar partido entre dois pedaços ("Dív" + "ida 1", ou
+// "Dívida 1" + "2"): fica esperando só o fim que ainda pode virar apelido.
+type RevealStream struct {
+	a      *Anonymizer
+	starts map[string]bool // primeira palavra dos apelidos ("loja", "divida"...)
+	raw    string          // tudo o que a IA mandou, com apelidos
+	sent   int             // até onde raw já foi para a tela
+}
+
+func (a *Anonymizer) Stream() *RevealStream {
+	starts := map[string]bool{}
+	for al := range a.display {
+		starts[fold(strings.Fields(al)[0])] = true
 	}
-	// "Loja 12" antes de "Loja 1"; palavra inteira e sem ligar para maiúsculas
-	// (o modelo às vezes escreve "loja AB"), para "Dívida 12" não virar "Dívida 1" + "2".
-	slices.SortFunc(aliases, func(x, y string) int { return len(y) - len(x) })
-	re := regexp.MustCompile(`(?i)\b(?:` + strings.Join(aliases, "|") + `)\b`)
-	return re.ReplaceAllStringFunc(s, func(m string) string { return byLower[strings.ToLower(m)] })
+	return &RevealStream{a: a, starts: starts}
+}
+
+// Write recebe um pedaço da IA e devolve o que já pode ir para a tela.
+func (s *RevealStream) Write(chunk string) string {
+	s.raw += chunk
+	cut := s.safeCut()
+	if cut <= s.sent {
+		return ""
+	}
+	out := s.a.Reveal(s.raw[s.sent:cut])
+	s.sent = cut
+	return out
+}
+
+// Flush devolve o resto, no fim da resposta.
+func (s *RevealStream) Flush() string {
+	out := s.a.Reveal(s.raw[s.sent:])
+	s.sent = len(s.raw)
+	return out
+}
+
+// safeCut olha as duas últimas palavras: segura a última se o texto acaba nela
+// (pode estar partida) e a que começa um apelido, com tudo o que vem depois.
+// Apelidos têm duas palavras, então um começo de apelido mais atrás já fechou.
+// O corte cai sempre no começo de uma palavra: nenhum apelido fica dos dois lados.
+func (s *RevealStream) safeCut() int {
+	// Um pedaço que corta uma letra no meio (byte solto) conta como palavra e espera.
+	word := func(r rune) bool { return r == utf8.RuneError || isWordRune(r) }
+	cut := len(s.raw)
+	for end, words := len(s.raw), 0; end > 0 && words < 2; {
+		if r, n := utf8.DecodeLastRuneInString(s.raw[:end]); !word(r) {
+			end -= n
+			continue
+		}
+		start := end
+		for start > 0 {
+			r, n := utf8.DecodeLastRuneInString(s.raw[:start])
+			if !word(r) {
+				break
+			}
+			start -= n
+		}
+		if end == len(s.raw) || s.starts[fold(s.raw[start:end])] {
+			cut = start
+		}
+		end, words = start, words+1
+	}
+	return cut
 }
 
 // RevealProposal devolve a proposta com os nomes verdadeiros. Campos que a IA

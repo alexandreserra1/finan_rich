@@ -101,6 +101,37 @@ func TestRevealProposalKeepsRealNames(t *testing.T) {
 }
 
 // Casos achados na revisão: nada disto pode sair para a nuvem nem misturar lojas.
+// A resposta da nuvem aparece aos poucos: um apelido partido entre dois pedaços
+// ("Dív" + "ida 1") nunca chega à tela, e o texto final é o mesmo do Reveal.
+func TestRevealStreamKeepsAliasesWhole(t *testing.T) {
+	anon, a := Anonymize(anonLedger())
+	loja := anon.Transactions[0].Description
+	full := "**Pague a Dívida 1 primeiro.** Corte a " + loja + " e guarde na Meta 1 (Credor 1: Dívida\u00a01). Não é a Dívida 12."
+	want := a.Reveal(full)
+	for size := 1; size <= 7; size++ {
+		s := a.Stream()
+		var got strings.Builder
+		for i := 0; i < len(full); i += size {
+			out := s.Write(full[i:min(i+size, len(full))])
+			for _, alias := range []string{"Dív", "Meta", "Credor", "Loja"} {
+				if strings.Contains(out, alias) {
+					t.Fatalf("pedaços de %d: apelido %q chegou à tela em %q", size, alias, out)
+				}
+			}
+			got.WriteString(out)
+		}
+		got.WriteString(s.Flush())
+		if got.String() != want {
+			t.Errorf("pedaços de %d:\n got %q\nwant %q", size, got.String(), want)
+		}
+	}
+	// Texto sem apelido no fim sai na hora; só a última palavra (talvez partida) espera.
+	s := a.Stream()
+	if out := s.Write("Você está indo bem este mês, continue"); out != "Você está indo bem este mês, " {
+		t.Errorf("segurou texto demais: %q", out)
+	}
+}
+
 func TestAnonymizeHardCases(t *testing.T) {
 	m := func(id string) domain.Meta { return domain.Meta{ID: id, UpdatedAt: 1} }
 	tx := func(id, desc string, cents int64, cat, date string) domain.Transaction {

@@ -35,8 +35,8 @@ func TestAskAnonymizedCloud(t *testing.T) {
 			delta = `{"tool_calls":[{"index":0,"id":"c1","type":"function","function":{"name":"buscar_lancamentos","arguments":"{\"texto\":\"Loja AB\"}"}}]}`
 		case 1:
 			delta = `{"tool_calls":[{"index":0,"id":"c2","type":"function","function":{"name":"alterar_lancamento","arguments":"{\"id\":\"b\",\"valor\":\"30\"}"}}]}`
-		default:
-			delta = `{"content":"Você gastou R$ 25,00 na Loja AB. Deixei a correção pronta."}`
+		default: // o apelido chega partido entre dois pedaços do streaming
+			delta = `{"content":"Você gastou R$ 25,00 na Lo"}}]}` + "\n\ndata: {\"choices\":[{\"delta\":" + `{"content":"ja AB. Deixei a correção pronta."}`
 		}
 		fmt.Fprintf(w, "data: {\"choices\":[{\"delta\":%s}]}\n\ndata: [DONE]\n\n", delta)
 	}))
@@ -61,9 +61,14 @@ func TestAskAnonymizedCloud(t *testing.T) {
 		OK    AskReply
 		Error string
 	}
-	json.Unmarshal([]byte(Ask(context.Background(), string(raw))), &out)
+	var pieces []string
+	json.Unmarshal([]byte(Ask(context.Background(), string(raw), func(s string) { pieces = append(pieces, s) })), &out)
 	if out.Error != "" {
 		t.Fatal(out.Error)
+	}
+	// Na tela, a resposta chega aos poucos e só com o nome verdadeiro.
+	if len(pieces) < 2 || strings.Join(pieces, "") != out.OK.Answer {
+		t.Errorf("na tela %q, resposta %q", pieces, out.OK.Answer)
 	}
 	for _, b := range bodies {
 		for _, secret := range []string{"Uber", "uber", "ACME", "Nubank", "segredo", "PIN 1234"} {
@@ -87,7 +92,7 @@ func TestAskNeedsCloudPresetAndKey(t *testing.T) {
 		`{"preset":"anthropic","apiKey":"x"}`: "escolha um provedor",
 		`{"preset":"gemini"}`:                 "falta a chave",
 	} {
-		got := Ask(context.Background(), `{"ledger":{},"question":"oi","ai":`+ai+`}`)
+		got := Ask(context.Background(), `{"ledger":{},"question":"oi","ai":`+ai+`}`, nil)
 		if !strings.Contains(got, want) {
 			t.Errorf("%s = %s", ai, got)
 		}
@@ -209,7 +214,7 @@ func TestFreePresetThroughProxy(t *testing.T) {
 		OK    AskReply
 		Error string
 	}
-	json.Unmarshal([]byte(Ask(context.Background(), string(raw))), &out)
+	json.Unmarshal([]byte(Ask(context.Background(), string(raw), nil)), &out)
 	if out.Error != "" || out.OK.Answer != "Você gastou R$ 25,00." {
 		t.Errorf("consultor pelo intermediário: resposta %q, erro %q", out.OK.Answer, out.Error)
 	}
@@ -255,7 +260,7 @@ func TestAskFallsBackWhenAIFails(t *testing.T) {
 	llm.FreeProxyURL = srv.URL
 	ask := func(ai AIConfig) AskReply {
 		raw, _ := json.Marshal(map[string]any{"ledger": json.RawMessage(offlineLedger), "question": "e a moto?", "today": "2026-10-20", "ai": ai, "anonymize": true, "agent": "bento"})
-		return askOut(t, Ask(context.Background(), string(raw)))
+		return askOut(t, Ask(context.Background(), string(raw), nil))
 	}
 	r := ask(AIConfig{Preset: "finan", APIKey: "aparelho"})
 	if !r.App || !r.Limit || r.AIError == "" || !strings.HasPrefix(r.Answer, advisor.OfflineNotice) || !strings.Contains(r.Answer, "Cartão Nubank") {
@@ -276,7 +281,7 @@ func TestAskPreparedSkipsAI(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("não devia chamar a IA") }))
 	defer srv.Close()
 	req := `{"ledger":` + offlineLedger + `,"question":"Qual dívida devo pagar primeiro?","today":"2026-10-20","agent":"bento","anonymize":true,"ai":{"preset":"groq","apiKey":"x","baseUrl":"` + srv.URL + `"}}`
-	if r := askOut(t, Ask(context.Background(), req)); !r.App || r.AIError != "" || strings.Contains(r.Answer, advisor.OfflineNotice) || !strings.Contains(r.Answer, "Cartão Nubank") {
+	if r := askOut(t, Ask(context.Background(), req, nil)); !r.App || r.AIError != "" || strings.Contains(r.Answer, advisor.OfflineNotice) || !strings.Contains(r.Answer, "Cartão Nubank") {
 		t.Errorf("pronta: %+v", r)
 	}
 	// Sem internet: a tela pede a resposta sem IA.

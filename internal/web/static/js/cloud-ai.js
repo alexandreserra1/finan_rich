@@ -146,19 +146,47 @@ export async function presets() {
   return unwrap(window.finanAdvisor.cloudPresets());
 }
 
+// No app, o CapacitorHttp troca o fetch por um nativo que entrega a resposta inteira
+// de uma vez. Os pedidos à IA na nuvem vão pelo fetch do WebView (CapacitorWebFetch),
+// que lê aos poucos. Se o provedor não aceitar CORS, o WebView barra no preflight,
+// antes de enviar a pergunta, e o pedido volta para o nativo.
+const aiBases = new Set();
+function streamFromWebView(base) {
+  const web = window.CapacitorWebFetch;
+  if (!web || !base) return;
+  aiBases.add(base);
+  if (window.fetch.richAI) return;
+  const native = window.fetch;
+  const routed = async (res, opt) => {
+    const url = String(res?.url ?? res);
+    if (![...aiBases].some((b) => url.startsWith(b))) return native(res, opt);
+    try {
+      return await web(res, opt);
+    } catch (err) {
+      if (err?.name === "AbortError") throw err; // a pessoa ou o prazo cancelou: não reenvia
+      return native(res, opt);
+    }
+  };
+  routed.richAI = true;
+  window.fetch = routed;
+}
+
 // ask pergunta à IA na nuvem: { answer, proposals }. Sempre anonimizado.
-export async function ask(ledger, history, question, agent = "otavio") {
+// onText recebe a resposta aos poucos, já com os nomes de volta.
+export async function ask(ledger, history, question, agent = "otavio", onText = () => {}) {
   const cfg = await config();
   if (!ready(cfg)) throw new Error("configure a IA na nuvem em Ajustes do app");
   await loadAdvisor();
+  const ai = await aiConfig(cfg);
+  streamFromWebView(ai.baseUrl || (await presets()).find((p) => p.id === cfg.preset)?.baseUrl);
   const req = {
     ledger, question, today: today(),
     history: history.map(({ role, content }) => ({ role, content })),
-    ai: await aiConfig(cfg),
+    ai,
     anonymize: true,
     agent,
   };
-  return unwrap(await window.finanAdvisor.ask(JSON.stringify(req)));
+  return unwrap(await window.finanAdvisor.ask(JSON.stringify(req), onText));
 }
 
 // Resposta do app, sem IA (regras em Go, advisor.wasm): { answer, proposals, app },

@@ -154,6 +154,8 @@ func TestPrefetch(t *testing.T) {
 		{"otavio", "o que vence esta semana?", "Próximos 7 dias"},
 		{"tito", "se eu guardar 500 por mês, quando chego na viagem?", "Guardando R$ 500,00 por mês, chega em 12 meses"},
 		{"lia", "o que mudou?", "setembro de 2026 → outubro de 2026"},
+		// A IA às vezes dizia "nenhum lançamento de Uber" sem buscar: o total vai pronto.
+		{"otavio", "quanto gastei com uber esse mês?", "Gastos com Uber: R$ 20,00 em outubro de 2026 (1 lançamento). Desde o começo: R$ 45,00 (2 lançamentos)."},
 	} {
 		if got := prefetch(c.agent, tools, c.q); !strings.Contains(got, c.want) {
 			t.Errorf("%s: sem %q:\n%s", c.agent, c.want, got)
@@ -161,5 +163,23 @@ func TestPrefetch(t *testing.T) {
 	}
 	if got := prefetch("otavio", tools, "oi"); got != "" {
 		t.Errorf("o mês todo não pré-calcula (o retrato já tem os números): %q", got)
+	}
+	if got := prefetch("otavio", tools, "quanto gastei com padaria?"); got != "" {
+		t.Errorf("lugar que não está nos lançamentos não pré-calcula: %q", got)
+	}
+	// Com apelidos, a descrição é o apelido e a pergunta também.
+	anonLedger, _ := Anonymize(teamLedger())
+	anonTools := NewTools(anonLedger, teamDay, nil)
+	var alias string
+	for _, tx := range anonLedger.Transactions {
+		if tx.ID == "o2" {
+			alias = tx.Description
+		}
+	}
+	if got := prefetch("otavio", anonTools, "quanto gastei com "+alias+"?"); !strings.Contains(got, "Gastos com "+alias+": R$ 20,00") {
+		t.Errorf("com apelido (%s) sem o total:\n%s", alias, got)
+	}
+	if got := prefetch("otavio", anonTools, "quanto gastei na loja?"); got != "" {
+		t.Errorf("\"loja\" sozinha não é um lugar (com apelidos pegaria todos): %q", got)
 	}
 }
