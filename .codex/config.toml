@@ -9,3 +9,44 @@ command = "sh"
 args = ["-c", 'exec node "$(git rev-parse --show-toplevel)/scripts/engineering-mcp.mjs" devtools']
 startup_timeout_sec = 30
 tool_timeout_sec = 60
+
+# Mapa do código (graphify, local): grafo de graphify-out/, que fica fora do git.
+# Atualize com scripts/graphify-memoria.sh.
+[mcp_servers.graphify]
+command = "sh"
+args = ["-c", 'export PATH="$HOME/.local/bin:$PATH"; exec graphify-mcp "$(git rev-parse --show-toplevel)/graphify-out/graph.json"']
+startup_timeout_sec = 30
+tool_timeout_sec = 60
+
+# Memória longa (ai-memory, neste computador). As mesmas aprovações da configuração
+# global: só leitura e escrita comum vão direto; apagar e consumir pedem confirmação.
+[mcp_servers.ai-memory]
+command = "sh"
+args = ["-c", 'export PATH="$HOME/.local/bin:$PATH"; exec ai-memory mcp-bridge --no-session-id']
+startup_timeout_sec = 30
+tool_timeout_sec = 60
+default_tools_approval_mode = "approve"
+
+[mcp_servers.ai-memory.tools.memory_delete_page]
+approval_mode = "prompt"
+
+[mcp_servers.ai-memory.tools.memory_feedback]
+approval_mode = "prompt"
+
+[mcp_servers.ai-memory.tools.memory_forget_sweep]
+approval_mode = "prompt"
+
+[mcp_servers.ai-memory.tools.memory_handoff_accept]
+approval_mode = "prompt"
+
+[mcp_servers.ai-memory.tools.memory_handoff_cancel]
+approval_mode = "prompt"
+
+[mcp_servers.ai-memory.tools.memory_message_cancel]
+approval_mode = "prompt"
+
+[mcp_servers.ai-memory.tools.memory_message_pop]
+approval_mode = "prompt"
+
+[mcp_servers.ai-memory.tools.memory_restore_page]
+approval_mode = "prompt"

@@ -28,6 +28,7 @@ de testes, novo design system, SDK bancário ou agente permanente.
 | Critérios visuais | [design-quality.md](design-quality.md) |
 | Open Finance e custos | [OPEN-FINANCE.md](../OPEN-FINANCE.md) |
 | Memória entre sessões | ai-memory existente; não duplicar suas páginas duráveis |
+| Mapa do código | MCP `graphify` (`graphify-out/`, fora do git); `scripts/graphify-memoria.sh` atualiza e grava no ai-memory |
 
 ## Instalação reproduzível
 

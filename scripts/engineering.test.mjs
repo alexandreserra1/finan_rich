@@ -249,3 +249,10 @@ test("líder cooperativo não deixa neto vivo ao encerrar", async () => {
     assert.equal(alive, false);
   } finally { await stopChild(child, 100); rmSync(directory, { recursive: true, force: true }); }
 });
+
+test("Claude e Codex usam os mesmos MCPs do projeto, com o mapa do código e a memória", () => {
+  const claude = Object.keys(JSON.parse(readFileSync(join(root, ".mcp.json"), "utf8")).mcpServers).sort();
+  const codex = [...readFileSync(join(root, ".codex/config.toml"), "utf8").matchAll(/^\[mcp_servers\.([\w-]+)\]$/gm)].map((m) => m[1]).sort();
+  assert.deepEqual(codex, claude);
+  for (const name of ["graphify", "ai-memory"]) assert.ok(claude.includes(name), `${name} fora do .mcp.json`);
+});
