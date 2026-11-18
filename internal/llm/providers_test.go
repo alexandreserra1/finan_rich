@@ -8,8 +8,10 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
+	"testing/iotest"
 	"time"
 )
 
@@ -316,6 +318,42 @@ func TestAPIErrorHidesProviderDetails(t *testing.T) {
 	got := (&APIError{Status: 413, Message: groq}).Error()
 	if strings.Contains(got, "org_01kh8") || strings.Contains(got, "https://") || !strings.Contains(got, "IA grátis está cheia") {
 		t.Errorf("413 = %q", got)
+	}
+}
+
+// Friendly: o motivo que aparece na tela, sem endereço, código de rede ou texto em inglês.
+func TestFriendly(t *testing.T) {
+	dial := &url.Error{Op: "Post", URL: "https://api.groq.com/openai/v1/chat/completions", Err: errors.New("dial tcp: lookup api.groq.com: no such host")}
+	wasm := &url.Error{Op: "Post", URL: "https://finan-rich-ia.vercel.app/v1/chat/completions", Err: errors.New("net/http: fetch() failed: TypeError: Failed to fetch")}
+	for err, want := range map[error]string{
+		&APIError{Status: 429, Message: "rate limit"}:                          "o limite grátis da IA acabou por agora: espere um pouco ou tente amanhã",
+		&APIError{Status: 500, Message: "Internal error at https://x"}:         "a IA teve um problema do lado dela (erro 500): tente de novo daqui a pouco",
+		fmt.Errorf("chat: %w", dial):                                           "não deu para falar com a IA: confira a internet",
+		wasm:                                                                   "não deu para falar com a IA: confira a internet",
+		fmt.Errorf("pedido: %w", context.DeadlineExceeded):                     "a IA demorou demais para responder",
+		errors.New("resposta da IA cortada no meio"):                           "resposta da IA cortada no meio",
+		fmt.Errorf("ia: %w", fmt.Errorf("%w: Load failed", ErrConnectionLost)): "a conexão com a IA caiu no meio da resposta: tente de novo",
+		errors.New("o modelo llama3 não está no Ollama"):                       "o modelo llama3 não está no Ollama",
+	} {
+		if got := Friendly(err); got != want {
+			t.Errorf("Friendly(%v) = %q, quer %q", err, got, want)
+		}
+	}
+	if Friendly(nil) != "" {
+		t.Error("sem erro, sem motivo")
+	}
+}
+
+// A conexão que cai no meio da leitura vira ErrConnectionLost, qualquer que seja o texto do
+// navegador ("network error" no Chrome, "Load failed" no Safari).
+func TestReadLinesConnectionLost(t *testing.T) {
+	r := io.MultiReader(strings.NewReader("data: {}\n"), iotest.ErrReader(errors.New("Load failed")))
+	err := readLines(r, func([]byte) error { return nil })
+	if !errors.Is(err, ErrConnectionLost) {
+		t.Errorf("err = %v", err)
+	}
+	if err := readLines(strings.NewReader("a\n"), func([]byte) error { return errors.New("meu") }); errors.Is(err, ErrConnectionLost) {
+		t.Error("erro de quem lê não é queda de conexão")
 	}
 }
 

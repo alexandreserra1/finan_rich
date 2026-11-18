@@ -61,7 +61,7 @@ type Tools struct {
 
 func NewTools(l domain.Ledger, today time.Time, onPropose func(Proposal)) *Tools {
 	// Cópias: as propostas vão sendo aplicadas aqui (ver Run) sem mexer nos dados de quem chamou.
-	l.Transactions, l.Goals, l.Debts = slices.Clone(l.Transactions), slices.Clone(l.Goals), slices.Clone(l.Debts)
+	l.Transactions, l.Goals, l.Debts, l.Recurring = slices.Clone(l.Transactions), slices.Clone(l.Goals), slices.Clone(l.Debts), slices.Clone(l.Recurring)
 	return &Tools{ledger: l, today: today, onPropose: onPropose}
 }
 
@@ -124,6 +124,14 @@ func baseTools() []llm.Tool {
 				"parcela_minima":{"type":"string","description":"em reais"},
 				"vencimento":{"type":"integer","description":"dia do vencimento (1 a 31, opcional)"}},
 				"required":["nome","saldo","juros_mes","parcela_minima"]}`),
+		tool("criar_conta_fixa", "Prepara uma conta fixa do mês (a renda, o aluguel, a luz, a internet) para o usuário confirmar. Ela entra sozinha todo mês.",
+			`{"type":"object","properties":{
+				"descricao":{"type":"string","description":"ex.: Salário, Aluguel, Internet"},
+				"valor":{"type":"string","description":"valor por mês em reais, ex.: 1.500"},
+				"tipo":{"type":"string","enum":["saida","entrada"],"description":"entrada para renda; saida (padrão) para conta"},
+				"dia":{"type":"integer","description":"dia do mês em que entra ou vence (1 a 31)"},
+				"categoria":{"type":"string","description":"nome de uma categoria existente"}},
+				"required":["descricao","valor","dia","categoria"]}`),
 		tool("registrar_aporte", "Prepara um aporte (dinheiro guardado) numa meta existente, para o usuário confirmar.",
 			`{"type":"object","properties":{
 				"meta":{"type":"string","description":"nome da meta"},
@@ -182,6 +190,8 @@ func (t *Tools) Run(c llm.ToolCall) string {
 		p, err = t.deleteTransaction(str("id"))
 	case "criar_meta":
 		p, err = t.newGoal(str("nome"), str("valor"), str("prazo"), str("ja_guardado"))
+	case "criar_conta_fixa":
+		p, err = t.newRecurring(str("descricao"), str("valor"), str("tipo"), str("dia"), str("categoria"))
 	case "criar_divida":
 		p, err = t.newDebt(str("nome"), str("credor"), str("saldo"), str("juros_mes"), str("parcela_minima"), str("vencimento"))
 	case "registrar_aporte":
@@ -431,6 +441,27 @@ func (t *Tools) newGoal(name, value, deadline, saved string) (Proposal, error) {
 	return proposal(ActionCreate, domain.TypeGoal, g, label)
 }
 
+func (t *Tools) newRecurring(desc, value, kind, day, category string) (Proposal, error) {
+	if kind != domain.KindEntrada {
+		kind = domain.KindSaida
+	}
+	v, err := cents(value, "valor")
+	if err != nil {
+		return Proposal{}, err
+	}
+	d, _ := strconv.Atoi(day)
+	catID, err := t.category(category, kind)
+	if err != nil {
+		return Proposal{}, err
+	}
+	r := domain.Recurring{Meta: t.meta(), Kind: kind, Description: desc, AmountCents: v, CategoryID: catID, Day: d, Start: t.today.Format("2006-01")}
+	what := "Nova conta fixa"
+	if kind == domain.KindEntrada {
+		what = "Nova renda fixa"
+	}
+	return proposal(ActionCreate, domain.TypeRecurring, r, fmt.Sprintf("%s: %s · %s todo dia %d", what, desc, money.Format(v), d))
+}
+
 func (t *Tools) newDebt(name, creditor, balance, rate, minPay, due string) (Proposal, error) {
 	bal, err := cents(balance, "saldo")
 	if err != nil {
@@ -554,6 +585,8 @@ func Applied(l domain.Ledger, p Proposal) bool {
 		cur = find(l.Goals, id)
 	case domain.TypeDebt:
 		cur = find(l.Debts, id)
+	case domain.TypeRecurring:
+		cur = find(l.Recurring, id)
 	}
 	if cur == nil {
 		return false
@@ -600,6 +633,8 @@ func (t *Tools) apply(p Proposal) {
 		t.ledger.Goals = upsert(t.ledger.Goals, p.Record)
 	case domain.TypeDebt:
 		t.ledger.Debts = upsert(t.ledger.Debts, p.Record)
+	case domain.TypeRecurring:
+		t.ledger.Recurring = upsert(t.ledger.Recurring, p.Record)
 	}
 }
 

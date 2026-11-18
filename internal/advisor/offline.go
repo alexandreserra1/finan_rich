@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -30,14 +31,6 @@ type Reply struct {
 	AIError   error
 }
 
-// Suggestions são as perguntas sugeridas de cada personagem. A tela do Consultor
-// tem a mesma lista em js/pages/advisor.js (conferida em TestSuggestionsMatchApp).
-var Suggestions = map[string][]string{
-	"otavio": {"Como foi meu mês?", "Qual dívida devo pagar primeiro?", "O que vence esta semana?"},
-	"lia":    {"Onde estou gastando demais este mês?", "Quanto ainda posso gastar?", "Como reduzir meus gastos?"},
-	"tito":   {"Minhas metas estão no ritmo?", "Quanto guardar por mês para a reserva?", "Como chego na minha meta mais rápido?"},
-}
-
 // prepared: as perguntas que o Go responde sozinho, por personagem (as
 // sugestões e as dos avisos e do time no Painel). As outras vão para a IA.
 var prepared = map[string][]string{
@@ -47,8 +40,20 @@ var prepared = map[string][]string{
 	"tito": {"Quanto guardar por mês para a reserva?", "Minhas metas estão no ritmo?"},
 }
 
+// rateQuestionRe: "qual a selic hoje?", "quanto está o CDI?" (já com fold). Pedido de
+// conselho ("vale a pena...") não entra: vai para a IA, com as taxas nos dados.
+var rateQuestionRe = regexp.MustCompile(`^(qual|quanto) (e |esta |ta )?(a |o )?(taxa )?(da |do )?(selic|cdi|ipca|inflacao)( (de )?(hoje|agora|atual|do dia))? ?\??$`)
+
+// rateAnswer: a pergunta é só a taxa do dia e o app tem as taxas.
+func rateAnswer(q Question) bool {
+	return q.Rates.Date != "" && rateQuestionRe.MatchString(fold(q.Text))
+}
+
 // Prepared diz se a pergunta tem resposta pronta do app (sem IA) para este personagem.
 func Prepared(q Question) bool {
+	if rateAnswer(q) {
+		return true
+	}
 	text := fold(q.Text)
 	for _, p := range prepared[persona(q.Agent).ID] {
 		if fold(p) == text {
@@ -94,6 +99,12 @@ func Numbers(q Question) string {
 
 // Offline é a resposta do personagem só com as contas do app.
 func Offline(q Question) string {
+	if rateAnswer(q) {
+		return q.Rates.Text()
+	}
+	if fold(q.Text) == fold(finance.StartQuestion) {
+		return "Para começar sem IA, cadastre à mão:\n- a renda e as contas do mês em \"Novo lançamento\", com \"Repetir todo mês\" marcado;\n- as dívidas na tela Dívidas;\n- as metas na tela Metas."
+	}
 	t := NewTools(q.Ledger, q.Today, nil)
 	switch id := persona(q.Agent).ID; id {
 	case "otavio":

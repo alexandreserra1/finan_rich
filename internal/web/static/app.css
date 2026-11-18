@@ -1536,7 +1536,8 @@ button.danger:hover { background: var(--neg-soft); border-color: transparent; co
 .msg.assistant { display: flex; flex-direction: column; gap: 10px; padding-left: 42px; color: var(--text); }
 .msg-who { display: flex; align-items: center; gap: 14px; margin-left: -42px; font-size: 12px; font-weight: 600; color: var(--muted); }
 .msg-who .face { box-shadow: 0 0 0 1px var(--border-2); }
-.msg.error { padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--neg) 35%, transparent); border-radius: 12px; background: var(--neg-soft); color: var(--text); font-size: 13px; }
+.msg.error { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--neg) 35%, transparent); border-radius: 12px; background: var(--neg-soft); color: var(--text); font-size: 13px; }
+.msg [data-retry] { align-self: flex-start; }
 .app-answer, .msg .notice { margin: 0; }
 .msg .save-note { align-self: flex-start; display: inline-flex; align-items: center; min-height: 28px; padding: 0 8px; margin-left: -8px; border-radius: 7px; font-size: 12px; color: var(--muted); text-decoration: none; }
 .msg .save-note:hover { background: var(--hover); color: var(--text); }

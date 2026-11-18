@@ -171,6 +171,28 @@ function streamFromWebView(base) {
   window.fetch = routed;
 }
 
+// rates: Selic, CDI e IPCA do Banco Central, buscados uma vez por dia (só a data
+// vai no pedido, nenhum dado da pessoa). Sem internet, valem as últimas guardadas;
+// sem nenhuma, o consultor segue sem taxas.
+let ratesToday = null;
+let ratesRetry = 0; // depois de uma falha, só tenta de novo em 10 min (sem internet, não atrasa cada pergunta)
+async function rates() {
+  const day = today();
+  if (ratesToday?.day === day) return ratesToday.rates;
+  const saved = await db.getMeta("taxas-bcb", null).catch(() => null);
+  if (saved?.day === day) return (ratesToday = saved).rates;
+  if (Date.now() < ratesRetry || navigator.onLine === false) return saved?.rates || null;
+  try {
+    await loadAdvisor();
+    ratesToday = { day, rates: unwrap(await window.finanAdvisor.rates()) };
+    await db.setMeta("taxas-bcb", ratesToday).catch(() => {});
+    return ratesToday.rates;
+  } catch {
+    ratesRetry = Date.now() + 10 * 60 * 1000;
+    return saved?.rates || null;
+  }
+}
+
 // ask pergunta à IA na nuvem: { answer, proposals }. Sempre anonimizado.
 // onText recebe a resposta aos poucos, já com os nomes de volta.
 export async function ask(ledger, history, question, agent = "otavio", onText = () => {}) {
@@ -185,21 +207,22 @@ export async function ask(ledger, history, question, agent = "otavio", onText = 
     ai,
     anonymize: true,
     agent,
+    rates: await rates(),
   };
   return unwrap(await window.finanAdvisor.ask(JSON.stringify(req), onText));
 }
 
 // Resposta do app, sem IA (regras em Go, advisor.wasm): { answer, proposals, app },
 // com as contas do personagem quando a IA não pôde responder.
-const appRequest = (ledger, question, agent) => JSON.stringify({ ledger, question, agent, today: today() });
+const appRequest = async (ledger, question, agent) => JSON.stringify({ ledger, question, agent, today: today(), rates: await rates() });
 export async function offline(ledger, question, agent = "otavio") {
   await loadAdvisor();
-  return unwrap(window.finanAdvisor.offline(appRequest(ledger, question, agent)));
+  return unwrap(window.finanAdvisor.offline(await appRequest(ledger, question, agent)));
 }
 // numbers: as contas do personagem para mostrar na hora, enquanto a IA escreve ("" na pergunta pronta).
 export async function numbers(ledger, question, agent = "otavio") {
   await loadAdvisor();
-  return unwrap(window.finanAdvisor.numbers(appRequest(ledger, question, agent)))?.answer || "";
+  return unwrap(window.finanAdvisor.numbers(await appRequest(ledger, question, agent)))?.answer || "";
 }
 
 // categorize: "IA sugere" da importação, com a IA na nuvem deste celular.

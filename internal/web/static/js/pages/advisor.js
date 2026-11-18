@@ -8,7 +8,7 @@ import * as db from "../db.js";
 import * as finance from "../finance.js";
 import { endpoint, isApp } from "../device.js";
 import { applyProposal, proposalButton, proposalKind, saveNote } from "../notes-save.js";
-import { html, raw } from "../ui.js";
+import { html, raw, today } from "../ui.js";
 
 export const needsData = false;
 
@@ -28,10 +28,9 @@ export function clearDraft() {
 }
 
 // O time: cada personagem aconselha do seu jeito (internal/advisor/personas.go).
-const SUGGESTIONS = {
-  otavio: ["Como foi meu mês?", "Qual dívida devo pagar primeiro?", "O que vence esta semana?"],
-  lia: ["Onde estou gastando demais este mês?", "Quanto ainda posso gastar?", "Como reduzir meus gastos?"],
-  tito: ["Minhas metas estão no ritmo?", "Quanto guardar por mês para a reserva?", "Como chego na minha meta mais rápido?"],
+// As sugestões vêm dos dados da pessoa (finance.Suggestions, em Go).
+const suggestionsFor = (ctx, agent) => {
+  try { return finance.suggestions(ctx.ledger, today(), agent); } catch { return []; }
 };
 const AGENT_KEY = "consultor-agente";
 let team = [];
@@ -87,7 +86,7 @@ function teamColumn(me) {
   </aside>`;
 }
 
-export function render() {
+export function render(ctx) {
   if (!chat) return html`<section class="panel"><h2>Consultor</h2><p class="muted loading">Abrindo o consultor…</p></section>`;
   const me = member(agentId);
   if (chat.setup) {
@@ -118,7 +117,8 @@ export function render() {
         </div>` : ""}
         ${chat.history.map((m, i) => m.role === "user" ? html`<div class="msg user">${md(m.content)}</div>` : html`<div class="msg assistant">
           <span class="msg-who">${face(member(m.agent), 28)}${member(m.agent).name} · ${member(m.agent).role}</span>${answerBody(m, i)}
-          ${m.app ? html`<p class="small muted app-answer">${m.aiError ? `Resposta do app, sem IA. A IA falhou: ${m.aiError}` : "Resposta do app, sem IA."}</p>` : ""}
+          ${m.app ? html`<p class="small muted app-answer">${m.aiError ? `Resposta do app, sem IA. A IA falhou: ${m.aiError.replace(/\.$/, "")}.` : "Resposta do app, sem IA."}</p>` : ""}
+          ${m.aiError && !m.limit && i === chat.history.length - 1 && !chat.busy ? html`<button type="button" class="small-btn secondary" data-retry="${i}">Tentar de novo com a IA</button>` : ""}
           ${m.limit ? limitNotice() : ""}
           ${m.proposals?.length ? html`<div class="proposals">${m.proposals.map((p, j) => html`<div class="proposal"><span><small>${proposalKind(p)}</small>${p.label}</span>
             <button type="button" class="small-btn${p.action === "apagar" ? " danger" : ""}" data-propose="${i}:${j}" ${p.applied ? "disabled" : ""}>${proposalButton(p)[p.applied ? 1 : 0]}</button></div>`)}</div>` : ""}
@@ -128,11 +128,12 @@ export function render() {
           <div class="partial">${chat.partial ? md(chat.partial) : ""}</div>
           ${chat.partial ? "" : html`<div class="thinking"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>${chat.numbers ? "Os números já estão aí. A IA está escrevendo a explicação…" : "Lendo seus lançamentos e fazendo as contas…"}</div>
           <p class="small faint slow-note">${chat.cloud ? "Na nuvem, a resposta leva alguns segundos." : "No computador, a primeira resposta pode demorar enquanto o modelo carrega."}</p>`}</div>` : ""}
-        ${chat.error ? html`<div class="msg error" role="alert">Erro: ${chat.error}</div>` : ""}
+        ${chat.error ? html`<div class="msg error" role="alert"><span>Não deu para responder agora: ${chat.error.replace(/\.$/, "")}.</span>
+          <button type="button" class="small-btn secondary" data-retry-error>Tentar de novo</button></div>` : ""}
         ${chat.suggest && !chat.busy ? html`<div class="handoff">${face(member(chat.suggest.agent), 28)}<span>Isso é com ${member(chat.suggest.agent).name} (${member(chat.suggest.agent).role}).</span>
           <button type="button" class="small-btn secondary" data-handoff>Perguntar para ${member(chat.suggest.agent).name}</button></div>` : ""}
       </div>
-      ${chat.busy ? "" : html`<div class="suggestions">${(SUGGESTIONS[me.id] || SUGGESTIONS.otavio).map((s) => html`<button type="button" data-suggest="${s}">${s}</button>`)}</div>`}
+      ${chat.busy ? "" : html`<div class="suggestions">${suggestionsFor(ctx, me.id).map((s) => html`<button type="button" data-suggest="${s}">${s}</button>`)}</div>`}
       <form data-form="ask" class="chat-form" autocomplete="off">
         <div class="composer">
           <textarea name="message" rows="1" placeholder="Qual é o seu próximo plano? Fale com ${me.name}…" aria-label="Mensagem para ${me.name}" required ${chat.busy ? "disabled" : ""}>${chat.draft || ""}</textarea>
@@ -276,6 +277,7 @@ async function ask(ctx, question) {
     } else {
       chat.history.pop();
       chat.error = reason;
+      chat.failed = question; // o "Tentar de novo" manda esta
       chat.draft = question; // a pergunta não foi salva: volta para a caixa, para tentar de novo
     }
   }
@@ -373,6 +375,9 @@ export function bind(root, ctx) {
     ask(ctx, question);
   });
   root.querySelectorAll("[data-suggest]").forEach((b) => b.addEventListener("click", () => ask(ctx, b.dataset.suggest)));
+  // Tentar de novo: a mesma pergunta, de novo para a IA (a resposta sem IA continua na conversa).
+  root.querySelector("[data-retry]")?.addEventListener("click", (e) => !chat.busy && ask(ctx, chat.history[e.currentTarget.dataset.retry - 1].content));
+  root.querySelector("[data-retry-error]")?.addEventListener("click", () => !chat.busy && chat.failed && ask(ctx, chat.failed));
   root.querySelector('[data-action="clear"]')?.addEventListener("click", async () => {
     if (!confirm("Apagar toda a conversa?")) return;
     if (chat.cloud) await cloud.saveChat([]);

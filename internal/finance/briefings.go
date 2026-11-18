@@ -2,6 +2,7 @@ package finance
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/domain"
@@ -140,4 +141,67 @@ func Meses(n int) string {
 		return "1 mês"
 	}
 	return fmt.Sprintf("%d meses", n)
+}
+
+// DefaultSuggestions são as perguntas de cada personagem quando os dados não pedem
+// outra. As que têm resposta pronta, sem IA, estão em advisor.prepared.
+var DefaultSuggestions = map[string][]string{
+	"otavio": {"Como foi meu mês?", "Qual dívida devo pagar primeiro?", "O que vence esta semana?"},
+	"lia":    {"Onde estou gastando demais este mês?", "Quanto ainda posso gastar?", "Como reduzir meus gastos?"},
+	"tito":   {"Minhas metas estão no ritmo?", "Quanto guardar por mês para a reserva?", "Como chego na minha meta mais rápido?"},
+}
+
+const maxSuggestions = 3
+
+// StartQuestion abre o começo do zero com o Otávio (advisor: onboardingPrompt).
+const StartQuestion = "Me ajuda a começar do zero?"
+
+// Suggestions são as perguntas sugeridas na tela do Consultor: primeiro as que os
+// dados pedem (a dívida mais cara, a categoria que disparou, a meta atrasada),
+// depois as de sempre, sem as que não fazem sentido (dívida sem dívidas).
+func Suggestions(l domain.Ledger, today time.Time, agent string) []string {
+	id := agentByID(agent).ID
+	var first []string
+	skip := map[string]bool{}
+	switch id {
+	case "otavio":
+		if len(l.ActiveTransactions())+len(l.ActiveRecurring())+len(l.ActiveDebts())+len(l.ActiveGoals()) == 0 {
+			first = append(first, StartQuestion) // nada cadastrado: ele ajuda a montar o mês
+		}
+		if c := Diagnose(l, today).Costliest; c != nil && c.MonthlyInterestCents > 0 {
+			first = append(first, fmt.Sprintf("Como saio da dívida %s mais rápido?", c.Name))
+		}
+		if len(debtLines(l, today)) == 0 {
+			skip["Qual dívida devo pagar primeiro?"] = true
+		}
+	case "lia":
+		for _, c := range Insights(l, today).Categories {
+			if c.Avg3Cents > 0 && c.DiffPct >= overAvgPct && c.Cents-c.Avg3Cents >= overAvgMinCents {
+				first = append(first, fmt.Sprintf("Por que gastei mais com %s este mês?", c.Name))
+				break
+			}
+		}
+	case "tito":
+		goals := 0
+		for _, g := range Goals(l, today) {
+			if g.Done {
+				continue
+			}
+			goals++
+			if g.Late && len(first) == 0 {
+				first = append(first, fmt.Sprintf("Como recupero o atraso da meta %s?", g.Name))
+			}
+		}
+		if goals == 0 {
+			skip["Minhas metas estão no ritmo?"], skip["Como chego na minha meta mais rápido?"] = true, true
+		}
+	}
+	extra := map[string]string{"otavio": "Qual é o meu maior problema agora?", "tito": "Como começo a guardar dinheiro?"}[id]
+	out := first
+	for _, q := range append(DefaultSuggestions[id], extra) {
+		if q != "" && !skip[q] && !slices.Contains(out, q) && len(out) < maxSuggestions {
+			out = append(out, q)
+		}
+	}
+	return out
 }

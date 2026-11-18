@@ -268,6 +268,15 @@ func Briefings(ledgerJSON, today string) string {
 	return reply(finance.Briefings(l, day), nil)
 }
 
+// Suggestions devolve as perguntas sugeridas do personagem na tela do Consultor.
+func Suggestions(ledgerJSON, today, agent string) string {
+	l, day, err := planInput(ledgerJSON, today)
+	if err != nil {
+		return reply(nil, err)
+	}
+	return reply(finance.Suggestions(l, day, agent), nil)
+}
+
 // Insights devolve a análise de gastos do mês de hoje (tela Análise).
 func Insights(ledgerJSON, today string) string {
 	l, day, err := planInput(ledgerJSON, today)

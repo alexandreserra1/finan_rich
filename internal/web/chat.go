@@ -106,7 +106,7 @@ func (s *Server) answer(w http.ResponseWriter, r *http.Request, question, agent 
 	for i, m := range history {
 		past[i] = llm.Message{Role: llm.Role(m.Role), Content: m.Content}
 	}
-	q := advisor.Question{History: past, Text: question, Ledger: ledger, Today: time.Now(), Agent: agent}
+	q := advisor.Question{History: past, Text: question, Ledger: ledger, Today: time.Now(), Agent: agent, Rates: s.rates.get(ctx)}
 	// Os números do app vão antes: a tela mostra na hora, enquanto a IA escreve.
 	numbers := advisor.Numbers(q)
 	if numbers != "" {
@@ -131,7 +131,7 @@ func (s *Server) answer(w http.ResponseWriter, r *http.Request, question, agent 
 		ev := map[string]any{"text": answer}
 		if reply.AIError != nil {
 			log.Printf("chat: IA falhou, resposta sem IA: %v", reply.AIError)
-			ev["reason"] = reply.AIError.Error()
+			ev["reason"] = llm.Friendly(reply.AIError)
 			ev["limit"] = ai.Preset.ID == llm.FreeID && advisor.OverLimit(reply.AIError)
 		}
 		sse.Send(map[string]any{"app": ev})

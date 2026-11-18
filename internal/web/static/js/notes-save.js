@@ -17,14 +17,14 @@ export async function saveNote(question, answer) {
 }
 
 // Aplica uma mudança proposta pelo consultor (lançar, alterar, apagar, criar
-// meta ou dívida), depois que a pessoa toca no botão. Passa pelas mesmas regras
+// meta, dívida ou conta fixa), depois que a pessoa toca no botão. Passa pelas mesmas regras
 // (WebAssembly) de uma mudança feita à mão.
 export async function applyProposal(p) {
   await finance.load();
   if (p.before) {
     // O registro mudou depois que o consultor preparou o cartão: aplicar agora
     // desfaria a mudança mais nova.
-    const list = (await db.loadLedger())[{ transaction: "transactions", goal: "goals", debt: "debts" }[p.type]] || [];
+    const list = (await db.loadLedger())[{ transaction: "transactions", goal: "goals", debt: "debts", recurring: "recurring" }[p.type]] || [];
     const cur = list.find((r) => r.id === p.before.id) || {};
     const keys = new Set([...Object.keys(cur), ...Object.keys(p.before)]);
     keys.delete("updatedAt");
@@ -42,6 +42,6 @@ export const proposalButton = (p) => ({ criar: ["Adicionar", "Adicionado ✓"], 
 
 // Rótulo pequeno do cartão: o que muda ("Novo lançamento", "Apagar meta"…).
 export const proposalKind = (p) => {
-  const [what, novo] = { transaction: ["lançamento", "Novo"], goal: ["meta", "Nova"], debt: ["dívida", "Nova"] }[p.type] || ["registro", "Novo"];
+  const [what, novo] = { transaction: ["lançamento", "Novo"], goal: ["meta", "Nova"], debt: ["dívida", "Nova"], recurring: ["conta fixa", "Nova"] }[p.type] || ["registro", "Novo"];
   return { criar: novo + " " + what, alterar: "Alterar " + what, apagar: "Apagar " + what }[p.action] || "Mudança";
 };

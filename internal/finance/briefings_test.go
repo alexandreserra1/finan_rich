@@ -8,12 +8,14 @@ import (
 	"github.com/alexandreserra1/finan_rich/internal/domain"
 )
 
-func TestBriefings(t *testing.T) {
-	today := time.Date(2026, 10, 15, 0, 0, 0, 0, time.UTC)
+var briefingDay = time.Date(2026, 10, 15, 0, 0, 0, 0, time.UTC)
+
+// briefingLedger: duas dívidas, uma meta no prazo e uma atrasada, restaurantes acima da média.
+func briefingLedger() domain.Ledger {
 	tx := func(id, cat string, cents int64, date string) domain.Transaction {
 		return domain.Transaction{Meta: meta(id), Kind: domain.KindSaida, Description: id, AmountCents: cents, CategoryID: cat, Date: date}
 	}
-	l := domain.Ledger{
+	return domain.Ledger{
 		Categories: []domain.Category{
 			{Meta: meta("sal"), Name: "Salário", Bucket: domain.BucketRenda},
 			{Meta: meta("res"), Name: "Restaurantes", Bucket: domain.BucketDesejos},
@@ -34,6 +36,10 @@ func TestBriefings(t *testing.T) {
 			{Meta: meta("g2"), Name: "Notebook", TargetCents: 300000, SavedCents: 100000, Deadline: "2026-08", StartDate: "2026-01-01"},
 		},
 	}
+}
+
+func TestBriefings(t *testing.T) {
+	today, l := briefingDay, briefingLedger()
 	got := map[string]string{}
 	var order []string
 	for _, b := range Briefings(l, today) {
@@ -89,5 +95,42 @@ func TestBriefingOneDebt(t *testing.T) {
 	if len(b) != 1 || b[0].Lines[0] != "Cartão: 10,00% ao mês (R$ 100,00 de juros por mês)." ||
 		b[0].Lines[1] != "Só no mínimo, fica livre de todas em 8 meses (junho de 2027), com R$ 456,39 de juros." {
 		t.Errorf("uma dívida = %+v", b)
+	}
+}
+
+// As sugestões do Consultor partem dos dados: a dívida mais cara, a categoria que
+// disparou, a meta atrasada; depois as de sempre, sem as que não fazem sentido.
+func TestSuggestions(t *testing.T) {
+	l := briefingLedger()
+	for agent, want := range map[string][]string{
+		"otavio": {"Como saio da dívida Cartão mais rápido?", "Como foi meu mês?", "Qual dívida devo pagar primeiro?"},
+		"lia":    {"Por que gastei mais com Restaurantes este mês?", "Onde estou gastando demais este mês?", "Quanto ainda posso gastar?"},
+		"tito":   {"Como recupero o atraso da meta Notebook?", "Minhas metas estão no ritmo?", "Quanto guardar por mês para a reserva?"},
+		"":       {"Como saio da dívida Cartão mais rápido?", "Como foi meu mês?", "Qual dívida devo pagar primeiro?"},
+	} {
+		if got := Suggestions(l, briefingDay, agent); strings.Join(got, "|") != strings.Join(want, "|") {
+			t.Errorf("%q = %q", agent, got)
+		}
+	}
+	// Sem dívidas nem metas: nada de "qual dívida pagar" nem "metas no ritmo".
+	for agent, want := range map[string][]string{
+		"otavio": {StartQuestion, "Como foi meu mês?", "O que vence esta semana?"}, // tudo vazio: o começo do zero
+		"tito":   {"Quanto guardar por mês para a reserva?", "Como começo a guardar dinheiro?"},
+	} {
+		if got := Suggestions(domain.Ledger{}, briefingDay, agent); strings.Join(got, "|") != strings.Join(want, "|") {
+			t.Errorf("vazio %q = %q", agent, got)
+		}
+	}
+	for agent, list := range DefaultSuggestions {
+		for _, q := range list {
+			if r := Route(q); r != "" && r != agent {
+				t.Errorf("%s: %q vai para %s", agent, q, r)
+			}
+		}
+	}
+	for _, q := range append(Suggestions(l, briefingDay, "lia"), Suggestions(l, briefingDay, "tito")...) {
+		if r := Route(q); r == "otavio" {
+			t.Errorf("%q vai para o Otávio", q)
+		}
 	}
 }

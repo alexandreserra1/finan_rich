@@ -185,6 +185,33 @@ func (e *APIError) hint() string {
 	return ""
 }
 
+// Friendly é o motivo da falha da IA para mostrar na tela: os erros técnicos
+// conhecidos (provedor, rede, prazo) em palavras do dia a dia; os outros já são
+// do app, em português, e ficam como estão. O detalhe técnico fica no log.
+func Friendly(err error) string {
+	var apiErr *APIError
+	var urlErr *url.Error
+	switch {
+	case err == nil:
+		return ""
+	case errors.As(err, &apiErr):
+		if h := apiErr.hint(); h != "" {
+			return h
+		}
+		if apiErr.Status >= 500 {
+			return fmt.Sprintf("a IA teve um problema do lado dela (erro %d): tente de novo daqui a pouco", apiErr.Status)
+		}
+		return fmt.Sprintf("a IA recusou o pedido (erro %d): confira o modelo escolhido nos Ajustes", apiErr.Status)
+	case errors.Is(err, context.DeadlineExceeded) || errors.As(err, &urlErr) && urlErr.Timeout():
+		return "a IA demorou demais para responder"
+	case errors.As(err, &urlErr):
+		return "não deu para falar com a IA: confira a internet"
+	case errors.Is(err, ErrConnectionLost):
+		return ErrConnectionLost.Error() + ": tente de novo"
+	}
+	return err.Error()
+}
+
 // trimSlash remove a barra final para concatenar caminhos com segurança.
 func trimSlash(s string) string { return strings.TrimRight(s, "/") }
 

@@ -64,6 +64,7 @@ func main() {
 		"canDeleteCategory": js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.CanDeleteCategory(str(a, 0), str(a, 1)) }),
 		"briefings":         js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Briefings(str(a, 0), str(a, 1)) }),
 		"team":              js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Team() }),
+		"suggestions":       js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Suggestions(str(a, 0), str(a, 1), str(a, 2)) }),
 		"route":             js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Route(str(a, 0)) }),
 		"searchTransactions": js.FuncOf(func(_ js.Value, a []js.Value) any {
 			return wasmapi.SearchTransactions(str(a, 0), str(a, 1))

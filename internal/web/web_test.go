@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -327,21 +326,6 @@ func TestChatSendsNumbersFirst(t *testing.T) {
 	}
 }
 
-// As sugestões do app (js/pages/advisor.js) são as mesmas do Go: as prontas precisam bater.
-func TestSuggestionsMatchApp(t *testing.T) {
-	js, err := os.ReadFile("static/js/pages/advisor.js")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for agent, list := range advisor.Suggestions {
-		for _, q := range list {
-			if !strings.Contains(string(js), `"`+q+`"`) {
-				t.Errorf("%s: %q não está em advisor.js", agent, q)
-			}
-		}
-	}
-}
-
 // Grátis do finan_rich no limite: além da resposta sem IA, o aviso para usar a própria chave.
 func TestChatFreeLimit(t *testing.T) {
 	free := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -363,6 +347,38 @@ func TestChatFreeLimit(t *testing.T) {
 	a := &app{t: t, srv: srv, st: st}
 	if body := a.ask("e a moto?", ""); !strings.Contains(body, `"limit":true`) || !strings.Contains(body, "A IA não respondeu agora") {
 		t.Errorf("SSE = %s", body)
+	}
+}
+
+// Taxas do Banco Central no computador: "qual a selic hoje?" sai pronta, sem IA, e o
+// Banco Central é consultado uma vez (fica guardado).
+func TestChatRates(t *testing.T) {
+	calls := 0
+	bcb := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		fmt.Fprint(w, map[bool]string{true: `[{"data":"17/11/2026","valor":"13.75"}]`, false: `[{"data":"01/10/2026","valor":"4.63"}]`}[!strings.Contains(r.URL.Path, "13522")])
+	}))
+	t.Cleanup(bcb.Close)
+	ollama := fakeOllama(t)
+	st, err := store.Open(context.Background(), ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	s, err := New(st, Options{AIPreset: "ollama", AIDefaults: llm.Config{Kind: llm.KindOllama, BaseURL: ollama.URL, Model: "qwen3:4b"}, Port: "8080", RatesURL: bcb.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(s.Routes())
+	t.Cleanup(srv.Close)
+	a := &app{t: t, srv: srv, st: st}
+	for range 2 {
+		if body := a.ask("qual a selic hoje?", ""); !strings.Contains(body, "Selic 13,75% ao ano") || !strings.Contains(body, `"app"`) {
+			t.Errorf("SSE = %s", body)
+		}
+	}
+	if calls != 3 {
+		t.Errorf("o Banco Central recebeu %d pedidos, quer 3 (uma vez cada série)", calls)
 	}
 }
 

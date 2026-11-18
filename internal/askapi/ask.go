@@ -9,12 +9,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/advisor"
 	"github.com/alexandreserra1/finan_rich/internal/domain"
 	"github.com/alexandreserra1/finan_rich/internal/importer"
 	"github.com/alexandreserra1/finan_rich/internal/llm"
+	"github.com/alexandreserra1/finan_rich/internal/rates"
 )
 
 func reply(v any, err error) string {
@@ -38,6 +40,7 @@ type AskRequest struct {
 	AI        AIConfig      `json:"ai"`
 	Anonymize bool          `json:"anonymize"`
 	Agent     string        `json:"agent"` // quem do time responde; vazio = Otávio
+	Rates     rates.Rates   `json:"rates"` // taxas do Banco Central (cloud-ai.js busca uma vez por dia)
 }
 
 type ChatTurn struct {
@@ -73,7 +76,7 @@ func (req AskRequest) question() advisor.Question {
 	for i, h := range req.History {
 		history[i] = llm.Message{Role: llm.Role(h.Role), Content: h.Content}
 	}
-	return advisor.Question{History: history, Text: req.Question, Ledger: req.Ledger, Today: today, Anonymize: req.Anonymize, Agent: req.Agent}
+	return advisor.Question{History: history, Text: req.Question, Ledger: req.Ledger, Today: today, Anonymize: req.Anonymize, Agent: req.Agent, Rates: req.Rates}
 }
 
 func askReply(r advisor.Reply, preset string) AskReply {
@@ -82,7 +85,7 @@ func askReply(r advisor.Reply, preset string) AskReply {
 		out.Proposals = []advisor.Proposal{}
 	}
 	if r.AIError != nil {
-		out.AIError = r.AIError.Error()
+		out.AIError = llm.Friendly(r.AIError)
 		out.Limit = preset == llm.FreeID && advisor.OverLimit(r.AIError)
 	}
 	return out
@@ -191,6 +194,13 @@ func Categorize(ctx context.Context, reqJSON string) string {
 		req.Items[i].Description = importer.DescKey(req.Items[i].Description)
 	}
 	return reply(advisor.Categorize(ctx, p, req.Categories, req.Items))
+}
+
+// Rates busca as taxas do dia no Banco Central (sem nenhum dado da pessoa).
+func Rates(ctx context.Context) string {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	return reply(rates.Fetch(ctx, http.DefaultClient, rates.BaseURL))
 }
 
 // CloudPresets são os provedores que o app do celular oferece (nuvem, com chave).

@@ -161,6 +161,9 @@ const cloudAI = createServer((req, res) => {
       res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: "Primeiro pedaço sobre a " + shop.slice(0, 3) } }] })}\n\n`);
       return setTimeout(() => send({ content: shop.slice(3) + " e o resto." }), 1500);
     }
+    // O começo do zero: pergunta a renda; a resposta vira o cartão de conta fixa.
+    if (/começar do zero/i.test(question)) return send({ content: "Vamos lá. Quanto você recebe por mês, e em que dia?" });
+    if (/4\.500 no dia 5/.test(question)) return call("criar_conta_fixa", { descricao: "Salário", valor: "4.500", tipo: "entrada", dia: 5, categoria: "Salário" });
     if (shop) return call("buscar_lancamentos", { texto: shop });
     if (/pão/i.test(question)) return call("propor_lancamento", { descricao: "Pão", valor: "8,50", categoria: "Mercado" });
     send({ content: "Oi!" });
@@ -191,6 +194,11 @@ try {
   await waitHealthy();
 
   const ctx = await browser.newContext({ ...devices["Pixel 7"] });
+  // O Banco Central falso (taxas do consultor): o teste não depende da internet.
+  await ctx.route("https://api.bcb.gov.br/**", (route) => route.fulfill({
+    contentType: "application/json", headers: { "access-control-allow-origin": "*" },
+    body: route.request().url().includes("sgs.13522") ? '[{"data":"01/10/2026","valor":"4.63"}]' : '[{"data":"17/11/2026","valor":"13.75"}]',
+  }));
   const page = await ctx.newPage();
   const errors = [];
   const logs = [];
@@ -349,6 +357,13 @@ try {
   ok(stored.preset === "groq" && stored.cipher && !stored.leaked, "a chave da IA fica cifrada no aparelho (não aparece em texto puro)");
   await page.goto(`${APP}/chat`);
   await page.waitForSelector("form[data-form=ask]", { timeout: 20000 });
+  // As sugestões vêm dos dados da pessoa (finance.Suggestions, em Go).
+  const shown = await page.$$eval(".suggestions [data-suggest]", (bs) => bs.map((b) => b.dataset.suggest));
+  const fromData = await page.evaluate(async () => {
+    const [f, ui, db] = await Promise.all([import("/static/js/finance.js"), import("/static/js/ui.js"), import("/static/js/db.js")]);
+    return f.suggestions(await db.loadLedger(), ui.today(), "otavio");
+  });
+  ok(shown.length > 0 && shown.join("|") === fromData.join("|"), `as sugestões do Consultor vêm dos dados (${shown.join(" | ")})`);
   await page.fill("textarea[name=message]", "Quanto gastei na Feira?");
   await page.click("form[data-form=ask] button");
   await page.waitForSelector(".msg.assistant:has-text('você gastou')", { timeout: 30000 });
@@ -379,6 +394,29 @@ try {
   ok(!/Loj/.test(partial) && !/Loja/.test(streamedAnswer), `pela nuvem, a resposta chega aos poucos sem mostrar apelido, também com o CapacitorHttp (antes: "${partial.trim()}"; fim: "${streamedAnswer.trim()}")`);
   await page.evaluate(() => { window.fetch = window.CapacitorWebFetch; delete window.CapacitorWebFetch; });
 
+  // O começo do zero: o Otávio pergunta, a resposta vira um cartão de conta fixa e só as ferramentas de criar vão.
+  await page.fill("textarea[name=message]", "Me ajuda a começar do zero?");
+  await page.click("form[data-form=ask] button");
+  await page.waitForSelector(".msg.assistant:not(.pending):has-text('Quanto você recebe por mês')", { timeout: 30000 });
+  ok(cloudBodies.at(-1).tools.join() === "propor_lancamento,criar_meta,criar_divida,criar_conta_fixa" && cloudBodies.at(-1).messages[0].content.includes("Começo do zero"),
+    `o começo do zero liga só as ferramentas de criar (${cloudBodies.at(-1).tools})`);
+  await page.fill("textarea[name=message]", "4.500 no dia 5");
+  await page.click("form[data-form=ask] button");
+  await page.waitForSelector(".proposal:has-text('Nova renda fixa: Salário · R$ 4.500,00 todo dia 5') button", { timeout: 30000 });
+  await page.click(".proposal:has-text('Nova renda fixa') button");
+  await page.waitForSelector(".proposal:has-text('Nova renda fixa') button:has-text('Adicionado')", { timeout: 10000 });
+  const fixed = await page.evaluate(async () => (await (await import("/static/js/db.js")).loadLedger()).recurring.filter((r) => r.description === "Salário" && r.amountCents === 450000 && r.day === 5).length);
+  ok(fixed === 1, "a renda do começo do zero vira conta fixa neste celular");
+
+  // A taxa do dia vem do Banco Central: o app responde sozinho, sem chamar a IA.
+  const beforeRates = cloudBodies.length;
+  await page.fill("textarea[name=message]", "Qual a Selic hoje?");
+  await page.click("form[data-form=ask] button");
+  await page.waitForSelector(".msg.assistant >> nth=-1 >> .app-answer", { timeout: 30000 });
+  const rateText = await page.textContent(".msg.assistant >> nth=-1");
+  ok(rateText.includes("Selic 13,75% ao ano") && rateText.includes("IPCA 4,63% em 12 meses") && cloudBodies.length === beforeRates,
+    `a Selic do dia vem do Banco Central, sem IA (${rateText.slice(0, 120).trim()})`);
+
   // A internet cai no meio da resposta: o Otávio responde com as contas do app
   // (sem IA), não fica em "Pensando…" e não guarda a resposta pela metade.
   await page.fill("textarea[name=message]", "E se a internet caiu?");
@@ -388,6 +426,13 @@ try {
   ok(await page.locator(".msg.pending").count() === 0 && !(await page.textContent(".messages")).includes("Metade da resp") && !savedChat.includes("Metade da resp") &&
     (await page.textContent(".msg.assistant >> nth=-1")).includes("Resumo de"),
     `internet caindo no meio do chat: resposta sem IA, sem "Pensando…" e sem resposta pela metade`);
+  const why = await page.textContent(".msg.assistant >> nth=-1 >> .app-answer");
+  ok(/A IA falhou: (a conexão com a IA caiu no meio da resposta: tente de novo|não deu para falar com a IA: confira a internet)\./.test(why) && await page.locator(".msg.assistant >> nth=-1 >> [data-retry]").count() === 1,
+    `a resposta sem IA explica a falha sem texto técnico e oferece tentar de novo (${why.trim()})`);
+  const askedBefore = await page.locator(".msg.user:has-text('E se a internet caiu?')").count();
+  await page.click(".msg.assistant >> nth=-1 >> [data-retry]");
+  await page.waitForFunction((n) => document.querySelectorAll(".msg.user").length && [...document.querySelectorAll(".msg.user")].filter((m) => m.textContent.includes("E se a internet caiu?")).length === n + 1 && !document.querySelector(".msg.pending"), askedBefore, { timeout: 30000 });
+  ok(await page.locator(".msg.assistant >> nth=-1 >> [data-retry]").count() === 1, "\"Tentar de novo com a IA\" manda a mesma pergunta outra vez");
 
   // O grátis do finan_rich no limite: resposta sem IA e o caminho para a chave grátis da pessoa.
   await page.evaluate(async (port) => { // a configuração com a chave fica guardada no próprio app (a chave cifrada não passa bem pelo teste)
@@ -400,7 +445,8 @@ try {
   await page.fill("textarea[name=message]", "Acabou o limite do grátis?");
   await page.click("form[data-form=ask] button");
   await page.waitForSelector(".msg.assistant .notice:has-text('chave grátis') a[href='/configuracoes#ia-nuvem']", { timeout: 30000 });
-  ok((await page.textContent(".msg.assistant >> nth=-1")).includes("A IA não respondeu agora"), "grátis no limite: resposta sem IA e aviso com o caminho para a própria chave");
+  ok((await page.textContent(".msg.assistant >> nth=-1")).includes("A IA não respondeu agora") && await page.locator(".msg.assistant >> nth=-1 >> [data-retry]").count() === 0,
+    "grátis no limite: resposta sem IA e aviso com o caminho para a própria chave (sem \"tentar de novo\", que não adiantaria)");
   await page.evaluate(async () => { const db = await import("/static/js/db.js"); await db.setMeta("cloud-ai", await db.getMeta("cloud-ai-antes")); });
   await page.goto(`${APP}/chat`);
   await page.waitForSelector("form[data-form=ask]", { timeout: 20000 });
