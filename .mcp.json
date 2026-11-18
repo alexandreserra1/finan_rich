@@ -7,6 +7,14 @@
     "rich-devtools": {
       "command": "sh",
       "args": ["-c", "exec node \"$(git rev-parse --show-toplevel)/scripts/engineering-mcp.mjs\" devtools"]
+    },
+    "graphify": {
+      "command": "sh",
+      "args": ["-c", "export PATH=\"$HOME/.local/bin:$PATH\"; exec graphify-mcp \"$(git rev-parse --show-toplevel)/graphify-out/graph.json\""]
+    },
+    "ai-memory": {
+      "command": "sh",
+      "args": ["-c", "export PATH=\"$HOME/.local/bin:$PATH\"; exec ai-memory mcp-bridge --server-url http://127.0.0.1:49374/mcp"]
     }
   }
 }

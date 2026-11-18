@@ -1,0 +1,6 @@
+# Fora do mapa do código (graphify): bibliotecas de terceiros copiadas, arquivos
+# minificados e pastas locais de cada pessoa. Sem isso, dois terços dos nós do grafo
+# eram de pdf.js, sqlite e chart.js, e o código da Rich sumia no meio.
+internal/web/static/vendor/
+*.min.js
+docs/rich-mais-recente/

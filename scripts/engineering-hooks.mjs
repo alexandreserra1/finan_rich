@@ -18,7 +18,7 @@ const hook = process.argv[2];
 if (hook === "start") {
   const paths = changed();
   save(file, { ...previous, baseline: previous.baseline || fingerprint(paths), loop: previous.loop || null });
-  console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: `Engenharia Rich ativa. Leia AGENTS.md, docs/engineering/README.md e os contratos relevantes em openspec/specs. Consulte a memória quando depender de histórico. Existem ${paths.length} arquivos pendentes: preserve-os. Reuse skills e personas existentes. Ao concluir, rode node scripts/engineering.mjs check affected. Não faça push, merge ou deploy automático. MCPs isolados: rich-playwright e rich-devtools. Novos screenshots não são baselines aprovados.` } }));
+  console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: `Engenharia Rich ativa. Leia AGENTS.md, docs/engineering/README.md e os contratos relevantes em openspec/specs. Consulte a memória quando depender de histórico. Existem ${paths.length} arquivos pendentes: preserve-os. Reuse skills e personas existentes. Ao concluir, rode node scripts/engineering.mjs check affected. Não faça push, merge ou deploy automático. MCPs: rich-playwright e rich-devtools (navegador isolado), graphify (mapa do código) e ai-memory (memória longa). Novos screenshots não são baselines aprovados.` } }));
 } else if (hook === "stop") {
   let report;
   const paths = changed();

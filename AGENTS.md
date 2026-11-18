@@ -102,8 +102,17 @@ usam `openspec/changes/<nome>/`, sem sobrescrever tarefas antigas. Use a CLI loc
 `tools/engineering/node_modules/.bin/openspec`, não instale outra cópia global.
 
 Hooks de sessão e saída estão em `.claude/settings.json` e `.codex/hooks.json`; MCPs estão
-em `.mcp.json` e `.codex/config.toml`. Exigem confiança nativa e recarga do cliente. Não
-altere aprovações nem configurações globais para contornar essa exigência.
+em `.mcp.json` e `.codex/config.toml`, com a mesma lista nos dois (um teste confere). Exigem
+confiança nativa e recarga do cliente. Não altere aprovações nem configurações globais para
+contornar essa exigência.
+
+Mapa do código e memória: para perguntas de estrutura (quem chama quem, o que liga duas
+partes, o que é central), consulte o MCP `graphify` antes de varrer arquivos; para decisões,
+histórico e armadilhas, o `ai-memory`. O grafo fica em `graphify-out/` (fora do git);
+`scripts/graphify-memoria.sh` o atualiza só com o código, sem IA, e grava o resumo no
+ai-memory em `concepts/mapa-do-codigo`. Depende do graphify (`uv tool install
+'graphifyy[mcp]'`) e do ai-memory instalados no computador; sem eles, o MCP não sobe e o
+resto do projeto funciona igual.
 
 Antes de concluir, execute `node scripts/engineering.mjs check affected`. O Stop pede
 evidência atual e permite até cinco correções por problema, por até quinze minutos;
