@@ -21,7 +21,9 @@ import (
 //	FINAN_EVAL_PRESET=gemini FINAN_EVAL_KEY=... [FINAN_EVAL_MODEL=...] go test ./internal/advisor -run TestEval -v
 //
 // FINAN_EVAL_LOCAL=1 manda sem apelidos (como uma IA local); FINAN_EVAL_TEAM=1
-// roda só as perguntas de cada personagem do time.
+// roda só as perguntas de cada personagem do time; FINAN_EVAL_ONLY (regexp) escolhe
+// as perguntas. O grátis do finan_rich também serve: FINAN_EVAL_PRESET=finan e,
+// como chave, um nome qualquer de aparelho (conta no limite dele).
 
 func evalLedger() domain.Ledger {
 	m := func(id string) domain.Meta { return domain.Meta{ID: id, UpdatedAt: 1} }
@@ -125,7 +127,11 @@ func TestEval(t *testing.T) {
 	for _, c := range teamEvalCases {
 		all = append(all, agentCase{c.agent, c.evalCase})
 	}
+	only := regexp.MustCompile(`(?i)` + os.Getenv("FINAN_EVAL_ONLY")) // FINAN_EVAL_ONLY="uber|selic": só essas perguntas
 	for _, c := range all {
+		if !only.MatchString(c.q) {
+			continue
+		}
 		var answer string
 		for try := 0; try < 3; try++ { // cota grátis: espera e tenta de novo
 			var r Reply

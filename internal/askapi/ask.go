@@ -198,7 +198,7 @@ func CloudPresets() string {
 	var out []map[string]any
 	for _, p := range llm.All() {
 		if free := p.ID == llm.FreeID; free || p.Kind == llm.KindOpenAI && p.NeedsKey {
-			out = append(out, map[string]any{"id": p.ID, "name": p.Name, "description": p.Description, "model": p.Model, "models": p.Models, "keyUrl": p.KeyURL, "keySteps": p.KeySteps, "free": free})
+			out = append(out, map[string]any{"id": p.ID, "name": p.Name, "description": p.Description, "model": p.Model, "models": p.Models, "keyUrl": p.KeyURL, "keySteps": p.KeySteps, "free": free, "baseUrl": p.BaseURL})
 		}
 	}
 	return reply(out, nil)

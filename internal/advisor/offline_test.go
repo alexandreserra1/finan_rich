@@ -36,6 +36,8 @@ func TestOfflineByPersona(t *testing.T) {
 	if strings.Contains(due, "Aluguel") {
 		t.Errorf("aluguel (dia 25) fica fora da semana:\n%s", due)
 	}
+	// "Quanto gastei com uber?" sem IA: o total do lugar, não o resumo do mês.
+	wantAll(t, "otávio (lugar)", Offline(offlineQ("otavio", "quanto gastei com uber?")), "Gastos com Uber: R$ 20,00 em outubro de 2026")
 	month := Offline(offlineQ("otavio", "Como foi meu mês?"))
 	wantAll(t, "otávio (mês)", month, "outubro de 2026", "Restaurantes e delivery", "Lia")
 	q := offlineQ("otavio", "Qual é o meu maior problema agora?")

@@ -155,7 +155,11 @@ aparelho                                      servidor
    e a resposta e as propostas voltam com os nomes verdadeiros. A resposta aparece aos poucos:
    `RevealStream` só segura o fim que ainda pode ser um apelido partido entre dois pedaços. O
    app do celular sem computador usa o mesmo caminho em WebAssembly (`internal/askapi`,
-   `cmd/finanadvisor`), com uma função JS que recebe os pedaços.
+   `cmd/finanadvisor`), com uma função JS que recebe os pedaços. No app, o `CapacitorHttp`
+   entregaria a resposta inteira de uma vez; por isso `cloud-ai.js` manda só os pedidos ao
+   endereço da IA pelo fetch do WebView (`CapacitorWebFetch`) e volta ao nativo se o
+   provedor não aceitar CORS. Pergunta de gasto num lugar ("quanto gastei com uber?") já vai
+   com o total pronto (`placeSpending`, também na resposta sem IA).
 4. **"Treinamento" em finanças** (sem mexer nos pesos do modelo, o que os planos grátis não
    permitem): as instruções (`advisor.SystemPrompt`) pedem respostas personalizadas (números
    do usuário; pergunta direta em até 3 frases, sem plano; conselho com conclusão primeiro,

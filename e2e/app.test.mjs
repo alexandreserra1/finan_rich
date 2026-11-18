@@ -364,13 +364,20 @@ try {
   ok(true, "pela nuvem, a proposta também vira cartão e grava neste celular");
 
   // A resposta da nuvem aparece aos poucos, já com o nome verdadeiro; o apelido partido nunca aparece.
+  // Imita o app de verdade: o CapacitorHttp troca o fetch por um que entrega a resposta
+  // inteira de uma vez e guarda o original em CapacitorWebFetch.
+  await page.evaluate(() => {
+    const web = (window.CapacitorWebFetch = window.fetch);
+    window.fetch = async (res, opt) => { const r = await web(res, opt); return new Response(await r.arrayBuffer(), { status: r.status, headers: r.headers }); };
+  });
   await page.fill("textarea[name=message]", "Conta aos poucos da Feira");
   await page.click("form[data-form=ask] button");
   await page.waitForSelector(".msg.pending .partial:has-text('Primeiro pedaço')", { timeout: 30000 });
   const partial = await page.textContent(".msg.pending .partial");
   await page.waitForSelector(".msg.assistant:not(.pending):has-text('Feira e o resto')", { timeout: 30000 });
   const streamedAnswer = await page.textContent(".msg.assistant >> nth=-1");
-  ok(!/Loj/.test(partial) && !/Loja/.test(streamedAnswer), `pela nuvem, a resposta chega aos poucos sem mostrar apelido (antes: "${partial.trim()}"; fim: "${streamedAnswer.trim()}")`);
+  ok(!/Loj/.test(partial) && !/Loja/.test(streamedAnswer), `pela nuvem, a resposta chega aos poucos sem mostrar apelido, também com o CapacitorHttp (antes: "${partial.trim()}"; fim: "${streamedAnswer.trim()}")`);
+  await page.evaluate(() => { window.fetch = window.CapacitorWebFetch; delete window.CapacitorWebFetch; });
 
   // A internet cai no meio da resposta: o Otávio responde com as contas do app
   // (sem IA), não fica em "Pensando…" e não guarda a resposta pela metade.

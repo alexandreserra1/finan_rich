@@ -107,6 +107,9 @@ func Offline(q Question) string {
 		case "vencimentos":
 			return bullets(prefetch(id, t, q.Text))
 		}
+		if s := t.placeSpending(fold(q.Text)); s != "" {
+			return s
+		}
 		return overviewOffline(q)
 	case "tito":
 		return titoOffline(t, q)

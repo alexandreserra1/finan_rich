@@ -92,7 +92,7 @@ sistema.
 | `static/js/pages/device.js` | Tela de Ajustes do app (parear, sincronizar, desconectar, apagar dados). |
 | `static/js/pages/advisor.js` | Consultor (a mesma tela do computador): conversa com a IA do computador (`/api/chat`, com o token). |
 | `static/js/native.js` | Leitor de QR code e lembretes do time (plugins do Capacitor). |
-| `mobile/package.json`, `capacitor.config.json` | Projeto Capacitor (Android). `CapacitorHttp` faz as chamadas pela rede nativa do celular, sem as travas de `http://` do navegador. Os plugins `Filesystem` e `Share` salvam os arquivos exportados (Excel, PDF, CSV, backup) e abrem o menu de compartilhar do Android. |
+| `mobile/package.json`, `capacitor.config.json` | Projeto Capacitor (Android). `CapacitorHttp` faz as chamadas pela rede nativa do celular, sem as travas de `http://` do navegador. Exceção: os pedidos à IA na nuvem vão pelo fetch do WebView (`CapacitorWebFetch`), porque o nativo só entrega a resposta no fim; sem CORS, voltam ao nativo. Os plugins `Filesystem` e `Share` salvam os arquivos exportados (Excel, PDF, CSV, backup) e abrem o menu de compartilhar do Android. |
 | `mobile/android/` | Projeto Android (gerado pelo `cap add android`, versionado). Mudanças nossas: `AndroidManifest.xml` (link `finanrich://` e `usesCleartextTraffic` para o `http://` do Wi-Fi), `app/build.gradle` (versão e assinatura pelo ambiente), ícones e tela de abertura. |
 | `mobile/scripts/icons.py` | Gera os ícones e as telas de abertura (Pillow). |
 | `e2e/app.test.mjs` | Teste no Chromium com as telas do app servidas em outra origem: pareamento, sync com token, offline, aparelho removido. |

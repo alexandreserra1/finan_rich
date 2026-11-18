@@ -16,6 +16,15 @@ quando está completo e seguido de algo que não é letra nem número.
   cada pedaço.
 - A resposta final continua sendo `Reveal` do texto inteiro; a tela troca o texto parcial
   por ela no fim, como já fazia no computador.
+- No app, o `CapacitorHttp` troca o `fetch` (que o Go em WebAssembly usa) por um nativo
+  que só devolve a resposta no fim. `cloud-ai.js` embrulha o `fetch` e manda só os pedidos
+  ao endereço da IA (preset ou `baseUrl`) pelo `CapacitorWebFetch`. Pedido com
+  `Authorization` passa por preflight: se o provedor não aceitar CORS, o WebView barra antes
+  de enviar a pergunta e o pedido volta ao nativo. Cancelamento (`AbortError`) não reenvia.
+- "Quanto gastei com <lugar>": a IA às vezes respondia "nenhum lançamento" sem buscar. O
+  lugar citado (o nome mais longo; com apelidos, só a descrição inteira) já vai com o total
+  do mês e de sempre, como as outras contas prontas (`prefetch`), e a resposta sem IA usa
+  a mesma conta.
 - Formato: a regra fica nas instruções fixas (`SystemPrompt`), com um exemplo curto de
   pergunta direta sem nome de loja (para o modelo não copiar um apelido do exemplo).
 

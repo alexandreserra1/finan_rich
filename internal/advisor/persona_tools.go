@@ -8,9 +8,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/alexandreserra1/finan_rich/internal/domain"
 	"github.com/alexandreserra1/finan_rich/internal/finance"
+	"github.com/alexandreserra1/finan_rich/internal/importer"
 	"github.com/alexandreserra1/finan_rich/internal/llm"
 	"github.com/alexandreserra1/finan_rich/internal/money"
 )
@@ -415,6 +417,7 @@ func prefetch(agent string, t *Tools, question string) string {
 			}
 			return t.upcoming(days)
 		}
+		return t.placeSpending(q)
 	case "tito":
 		var goals, named []string
 		for _, g := range finance.Goals(t.ledger, t.today) {
@@ -461,6 +464,76 @@ func prefetch(agent string, t *Tools, question string) string {
 		return t.findings() + "\n\n" + t.compareMonths("", "")
 	}
 	return ""
+}
+
+// placeSpending: "quanto gastei com uber?" já vai com o total do lugar (sem isso
+// a IA às vezes dizia "nenhum lançamento de Uber" sem buscar). q já vem com fold.
+func (t *Tools) placeSpending(q string) string {
+	if !strings.Contains(q, "gast") {
+		return ""
+	}
+	p, name := place(q, t.ledger)
+	if p == "" {
+		return ""
+	}
+	month := t.today.Format("2006-01")
+	var monthCents, allCents int64
+	var monthN, allN int
+	for _, tx := range t.ledger.ActiveTransactions() {
+		if tx.Kind != domain.KindSaida || !strings.Contains(fold(tx.Description), p) {
+			continue
+		}
+		allCents, allN = allCents+tx.AmountCents, allN+1
+		if strings.HasPrefix(tx.Date, month) {
+			monthCents, monthN = monthCents+tx.AmountCents, monthN+1
+		}
+	}
+	count := func(n int) string {
+		if n == 1 {
+			return "1 lançamento"
+		}
+		return fmt.Sprintf("%d lançamentos", n)
+	}
+	return fmt.Sprintf("Gastos com %s: %s em %s (%s). Desde o começo: %s (%s).",
+		name, money.Format(monthCents), domain.ParseMonth(month).Label(), count(monthN), money.Format(allCents), count(allN))
+}
+
+// place devolve o lugar dos lançamentos citado na pergunta ("uber", "loja ab") e o
+// nome dele para mostrar, ou "". Fica com o mais longo. Com apelidos ("Loja AB"), só
+// a descrição inteira vale: o PlaceKey dela é "loja", que pegaria todas as lojas.
+func place(q string, l domain.Ledger) (key, name string) {
+	for _, tx := range l.ActiveTransactions() {
+		k, show := importer.PlaceKey(tx.Description)
+		if placeAliasRe.MatchString(tx.Description) {
+			k = ""
+		}
+		for _, c := range [][2]string{{k, show}, {fold(tx.Description), tx.Description}} {
+			if len(c[0]) > len(key) && hasWord(q, c[0]) {
+				key, name = c[0], c[1]
+			}
+		}
+	}
+	return key, name
+}
+
+var placeAliasRe = regexp.MustCompile(`^(Loja|Fonte) [A-Z]{2,}$`)
+
+// hasWord diz se w aparece em s como palavra inteira.
+func hasWord(s, w string) bool {
+	for i := 0; i < len(s); {
+		j := strings.Index(s[i:], w)
+		if j < 0 {
+			return false
+		}
+		j += i
+		before, _ := utf8.DecodeLastRuneInString(s[:j])
+		after, _ := utf8.DecodeRuneInString(s[j+len(w):])
+		if (j == 0 || !isWordRune(before)) && (j+len(w) == len(s) || !isWordRune(after)) {
+			return true
+		}
+		i = j + 1
+	}
+	return false
 }
 
 // withPrefetch junta a conta pronta ao retrato financeiro.
