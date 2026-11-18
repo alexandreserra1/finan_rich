@@ -87,6 +87,11 @@ jobs:
     container: ${{ matrix.image }} # vazio: roda direto na máquina do GitHub
     steps:
       - uses: actions/checkout@v7
+      # No contêiner o job roda como root e os arquivos são de outro usuário: sem isto o git
+      # recusa a pasta ("dubious ownership") e o go build não consegue gravar a versão.
+      - name: Git confia na pasta do repositório
+        if: matrix.image != ''
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
