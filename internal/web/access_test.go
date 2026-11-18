@@ -387,3 +387,44 @@ func TestClientKeyGroupsIPv6(t *testing.T) {
 		t.Errorf("IPv4 = %q", k)
 	}
 }
+
+// Registro de acesso: entradas pela rede, senha errada, pareamento e backup aparecem
+// nos Ajustes, com o endereço de quem fez. Senha e token nunca vão para o registro.
+func TestAccessLogInSettings(t *testing.T) {
+	a := newAccessApp(t, "")
+	a.enableLAN("senha-forte-1")
+	a.do("POST", "/entrar", phone, url.Values{"senha": {"errada-123"}})
+	cookie := sessionFrom(a.do("POST", "/entrar", phone, url.Values{"senha": {"senha-forte-1"}}))
+	a.do("POST", "/sair", phone, url.Values{}, cookie)
+	a.pair("AAAA-AAAA")
+	a.pair(a.newCode())
+	a.do("GET", "/configuracoes/backup.db", local, nil)
+	a.do("POST", "/configuracoes/acesso", local, url.Values{"acao": {"senha"}, "senha": {"outra-senha-9"}, "confirmar": {"outra-senha-9"}})
+	a.do("POST", "/configuracoes", local, url.Values{"preset": {"groq"}, "model": {"m"}, "base_url": {"https://api.groq.com/openai/v1"}, "api_key": {"chave-nova-77"}})
+	a.do("POST", "/configuracoes/openfinance", local, url.Values{"client_id": {"id"}, "client_secret": {"segredo-pluggy-88"}})
+
+	body := a.do("GET", "/configuracoes", local, nil).Body.String()
+	i := strings.Index(body, "Registro de acesso")
+	if i < 0 {
+		t.Fatalf("sem o registro nos Ajustes:\n%s", body)
+	}
+	log := body[i:]
+	for _, want := range []string{
+		"Credenciais do Open Finance trocadas", "Chave da IA trocada", "Senha trocada", "Backup do banco baixado", "Aparelho pareado: Android", "Código de pareamento errado",
+		"Saiu", "Entrou pela rede", "Senha errada", "Acesso pelo celular ligado", "192.168.0.50", "neste computador",
+	} {
+		if !strings.Contains(log, want) {
+			t.Errorf("registro sem %q", want)
+		}
+	}
+	if strings.Index(log, "Senha trocada") > strings.Index(log, "Senha errada") {
+		t.Error("o mais recente vem primeiro")
+	}
+	events, _ := a.st.AccessLog(context.Background(), 100)
+	for _, e := range events {
+		if strings.Contains(e.Event, "senha-forte-1") || strings.Contains(e.Event, "errada-123") || strings.Contains(e.Event, "outra-senha-9") ||
+			strings.Contains(e.Event, "chave-nova-77") || strings.Contains(e.Event, "segredo-pluggy-88") {
+			t.Errorf("senha no registro: %+v", e)
+		}
+	}
+}

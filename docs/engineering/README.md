@@ -27,6 +27,7 @@ de testes, novo design system, SDK bancário ou agente permanente.
 | Testes e limites | [testing-strategy.md](testing-strategy.md) |
 | Critérios visuais | [design-quality.md](design-quality.md) |
 | Open Finance e custos | [OPEN-FINANCE.md](../OPEN-FINANCE.md) |
+| Segurança e privacidade | [SEGURANCA.md](../SEGURANCA.md) e [LIMITACAO-DE-TAXAS.md](../LIMITACAO-DE-TAXAS.md) |
 | Memória entre sessões | ai-memory existente; não duplicar suas páginas duráveis |
 
 ## Instalação reproduzível

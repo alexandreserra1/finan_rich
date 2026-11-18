@@ -1,0 +1,55 @@
+name: CodeQL
+# Análise estática de segurança (o "SSDLC" de docs/SEGURANCA.md): procura no código Go,
+# no JavaScript das telas e nos próprios workflows padrões de falha conhecidos (injeção,
+# XSS, caminho de arquivo vindo de fora, segredo em log). Os avisos ficam na aba Security
+# do GitHub; um aviso novo de gravidade alta num PR marca a verificação como falha.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 6 * * 1" # toda segunda: regras novas do CodeQL também olham o código parado
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30 # normal: 5 a 8 min no Go
+    permissions:
+      contents: read
+      security-events: write # só para enviar o resultado à aba Security
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [go, javascript-typescript, actions]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        if: matrix.language == 'go'
+        with:
+          go-version-file: go.mod
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.language == 'go' && 'manual' || 'none' }}
+          # Bibliotecas de terceiros copiadas e telas geradas ficam de fora (já são
+          # conferidas pelo npm audit e pelo código de onde saem).
+          config: |
+            paths-ignore:
+              - internal/web/static/vendor
+              - mobile/www
+              - site/www
+              - "**/node_modules"
+              - "**/*.min.js"
+      - name: Compila o Go (o finance.wasm precisa existir antes, por causa do go:embed)
+        if: matrix.language == 'go'
+        run: |
+          go generate ./internal/web
+          go build ./...
+          GOOS=js GOARCH=wasm go build -o /dev/null ./cmd/finanwasm
+          GOOS=js GOARCH=wasm go build -o /dev/null ./cmd/finanadvisor
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:${{ matrix.language }}

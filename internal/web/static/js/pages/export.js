@@ -53,7 +53,7 @@ export function render({ month, ledger }) {
         <button type="button" data-action="backup" class="wide-btn">${ICON.up}Baixar backup (.json)</button>
         <label class="button secondary file-button wide-btn">${ICON.down}Restaurar backup… <input type="file" name="restore" accept=".json,application/json" class="visually-hidden"></label>
         <p class="faint tiny">Restaurar traz de volta tudo o que estava no backup (inclusive o que foi apagado depois) e mantém o que você criou depois dele. Os outros aparelhos recebem na próxima sincronização.</p>
-        ${isApp ? "" : html`<p class="faint tiny">Backup completo do computador, com as configurações da IA e a conversa com o consultor: <a href="/configuracoes/backup.db">baixar o banco (finan.db)</a>.</p>`}
+        ${isApp ? "" : html`<p class="faint tiny">Backup completo do computador, com as configurações da IA e a conversa com o consultor (sem a chave da IA nem as credenciais do Open Finance): <a href="/configuracoes/backup.db">baixar o banco (finan.db)</a>.</p>`}
       </section>
     </section>`;
 }

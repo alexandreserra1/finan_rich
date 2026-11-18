@@ -204,6 +204,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	}
 	ok, err := auth.CheckPassword(r.FormValue("senha"), hash)
 	if err != nil || !ok {
+		s.logAccess(r, "Senha errada")
 		fail("Senha incorreta.")
 		return
 	}
@@ -212,6 +213,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		serverError(w, err)
 		return
 	}
+	s.logAccess(r, "Entrou pela rede")
 	http.Redirect(w, r, back, http.StatusSeeOther)
 }
 
@@ -235,6 +237,7 @@ func (s *Server) startSession(ctx context.Context, w http.ResponseWriter, r *htt
 func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 	if c, err := r.Cookie(sessionCookie); err == nil {
 		s.store.DeleteSession(r.Context(), auth.HashToken(c.Value))
+		s.logAccess(r, "Saiu")
 	}
 	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: "", Path: "/", MaxAge: -1})
 	http.Redirect(w, r, "/entrar", http.StatusSeeOther)
@@ -286,6 +289,7 @@ func (s *Server) saveAccess(w http.ResponseWriter, r *http.Request) {
 		redirect(w, r, "/configuracoes", "", err)
 		return
 	}
+	s.logAccess(r, map[string]string{"ligar": "Acesso pelo celular ligado", "senha": "Senha trocada", "desligar": "Acesso pelo celular desligado"}[action])
 	// Se quem trocou a senha está no celular, mantém essa pessoa conectada.
 	if !isLoopback(r) && action == "senha" {
 		s.startSession(ctx, w, r)

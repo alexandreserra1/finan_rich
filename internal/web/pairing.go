@@ -181,6 +181,7 @@ func (s *Server) apiPair(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.pairing.consume(req.Code, time.Now()) {
+		s.logAccess(r, "Código de pareamento errado")
 		writeJSONError(w, http.StatusForbidden, "código errado ou vencido; gere outro no computador (Ajustes → App do celular)")
 		return
 	}
@@ -200,6 +201,7 @@ func (s *Server) apiPair(w http.ResponseWriter, r *http.Request) {
 		internalError(w, err)
 		return
 	}
+	s.logAccess(r, "Aparelho pareado: "+name)
 	writeJSON(w, http.StatusOK, pairResponse{Token: token, Device: name})
 }
 
@@ -225,6 +227,9 @@ func (s *Server) removeDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err = s.store.DeleteDevice(r.Context(), id)
+	if err == nil {
+		s.logAccess(r, "Aparelho desconectado")
+	}
 	redirect(w, r, "/configuracoes#app", "Aparelho desconectado. Para usar o app nele de novo, pareie outra vez.", err)
 }
 

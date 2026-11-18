@@ -150,6 +150,16 @@
       <button type="submit">Ligar acesso pelo celular</button>
     </form>
   {{end}}
+  {{with .AccessLog}}
+  <details class="access-log">
+    <summary>Registro de acesso</summary>
+    <p class="small muted">As entradas pela rede, senhas erradas, pareamentos e mudanças de acesso mais recentes. Se aparecer algo que não foi você, troque a senha: isso desconecta todos os aparelhos.</p>
+    <ul class="small">
+      {{range .}}<li><time datetime="{{.At.Format "2006-01-02T15:04:05Z07:00"}}">{{.At.Local.Format "02/01 15:04"}}</time> · {{.Event}} · <span class="muted">{{if .IP}}{{.IP}}{{else}}neste computador{{end}}</span></li>
+      {{end}}
+    </ul>
+  </details>
+  {{end}}
 </section>
 
 <section class="panel" id="app">
@@ -226,7 +236,7 @@
   <div class="panel-head"><div><h2>Privacidade e dados</h2><span class="muted small">Tudo num único arquivo neste computador, o <code>finan.db</code> (o caminho aparece na janela da Rich ao abrir).</span></div></div>
   <div class="data-cards">
     <a class="link-card" href="/exportar"><span><span class="lc-text"><strong>Exportar e backup</strong><span class="faint small">Excel, CSV, relatório em PDF e backup (.json)</span></span></span><span aria-hidden="true">›</span></a>
-    <a class="link-card" href="/configuracoes/backup.db"><span><span class="lc-text"><strong>Banco completo (.db)</strong><span class="faint small">Inclui a chave da IA: guarde em lugar seguro</span></span></span><span aria-hidden="true">›</span></a>
+    <a class="link-card" href="/configuracoes/backup.db"><span><span class="lc-text"><strong>Banco completo (.db)</strong><span class="faint small">Sem a chave da IA nem as credenciais do Open Finance: depois de restaurar, digite de novo</span></span></span><span aria-hidden="true">›</span></a>
   </div>
   <p class="small muted">O banco completo inclui também a configuração da IA (com a chave), as credenciais do Open Finance e a conversa com o consultor: guarde em lugar seguro. Para restaurá-lo, feche a Rich e troque o arquivo <code>finan.db</code> da pasta de dados por ele.</p>
 </section>

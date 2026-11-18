@@ -55,6 +55,9 @@ func (s *Server) saveOpenFinance(w http.ResponseWriter, r *http.Request) {
 		values = map[string]string{"client_id": "", "client_secret": "", "items": ""}
 	}
 	err := s.store.SaveSettings(ctx, pluggyPrefix, values)
+	if _, changed := values["client_secret"]; err == nil && changed {
+		s.logAccess(r, map[bool]string{true: "Open Finance apagado", false: "Credenciais do Open Finance trocadas"}[r.FormValue("acao") == "apagar"])
+	}
 	redirect(w, r, "/configuracoes#open-finance", "Open Finance salvo.", err)
 }
 
