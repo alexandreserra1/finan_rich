@@ -151,7 +151,8 @@ Estado detalhado em [AUDITORIA-2026-11-03.md](AUDITORIA-2026-11-03.md).
 - [x] Criar a conferência diária e manual da IA publicada. Teste local real retornou "ok";
   o workflow rejeita HTTP 200 sem resposta e respostas prontas do app.
 - [x] Documentar a regra do Firewall da Vercel, cobrindo os dois caminhos da IA.
-- [ ] Aplicar a regra no painel da Vercel e conferir o bloqueio.
+- [x] Aplicar a regra no painel da Vercel e conferir o bloqueio: ativa desde 05/11/2026 (criada
+  pela CLI, `IA-GRATIS.md`); conferida de novo em 19/11/2026 (429 da Vercel depois de 11 pedidos).
 - [x] Confirmar a execução do workflow de IA no GitHub: execução `41747839412` aprovada.
 - [ ] Conferir as notificações da conta GitHub.
 - [x] Resolver a queda nativa do WebKit: Playwright 1.57.0, revisão 2227. Nove suítes

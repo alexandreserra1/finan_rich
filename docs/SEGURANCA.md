@@ -130,8 +130,10 @@ aparelho. Testes e capturas usam dados fictícios.
 - **CSRF.** `Origin`/`Sec-Fetch-Site` e cookie `SameSite=Lax`. O app usa `Bearer`, que o
   navegador nunca manda sozinho.
 - **DDoS e WAF.** A borda da Vercel recebe o tráfego, e o Go tem limites por IP e por aparelho
-  ([LIMITACAO-DE-TAXAS.md](LIMITACAO-DE-TAXAS.md)). A regra do Firewall da Vercel é configuração
-  do dono no painel.
+  ([LIMITACAO-DE-TAXAS.md](LIMITACAO-DE-TAXAS.md)). A regra de limite por IP do Firewall da
+  Vercel está ativa desde 05/11 (criada pela CLI; [IA-GRATIS.md](IA-GRATIS.md)). Conferida em
+  19/11: depois de 11 pedidos seguidos fora do formato do app, o resto voltou 429 da própria
+  Vercel (`x-vercel-mitigated: deny`), sem chegar ao intermediário.
 - **Menor privilégio.** Os workflows começam com `contents: read`. Ganham escrita só o release
   (`contents: write`) e o CodeQL (`security-events: write`, para enviar o resultado). O token
   do celular vale só para a API e o Google só para a pasta do app.
@@ -181,7 +183,28 @@ autorização), e o backup do Android ficou "só se for cifrado".
 3. **Verificação em duas etapas nas contas do dono** (GitHub, Vercel, Google Cloud, Cloudflare,
    Groq). Quem entrar numa delas troca os segredos ou o código publicado. Não dá para conferir
    daqui.
-4. **Regra de limite por IP no Firewall da Vercel**, pendente desde a auditoria de 03/11.
+
+A regra do Firewall da Vercel, que aparecia aqui como pendente, está ativa desde 05/11 e foi
+conferida em 19/11 (veja "Aplicação e infraestrutura").
+
+## Achados do CodeQL na main (19/11/2026)
+
+Nos PRs, o CodeQL só mostra o que o próprio PR introduz; na main ficaram 7 alertas abertos.
+
+- **Redirecionamento aberto no login (real, já existia antes da verificação em duas etapas).**
+  O `safeReturn` recusava `//site` e `/\site`, mas aceitava `/%09/site`: o navegador apaga tab
+  e quebra de linha da URL, e `/\t/site` vira `//site`. Assim, um link de login preparado podia
+  levar a pessoa para outro site depois de digitar a senha. Agora qualquer caractere de
+  controle ou barra invertida cai no `/` (`TestSafeReturn`, inclusive pelo login de verdade).
+- **Cookies de saída sem `HttpOnly`, `SameSite` e `Secure`**: só os que *apagam* a sessão e o
+  login pela metade. Risco baixo; agora saem com as mesmas proteções de quando foram criados.
+- **Dois em código de teste** (um cofre falso no `localStorage` do e2e e um script montado num
+  teste do gate): os testes saíram da análise (`paths-ignore`), porque não vão para o app.
+
+Os alertas do Dependabot (dependências com falha conhecida) estão **desligados** no
+repositório. O `govulncheck` e o `npm audit` do CI cobrem as dependências a cada PR; ligar os
+alertas (Settings → Code security, grátis) também avisa quando sai uma falha nova numa
+dependência que já está na main.
 
 ## O que não se aplica
 

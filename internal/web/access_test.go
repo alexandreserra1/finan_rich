@@ -428,3 +428,42 @@ func TestAccessLogInSettings(t *testing.T) {
 		}
 	}
 }
+
+// Depois do login, só se volta para um caminho deste site. O navegador apaga tab e quebra
+// de linha da URL ("/\t/site" vira "//site", outro site) e trata "\" como "/".
+func TestSafeReturn(t *testing.T) {
+	for in, want := range map[string]string{
+		"/dividas":                 "/dividas",
+		"/lancamentos?mes=2026-10": "/lancamentos?mes=2026-10",
+		"/chat#fim":                "/chat#fim",
+		"":                         "/",
+		"dividas":                  "/",
+		"//site.mau":               "/",
+		"/\\site.mau":              "/",
+		"\\\\site.mau":             "/",
+		"/\t/site.mau":             "/",
+		"/\n/site.mau":             "/",
+		"/\r\n//site.mau":          "/",
+		"/x\\..\\..\\site.mau":     "/",
+		"https://site.mau":         "/",
+		"/\x7f/site.mau":           "/",
+	} {
+		if got := safeReturn(in); got != want {
+			t.Errorf("safeReturn(%q) = %q, quer %q", in, got, want)
+		}
+	}
+	// O mesmo vale no login de verdade, com o tab escrito na URL (%09).
+	a := newAccessApp(t, "")
+	a.enableLAN("senha-forte-1")
+	rec := a.do("POST", "/entrar", phone, url.Values{"senha": {"senha-forte-1"}, "volta": {"/\t/site.mau"}})
+	if loc := rec.Header().Get("Location"); loc != "/" {
+		t.Errorf("login com volta maliciosa foi para %q", loc)
+	}
+	// Sair apaga o cookie com as mesmas proteções de quando ele foi criado.
+	out := a.do("POST", "/sair", phone, url.Values{}, sessionFrom(rec))
+	for _, c := range out.Result().Cookies() {
+		if c.Name == sessionCookie && (!c.HttpOnly || c.SameSite != http.SameSiteLaxMode) {
+			t.Errorf("cookie de saída sem HttpOnly ou SameSite: %+v", c)
+		}
+	}
+}

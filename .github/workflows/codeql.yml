@@ -35,12 +35,16 @@ jobs:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.language == 'go' && 'manual' || 'none' }}
           # Bibliotecas de terceiros copiadas e telas geradas ficam de fora (já são
-          # conferidas pelo npm audit e pelo código de onde saem).
+          # conferidas pelo npm audit e pelo código de onde saem). Os testes também: não vão
+          # para o app nem para o site, e simulam de propósito o que seria falha em produção
+          # (um cofre falso no localStorage, um script montado para testar o tempo esgotado).
           config: |
             paths-ignore:
               - internal/web/static/vendor
               - mobile/www
               - site/www
+              - e2e
+              - "**/*.test.mjs"
               - "**/node_modules"
               - "**/*.min.js"
       - name: Compila o Go (o finance.wasm precisa existir antes, por causa do go:embed)

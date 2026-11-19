@@ -193,9 +193,15 @@ func clientKey(r *http.Request) string {
 	return host
 }
 
-// safeReturn evita redirecionar para outro site depois do login.
+// safeReturn evita redirecionar para outro site depois do login: só um caminho deste site.
+// Caractere de controle e barra invertida não passam, em lugar nenhum: o navegador apaga
+// tab e quebra de linha da URL ("/\t/site" viraria "//site") e trata "\\" como "/".
 func safeReturn(path string) string {
-	if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") || strings.HasPrefix(path, "/\\") {
+	u, err := url.Parse(path)
+	// "/\\" já cai na regra da barra invertida; fica explícito porque é o padrão que o CodeQL
+	// reconhece como checagem completa de redirecionamento (go/bad-redirect-check).
+	if err != nil || u.Scheme != "" || u.Host != "" || !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") ||
+		strings.HasPrefix(path, "/\\") || strings.ContainsFunc(path, func(r rune) bool { return r < 0x20 || r == 0x7f || r == '\\' }) {
 		return "/"
 	}
 	return path
@@ -266,7 +272,8 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 		s.store.DeleteSession(r.Context(), auth.HashToken(c.Value))
 		s.logAccess(r, "Saiu")
 	}
-	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: "", Path: "/", MaxAge: -1})
+	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: "", Path: "/", MaxAge: -1,
+		HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: r.TLS != nil})
 	http.Redirect(w, r, "/entrar", http.StatusSeeOther)
 }
 
