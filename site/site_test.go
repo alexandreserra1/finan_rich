@@ -58,15 +58,17 @@ func TestDownload(t *testing.T) {
 		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "https://rich.test"+path, nil))
 		return rec
 	}
-	if rec := get("/baixar/android"); rec.Code != http.StatusServiceUnavailable {
-		t.Errorf("sem o bucket configurado = %d, quer 503 (não um link quebrado)", rec.Code)
-	}
-	apkBase = "https://finan-rich-app.pages.dev"
-	t.Cleanup(func() { apkBase = "" })
+	// O endereço que a primeira publicação (v1.11.0) mostrou: outro mandaria baixar o APK de outra pessoa.
 	for path, want := range map[string]string{"/baixar/android": "https://finan-rich-app.pages.dev/android/finan_rich.apk", "/baixar/versao": "https://finan-rich-app.pages.dev/android/latest.json"} {
 		if rec := get(path); rec.Code != http.StatusFound || rec.Header().Get("Location") != want {
 			t.Errorf("%s = %d %q, quer %q", path, rec.Code, rec.Header().Get("Location"), want)
 		}
+	}
+	saved := apkBase
+	apkBase = ""
+	t.Cleanup(func() { apkBase = saved })
+	if rec := get("/baixar/android"); rec.Code != http.StatusServiceUnavailable {
+		t.Errorf("sem o endereço do Pages = %d, quer 503 (não um link quebrado)", rec.Code)
 	}
 	if rec := get("/baixar/qr.png"); rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "image/png" || !strings.HasPrefix(rec.Body.String(), "\x89PNG") {
 		t.Errorf("QR code = %d %q", rec.Code, rec.Header().Get("Content-Type"))

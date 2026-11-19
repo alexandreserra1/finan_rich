@@ -28,3 +28,17 @@ máquina. Rodando sozinha, a mesma versão passou 3 de 3. Antes de concluir que 
 quebrou: espere a suíte anterior terminar (a notificação chega depois), não rode capturas
 junto e repita a suíte sozinha. Uma falha que muda de passo a cada rodada é sinal de
 interferência, não de defeito.
+
+## ENG-L005 — O `check affected` não vê o que já foi commitado
+
+O `check affected` escolhe os testes pelos arquivos ainda não commitados: o índice, o
+arquivo de trabalho e os arquivos novos. Em 19/11/2026, com o commit feito antes do gate,
+ele só viu os atalhos de `node_modules` criados nas pastas de trabalho:
+- num PR, rodou só as checagens de ferramentas;
+- em outro, o atalho de `mobile/node_modules` puxou o `make e2e`, mas não o `make test`.
+
+O CI cobriu tudo (o job `test` roda `go test -race ./...`), mas o relatório dizia que o gate
+local tinha rodado completo. Para evitar:
+- rode o gate antes do commit, com a mudança no índice ou no arquivo de trabalho;
+- depois do commit, chame o gate pelo nome (`check backend`, `check frontend`);
+- em qualquer caso, confira nas linhas `Executando:` o que de fato rodou.
