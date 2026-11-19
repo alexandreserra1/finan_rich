@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/domain"
+	"github.com/alexandreserra1/finan_rich/internal/finance"
 	"github.com/alexandreserra1/finan_rich/internal/llm"
 )
 
@@ -311,5 +312,52 @@ func TestSearchWholeYear(t *testing.T) {
 	tools := NewTools(toolsLedger(), time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC), nil)
 	if out := tools.Run(call("buscar_lancamentos", `{"texto":"uber","de":"2026","ate":"2026"}`)); !strings.Contains(out, "Uber") {
 		t.Errorf("período só com o ano: %q", out)
+	}
+}
+
+// A IA às vezes diz "deixei pronto" sem chamar a ferramenta: nenhum cartão aparece.
+// O app pede de novo uma vez, com um aviso; a resposta final é a da segunda tentativa.
+func TestFalseClaimRetried(t *testing.T) {
+	call := llm.ToolCall{ID: "c1", Name: "criar_conta_fixa", Args: json.RawMessage(`{"descricao":"Salário","valor":"4500","tipo":"entrada","dia":5,"categoria":"Salário"}`)}
+	fake := &scriptedLLM{replies: []llm.Reply{
+		{Text: "Perfeito! Deixei pronta a conta fixa do salário para você confirmar."},
+		{ToolCalls: []llm.ToolCall{call}},
+		{Text: "Pronto: o cartão do salário está aí para você confirmar."},
+	}}
+	var props []Proposal
+	tools := NewTools(toolsLedger(), teamDay, func(p Proposal) { props = append(props, p) })
+	start := []llm.Message{{Role: llm.RoleUser, Content: finance.StartQuestion}, {Role: llm.RoleAssistant, Content: "Quanto você recebe por mês?"}}
+	got, err := Ask(context.Background(), fake, "", start, "recebo 4.500 no dia 5", "", tools, func(string) {})
+	if err != nil || len(props) != 1 || strings.Contains(got, "Deixei pronta") || !strings.Contains(got, "cartão do salário") {
+		t.Fatalf("resposta %q, %d cartões, %v", got, len(props), err)
+	}
+	if nudge := fake.asked[1].Messages[len(fake.asked[1].Messages)-1].Content; !strings.Contains(nudge, "nenhum cartão foi criado") {
+		t.Errorf("o segundo pedido não avisou a IA: %q", nudge)
+	}
+	// Errou de novo: a resposta não engana a pessoa.
+	fake = &scriptedLLM{replies: []llm.Reply{{Text: "Deixei pronto o cartão."}, {Text: "Deixei pronto, é só confirmar."}}}
+	got, _ = Ask(context.Background(), fake, "", nil, "recebo 4.500 no dia 5", "", NewTools(toolsLedger(), teamDay, func(Proposal) {}), func(string) {})
+	if !strings.Contains(got, "Não consegui preparar o cartão") || len(fake.asked) != 2 {
+		t.Errorf("segunda afirmação falsa: %q (%d pedidos)", got, len(fake.asked))
+	}
+	// Sem ferramentas (a IA não pode criar nada), a frase não muda nada.
+	fake = &scriptedLLM{replies: []llm.Reply{{Text: "Deixei pronto o resumo abaixo."}}}
+	if got, _ := Ask(context.Background(), fake, "", nil, "oi", "", nil, func(string) {}); got != "Deixei pronto o resumo abaixo." || len(fake.asked) != 1 {
+		t.Errorf("sem ferramentas: %q (%d pedidos)", got, len(fake.asked))
+	}
+}
+
+// O modelo às vezes manda os argumentos da ferramenta em JSON quebrado e o provedor
+// recusa no meio da resposta: tenta de novo uma vez.
+func TestToolCallGlitchRetried(t *testing.T) {
+	glitch := &llm.APIError{Status: 500, Message: "Failed to parse tool call arguments as JSON"}
+	fake := &scriptedLLM{errs: []error{glitch}, replies: []llm.Reply{{}, {Text: "Qual é a sua renda?"}}}
+	got, err := Ask(context.Background(), fake, "", nil, "me ajuda", "", NewTools(toolsLedger(), teamDay, nil), func(string) {})
+	if err != nil || got != "Qual é a sua renda?" || len(fake.asked) != 2 {
+		t.Fatalf("resposta %q, %v, %d pedidos", got, err, len(fake.asked))
+	}
+	fake = &scriptedLLM{errs: []error{glitch, glitch}, replies: []llm.Reply{{}, {}}}
+	if _, err := Ask(context.Background(), fake, "", nil, "me ajuda", "", NewTools(toolsLedger(), teamDay, nil), func(string) {}); err == nil {
+		t.Error("duas falhas seguidas deveriam virar erro (e a resposta sem IA)")
 	}
 }

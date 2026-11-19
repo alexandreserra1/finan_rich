@@ -84,3 +84,63 @@ func TestOnboardingMode(t *testing.T) {
 		t.Errorf("sem IA:\n%s", got)
 	}
 }
+
+// Sem categoria (ou com uma que não existe), o app escolhe pela descrição, com as mesmas
+// regras da importação: a IA não precisa perguntar a categoria à pessoa.
+func TestRecurringCategoryFromDescription(t *testing.T) {
+	var got []Proposal
+	tools := NewTools(domain.Ledger{Categories: domain.DefaultCategories(1)}, teamDay, func(p Proposal) { got = append(got, p) })
+	for args, want := range map[string]string{
+		`{"descricao":"Internet","valor":"100","dia":15}`:                        "padrao-contas-casa",
+		`{"descricao":"Aluguel","valor":"1500","dia":10,"categoria":"Conforto"}`: "padrao-moradia",
+		`{"descricao":"Salário","valor":"4500","tipo":"entrada","dia":5}`:        "padrao-salario",
+	} {
+		got = nil
+		if out := tools.Run(call("criar_conta_fixa", args)); len(got) != 1 {
+			t.Errorf("%s: %s", args, out)
+			continue
+		}
+		var r domain.Recurring
+		json.Unmarshal(got[0].Record, &r)
+		if r.CategoryID != want {
+			t.Errorf("%s: categoria %q, quer %q", args, r.CategoryID, want)
+		}
+	}
+	// Sem pista nenhuma, continua pedindo uma categoria que existe (a lista vai junto).
+	if out := tools.Run(call("criar_conta_fixa", `{"descricao":"Coisa rara","valor":"10","dia":1}`)); !strings.Contains(out, "Mercado") {
+		t.Errorf("sem pista: %s", out)
+	}
+}
+
+// No começo do zero, quando a pessoa manda valores, o primeiro passo obriga a IA a chamar
+// a ferramenta (o modelo grátis dizia "conta criada" sem criar cartão nenhum). O passo
+// seguinte, já com o resultado, volta ao normal; sem números na mensagem, não obriga.
+func TestOnboardingRequiresToolWithValues(t *testing.T) {
+	start := []llm.Message{{Role: llm.RoleUser, Content: finance.StartQuestion}, {Role: llm.RoleAssistant, Content: "Quanto você recebe?"}}
+	call := llm.ToolCall{ID: "c1", Name: "criar_conta_fixa", Args: json.RawMessage(`{"descricao":"Salário","valor":"4500","tipo":"entrada","dia":5}`)}
+	fake := &scriptedLLM{replies: []llm.Reply{{ToolCalls: []llm.ToolCall{call}}, {Text: "Pronto, é só confirmar."}}}
+	tools := NewTools(domain.Ledger{Categories: domain.DefaultCategories(1)}, teamDay, func(Proposal) {})
+	if _, err := Ask(context.Background(), fake, "", start, "Recebo 4.500 no dia 5", "", tools, func(string) {}); err != nil {
+		t.Fatal(err)
+	}
+	if fake.asked[0].ToolChoice != "required" || fake.asked[1].ToolChoice != "" {
+		t.Errorf("tool_choice = %q, depois %q", fake.asked[0].ToolChoice, fake.asked[1].ToolChoice)
+	}
+	// Dois itens na mesma mensagem: o resultado lembra a IA de criar o cartão do que falta.
+	if result := fake.asked[1].Messages[len(fake.asked[1].Messages)-1].Content; !strings.Contains(result, "outro item com valor") {
+		t.Errorf("sem o lembrete dos outros itens: %q", result)
+	}
+	for _, q := range []string{"Não tenho dívidas", "e agora?"} {
+		fake = &scriptedLLM{replies: []llm.Reply{{Text: "Ok."}}}
+		Ask(context.Background(), fake, "", start, q, "", NewTools(domain.Ledger{}, teamDay, nil), func(string) {})
+		if fake.asked[0].ToolChoice != "" {
+			t.Errorf("%q sem números obrigou a ferramenta", q)
+		}
+	}
+	// Fora do começo do zero, nunca obriga.
+	fake = &scriptedLLM{replies: []llm.Reply{{Text: "Ok."}}}
+	Ask(context.Background(), fake, "", nil, "gastei 50 no mercado?", "", NewTools(domain.Ledger{}, teamDay, nil), func(string) {})
+	if fake.asked[0].ToolChoice != "" {
+		t.Error("conversa normal obrigou a ferramenta")
+	}
+}

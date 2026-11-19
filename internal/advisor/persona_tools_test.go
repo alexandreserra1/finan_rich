@@ -183,3 +183,41 @@ func TestPrefetch(t *testing.T) {
 		t.Errorf("\"loja\" sozinha não é um lugar (com apelidos pegaria todos): %q", got)
 	}
 }
+
+// Gasto por categoria e por mês, pronto antes da IA e na resposta sem IA. A categoria vale
+// pelo nome ou por uma palavra marcante dele; o lugar mais longo ("mercado extra") vence.
+func TestSpendingAnswers(t *testing.T) {
+	l := teamLedger()
+	l.Categories = append(l.Categories, domain.Category{Meta: domain.Meta{ID: "casa", UpdatedAt: 1}, Name: "Contas da casa (luz, água, internet)", Bucket: domain.BucketNecessidades})
+	l.Transactions = append(l.Transactions,
+		domain.Transaction{Meta: domain.Meta{ID: "c1", UpdatedAt: 1}, Kind: domain.KindSaida, Description: "Enel", AmountCents: 18000, CategoryID: "casa", Date: "2026-10-08"},
+		domain.Transaction{Meta: domain.Meta{ID: "c2", UpdatedAt: 1}, Kind: domain.KindSaida, Description: "Vivo Fibra", AmountCents: 10000, CategoryID: "casa", Date: "2026-09-08"},
+	)
+	tools := NewTools(l, teamDay, nil)
+	for q, want := range map[string]string{
+		"quanto gastei com transporte?":                "Gastos com Transporte: R$ 20,00 em outubro de 2026 (1 lançamento). Em setembro de 2026: R$ 25,00.",
+		"quanto gastei com restaurantes em setembro?":  "Gastos com Restaurantes e delivery: R$ 30,00 em setembro de 2026 (1 lançamento). Em agosto de 2026: R$ 0,00.",
+		"quanto gastei de água e luz mês passado?":     "Gastos com Contas da casa (luz, água, internet): R$ 100,00 em setembro de 2026 (1 lançamento).",
+		"quanto gastei com uber mes passado?":          "Gastos com Uber: R$ 25,00 em setembro de 2026 (1 lançamento). Desde o começo: R$ 45,00 (2 lançamentos).",
+		"quanto gastei com delivery em março de 2026?": "Gastos com Restaurantes e delivery: R$ 52,30 em março de 2026 (1 lançamento).",
+		"quanto gastei com uber em dezembro?":          "Gastos com Uber: R$ 0,00 em dezembro de 2025 (0 lançamentos).",
+	} {
+		if got := tools.placeSpending(fold(q)); !strings.Contains(got, want) {
+			t.Errorf("%q:\n  veio %q\n  quer %q", q, got, want)
+		}
+	}
+	for _, q := range []string{"quanto gastei?", "como reduzir meus gastos?", "quanto gastei com padaria?"} {
+		if got := tools.placeSpending(fold(q)); got != "" {
+			t.Errorf("%q não cita lugar nem categoria: %q", q, got)
+		}
+	}
+	// A Lia também recebe a conta pronta, e a resposta sem IA dela responde a pergunta.
+	if got := prefetch("lia", tools, "quanto gastei com transporte?"); !strings.HasPrefix(got, "Gastos com Transporte") {
+		t.Errorf("lia sem o total:\n%s", got)
+	}
+	q := offlineQ("lia", "quanto gastei com transporte?")
+	q.Ledger = l
+	if got := Offline(q); !strings.Contains(got, "Gastos com Transporte: R$ 20,00") {
+		t.Errorf("lia sem IA:\n%s", got)
+	}
+}

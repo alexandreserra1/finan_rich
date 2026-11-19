@@ -61,6 +61,9 @@ type Request struct {
 	System   string
 	Messages []Message // alternando user/assistant (e tool), terminando em user ou tool
 	Tools    []Tool    // opcional
+	// ToolChoice "required" obriga o modelo a chamar uma ferramenta (só vale com Tools);
+	// vazio, ele escolhe. O Ollama nativo não tem o campo e ignora.
+	ToolChoice string
 }
 
 // Reply é a resposta do modelo: texto, pedidos de ferramenta, ou os dois.

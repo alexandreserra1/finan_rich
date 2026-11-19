@@ -12,6 +12,7 @@ import (
 
 	"github.com/alexandreserra1/finan_rich/internal/domain"
 	"github.com/alexandreserra1/finan_rich/internal/finance"
+	"github.com/alexandreserra1/finan_rich/internal/importer"
 	"github.com/alexandreserra1/finan_rich/internal/llm"
 	"github.com/alexandreserra1/finan_rich/internal/money"
 )
@@ -130,8 +131,8 @@ func baseTools() []llm.Tool {
 				"valor":{"type":"string","description":"valor por mês em reais, ex.: 1.500"},
 				"tipo":{"type":"string","enum":["saida","entrada"],"description":"entrada para renda; saida (padrão) para conta"},
 				"dia":{"type":"integer","description":"dia do mês em que entra ou vence (1 a 31)"},
-				"categoria":{"type":"string","description":"nome de uma categoria existente"}},
-				"required":["descricao","valor","dia","categoria"]}`),
+				"categoria":{"type":"string","description":"opcional: o app escolhe pela descrição"}},
+				"required":["descricao","valor","dia"]}`),
 		tool("registrar_aporte", "Prepara um aporte (dinheiro guardado) numa meta existente, para o usuário confirmar.",
 			`{"type":"object","properties":{
 				"meta":{"type":"string","description":"nome da meta"},
@@ -321,6 +322,19 @@ func (t *Tools) category(name, kind string) (string, error) {
 	return "", fmt.Errorf("categoria %q não existe para %s. Use uma destas: %s", name, kind, strings.Join(names, ", "))
 }
 
+// categoryFor: a categoria que a IA disse; se ela não disse ou disse uma que não existe,
+// a sugerida pela descrição (as regras da importação). Sem pista, o erro com a lista.
+func (t *Tools) categoryFor(name, desc, kind string) (string, error) {
+	id, err := t.category(name, kind)
+	if err == nil {
+		return id, nil
+	}
+	if guess := importer.SuggestCategory(t.ledger, desc, kind); guess != "" {
+		return guess, nil
+	}
+	return "", err
+}
+
 // proposal valida o registro pelas regras do domínio e monta a proposta.
 func proposal(action, typ string, record any, label string) (Proposal, error) {
 	raw, err := json.Marshal(record)
@@ -349,7 +363,7 @@ func (t *Tools) newTransaction(desc, value, kind, category, date string) (Propos
 	if date == "" {
 		date = t.today.Format(domain.DateLayout)
 	}
-	catID, err := t.category(category, kind)
+	catID, err := t.categoryFor(category, desc, kind)
 	if err != nil {
 		return Proposal{}, err
 	}
@@ -450,7 +464,7 @@ func (t *Tools) newRecurring(desc, value, kind, day, category string) (Proposal,
 		return Proposal{}, err
 	}
 	d, _ := strconv.Atoi(day)
-	catID, err := t.category(category, kind)
+	catID, err := t.categoryFor(category, desc, kind)
 	if err != nil {
 		return Proposal{}, err
 	}

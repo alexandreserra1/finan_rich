@@ -267,8 +267,20 @@ func TestOpenAITools(t *testing.T) {
 	// Gemini: a assinatura do pedido de ferramenta volta junto, senão ele recusa (400).
 	sig, _ := json.Marshal(asked["extra_content"])
 	if asked["id"] != "c1" || asked["function"].(map[string]any)["arguments"] != `{"texto":"ifood"}` || string(sig) != `{"google":{"thought_signature":"sig"}}` ||
-		msgs[3].(map[string]any)["tool_call_id"] != "c1" || body["tools"] == nil {
+		msgs[3].(map[string]any)["tool_call_id"] != "c1" || body["tools"] == nil || body["tool_choice"] != nil {
 		t.Errorf("corpo = %v", body)
+	}
+	// ToolChoice "required": o modelo tem de chamar uma ferramenta (sem ferramentas, não vai).
+	req := toolReq
+	req.ToolChoice = "required"
+	NewOpenAI(srv.URL, "", "m").Chat(context.Background(), req, func(string) {})
+	if body["tool_choice"] != "required" {
+		t.Errorf("tool_choice = %v", body["tool_choice"])
+	}
+	req.Tools = nil
+	NewOpenAI(srv.URL, "", "m").Chat(context.Background(), req, func(string) {})
+	if body["tool_choice"] != nil {
+		t.Errorf("tool_choice sem ferramentas = %v", body["tool_choice"])
 	}
 }
 

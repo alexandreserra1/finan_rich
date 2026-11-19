@@ -158,8 +158,9 @@ aparelho                                      servidor
    `cmd/finanadvisor`), com uma função JS que recebe os pedaços. No app, o `CapacitorHttp`
    entregaria a resposta inteira de uma vez; por isso `cloud-ai.js` manda só os pedidos ao
    endereço da IA pelo fetch do WebView (`CapacitorWebFetch`) e volta ao nativo se o
-   provedor não aceitar CORS. Pergunta de gasto num lugar ("quanto gastei com uber?") já vai
-   com o total pronto (`placeSpending`, também na resposta sem IA).
+   provedor não aceitar CORS. Pergunta de gasto num lugar ou numa categoria, no mês pedido
+   ("quanto gastei com uber?", "...com mercado em setembro?", "...mês passado?") já vai com o
+   total pronto (`placeSpending`, para o Otávio e a Lia, também na resposta sem IA).
 4. **"Treinamento" em finanças** (sem mexer nos pesos do modelo, o que os planos grátis não
    permitem): as instruções (`advisor.SystemPrompt`) pedem respostas personalizadas (números
    do usuário; pergunta direta em até 3 frases, sem plano; conselho com conclusão primeiro,
@@ -404,7 +405,7 @@ por 6 horas (`internal/web/rates.go`; falhou, tenta de novo em 10 minutos e espe
 
 | Arquivo | Função |
 |---|---|
-| `advisor.go` | System prompt, `BuildRequest` (histórico das últimas 12 mensagens, o resumo das mais antigas em `<conversa_anterior>`, feito sem IA, e a pergunta com o retrato e as taxas do dia) e `Ask`. Com o Otávio, "Me ajuda a começar do zero?" (`finance.StartQuestion`) liga o começo do zero até a 4ª resposta: as instruções pedem renda, contas fixas, dívidas e meta, uma por vez, e só as ferramentas de criar vão (`criar_conta_fixa` cria recorrências). |
+| `advisor.go` | System prompt, `BuildRequest` (histórico das últimas 12 mensagens, o resumo das mais antigas em `<conversa_anterior>`, feito sem IA, e a pergunta com o retrato e as taxas do dia) e `Ask`. Com o Otávio, "Me ajuda a começar do zero?" (`finance.StartQuestion`) liga o começo do zero até a 4ª resposta: as instruções pedem renda, contas fixas, dívidas e meta, uma por vez, e só as ferramentas de criar vão (`criar_conta_fixa` cria recorrências). Com números na mensagem, o 1º passo obriga a ferramenta (`tool_choice: "required"`) e o resultado lembra a IA dos outros itens: o modelo grátis dizia "conta criada" sem criar cartão. `Ask` também tenta de novo uma vez quando a IA diz "deixei pronto" sem ter chamado ferramenta (se repetir, a resposta diz que não conseguiu) e quando o provedor recusa por JSON quebrado na ferramenta. A categoria que a IA não diz, ou que não existe, sai das regras da importação (`importer.SuggestCategory`). |
 | `onboarding_test.go` | O começo do zero e a ferramenta `criar_conta_fixa`. |
 | `snapshot.go` | `BuildFacts` (calcula tudo com o `finance`) e `Snapshot` (texto com as contas prontas e os pontos de atenção). |
 | `personas.go` | O jeito de cada personagem do time aconselhar (a voz que vai nas instruções), as ferramentas de cada um e `SnapshotFor`: só as seções do resumo que o personagem usa (metade do tamanho; o Otávio recebe tudo). |

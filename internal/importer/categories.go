@@ -78,6 +78,14 @@ func (m *categoryMatcher) suggest(r Row, kind string) (string, string) {
 	return "", ""
 }
 
+// SuggestCategory sugere a categoria pela descrição, com as regras da importação (o
+// histórico da pessoa, depois as palavras-chave: "internet" → Contas da casa). Vazio se
+// não souber. O consultor usa quando a IA não diz a categoria.
+func SuggestCategory(l domain.Ledger, desc, kind string) string {
+	id, _ := newCategoryMatcher(l).suggest(Row{Description: desc}, kind)
+	return id
+}
+
 // best devolve a categoria mais usada, se ela tiver pelo menos min usos e
 // 70% das vezes (evita chutar quando o histórico está dividido).
 func best(counts map[string]int, min int) string {

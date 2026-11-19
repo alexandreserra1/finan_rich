@@ -125,6 +125,9 @@ func Offline(q Question) string {
 	case "tito":
 		return titoOffline(t, q)
 	case "lia":
+		if s := t.placeSpending(fold(q.Text)); s != "" {
+			return s
+		}
 		if f := fold(q.Text); strings.Contains(f, "posso gastar") || strings.Contains(f, "ainda cabe") {
 			return liaAllowance(q)
 		}
