@@ -3,6 +3,8 @@
 // regras em Go) das outras telas: salário recorrente, divisão do salário,
 // dívida e meta. O passo fica no endereço (?passo=2), então voltar funciona.
 import * as finance from "../finance.js";
+import * as lock from "../lock.js";
+import { isApp } from "../device.js";
 import { BUCKETS, SPENDING, currentMonth, html, today } from "../ui.js";
 
 // Preferência sincronizada: o guia terminou (ou foi pulado) em algum aparelho.
@@ -90,6 +92,7 @@ export function render({ ledger, params }) {
             <h2>Como você quer começar?</h2>
             <p>Importe um extrato, registre um movimento ou siga o guia opcional. Não precisa configurar tudo agora.</p>
           </div>
+          ${isApp ? html`<p class="lock-offer small" data-lock-offer><strong>Seus dados ficam neste aparelho.</strong> Proteja o app com a digital, o rosto ou uma senha: <a href="/configuracoes?bloquear=1">proteger agora</a>.</p>` : ""}
           <div class="first-use-actions">
             <a class="btn secondary" href="/importar">Importar e revisar um extrato</a>
             <a class="btn secondary" href="/lancamentos?novo=1">Registrar um movimento</a>
@@ -128,6 +131,10 @@ export function bind(root, ctx) {
   };
   root.querySelectorAll('[data-action="next"]').forEach((b) => b.addEventListener("click", next));
   root.querySelectorAll('[data-action="finish"]').forEach((b) => b.addEventListener("click", () => finish().catch((err) => ctx.error(err))));
+
+  // Com o bloqueio já ligado, o convite para proteger o app não aparece.
+  const offer = root.querySelector("[data-lock-offer]");
+  if (offer) lock.status().then((s) => { if (s.on) offer.remove(); }).catch(() => {});
 
   const form = root.querySelector('[data-form="welcome"]');
   if (!form) return; // estado vazio: só o "Começar agora" e o "Pular"

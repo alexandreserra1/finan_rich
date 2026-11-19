@@ -17,6 +17,7 @@ import (
 	"net/url"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/auth"
@@ -37,7 +38,10 @@ type Server struct {
 	port            string
 	envPasswordHash string // senha de FINAN_PASSWORD (modo servidor), já com hash
 	limiter         *auth.Limiter
-	rates           ratesCache // taxas do Banco Central para o consultor
+	mfa             mfaPending    // quem acertou a senha e falta o código de 6 dígitos
+	codeLimiter     *auth.Limiter // tentativas do código, somadas de todos os endereços (codeKey)
+	mfaMu           sync.Mutex    // um código conferido por vez (o mesmo código não passa duas vezes)
+	rates           ratesCache    // taxas do Banco Central para o consultor
 	onNetworkChange func()
 	onQuit          func()
 	updates         *updateChecker
@@ -87,6 +91,7 @@ func New(st *store.Store, opts Options) (*Server, error) {
 		pages:           map[string]*template.Template{},
 		port:            opts.Port,
 		limiter:         auth.NewLimiter(5, 10*time.Minute),
+		codeLimiter:     auth.NewLimiter(10, 10*time.Minute),
 		onNetworkChange: opts.OnNetworkChange,
 		onQuit:          opts.OnQuit,
 		updates:         newUpdateCheckerIf(opts.Version),
@@ -128,47 +133,69 @@ func New(st *store.Store, opts Options) (*Server, error) {
 	return s, nil
 }
 
-func (s *Server) Routes() http.Handler {
-	mux := http.NewServeMux()
-	mux.Handle("GET /static/", &staticFiles{})
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
-	mux.HandleFunc("GET /manifest.webmanifest", serveStatic("manifest.webmanifest", "application/manifest+json"))
-	mux.HandleFunc("GET /sw.js", s.serviceWorker)
-	mux.HandleFunc("GET /offline", serveStatic("offline.html", "text/html; charset=utf-8"))
+// route é uma rota com quem pode usá-la (a autorização, veja authorize em access.go).
+type route struct {
+	pattern string
+	who     access
+	handler http.Handler
+}
 
-	mux.HandleFunc("GET /entrar", s.loginPage)
-	mux.HandleFunc("POST /entrar", s.login)
-	mux.HandleFunc("POST /sair", s.logout)
+// routes é a tabela de rotas e de quem pode usar cada uma. Rota nova entra aqui, com o
+// nível dela; o TestRouteTable confere as regras (o que é público, o que o app usa).
+func (s *Server) routes() []route {
+	h := func(f http.HandlerFunc) http.Handler { return f }
+	rs := []route{
+		{"GET /static/", public, &staticFiles{}},
+		{"GET /healthz", public, h(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })},
+		{"GET /manifest.webmanifest", public, serveStatic("manifest.webmanifest", "application/manifest+json")},
+		{"GET /sw.js", public, h(s.serviceWorker)},
+		{"GET /offline", public, serveStatic("offline.html", "text/html; charset=utf-8")},
 
+		{"GET /entrar", public, h(s.loginPage)},
+		{"POST /entrar", public, h(s.login)},
+		{"GET /entrar/codigo", public, h(s.loginCodePage)},
+		{"POST /entrar/codigo", public, h(s.loginCode)},
+		{"POST /sair", owner, h(s.logout)},
+
+		{"GET /contas", owner, s.appShell("accounts")},
+		{"POST /api/sync", ownerOrDevice, h(s.apiSync)},
+		{"POST /api/categorizar", ownerOrDevice, h(s.apiCategorize)},
+		{"POST /api/openfinance", ownerOrDevice, h(s.apiOpenFinance)},
+		{"GET /api/chat", ownerOrDevice, h(s.apiChatHistory)},
+		{"POST /api/chat", ownerOrDevice, h(s.apiChatSend)},
+		{"POST /api/chat/limpar", ownerOrDevice, h(s.apiChatClear)},
+
+		// App do celular: pareamento por código (veja pairing.go).
+		{"GET /parear", public, h(s.pairPage)},
+		{"POST /api/parear", public, h(s.apiPair)},
+		{"POST /configuracoes/parear", owner, h(s.startPairing)},
+		{"POST /configuracoes/aparelhos/remover", owner, h(s.removeDevice)},
+
+		{"GET /configuracoes", owner, h(s.settings)},
+		{"POST /configuracoes", owner, h(s.saveSettings)},
+		{"POST /configuracoes/testar", owner, h(s.testAI)},
+		{"POST /configuracoes/baixar-modelo", owner, h(s.pullModel)},
+		{"POST /configuracoes/acesso", owner, h(s.saveAccess)},
+		{"POST /configuracoes/openfinance", owner, h(s.saveOpenFinance)},
+		{"POST /configuracoes/fechar", localOnly, h(s.quit)},
+		{"GET /configuracoes/backup.db", owner, h(s.backupDB)},
+	}
 	// Telas de dados: o servidor entrega só o "casco"; o aparelho monta a tela
 	// com os dados guardados nele (funciona offline) e sincroniza com /api/sync.
 	// O Consultor também é montado lá (js/pages/advisor.js), conversando por /api/chat.
-	for path, page := range map[string]string{"/{$}": "dashboard", "/lancamentos": "transactions", "/dividas": "debts", "/categorias": "categories", "/notas": "notes", "/exportar": "export", "/importar": "import", "/metas": "goals", "/analise": "insights", "/chat": "chat"} {
-		mux.HandleFunc("GET "+path, s.appShell(page))
+	for _, p := range [][2]string{{"/{$}", "dashboard"}, {"/lancamentos", "transactions"}, {"/dividas", "debts"}, {"/categorias", "categories"},
+		{"/notas", "notes"}, {"/exportar", "export"}, {"/importar", "import"}, {"/metas", "goals"}, {"/analise", "insights"}, {"/chat", "chat"}} {
+		rs = append(rs, route{"GET " + p[0], owner, s.appShell(p[1])})
 	}
-	mux.HandleFunc("GET /contas", s.appShell("accounts"))
-	mux.HandleFunc("POST /api/sync", s.apiSync)
-	mux.HandleFunc("POST /api/categorizar", s.apiCategorize)
-	mux.HandleFunc("POST /api/openfinance", s.apiOpenFinance)
-	mux.HandleFunc("GET /api/chat", s.apiChatHistory)
-	mux.HandleFunc("POST /api/chat", s.apiChatSend)
-	mux.HandleFunc("POST /api/chat/limpar", s.apiChatClear)
+	return rs
+}
 
-	// App do celular: pareamento por código (veja pairing.go).
-	mux.HandleFunc("GET /parear", s.pairPage)
-	mux.HandleFunc("POST /api/parear", s.apiPair)
-	mux.HandleFunc("POST /configuracoes/parear", s.startPairing)
-	mux.HandleFunc("POST /configuracoes/aparelhos/remover", s.removeDevice)
-
-	mux.HandleFunc("GET /configuracoes", s.settings)
-	mux.HandleFunc("POST /configuracoes", s.saveSettings)
-	mux.HandleFunc("POST /configuracoes/testar", s.testAI)
-	mux.HandleFunc("POST /configuracoes/baixar-modelo", s.pullModel)
-	mux.HandleFunc("POST /configuracoes/acesso", s.saveAccess)
-	mux.HandleFunc("POST /configuracoes/openfinance", s.saveOpenFinance)
-	mux.HandleFunc("POST /configuracoes/fechar", s.quit)
-	mux.HandleFunc("GET /configuracoes/backup.db", s.backupDB)
-	return logRequests(securityHeaders(apiCORS(sameOrigin(s.requireAuth(mux)))))
+func (s *Server) Routes() http.Handler {
+	mux := http.NewServeMux()
+	for _, rt := range s.routes() {
+		mux.Handle(rt.pattern, s.authorize(rt.who, rt.handler))
+	}
+	return logRequests(securityHeaders(apiCORS(sameOrigin(mux))))
 }
 
 // render executa a página; dados comuns (página ativa, avisos) vão no mapa.

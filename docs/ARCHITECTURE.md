@@ -417,7 +417,8 @@ por 6 horas (`internal/web/rates.go`; falhou, tenta de novo em 10 minutos e espe
 |---|---|
 | `password.go` | Hash PBKDF2-SHA256 (600 mil iterações) e verificação em tempo constante. |
 | `session.go` | Tokens aleatórios de 256 bits e o hash guardado no banco. |
-| `limiter.go` | Bloqueia um endereço após 5 senhas erradas em 10 minutos. |
+| `limiter.go` | Bloqueia um endereço após 5 senhas erradas em 10 minutos (o mesmo tipo de limite vale para o código de 6 dígitos, somando todos os endereços). |
+| `totp.go` | Código de 6 dígitos (TOTP, RFC 6238, como os apps autenticadores): segredo, endereço `otpauth://` do QR, conferência com janela de ±30 s sem aceitar o mesmo código duas vezes, e códigos de recuperação de uso único. |
 
 ### `internal/config/` — configuração
 
@@ -431,9 +432,10 @@ Código Go:
 
 | Arquivo | Função |
 |---|---|
-| `server.go` | `New(store, Options)`, rotas, renderização de templates, middlewares (segurança, CSRF, log), service worker com a impressão digital dos arquivos. |
+| `server.go` | `New(store, Options)`, a tabela de rotas com quem pode usar cada uma (`routes`), renderização de templates, middlewares (segurança, CSRF, log), service worker com a impressão digital dos arquivos. |
 | `api.go` | `POST /api/sync`. |
-| `access.go` | Login, sessões, `requireAuth` (cookie ou token do app), ligar/desligar o acesso pelo celular. |
+| `access.go` | Login, sessões, `authorize` (a autorização de cada rota: `public`, `owner`, `ownerOrDevice` ou `localOnly`; o nível zero nega), ligar/desligar o acesso pelo celular. |
+| `mfa.go` | Verificação em duas etapas no login pela rede: o passo do código depois da senha (bilhete de 5 min só na memória), códigos de recuperação, o limite do código somando todos os endereços (`codeLimiter`) e a reautenticação para mudar a segurança pela rede (`reauth`). O TOTP em si fica em `internal/auth/totp.go`. |
 | `accesslog.go` | `logAccess`: o registro de acesso dos Ajustes (entradas pela rede, senha errada, pareamento, troca de senha, backup, troca da chave da IA e do Open Finance), com o endereço de quem fez; guarda os últimos 200 (`store.LogAccess`). Mapa de segurança: [SEGURANCA.md](SEGURANCA.md). |
 | `backup.go` | `GET /configuracoes/backup.db`: cópia do banco (`store.BackupTo`, `VACUUM INTO`), com configurações e chat, sem os segredos em texto puro (chave da IA, segredo do Pluggy), as sessões e os aparelhos pareados. |
 | `pairing.go` | Pareamento do app do celular: código, página `/parear`, `POST /api/parear`, token do aparelho, CORS de `/api/`. |

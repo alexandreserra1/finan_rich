@@ -115,8 +115,9 @@ func collect[T any](rows *sql.Rows, err error, scan func(*sql.Rows) (T, error)) 
 
 // BackupTo grava uma cópia consistente do banco em path (que não pode existir),
 // mesmo com o app em uso. Ficam de fora os segredos em texto puro (a chave da IA e
-// o segredo do Pluggy: depois de restaurar, a pessoa digita de novo), as sessões e
-// os aparelhos pareados (o celular pareia de novo). A cópia intermediária é apagada;
+// o segredo do Pluggy: depois de restaurar, a pessoa digita de novo), o código de 6
+// dígitos (sai desligado: liga de novo nos Ajustes), as sessões e os aparelhos
+// pareados (o celular pareia de novo). A cópia intermediária é apagada;
 // o VACUUM INTO final só copia o que sobrou, então o texto apagado não fica no arquivo.
 func (s *Store) BackupTo(ctx context.Context, path string) error {
 	tmp := path + ".parcial"
@@ -131,6 +132,7 @@ func (s *Store) BackupTo(ctx context.Context, path string) error {
 	defer db.Close()
 	for _, q := range []string{
 		`UPDATE settings SET value = '' WHERE key IN ('ai_api_key', 'pluggy_client_secret')`,
+		`DELETE FROM settings WHERE key LIKE 'access_totp%'`,
 		`DELETE FROM sessions`,
 		`DELETE FROM devices`,
 	} {

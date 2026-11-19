@@ -512,6 +512,11 @@ a.button:hover { background: var(--accent-strong); }
 .access-log ul { list-style: none; padding: 0; margin: .5rem 0 0; }
 .access-log li { padding: .35rem 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
 .access-log time { font-variant-numeric: tabular-nums; }
+/* Verificação em duas etapas (Ajustes do computador). */
+.mfa { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+.mfa h3 { margin: 0 0 .5rem; font-size: 14px; font-weight: 600; }
+.recovery-codes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 12px; list-style: none; padding: 0; margin: .5rem 0 0; }
+.recovery-codes code, .totp-secret { font-variant-numeric: tabular-nums; letter-spacing: .04em; overflow-wrap: anywhere; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
@@ -835,6 +840,10 @@ td.num, .num { white-space: nowrap; }
 .first-use-text h2 { margin: 0; font-size: 30px; font-weight: 600; letter-spacing: -.03em; line-height: 1.1; color: var(--hero-text); }
 .first-use-text p { margin: 0; color: var(--hero-muted); }
 .first-use-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+/* Convite para ligar o bloqueio do app (só no celular e no site). */
+.lock-offer { margin: 0; padding: 10px 12px; border-radius: 10px; background: rgb(255 255 255 / .08); color: var(--hero-muted); max-width: 520px; }
+.card.hero .lock-offer strong { color: var(--hero-text); font-size: inherit; font-weight: 600; letter-spacing: normal; line-height: inherit; } /* não o número grande do cartão */
+.lock-offer a { color: var(--yellow); font-weight: 600; }
 .first-use .btn { background: var(--yellow); color: var(--yellow-ink); height: 42px; }
 .first-use .btn:hover { background: #fff7c2; color: var(--yellow-ink); }
 .first-use button.link.plain { color: var(--hero-muted); }

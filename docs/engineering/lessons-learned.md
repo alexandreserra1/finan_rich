@@ -18,3 +18,13 @@ e as fontes estão em [OPEN-FINANCE.md](../OPEN-FINANCE.md).
 O gate grava o hash do conteúdo e reprova alterações durante sua execução. O Stop exige
 evidência atual. Isso reduz aprovação acidental de uma versão anterior, mas não transforma
 arquivos locais em um mecanismo de segurança resistente à adulteração; a CI é independente.
+
+## ENG-L004 — Duas suítes e2e ao mesmo tempo falham à toa
+
+As suítes de `e2e/` usam portas fixas (o app em 18097, o computador em 18098). Em 18/11/2026
+o WebKit falhou em passos que não tinham mudado ("Conectar a outro computador", escolher o
+tema) porque outra suíte ainda rodava em segundo plano, ou a captura de telas disputava a
+máquina. Rodando sozinha, a mesma versão passou 3 de 3. Antes de concluir que o código
+quebrou: espere a suíte anterior terminar (a notificação chega depois), não rode capturas
+junto e repita a suíte sozinha. Uma falha que muda de passo a cada rodada é sinal de
+interferência, não de defeito.

@@ -11,7 +11,11 @@ import (
 	"github.com/alexandreserra1/finan_rich/internal/llm"
 )
 
-func (s *Server) settings(w http.ResponseWriter, r *http.Request) {
+func (s *Server) settings(w http.ResponseWriter, r *http.Request) { s.settingsPage(w, r, nil) }
+
+// settingsPage monta os Ajustes; extra entra nos dados da página (ex.: os códigos de
+// recuperação, que aparecem só na resposta que liga a verificação em duas etapas).
+func (s *Server) settingsPage(w http.ResponseWriter, r *http.Request, extra map[string]any) {
 	ctx := r.Context()
 	ai, err := s.aiSettings(ctx)
 	if err != nil {
@@ -53,6 +57,13 @@ func (s *Server) settings(w http.ResponseWriter, r *http.Request) {
 	}
 	data["App"] = app
 	data["AccessLog"], _ = s.store.AccessLog(ctx, 30)
+	if data["MFA"], err = s.mfaView(ctx); err != nil {
+		serverError(w, err)
+		return
+	}
+	for k, v := range extra {
+		data[k] = v
+	}
 	s.render(w, r, "settings", data)
 }
 

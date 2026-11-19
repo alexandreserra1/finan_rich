@@ -441,6 +441,7 @@ function bindCloud(root, ctx) {
 // ---------- bloqueio do app ----------
 
 let lockState = null; // { on, bio, editing } (carregado depois)
+let wantLock = false; // veio do "Proteger o app" do primeiro uso: abre o formulário da senha
 
 function lockSection() {
   const s = lockState || {};
@@ -473,7 +474,23 @@ function bindLock(root, ctx) {
     section.outerHTML = toString(lockSection());
     bindLock(root, ctx);
   };
-  if (!lockState) lock.status().then((s) => { lockState = s; redraw(); });
+  // Do primeiro uso (?bloquear=1): já abre o formulário, se o bloqueio estiver desligado.
+  // Lê o endereço atual, não ctx.params: depois do replaceState ele não tem mais o
+  // parâmetro, e o redesenho (que chama bindLock de novo) não repete o pedido.
+  if (new URLSearchParams(location.search).get("bloquear") === "1") {
+    wantLock = true;
+    history.replaceState(null, "", "/configuracoes#bloqueio"); // recarregar não abre de novo
+  }
+  const offer = () => {
+    if (!wantLock || !lockState) return;
+    wantLock = false;
+    if (!lockState.on) lockState.editing = true;
+    redraw();
+    root.querySelector("#bloqueio")?.scrollIntoView({ block: "start" });
+    root.querySelector('[data-form="lock-pin"] input[name="pin"]')?.focus();
+  };
+  if (!lockState) lock.status().then((s) => { lockState = s; redraw(); offer(); });
+  else offer();
   root.querySelector('[data-action="lock"]')?.addEventListener("change", async (e) => {
     if (e.target.checked) {
       lockState.editing = true;
