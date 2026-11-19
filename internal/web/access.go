@@ -197,14 +197,21 @@ func clientKey(r *http.Request) string {
 // Caractere de controle e barra invertida não passam, em lugar nenhum: o navegador apaga
 // tab e quebra de linha da URL ("/\t/site" viraria "//site") e trata "\\" como "/".
 func safeReturn(path string) string {
+	if isLocalURL(path) {
+		return path
+	}
+	return "/"
+}
+
+// isLocalURL é a checagem do safeReturn. Fica separada, respondendo sim ou não e com esse nome,
+// porque é assim que o CodeQL reconhece uma validação de redirecionamento
+// (go/unvalidated-url-redirection); uma função que devolve o caminho ele não reconhece.
+func isLocalURL(path string) bool {
 	u, err := url.Parse(path)
 	// "/\\" já cai na regra da barra invertida; fica explícito porque é o padrão que o CodeQL
 	// reconhece como checagem completa de redirecionamento (go/bad-redirect-check).
-	if err != nil || u.Scheme != "" || u.Host != "" || !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") ||
-		strings.HasPrefix(path, "/\\") || strings.ContainsFunc(path, func(r rune) bool { return r < 0x20 || r == 0x7f || r == '\\' }) {
-		return "/"
-	}
-	return path
+	return err == nil && u.Scheme == "" && u.Host == "" && strings.HasPrefix(path, "/") && !strings.HasPrefix(path, "//") &&
+		!strings.HasPrefix(path, "/\\") && !strings.ContainsFunc(path, func(r rune) bool { return r < 0x20 || r == 0x7f || r == '\\' })
 }
 
 func (s *Server) loginPage(w http.ResponseWriter, r *http.Request) {

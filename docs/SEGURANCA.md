@@ -196,6 +196,10 @@ Nos PRs, o CodeQL só mostra o que o próprio PR introduz; na main ficaram 7 ale
   e quebra de linha da URL, e `/\t/site` vira `//site`. Assim, um link de login preparado podia
   levar a pessoa para outro site depois de digitar a senha. Agora qualquer caractere de
   controle ou barra invertida cai no `/` (`TestSafeReturn`, inclusive pelo login de verdade).
+  Depois do conserto, dois alertas do redirecionamento continuaram abertos na main: o CodeQL
+  não reconhecia o `safeReturn` como validação, porque ele devolve o caminho em vez de
+  responder sim ou não. A checagem passou para `isLocalURL`, o padrão que o CodeQL entende,
+  com as mesmas regras.
 - **Cookies de saída sem `HttpOnly`, `SameSite` e `Secure`**: só os que *apagam* a sessão e o
   login pela metade. Risco baixo; agora saem com as mesmas proteções de quando foram criados.
 - **Dois em código de teste** (um cofre falso no `localStorage` do e2e e um script montado num
