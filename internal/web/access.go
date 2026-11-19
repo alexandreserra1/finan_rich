@@ -198,8 +198,10 @@ func clientKey(r *http.Request) string {
 // tab e quebra de linha da URL ("/\t/site" viraria "//site") e trata "\\" como "/".
 func safeReturn(path string) string {
 	u, err := url.Parse(path)
+	// "/\\" já cai na regra da barra invertida; fica explícito porque é o padrão que o CodeQL
+	// reconhece como checagem completa de redirecionamento (go/bad-redirect-check).
 	if err != nil || u.Scheme != "" || u.Host != "" || !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") ||
-		strings.ContainsFunc(path, func(r rune) bool { return r < 0x20 || r == 0x7f || r == '\\' }) {
+		strings.HasPrefix(path, "/\\") || strings.ContainsFunc(path, func(r rune) bool { return r < 0x20 || r == 0x7f || r == '\\' }) {
 		return "/"
 	}
 	return path
