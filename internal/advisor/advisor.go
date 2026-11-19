@@ -6,6 +6,7 @@ package advisor
 import (
 	"context"
 	"errors"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -123,33 +124,64 @@ func Ask(ctx context.Context, p llm.Provider, agent string, history []llm.Messag
 		if onboarding(agent, history, question) { // só as de criar: o pedido fica pequeno para a cota grátis
 			tools.only = onboardingTools
 			req.System += onboardingPrompt
+			// Com valores na mensagem, o cartão tem de sair: o modelo grátis dizia "conta
+			// criada" sem chamar a ferramenta. Vale só no primeiro passo (veja o laço).
+			if strings.ContainsAny(question, "0123456789") {
+				req.ToolChoice = "required"
+			}
 		}
 		req.Tools = tools.Defs()
 	}
 	var answer strings.Builder
+	usedTool, glitched, nudged := false, false, false
+	starting := req.ToolChoice == "required" // começo do zero, com valores na mensagem
 	for round := 1; ; round++ {
 		if round > maxToolRounds && req.Tools != nil { // chega de ferramentas: agora responde
 			req.Tools, req.Messages = nil, withoutTools(req.Messages)
 		}
 		reply, err := p.Chat(ctx, req, onText)
 		if err != nil && req.Tools != nil && llm.ToolsUnsupported(err) {
-			req.System, req.Tools, req.Messages = systemFor(agent), nil, withoutTools(req.Messages)
+			req.System, req.Tools, req.Messages, req.ToolChoice = systemFor(agent), nil, withoutTools(req.Messages), ""
+			continue
+		}
+		if err != nil && !glitched && toolCallGlitch(err) { // JSON quebrado na ferramenta: passa, tenta de novo
+			glitched = true
 			continue
 		}
 		if err != nil {
 			return "", err
 		}
+		// "Deixei pronto" sem ter chamado ferramenta nenhuma: nenhum cartão apareceu. Pede de
+		// novo uma vez, com um aviso; a resposta final é só a da nova tentativa.
+		if len(reply.ToolCalls) == 0 && req.Tools != nil && !usedTool && falseClaimRe.MatchString(reply.Text) {
+			if !nudged {
+				nudged = true
+				answer.Reset()
+				onText("\n\n")
+				req.Messages = append(req.Messages,
+					llm.Message{Role: llm.RoleAssistant, Content: reply.Text},
+					llm.Message{Role: llm.RoleUser, Content: falseClaimNudge})
+				continue
+			}
+			reply.Text += "\n\n" + falseClaimNote
+			onText("\n\n" + falseClaimNote)
+		}
 		answer.WriteString(reply.Text)
 		if len(reply.ToolCalls) == 0 || req.Tools == nil {
 			return strings.TrimSpace(answer.String()), nil
 		}
+		usedTool, req.ToolChoice = true, "" // com o resultado na mão, o modelo escolhe se chama mais
 		if reply.Text != "" {
 			answer.WriteString("\n\n")
 			onText("\n\n")
 		}
 		req.Messages = append(req.Messages, llm.Message{Role: llm.RoleAssistant, Content: reply.Text, ToolCalls: reply.ToolCalls})
 		for _, c := range reply.ToolCalls {
-			req.Messages = append(req.Messages, llm.Message{Role: llm.RoleTool, ToolCallID: c.ID, ToolName: c.Name, Content: tools.Run(c)})
+			result := tools.Run(c)
+			if starting { // o modelo grátis criava só o primeiro de dois itens da mesma mensagem
+				result += " Se a mensagem da pessoa tiver outro item com valor que ainda não virou cartão, chame a ferramenta para ele agora."
+			}
+			req.Messages = append(req.Messages, llm.Message{Role: llm.RoleTool, ToolCallID: c.ID, ToolName: c.Name, Content: result})
 		}
 	}
 }
@@ -158,12 +190,12 @@ func Ask(ctx context.Context, p llm.Provider, agent string, history []llm.Messag
 // perguntando uma coisa por vez e preparando os cartões.
 const onboardingPrompt = `
 
-Começo do zero: a pessoa está começando no app e pediu ajuda para montar o mês. Faça uma pergunta por vez, curta e com um exemplo, nesta ordem:
+Começo do zero: a pessoa está começando no app e pediu ajuda para montar o mês. Faça só UMA pergunta por resposta, curta e com um exemplo; não mostre a lista de perguntas, pergunte apenas a próxima desta ordem:
 1. Quanto recebe por mês e em que dia (ex.: "4.500 no dia 5").
 2. As contas fixas do mês, com valor e dia (aluguel, condomínio, luz, internet, celular, escola).
 3. As dívidas: nome, quanto deve, juros ao mês e parcela mínima (ou "não tenho").
 4. Uma meta: o que quer juntar, quanto e até quando (ou "agora não").
-A cada resposta, prepare os cartões: criar_conta_fixa para a renda (tipo entrada) e para cada conta fixa (tipo saida), criar_divida para cada dívida, criar_meta para a meta. Não invente valor nem dia: se faltar, pergunte. Se a pessoa disser que não tem, siga para a próxima. Depois da última, diga em uma frase o que ficou pronto e que é só tocar em "Adicionar" em cada cartão.`
+Quando a pessoa der valores, chame a ferramenta nessa mesma resposta, uma vez para cada item: criar_conta_fixa para a renda (tipo entrada) e para cada conta fixa (tipo saida), criar_divida para cada dívida, criar_meta para a meta. Não pergunte a categoria: o app escolhe pela descrição (internet e luz em Contas da casa, aluguel em Moradia). Só diga que deixou um cartão pronto depois de chamar a ferramenta. Não invente valor nem dia: se faltar, pergunte. Se a pessoa disser que não tem, siga para a próxima pergunta. Depois da última, diga em uma frase o que ficou pronto e que é só tocar em "Adicionar" em cada cartão.`
 
 var onboardingTools = []string{"propor_lancamento", "criar_meta", "criar_divida", "criar_conta_fixa"}
 
@@ -188,6 +220,26 @@ func onboarding(agent string, history []llm.Message, question string) bool {
 		answers++
 	}
 	return false
+}
+
+// falseClaimRe: a resposta diz que deixou um cartão pronto. Sem nenhuma ferramenta chamada
+// na pergunta, é falso (aconteceu com o modelo grátis no começo do zero).
+var falseClaimRe = regexp.MustCompile(`(?i)deixei (?:pront|preparad)|preparei (?:o|a|os|as|um|uma) (?:cart|conta|lan[cç]|meta|d[ií]vida|pagamento|aporte)|pront[oa]s? para (?:voc[eê] )?confirmar`)
+
+const (
+	falseClaimNudge = "Aviso do app (não é da pessoa): nenhum cartão foi criado, porque nenhuma ferramenta foi chamada. Chame agora a ferramenta certa com os valores que a pessoa já deu; se faltar algum dado, pergunte, sem dizer que deixou pronto."
+	falseClaimNote  = "(Não consegui preparar o cartão desta vez. Mande os valores de novo, ou cadastre à mão em Lançamentos.)"
+)
+
+// toolCallGlitch: o provedor recusou no meio da resposta porque o modelo escreveu os
+// argumentos da ferramenta em JSON quebrado. Costuma passar na tentativa seguinte.
+func toolCallGlitch(err error) bool {
+	var apiErr *llm.APIError
+	if !errors.As(err, &apiErr) {
+		return false
+	}
+	msg := strings.ToLower(apiErr.Message)
+	return strings.Contains(msg, "tool call") || strings.Contains(msg, "tool_use_failed") || strings.Contains(msg, "failed to call a function")
 }
 
 // withoutTools troca os pedidos e resultados de ferramentas por texto: pedido

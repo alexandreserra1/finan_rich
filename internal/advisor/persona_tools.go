@@ -461,41 +461,104 @@ func prefetch(agent string, t *Tools, question string) string {
 		}
 		return strings.Join(out, "\n\n")
 	case "lia":
-		return t.findings() + "\n\n" + t.compareMonths("", "")
+		pre := t.findings() + "\n\n" + t.compareMonths("", "")
+		if s := t.placeSpending(q); s != "" { // a pergunta é de um gasto: o total vem primeiro
+			return s + "\n\n" + pre
+		}
+		return pre
 	}
 	return ""
 }
 
-// placeSpending: "quanto gastei com uber?" já vai com o total do lugar (sem isso
-// a IA às vezes dizia "nenhum lançamento de Uber" sem buscar). q já vem com fold.
+// placeSpending: "quanto gastei com uber / com mercado / em setembro?" já vai com o total
+// do lugar ou da categoria no mês pedido (sem isso a IA às vezes dizia "nenhum lançamento
+// de Uber" sem buscar). A resposta sem IA usa a mesma conta. q já vem com fold.
 func (t *Tools) placeSpending(q string) string {
 	if !strings.Contains(q, "gast") {
 		return ""
 	}
+	month := spendingMonth(q, t.today)
 	p, name := place(q, t.ledger)
+	catID, catName, catLen := t.categoryIn(q)
+	// O lugar mais longo vence ("mercado extra"); empatado, vale a categoria ("mercado").
+	if catID != "" && catLen >= len(p) {
+		total := func(m domain.Month) (int64, int) {
+			return t.sumOut(func(tx domain.Transaction) bool { return tx.CategoryID == catID && m.Contains(tx.Date) })
+		}
+		cents, n := total(month)
+		before, _ := total(month.Prev())
+		return fmt.Sprintf("Gastos com %s: %s em %s (%s). Em %s: %s.",
+			catName, money.Format(cents), month.Label(), lancamentos(n), month.Prev().Label(), money.Format(before))
+	}
 	if p == "" {
 		return ""
 	}
-	month := t.today.Format("2006-01")
-	var monthCents, allCents int64
-	var monthN, allN int
+	of := func(tx domain.Transaction) bool { return strings.Contains(fold(tx.Description), p) }
+	cents, n := t.sumOut(func(tx domain.Transaction) bool { return of(tx) && month.Contains(tx.Date) })
+	all, allN := t.sumOut(of)
+	return fmt.Sprintf("Gastos com %s: %s em %s (%s). Desde o começo: %s (%s).",
+		name, money.Format(cents), month.Label(), lancamentos(n), money.Format(all), lancamentos(allN))
+}
+
+// sumOut soma as saídas que passam no filtro.
+func (t *Tools) sumOut(keep func(domain.Transaction) bool) (cents int64, n int) {
 	for _, tx := range t.ledger.ActiveTransactions() {
-		if tx.Kind != domain.KindSaida || !strings.Contains(fold(tx.Description), p) {
+		if tx.Kind == domain.KindSaida && keep(tx) {
+			cents, n = cents+tx.AmountCents, n+1
+		}
+	}
+	return cents, n
+}
+
+func lancamentos(n int) string {
+	if n == 1 {
+		return "1 lançamento"
+	}
+	return fmt.Sprintf("%d lançamentos", n)
+}
+
+var monthNames = []string{"janeiro", "fevereiro", "marco", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"}
+
+// spendingMonth: o mês de que a pergunta de gasto fala ("mês passado", "em setembro",
+// "março de 2026"); sem nenhum, o mês de hoje. Mês só pelo nome é o mais recente que já
+// começou (em novembro, "dezembro" é o do ano passado).
+func spendingMonth(q string, today time.Time) domain.Month {
+	cur := domain.NewMonth(today.Year(), today.Month())
+	for _, w := range []string{"mes passado", "mes anterior", "ultimo mes"} {
+		if strings.Contains(q, w) {
+			return cur.Prev()
+		}
+	}
+	m := monthRe.FindStringSubmatch(q)
+	if m == nil {
+		return cur
+	}
+	month, year := slices.Index(monthNames, m[1])+1, today.Year()
+	if m[2] != "" {
+		year, _ = strconv.Atoi(m[2])
+	} else if month > int(today.Month()) {
+		year--
+	}
+	return domain.NewMonth(year, time.Month(month))
+}
+
+// categoryIn acha a categoria de gasto citada na pergunta: pelo nome inteiro ou por uma
+// palavra marcante dele (5 letras ou mais: "delivery", "internet"; ou "agua"). Devolve o
+// tamanho do trecho achado, para comparar com o lugar.
+func (t *Tools) categoryIn(q string) (id, name string, size int) {
+	for _, c := range t.ledger.Categories {
+		if c.Deleted || c.Bucket == domain.BucketRenda {
 			continue
 		}
-		allCents, allN = allCents+tx.AmountCents, allN+1
-		if strings.HasPrefix(tx.Date, month) {
-			monthCents, monthN = monthCents+tx.AmountCents, monthN+1
+		full := fold(c.Name)
+		words := strings.FieldsFunc(full, func(r rune) bool { return !isWordRune(r) })
+		for _, w := range append([]string{full}, words...) {
+			if (len(w) >= 5 || w == "agua") && len(w) > size && hasWord(q, w) {
+				id, name, size = c.ID, c.Name, len(w)
+			}
 		}
 	}
-	count := func(n int) string {
-		if n == 1 {
-			return "1 lançamento"
-		}
-		return fmt.Sprintf("%d lançamentos", n)
-	}
-	return fmt.Sprintf("Gastos com %s: %s em %s (%s). Desde o começo: %s (%s).",
-		name, money.Format(monthCents), domain.ParseMonth(month).Label(), count(monthN), money.Format(allCents), count(allN))
+	return id, name, size
 }
 
 // place devolve o lugar dos lançamentos citado na pergunta ("uber", "loja ab") e o

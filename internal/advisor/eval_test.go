@@ -2,14 +2,17 @@ package advisor
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/domain"
+	"github.com/alexandreserra1/finan_rich/internal/finance"
 	"github.com/alexandreserra1/finan_rich/internal/llm"
 )
 
@@ -98,7 +101,9 @@ var (
 	direct   = regexp.MustCompile(`(?i)quanto gastei|selic|vence`)
 )
 
-func TestEval(t *testing.T) {
+// evalProvider é a IA de verdade das avaliações (pula o teste sem FINAN_EVAL_KEY).
+func evalProvider(t *testing.T) llm.Provider {
+	t.Helper()
 	key := os.Getenv("FINAN_EVAL_KEY")
 	if key == "" {
 		t.Skip("avaliação com IA real: defina FINAN_EVAL_PRESET e FINAN_EVAL_KEY")
@@ -112,6 +117,12 @@ func TestEval(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	return p
+}
+
+func TestEval(t *testing.T) {
+	p := evalProvider(t)
+	var err error
 	today := time.Date(2026, 10, 22, 12, 0, 0, 0, time.Local)
 	passed, total := 0, 0
 	type agentCase struct {
@@ -186,6 +197,125 @@ func TestEval(t *testing.T) {
 			status = "FALHA"
 		}
 		t.Logf("%s %s%q %v\n%s\n", status, c.agent+" ", c.q, fails, answer)
+	}
+	t.Logf("NOTA: %d de %d critérios (%d%%)", passed, total, passed*100/max(total, 1))
+}
+
+// Começo do zero com IA real: a conversa inteira, como a pessoa faria, confirmando os
+// cartões entre um turno e outro. Mede se a IA pergunta uma coisa por vez e prepara os
+// cartões certos (conta fixa, meta), sem inventar valor. Gasta uns 10 pedidos de cota:
+//
+//	FINAN_EVAL_PRESET=finan FINAN_EVAL_KEY=<nome qualquer> go test ./internal/advisor -run TestEvalOnboarding -v
+func TestEvalOnboarding(t *testing.T) {
+	p := evalProvider(t)
+	today := time.Date(2026, 11, 18, 12, 0, 0, 0, time.Local)
+	ledger := domain.Ledger{Categories: domain.DefaultCategories(1)}
+	var history []llm.Message
+	recurring := func(props []Proposal, kind string, cents int64, day int) bool {
+		for _, pr := range props {
+			var r domain.Recurring
+			if pr.Type == domain.TypeRecurring && json.Unmarshal(pr.Record, &r) == nil && r.Kind == kind && r.AmountCents == cents && r.Day == day {
+				return true
+			}
+		}
+		return false
+	}
+	goal := func(props []Proposal, cents int64, deadline string) bool {
+		for _, pr := range props {
+			var g domain.Goal
+			if pr.Type == domain.TypeGoal && json.Unmarshal(pr.Record, &g) == nil && g.TargetCents == cents && g.Deadline == deadline {
+				return true
+			}
+		}
+		return false
+	}
+	ofType := func(props []Proposal, typ string) bool {
+		return slices.ContainsFunc(props, func(pr Proposal) bool { return pr.Type == typ })
+	}
+	asks := func(re string) func(string, []Proposal) bool {
+		return func(text string, _ []Proposal) bool { return regexp.MustCompile(`(?i)` + re).MatchString(text) }
+	}
+	turns := []struct {
+		say    string
+		checks map[string]func(string, []Proposal) bool
+	}{
+		{finance.StartQuestion, map[string]func(string, []Proposal) bool{
+			"pergunta a renda": asks(`recebe|renda|sal[aá]rio|ganha`),
+			"uma pergunta por vez": func(text string, _ []Proposal) bool {
+				return !regexp.MustCompile(`(?i)d[ií]vida|\bmeta\b`).MatchString(text)
+			},
+			"ainda sem cartão": func(_ string, p []Proposal) bool { return len(p) == 0 },
+		}},
+		{"Recebo 4.500 de salário no dia 5", map[string]func(string, []Proposal) bool{
+			"renda fixa de R$ 4.500 no dia 5": func(_ string, p []Proposal) bool { return recurring(p, domain.KindEntrada, 450000, 5) },
+			"pergunta as contas":              asks(`conta|aluguel|despesa|gasto fixo`),
+		}},
+		{"Pago aluguel de 1.500 no dia 10 e internet de 100 no dia 15", map[string]func(string, []Proposal) bool{
+			"aluguel de R$ 1.500 no dia 10": func(_ string, p []Proposal) bool { return recurring(p, domain.KindSaida, 150000, 10) },
+			"internet de R$ 100 no dia 15":  func(_ string, p []Proposal) bool { return recurring(p, domain.KindSaida, 10000, 15) },
+		}},
+		{"Não tenho dívidas", map[string]func(string, []Proposal) bool{
+			"sem dívida inventada": func(_ string, p []Proposal) bool { return !ofType(p, domain.TypeDebt) },
+			"pergunta a meta":      asks(`meta|objetivo|juntar|guardar|sonho`),
+		}},
+		{"Quero juntar 6 mil para uma viagem até julho de 2027", map[string]func(string, []Proposal) bool{
+			"meta de R$ 6.000 até julho de 2027": func(_ string, p []Proposal) bool { return goal(p, 600000, "2027-07") },
+		}},
+	}
+	passed, total := 0, 0
+	for _, turn := range turns {
+		var r Reply
+		var props []Proposal
+		var err error
+		for try := 0; try < 3; try++ { // cota grátis: espera e tenta de novo
+			props = nil
+			r, err = Answer(context.Background(), p, Question{History: history, Text: turn.say, Ledger: ledger, Today: today, Anonymize: true},
+				func(string) {}, func(pr Proposal) { props = append(props, pr) })
+			if r.AIError != nil {
+				err = r.AIError
+			}
+			if err == nil || !strings.Contains(err.Error(), "limite") && !strings.Contains(err.Error(), "ocupada") {
+				break
+			}
+			time.Sleep(20 * time.Second)
+		}
+		if err != nil {
+			t.Fatalf("%q: %v", turn.say, err)
+		}
+		var fails []string
+		for name, ok := range turn.checks {
+			total++
+			if ok(r.Text, props) {
+				passed++
+			} else {
+				fails = append(fails, name)
+			}
+		}
+		status := "OK    "
+		if len(fails) > 0 {
+			status = "FALHA "
+		}
+		var labels []string
+		for _, pr := range props {
+			labels = append(labels, pr.Label)
+		}
+		t.Logf("%s %q %v\n  cartões: %v\n  %s", status, turn.say, fails, labels, strings.ReplaceAll(r.Text, "\n", "\n  "))
+		// A pessoa confirma os cartões: o próximo turno já vê os dados.
+		for _, pr := range props {
+			switch pr.Type {
+			case domain.TypeRecurring:
+				var rec domain.Recurring
+				if json.Unmarshal(pr.Record, &rec) == nil {
+					ledger.Recurring = append(ledger.Recurring, rec)
+				}
+			case domain.TypeGoal:
+				var g domain.Goal
+				if json.Unmarshal(pr.Record, &g) == nil {
+					ledger.Goals = append(ledger.Goals, g)
+				}
+			}
+		}
+		history = append(history, llm.Message{Role: llm.RoleUser, Content: turn.say}, llm.Message{Role: llm.RoleAssistant, Content: r.Text})
 	}
 	t.Logf("NOTA: %d de %d critérios (%d%%)", passed, total, passed*100/max(total, 1))
 }

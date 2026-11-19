@@ -90,6 +90,9 @@ func (o *OpenAI) Chat(ctx context.Context, req Request, onText func(string)) (Re
 	body := map[string]any{"messages": msgs, "stream": true}
 	if len(req.Tools) > 0 {
 		body["tools"] = openAITools(req.Tools)
+		if req.ToolChoice != "" {
+			body["tool_choice"] = req.ToolChoice
+		}
 	}
 	resp, err := o.post(ctx, body)
 	if err != nil {
