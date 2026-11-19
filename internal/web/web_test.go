@@ -750,3 +750,36 @@ func TestInstalledModel(t *testing.T) {
 		})
 	}
 }
+
+// Sem a IA local pronta, o Consultor do computador oferece a IA grátis da Rich num clique,
+// sem chave (o mesmo formulário dos Ajustes). Já no grátis, ou pelo celular pareado, não oferece.
+func TestChatOffersFreeAI(t *testing.T) {
+	a := newApp(t, "http://127.0.0.1:1") // Ollama fora do ar
+	type info struct {
+		Ready bool
+		Model string
+		Free  *struct {
+			Preset  string
+			BaseURL string
+			Models  []string
+		}
+	}
+	read := func() info {
+		_, body := a.get("/api/chat")
+		var i info
+		if err := json.Unmarshal([]byte(body), &i); err != nil {
+			t.Fatalf("%v: %s", err, body)
+		}
+		return i
+	}
+	i := read()
+	if i.Ready || i.Free == nil || i.Free.Preset != llm.FreeID || i.Free.BaseURL != llm.FreeProxyURL || strings.Join(i.Free.Models, ",") != "auto" {
+		t.Fatalf("sem Ollama: %+v", i)
+	}
+	if _, loc := a.post("/configuracoes", url.Values{"preset": {llm.FreeID}, "base_url": {i.Free.BaseURL}, "model": {"auto"}, "volta": {"/chat"}}); !strings.HasPrefix(loc, "/chat?msg=") {
+		t.Fatalf("um clique: %s", loc)
+	}
+	if i := read(); !i.Ready || i.Free != nil || i.Model != "IA grátis da Rich" {
+		t.Errorf("depois do clique: %+v", i)
+	}
+}

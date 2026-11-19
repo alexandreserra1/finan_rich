@@ -141,7 +141,7 @@ function cloudSection(server) {
       : "Escolha de onde vem a IA que conversa com você no Consultor.")}
     ${active
       ? html`<p class="ai-status on"><span class="dot" aria-hidden="true"></span><span>Ligado: <b>${active.free ? "IA da Rich" : active.name}</b>${active.free ? "" : html` com o modelo <code>${cfg.model || active.model}</code>`}</span></p>`
-      : html`<p class="ai-status"><span class="dot" aria-hidden="true"></span><span>Ainda não ligado. Escolha um dos caminhos e salve.</span></p>`}
+      : html`<p class="ai-status"><span class="dot" aria-hidden="true"></span><span>${cfg.off ? "Desligada: o time responde só com as contas do app. Para ligar, escolha um caminho e salve." : "Ainda não ligado. Escolha um dos caminhos e salve."}</span></p>`}
     <form data-form="cloud-ai">
       <div class="choice-cards" role="radiogroup" aria-label="De onde vem a IA">
         ${free ? card("finan", "Usar a IA da Rich", "Grátis, sem conta e sem chave. É só ligar.", "Grátis") : ""}
@@ -430,9 +430,9 @@ function bindCloud(root, ctx) {
     }
   });
   root.querySelector('[data-action="cloud-forget"]')?.addEventListener("click", async () => {
-    if (!confirm("Apagar a chave da IA e a conversa com ela deste celular?")) return;
-    await cloud.forget();
-    ai.cfg = null;
+    if (!confirm(ai.cfg?.key ? "Apagar a chave da IA e a conversa com ela deste aparelho?" : "Desligar a IA e apagar a conversa com ela deste aparelho? O time continua respondendo com as contas do app.")) return;
+    await cloud.turnOff();
+    ai.cfg = { off: true };
     resetChat();
     redraw();
   });

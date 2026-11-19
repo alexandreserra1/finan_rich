@@ -199,6 +199,15 @@ try {
     contentType: "application/json", headers: { "access-control-allow-origin": "*" },
     body: route.request().url().includes("sgs.13522") ? '[{"data":"01/10/2026","valor":"4.63"}]' : '[{"data":"17/11/2026","valor":"13.75"}]',
   }));
+  // A IA grátis da Rich falsa: o app de fábrica fala com ela, sem chave (nada vai para a real).
+  const freeAI = [];
+  await ctx.route("https://finan-rich-ia.vercel.app/**", (route) => {
+    freeAI.push({ url: route.request().url(), auth: route.request().headers().authorization || "", body: route.request().postData() || "" });
+    route.fulfill({
+      contentType: "text/event-stream", headers: { "access-control-allow-origin": "*" },
+      body: `data: ${JSON.stringify({ choices: [{ delta: { content: "Oi! Sou a IA grátis da Rich." } }] })}\n\ndata: [DONE]\n\n`,
+    });
+  });
   const page = await ctx.newPage();
   const errors = [];
   const logs = [];
@@ -298,6 +307,24 @@ try {
   await addTransaction(page, "Feira (só celular)", "40");
   ok(true, "sem computador, o app funciona só no celular (categorias criadas no aparelho)");
 
+  // De fábrica, sem configurar nada nem colar chave, o Consultor já conversa pela IA grátis da Rich.
+  await page.goto(`${APP}/chat`);
+  await page.waitForSelector("form[data-form=ask]", { timeout: 20000 });
+  ok(await page.locator(".ai-setup").count() === 0 && (await page.textContent(".chat-where")).includes("IA grátis da Rich"),
+    "de fábrica, o Consultor abre pronto, avisando que usa a IA grátis da Rich com apelidos");
+  await page.fill("textarea[name=message]", "Oi, tudo bem?");
+  await page.click("form[data-form=ask] button");
+  await page.waitForSelector(".msg.assistant:not(.pending):has-text('Sou a IA grátis da Rich')", { timeout: 30000 });
+  ok(freeAI.length === 1 && /^Bearer [0-9a-f-]{36}$/.test(freeAI[0].auth) && freeAI[0].body.includes("Você é o consultor"),
+    `a pergunta foi para a IA grátis sem chave, só com o identificador aleatório do aparelho (${freeAI[0]?.auth.slice(0, 12)}…)`);
+  // Desligar nos Ajustes: aí sim fica sem IA (o resto do app continua igual).
+  await page.goto(`${APP}/configuracoes#ia-nuvem`);
+  await page.waitForSelector("[data-action=cloud-forget]", { timeout: 20000 });
+  page.once("dialog", (d) => d.accept());
+  await page.click("[data-action=cloud-forget]");
+  await page.waitForSelector("#ia-nuvem .ai-status:has-text('Desligada')", { timeout: 15000 });
+  ok(true, "desligar a IA nos Ajustes fica guardado");
+
   {
     const message = "Registro particular ainda sem IA configurada";
     const edited = "Registro particular revisado antes de configurar a IA";
@@ -332,6 +359,10 @@ try {
     await page.waitForSelector(".ai-setup");
     ok(await draft.count() === 0 || await draft.inputValue() === "", "recarregar descarta o rascunho sem IA configurada");
     page.off("request", trackAI);
+    // Um toque liga a IA grátis de novo, ali mesmo no Consultor.
+    await page.click(".ai-setup [data-action=ai-on]");
+    await page.waitForSelector("form[data-form=ask]", { timeout: 20000 });
+    ok(await page.locator(".ai-setup").count() === 0, "um toque em \"Ligar a IA grátis\" volta a conversar, sem ir aos Ajustes");
   }
 
   // Consultor sem computador: IA na nuvem, chave cifrada, nomes anonimizados.

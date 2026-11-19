@@ -157,7 +157,9 @@ A versão do app fica em `mobile/android/app/version.properties`: o workflow de 
   mínima, sem dados (`askapi.Check`). O app não traz chave embutida: ela sairia do APK em
   minutos e todo mundo dividiria (e esgotaria) a mesma cota. Para quem não quer criar conta,
   há a opção "finan_rich grátis (sem chave)", que passa por um intermediário na Vercel com
-  limite por aparelho ([IA-GRATIS.md](IA-GRATIS.md)); ela só aparece depois de publicado.
+  limite por aparelho ([IA-GRATIS.md](IA-GRATIS.md)). Ela **vem ligada de fábrica**
+  (`cloud-ai.js`: sem nada guardado, vale o preset `finan`); desligar guarda `{ off: true }`,
+  e o Consultor oferece "Ligar a IA grátis" num toque.
   Os provedores tiram modelos do ar com poucas semanas de aviso. Por isso, se o modelo salvo
   deixar de existir, o app pergunta ao provedor (com a chave da pessoa) quais modelos ele tem,
   troca pelo melhor da lista `llm.Preferred` e tenta de novo; os desligados conhecidos já vão

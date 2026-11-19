@@ -12,4 +12,4 @@
 - [x] 4.2 Modo do começo do zero (só Otávio, até a 4ª resposta) e resposta sem IA.
 ## 5. Validação
 - [x] 5.1 Testes Go e e2e do app em Chromium e WebKit.
-- [ ] 5.2 Começo do zero com IA real (TestEval não cobre conversa de vários passos).
+- [x] 5.2 Começo do zero com IA real: `TestEvalOnboarding` (advisor-spending-onboarding), 10 de 10.
