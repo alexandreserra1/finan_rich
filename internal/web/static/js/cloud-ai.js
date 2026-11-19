@@ -54,8 +54,11 @@ export const inVault = () => !!vault();
 
 // config: { preset, model, enabled, key } (a chave nunca em texto puro). key é
 // { vault: true } (no cofre do sistema) ou { iv, data } (cifrada no navegador).
+// Sem nada guardado, vale a IA grátis da Rich: o Consultor conversa de fábrica, sem conta
+// e sem chave (os nomes saem com apelidos). Desligar guarda { off: true }.
 export async function config() {
   const cfg = await db.getMeta("cloud-ai", null);
+  if (!cfg) return { preset: FREE, model: "auto", enabled: false };
   return cfg?.key?.data && vault() ? toVault(cfg) : cfg;
 }
 
@@ -105,6 +108,12 @@ export async function forget() {
   await db.setMeta("cloud-chat", []);
 }
 
+// turnOff: a pessoa desligou a IA (a grátis não volta sozinha; "Ligar" nos Ajustes ou no Consultor).
+export async function turnOff() {
+  await forget();
+  await db.setMeta("cloud-ai", { off: true });
+}
+
 async function apiKey(cfg) {
   if (!cfg.key.vault) return decrypt(cfg.key);
   try {
@@ -127,7 +136,7 @@ async function deviceId() {
 }
 
 // ready: a IA na nuvem está configurada (com chave, ou a grátis).
-export const ready = (cfg) => !!(cfg?.key || cfg?.preset === FREE);
+export const ready = (cfg) => !cfg?.off && !!(cfg?.key || cfg?.preset === FREE);
 
 const aiConfig = async (cfg) => ({
   preset: cfg.preset, model: cfg.model, baseUrl: cfg.baseUrl || "",

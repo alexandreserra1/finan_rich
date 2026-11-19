@@ -155,8 +155,9 @@ type chatInfo struct {
 	Model   string      `json:"model"`
 	Ready   bool        `json:"ready"`
 	Problem string      `json:"problem,omitempty"`
-	Local   bool        `json:"local"`         // a IA roda neste computador: nada sai dele
-	Use     *useModel   `json:"use,omitempty"` // o modelo falta no Ollama, mas há outros já baixados
+	Local   bool        `json:"local"`          // a IA roda neste computador: nada sai dele
+	Use     *useModel   `json:"use,omitempty"`  // o modelo falta no Ollama, mas há outros já baixados
+	Free    *useModel   `json:"free,omitempty"` // a IA local não está pronta: a grátis da Rich, num clique
 }
 
 // useModel é o que vai no "Usar …" do aviso do Consultor no computador
@@ -181,10 +182,20 @@ func (s *Server) apiChatHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	st := s.aiStatus(ctx, ai)
-	info := chatInfo{History: append([]chatEntry{}, history...), Model: ai.Preset.Name + " · " + ai.Model, Ready: st.Ready, Problem: st.Problem, Local: llm.IsLocal(ai.Config)}
+	model := ai.Preset.Name + " · " + ai.Model
+	if ai.Preset.ID == llm.FreeID {
+		model = "IA grátis da Rich"
+	}
+	info := chatInfo{History: append([]chatEntry{}, history...), Model: model, Ready: st.Ready, Problem: st.Problem, Local: llm.IsLocal(ai.Config)}
 	// Só o navegador troca a IA; com o token do celular, o endereço do Ollama não sai daqui.
-	if _, phone := bearerToken(r); !phone && len(st.Alternatives) > 0 {
+	_, phone := bearerToken(r)
+	if !phone && len(st.Alternatives) > 0 {
 		info.Use = &useModel{Preset: ai.Preset.ID, BaseURL: ai.BaseURL, Models: st.Alternatives}
+	}
+	// Sem a IA local pronta, a grátis da Rich num clique (sem chave). Não liga sozinha: no
+	// computador a promessa é que nada sai dele sem a pessoa escolher.
+	if !phone && !st.Ready && ai.Preset.ID != llm.FreeID && llm.FreeProxyURL != "" {
+		info.Free = &useModel{Preset: llm.FreeID, BaseURL: llm.FreeProxyURL, Models: []string{"auto"}}
 	}
 	writeJSON(w, http.StatusOK, info)
 }

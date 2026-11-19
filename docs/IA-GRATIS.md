@@ -1,7 +1,11 @@
 # Consultor grátis sem chave (intermediário na Vercel)
 
-Para quem não quer criar conta em provedor de IA, o app pode oferecer a opção
-**"finan_rich grátis (sem chave)"**. O celular manda a pergunta (já com os nomes trocados por
+Para quem não quer criar conta em provedor de IA, o app oferece a opção
+**"finan_rich grátis (sem chave)"**, que **vem ligada de fábrica no app e no site**: o Consultor
+conversa sem conta e sem chave, e quem quiser desliga em Ajustes (aí o time responde só com as
+contas do app; um toque no Consultor liga de novo). No computador ela não liga sozinha, porque
+a promessa ali é que nada sai dele sem a pessoa escolher: sem o Ollama pronto, o Consultor
+mostra "Usar a IA grátis da Rich (sem chave)", um clique. O celular manda a pergunta (já com os nomes trocados por
 apelidos, ver [MOBILE.md](MOBILE.md)) para um intermediário pequeno, que repassa a provedores
 de IA grátis ([Groq](https://groq.com), Gemini, Cerebras, OpenRouter e Cloudflare Workers AI)
 com chaves que ficam só no servidor. Nenhuma chave vai dentro do APK.

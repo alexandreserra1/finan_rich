@@ -6,7 +6,7 @@
 import * as cloud from "../cloud-ai.js";
 import * as db from "../db.js";
 import * as finance from "../finance.js";
-import { endpoint, isApp } from "../device.js";
+import { endpoint, here, isApp } from "../device.js";
 import { applyProposal, proposalButton, proposalKind, saveNote } from "../notes-save.js";
 import { html, raw, today } from "../ui.js";
 
@@ -72,7 +72,7 @@ function head() {
 
 // chatTop: quem está conversando, o estado da IA e o "Nova conversa".
 function chatTop(me) {
-  const [state, text] = chat.setup ? ["none", "Nenhuma IA configurada"] : aiState();
+  const [state, text] = chat.setup ? ["none", "IA desligada"] : aiState();
   return html`<div class="chat-top"><div class="consultor-id">${face(me, 58)}<div><h2>${me.name}</h2><span class="ai-state" data-state="${state}"><i></i>${me.role} · ${text}</span></div></div>
     ${chat.history?.length ? html`<button type="button" class="iconbtn" data-action="clear" aria-label="Nova conversa com ${me.name}" title="Nova conversa">${icon(TRASH)}</button>` : ""}</div>`;
 }
@@ -91,10 +91,11 @@ export function render(ctx) {
   const me = member(agentId);
   if (chat.setup) {
     return html`${head()}<div class="chat-layout">${teamColumn(me)}<section class="panel chat">${chatTop(me)}
-      <div class="notice warn ai-setup"><strong>O consultor precisa de uma IA para funcionar.</strong>
-      Para usar sem computador, escolha uma IA na nuvem (há opções grátis) em
-      <a href="/configuracoes#ia-nuvem">Ajustes → Consultor sem computador</a>. Ou conecte este celular a um computador com a Rich.
-      <span class="small muted">O resto do app funciona normalmente sem IA.</span></div>
+      <div class="notice warn ai-setup"><strong>A IA do Consultor está desligada.</strong>
+      A IA grátis da Rich não precisa de conta nem de chave: as perguntas vão com os nomes trocados por apelidos.
+      <span class="row-actions tight"><button type="button" data-action="ai-on">Ligar a IA grátis</button>
+      <a href="/configuracoes#ia-nuvem">Usar a minha própria chave</a></span>
+      <span class="small muted">Ou conecte este aparelho a um computador com a Rich. O resto do app funciona normalmente sem IA.</span></div>
       ${pendingDraft !== null ? html`<div class="home-draft"><label for="prepared-message">Sua mensagem preparada, só nesta aba</label>
         <textarea id="prepared-message" data-draft-input maxlength="500" autocomplete="off">${pendingDraft}</textarea>
         <p class="small muted">Nada foi enviado ou registrado. Você pode copiar o texto ou usar o formulário sem IA.</p>
@@ -107,7 +108,7 @@ export function render(ctx) {
     <section class="panel chat">
       ${chatTop(me)}
       ${!isApp ? deskNotes() : chat.problem ? html`<p class="notice warn">${chat.problem}</p>` : chat.cloud
-        ? html`<p class="small muted chat-where">Usando ${chat.model} na nuvem, direto deste celular. Nomes de lojas, dívidas e metas vão com apelidos, e as notas não vão; a IA vê só valores, datas e categorias.</p>`
+        ? html`<p class="small muted chat-where">Usando ${chat.model} na nuvem, a partir ${here.replace(/^neste/, "deste")}. Nomes de lojas, dívidas e metas vão com apelidos, e as notas não vão; a IA vê só valores, datas e categorias.</p>`
         : html`<p class="small muted chat-where">Usando ${chat.model} no computador. O consultor vê seus números, metas e notas a cada pergunta.</p>`}
       <div class="messages">
         ${!chat.history.length && !chat.busy ? html`<div class="chat-empty">
@@ -152,6 +153,8 @@ function deskNotes() {
   return html`${chat.problem ? html`<div class="notice warn"><strong>${chat.problem}</strong>
       ${use ? html`<p class="small">Ou use um que já está neste computador, sem baixar nada:</p>
       <div class="row-actions">${use.models.map((m) => html`<form method="post" action="/configuracoes"><input type="hidden" name="preset" value="${use.preset}"><input type="hidden" name="base_url" value="${use.baseURL}"><input type="hidden" name="model" value="${m}"><input type="hidden" name="volta" value="/chat"><button type="submit" class="secondary">Usar ${m}</button></form>`)}</div>` : ""}
+      ${chat.free ? html`<form method="post" action="/configuracoes" class="row-actions free-ai"><input type="hidden" name="preset" value="${chat.free.preset}"><input type="hidden" name="base_url" value="${chat.free.baseURL}"><input type="hidden" name="model" value="auto"><input type="hidden" name="volta" value="/chat"><button type="submit">Usar a IA grátis da Rich (sem chave)</button></form>
+      <p class="small muted">Na nuvem, com os nomes de lojas, dívidas e metas trocados por apelidos. Dá para trocar depois nos Ajustes.</p>` : ""}
       <p class="small">Para resolver, abra os <a href="/configuracoes#ia">Ajustes</a>.</p></div>` : ""}
     <p class="small muted chat-where">${chat.aiLocal ? "A IA roda neste computador: nada sai daqui." : "Na nuvem, nomes de lojas, dívidas e metas vão com apelidos."} O consultor vê seus números atuais a cada pergunta. <a href="/configuracoes">Trocar o modelo</a></p>`;
 }
@@ -186,7 +189,7 @@ async function openChat(ctx) {
     for (const m of history) {
       for (const p of m.proposals || []) p.applied = await cloud.applied(ctx.ledger, p).catch(() => false);
     }
-    chat = { history, model: `${cfg.preset} · ${cfg.model}`, ready: true, problem: "", busy: false, error: "", cloud: true };
+    chat = { history, model: cfg.preset === "finan" ? "IA grátis da Rich" : `${cfg.preset} · ${cfg.model}`, ready: true, problem: "", busy: false, error: "", cloud: true };
     ctx.rerender();
     return;
   }
@@ -199,7 +202,7 @@ async function openChat(ctx) {
     const res = await call("/api/chat");
     const body = await res.json();
     if (!res.ok) throw new Error(body.error || res.statusText);
-    chat = { history: body.history, model: body.model, ready: body.ready, problem: body.problem || "", busy: false, error: "", aiLocal: body.local, use: body.use };
+    chat = { history: body.history, model: body.model, ready: body.ready, problem: body.problem || "", busy: false, error: "", aiLocal: body.local, use: body.use, free: body.free };
   } catch (err) {
     const offline = err instanceof TypeError;
     const noLink = isApp ? "Sem conexão com o computador. O consultor funciona quando o celular estiver no mesmo Wi-Fi e a Rich aberta lá."
@@ -315,6 +318,11 @@ export function bind(root, ctx) {
     loadChat(ctx);
     return;
   }
+  // A IA desligada: um toque liga a grátis da Rich ali mesmo (sem conta, sem chave).
+  root.querySelector('[data-action="ai-on"]')?.addEventListener("click", async () => {
+    await cloud.saveConfig({ preset: "finan", model: "", enabled: false, apiKey: "" });
+    await openChat(ctx);
+  });
   const prepared = root.querySelector("[data-draft-input]");
   prepared?.addEventListener("input", () => { pendingDraft = prepared.value.slice(0, 500); });
   const form = root.querySelector('[data-form="ask"]');

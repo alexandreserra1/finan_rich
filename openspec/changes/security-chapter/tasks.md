@@ -10,5 +10,7 @@
 - [x] 4.1 `docs/SEGURANCA.md` com o mapa do capítulo, a classificação e a LGPD.
 - [x] 4.2 Política de privacidade com o processamento nos Estados Unidos.
 ## 5. Pendente do dono
-- [ ] 5.1 MFA no acesso pela rede, backup automático do Android, banco do celular cifrado,
-  chaveiro do computador, verificação em duas etapas nas contas e regra do Firewall da Vercel.
+- [x] 5.1 MFA no acesso pela rede e backup do Android só cifrado (auth-from-start).
+- [x] 5.2 Regra de limite por IP no Firewall da Vercel: ativa desde 05/11, conferida em 19/11.
+- [ ] 5.3 Do dono: banco do celular cifrado (depois, no aparelho), chaveiro do computador e
+  verificação em duas etapas nas contas.
