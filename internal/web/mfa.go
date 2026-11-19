@@ -192,7 +192,8 @@ func (s *Server) loginCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.mfa.done(token)
-	http.SetCookie(w, &http.Cookie{Name: mfaCookie, Value: "", Path: "/entrar", MaxAge: -1})
+	http.SetCookie(w, &http.Cookie{Name: mfaCookie, Value: "", Path: "/entrar", MaxAge: -1,
+		HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: r.TLS != nil})
 	s.codeLimiter.Reset(codeKey)
 	if err := s.startSession(r.Context(), w, r); err != nil {
 		serverError(w, err)
