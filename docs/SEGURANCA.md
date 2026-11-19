@@ -205,10 +205,15 @@ Nos PRs, o CodeQL só mostra o que o próprio PR introduz; na main ficaram 7 ale
 - **Dois em código de teste** (um cofre falso no `localStorage` do e2e e um script montado num
   teste do gate): os testes saíram da análise (`paths-ignore`), porque não vão para o app.
 
-Os alertas do Dependabot (dependências com falha conhecida) estão **desligados** no
-repositório. O `govulncheck` e o `npm audit` do CI cobrem as dependências a cada PR; ligar os
-alertas (Settings → Code security, grátis) também avisa quando sai uma falha nova numa
-dependência que já está na main.
+Os alertas do Dependabot (dependências com falha conhecida) foram **ligados em 19/11/2026**
+(Settings → Code security, grátis). O `govulncheck` e o `npm audit` do CI cobrem as
+dependências a cada PR; os alertas também avisam quando sai uma falha nova numa dependência
+que já está na main. O primeiro alerta, médio, foi o `uuid` 7.0.3 (GHSA-w5hq-g745-h8pq). Ele
+entra só pela ferramenta do Capacitor que edita o projeto do iPhone (`@capacitor/cli` →
+`xcode`), que nem usa a parte com falha (v3/v5/v6 com buffer). Mesmo assim, o
+`mobile/package.json` força o `uuid` 11.1.1 só para o `xcode` (`overrides`). O `xcode` usa
+apenas `uuid.v4()`, e a 11.1.1 continua com ela em CommonJS. Quando o `@capacitor/cli`
+trouxer um `xcode` com `uuid` corrigido, essa regra pode sair.
 
 ## O que não se aplica
 
