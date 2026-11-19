@@ -30,5 +30,7 @@ depois do clique.
   perguntas por dia, com o cache) acaba antes. O intermediário já passa para os outros
   provedores grátis se as chaves estiverem na Vercel; acabando tudo, o time responde com as
   contas do app.
-- **Abuso.** O intermediário é aberto (o código é público). Os limites por aparelho, IP e
-  rajada seguram um script; a regra do Firewall da Vercel continua pendente com o dono.
+- **Abuso.** O intermediário é aberto (o código é público). Os limites do intermediário (por
+  aparelho, IP e rajada) e a regra de limite por IP do Firewall da Vercel (ativa desde 05/11,
+  conferida em 19/11: depois de 11 pedidos seguidos, 429 com `x-vercel-mitigated: deny`)
+  seguram um script.
