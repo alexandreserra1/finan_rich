@@ -22,10 +22,10 @@ zero (#27) dependia só das instruções para a IA chamar as ferramentas.
 ## Validation
 
 Testes Go com IA falsa e `TestEvalOnboarding` com a IA real do grátis da Rich (5 turnos):
-antes 7 de 10 critérios e nenhum cartão em 2 turnos; depois 9 de 10, com cartões do salário,
-do aluguel e da meta.
+antes 7 de 10 critérios e nenhum cartão em 2 turnos; com o `required`, 9 de 10; com o lembrete
+dos outros itens, 10 de 10 (salário, aluguel, internet e meta viraram cartões).
 
 ## Risks
 
-- Dois itens na mesma mensagem ainda podem sair como um só cartão; o lembrete reduz isso, sem
-  garantir. A pessoa vê o que faltou e repete.
+- Dois itens na mesma mensagem podem sair como um só cartão; o lembrete resolveu na avaliação,
+  mas o modelo grátis muda. A pessoa vê o que faltou e repete.

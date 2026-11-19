@@ -20,7 +20,7 @@ nomes, e às vezes o provedor recusava a resposta por JSON quebrado na ferrament
 - Afirmação falsa de cartão ("deixei pronto" sem ferramenta): uma nova tentativa com aviso; se
   repetir, a resposta diz que não conseguiu.
 - JSON quebrado na ferramenta (erro do provedor no meio da resposta): uma nova tentativa.
-- `TestEvalOnboarding`: avaliação de vários turnos com IA real, desligada sem chave.
+- `TestEvalOnboarding`: avaliação de vários turnos com IA real, desligada sem chave (10 de 10).
 
 ## Capabilities
 
