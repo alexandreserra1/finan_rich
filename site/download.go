@@ -11,7 +11,8 @@ import (
 // é segredo. Vazio: o download ainda não está no ar. Só se preenche com o endereço que a
 // primeira publicação mostrar: se o nome estiver ocupado, o Pages dá outro, e apontar para
 // um endereço alheio mandaria as pessoas baixarem o APK de outra pessoa.
-var apkBase = ""
+// Preenchido em 19/11/2026 com o endereço que a publicação da v1.11.0 mostrou.
+var apkBase = "https://finan-rich-app.pages.dev"
 
 // DownloadPaths são os caminhos de Download. O cmd/api registra um a um: com a pasta
 // "/baixar/" inteira, o Go redirecionaria a página /baixar para /baixar/.

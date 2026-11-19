@@ -2,7 +2,7 @@
 
 | Onde | Custo | Atualiza | Situação |
 |---|---|---|---|
-| **QR code / página `/baixar` do site** (APK no Cloudflare Pages) | grátis | o app avisa e baixa a versão nova | ✅ pronto; falta publicar uma versão (abaixo) |
+| **QR code / página `/baixar` do site** (APK no Cloudflare Pages) | grátis | o app avisa e baixa a versão nova | ✅ no ar desde a v1.11.0 (19/11/2026) |
 | iPhone pelo Safari (Tela de Início) | grátis | sim (é o site) | ✅ já funciona |
 | Play Store | US$ 25 uma vez | sim | não planejado (sem gasto) |
 | App Store / TestFlight | US$ 99 por ano | sim | não planejado (sem gasto) |
@@ -31,7 +31,8 @@ Código: `site/baixar.html` (a página), `site/download.go` (rotas `/baixar/andr
 ### Ligar o Cloudflare Pages (uma vez, grátis, sem cartão)
 
 O plano grátis do Pages não pede cartão, não tem limite de tráfego e aceita arquivos de até
-25 MB (o APK tem uns 16 MB; o CI barra acima de 18 MB). Fica separado da Vercel: um pico de
+25 MB. O CI barra o APK a partir de 18 MB (18 × 1024 × 1024 bytes). O da v1.11.0 tem
+18.802.755 bytes, só uns 70 KB abaixo do limite. Fica separado da Vercel: um pico de
 downloads não gasta a cota do site nem da IA grátis. O R2 da Cloudflare pede cartão e a
 Vercel divide 100 GB por mês entre todos os projetos (ADR-003).
 
@@ -45,12 +46,20 @@ Vercel divide 100 GB por mês entre todos os projetos (ADR-003).
 4. No GitHub, **Settings → Secrets and variables → Actions**, crie os secrets
    `CLOUDFLARE_ACCOUNT_ID` e `CLOUDFLARE_API_TOKEN`.
 
-**Estado em 19/11/2026**: os secrets existem e o diagnóstico passou em 10/11 às 19:06. A
-v1.10.1 (10/11, 15:05) caiu ao mandar o APK para o Pages ("invalid header value": o token
-estava com uma quebra de linha, corrigida depois). Desde então nenhuma versão foi publicada,
-então o APK ainda não está no Pages e o `apkBase` (`site/download.go`) segue vazio: a página
-`/baixar` diz que o download ainda não está no ar. Falta publicar uma versão e preencher o
-`apkBase` com o endereço que essa publicação mostrar.
+**Estado em 19/11/2026: no ar.** A v1.11.0 foi a primeira publicação no Pages. A v1.10.1,
+de 10/11, tinha caído ao mandar o APK: o token estava com uma quebra de linha ("invalid
+header value"). O nome `finan-rich-app` estava livre, então o endereço é
+`https://finan-rich-app.pages.dev`, já gravado no `apkBase` (`site/download.go`). Conferido
+depois da publicação:
+
+- o `android/latest.json` diz 1.11.0;
+- a soma SHA-256 do APK baixado bate com a do `latest.json`;
+- o certificado da assinatura é `CN=finan_rich`.
+
+O SHA-256 do certificado, como o `apksigner verify --print-certs` mostra, é
+`32b2dc8e12713a743e617386a297353732aabdebd6210630cd3403d3ad7b0342`. Confira esse valor a
+cada publicação: com outro certificado, o app não instala por cima e a pessoa perde a
+atualização.
 
 Antes de publicar, rode **Actions → Diagnóstico do Cloudflare → Run workflow**. Ele
 aponta secrets ausentes, espaços, quebras de linha e caracteres invisíveis, sem mostrar
