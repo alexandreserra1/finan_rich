@@ -2,7 +2,7 @@
 
 | Onde | Custo | Atualiza | Situação |
 |---|---|---|---|
-| **QR code / página `/baixar` do site** (APK no Cloudflare Pages) | grátis | o app avisa e baixa a versão nova | ✅ pronto; falta o token da Cloudflare (abaixo) |
+| **QR code / página `/baixar` do site** (APK no Cloudflare Pages) | grátis | o app avisa e baixa a versão nova | ✅ pronto; falta publicar uma versão (abaixo) |
 | iPhone pelo Safari (Tela de Início) | grátis | sim (é o site) | ✅ já funciona |
 | Play Store | US$ 25 uma vez | sim | não planejado (sem gasto) |
 | App Store / TestFlight | US$ 99 por ano | sim | não planejado (sem gasto) |
@@ -44,6 +44,13 @@ Vercel divide 100 GB por mês entre todos os projetos (ADR-003).
    aparece uma vez; a chave nunca no chat).
 4. No GitHub, **Settings → Secrets and variables → Actions**, crie os secrets
    `CLOUDFLARE_ACCOUNT_ID` e `CLOUDFLARE_API_TOKEN`.
+
+**Estado em 19/11/2026**: os secrets existem e o diagnóstico passou em 10/11 às 19:06. A
+v1.10.1 (10/11, 15:05) caiu ao mandar o APK para o Pages ("invalid header value": o token
+estava com uma quebra de linha, corrigida depois). Desde então nenhuma versão foi publicada,
+então o APK ainda não está no Pages e o `apkBase` (`site/download.go`) segue vazio: a página
+`/baixar` diz que o download ainda não está no ar. Falta publicar uma versão e preencher o
+`apkBase` com o endereço que essa publicação mostrar.
 
 Antes de publicar, rode **Actions → Diagnóstico do Cloudflare → Run workflow**. Ele
 aponta secrets ausentes, espaços, quebras de linha e caracteres invisíveis, sem mostrar
