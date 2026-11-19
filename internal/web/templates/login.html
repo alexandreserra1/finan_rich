@@ -1,11 +1,21 @@
 {{define "content"}}
 <section class="panel login">
   <p class="brand big">rich<span>{{template "rich-mark"}}</span></p>
+  {{if .Code}}
+  <p class="muted">Digite o código de 6 dígitos que aparece agora no app autenticador do seu celular.</p>
+  <form method="post" action="/entrar/codigo">
+    <input type="hidden" name="volta" value="{{.Return}}">
+    <label>Código <input name="codigo" autocomplete="one-time-code" maxlength="16" required autofocus></label>
+    <button type="submit">Entrar</button>
+  </form>
+  <p class="small muted">Perdeu o celular? Digite um dos códigos de recuperação que você guardou. Sem eles, desligue a verificação no próprio computador, em Ajustes.</p>
+  {{else}}
   <p class="muted">Digite a senha de acesso definida no computador onde a Rich está instalada.</p>
   <form method="post" action="/entrar">
     <input type="hidden" name="volta" value="{{.Return}}">
     <label>Senha <input type="password" name="senha" autocomplete="current-password" required autofocus></label>
     <button type="submit">Entrar</button>
   </form>
+  {{end}}
 </section>
 {{end}}

@@ -26,6 +26,16 @@ Entrou nesta mudança:
 4. **A política de privacidade** diz que a pergunta à IA grátis passa pelos Estados Unidos.
 5. Este documento, com a classificação dos dados e a LGPD.
 
+Entrou depois (18/11/2026, "autenticação e autorização desde o começo"):
+
+6. **Verificação em duas etapas** no login pela rede: o código de 6 dígitos do app
+   autenticador depois da senha, oferecido (marcado por padrão) quando se liga o acesso.
+7. **Reautenticação**: pela rede, mudar a segurança pede a senha atual e o código.
+8. **Autorização numa tabela única**: cada rota declara quem pode usá-la; o que não está na
+   tabela nega.
+9. **Bloqueio do app oferecido no primeiro uso** do celular e do site.
+10. **Backup do Android só cifrado** de ponta a ponta.
+
 ## Autenticação e autorização
 
 Cada porta responde às duas perguntas do capítulo: quem é você e o que pode fazer.
@@ -33,15 +43,19 @@ Cada porta responde às duas perguntas do capítulo: quem é você e o que pode 
 | Porta | Quem é você | O que pode fazer |
 |---|---|---|
 | Computador, neste computador | O dono do computador (sem senha). Outro site não usa esse acesso: `Origin`/`Sec-Fetch-Site` barram CSRF e `trustedHost` barra DNS rebinding. | Tudo, inclusive fechar o programa e baixar o banco. |
-| Computador pela rede (Wi-Fi, Tailscale) | Senha (PBKDF2-HMAC-SHA256, 600 mil iterações, sal próprio, comparação em tempo constante), com limite de tentativas. Sessão de 30 dias no servidor: o banco guarda só o hash SHA-256 do token; o cookie é `HttpOnly` e `SameSite=Lax`. | Tudo, menos fechar o programa. Trocar a senha ou desligar o acesso derruba todas as sessões e aparelhos. |
+| Computador pela rede (Wi-Fi, Tailscale) | Senha (PBKDF2-HMAC-SHA256, 600 mil iterações, sal próprio, comparação em tempo constante) e, se ligado, o código de 6 dígitos (TOTP) ou um código de recuperação. Sessão de 30 dias no servidor: o banco guarda só o hash SHA-256 do token; o cookie é `HttpOnly` e `SameSite=Lax`. | Tudo, menos fechar o programa. Mudar a segurança (senha, código, acesso) pede a senha atual e o código. Trocar a senha ou desligar o acesso derruba todas as sessões e aparelhos. |
 | App do celular pareado | Token por aparelho (só o hash no banco), dado uma vez com um código de pareamento de uso único. | Só a API (`/api/`: sincronizar, consultor). Não troca a IA nem baixa o banco. Parado 180 dias, perde o acesso; "Desconectar" revoga na hora. |
 | Site e app com Google | OAuth 2.0 com código, PKCE e `state`; OpenID Connect só para mostrar o e-mail. | Escopo `drive.appdata`: só a pasta escondida da Rich no Drive. |
 | Intermediário da IA | Ninguém: o `Bearer` do aparelho pode ser inventado e serve só para dividir a cota. | Uma pergunta com as instruções da Rich, dentro dos limites por aparelho e por IP. |
 | Cadastro sem Google (não ligado) | E-mail e senha no Supabase. | RLS: cada pessoa só lê o próprio perfil; o papel do limitador só executa a função. |
 
-**Papéis (RBAC).** Na prática são três: o dono no computador, a sessão pela rede e o
-aparelho pareado. Cada um tem só o que precisa, e isso basta para uma pessoa por
-instalação. ABAC e papéis configuráveis não se aplicam.
+**Papéis (RBAC).** A tabela de rotas (`routes`, em `internal/web/server.go`) dá a cada rota
+um nível: `public` (login, arquivos do app, pareamento por código), `owner` (a pessoa, neste
+computador ou com login pela rede), `ownerOrDevice` (também o app pareado: só a API) e
+`localOnly` (só neste computador: fechar o programa). O `authorize` confere o nível antes de
+chamar a rota, e o nível zero nega tudo: uma rota esquecida fica fechada, não aberta. O
+`TestRouteTable` trava as regras e o `TestAuthorizeMatrix`, a matriz "quem pede × nível". Para
+uma pessoa por instalação, isso basta; ABAC e papéis configuráveis não se aplicam.
 
 **Sessão ou JWT.** No computador, sessão no servidor: dá para revogar na hora, sem lista
 negra. Com o Google vale o híbrido do capítulo: o token de acesso dura 1 hora e fica só na
@@ -50,9 +64,17 @@ cookie `HttpOnly` do intermediário (site), nunca no JavaScript do site.
 
 **SSO e SAML.** O "Entrar com Google" já é o SSO (OIDC). SAML é para empresas e não se aplica.
 
-**MFA.** O celular tem o bloqueio do app (digital ou rosto, ou a senha do app) contra quem
-pega o aparelho desbloqueado. O acesso pela rede ao computador ainda é só senha: veja
-"Decisões pendentes".
+**MFA.** No login pela rede ao computador, o código de 6 dígitos do app autenticador (TOTP,
+RFC 6238, `internal/auth/totp.go`), oferecido já quando se liga o acesso. Detalhes:
+- o mesmo código não vale duas vezes;
+- 8 códigos de recuperação de uso único, mostrados uma vez;
+- a senha conta tentativas por endereço; o código tem um limite só para todos os endereços
+  (10 a cada 10 min), porque quem chega nele já tem a senha e trocar de IP no Wi-Fi é fácil;
+- ligar o código derruba as sessões abertas só com a senha.
+
+Neste computador o código não é pedido: a conta do sistema já protege, e é aqui que quem
+perdeu o celular desliga o código. No celular, o bloqueio do app (digital ou rosto, ou a senha
+do app) protege de quem pega o aparelho desbloqueado; o primeiro uso já convida a ligar.
 
 ## Segurança dos dados
 
@@ -65,8 +87,10 @@ próprio na rede de casa porque o certificado seria autoassinado e o navegador o
 
 - **Celular.** O banco fica na área privada do app, que o Android e o iOS cifram quando o
   aparelho tem bloqueio de tela. A chave da IA fica no Keystore/Keychain (o banco só tem a
-  versão cifrada) e o token do Google fica no cofre. O banco SQLite do app não tem cifra
-  própria: veja "Decisões pendentes".
+  versão cifrada) e o token do Google fica no cofre. O backup do Google só leva os dados
+  quando é cifrado de ponta a ponta (Android 12+: `disableIfNoEncryptionCapabilities`; 9 a 11:
+  `requireFlags`; 7 e 8: fora do backup). O banco SQLite do app não tem cifra própria: veja
+  "Decisões pendentes".
 - **Navegador (site).** Os dados ficam no banco do navegador. A chave da IA é cifrada com
   AES-GCM por uma chave do aparelho que o navegador não deixa exportar.
 - **Computador.** O banco fica na pasta do usuário, protegido pela conta do sistema. A chave
@@ -147,21 +171,17 @@ A lei que vale é a LGPD. A GDPR e a CCPA têm a mesma ideia; a HIPAA (saúde) n
 
 ## Decisões pendentes (do dono)
 
-1. **Código de 6 dígitos (MFA) no acesso pela rede.** Seria opcional, com o código do app
-   autenticador (TOTP) depois da senha, QR pelo gerador que os Ajustes já usam e códigos de
-   recuperação. Muda o login, por isso espera confirmação.
-2. **Backup automático do Android.** O manifesto tem `allowBackup="true"`, então o Android copia
-   o banco do app para o backup do Google (cifrado de ponta a ponta quando o celular tem
-   bloqueio de tela). Desligar protege mais, mas quem troca de celular sem Drive, computador ou
-   backup da Rich perde os dados.
-3. **Banco do celular cifrado (SQLCipher do plugin).** Exige migrar os bancos que já existem,
-   com risco de perda, e só se testa num celular de verdade.
-4. **Chave da IA no chaveiro do computador.** Precisa de dependência nova. Hoje fica no banco,
+Decididas em 18/11/2026: o código de 6 dígitos entrou (com reautenticação e a tabela de
+autorização), e o backup do Android ficou "só se for cifrado".
+
+1. **Banco do celular cifrado (SQLCipher do plugin).** Decidido: depois, com teste num celular
+   de verdade. Exige migrar os bancos que já existem, com risco de perda.
+2. **Chave da IA no chaveiro do computador.** Precisa de dependência nova. Hoje fica no banco,
    fora do backup.
-5. **Verificação em duas etapas nas contas do dono** (GitHub, Vercel, Google Cloud, Cloudflare,
+3. **Verificação em duas etapas nas contas do dono** (GitHub, Vercel, Google Cloud, Cloudflare,
    Groq). Quem entrar numa delas troca os segredos ou o código publicado. Não dá para conferir
    daqui.
-6. **Regra de limite por IP no Firewall da Vercel**, pendente desde a auditoria de 03/11.
+4. **Regra de limite por IP no Firewall da Vercel**, pendente desde a auditoria de 03/11.
 
 ## O que não se aplica
 
@@ -180,6 +200,14 @@ A lei que vale é a LGPD. A GDPR e a CCPA têm a mesma ideia; a HIPAA (saúde) n
   saída, pareamento errado e certo, backup, troca de senha, da chave da IA e do Open Finance.
   Confere que tudo aparece nos Ajustes com o endereço e que nenhuma senha ou chave vai para o
   registro.
+- `go test ./internal/auth`: vetores da RFC 6238, janela de ±30 s, código já usado, códigos de
+  recuperação de uso único.
+- `go test ./internal/web`: `TestAuthorizeMatrix` e `TestRouteTable` (autorização);
+  `TestMFALogin` (senha sem código não entra, código reaproveitado não entra, recuperação vale
+  uma vez, limite do código somando endereços); `TestSecurityChangesNeedReauth`;
+  `TestEnableLANOffersMFA`.
+- e2e do app: o primeiro uso oferece o bloqueio e o link abre a senha do app.
+- Android (CI): `BackupRulesTest` trava as regras de backup.
 - CodeQL roda no PR. Os avisos que ele achar são tratados antes do merge.
 
 Não foram feitos teste de invasão, ataque de carga nem verificação das contas do dono.

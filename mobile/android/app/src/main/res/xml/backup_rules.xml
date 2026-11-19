@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 7 e 8: não há como exigir backup cifrado, então os dados da Rich ficam fora.
+     Do Android 9 em diante valem xml-v28/backup_rules.xml e data_extraction_rules.xml. -->
+<full-backup-content>
+    <exclude domain="root" path="." />
+</full-backup-content>

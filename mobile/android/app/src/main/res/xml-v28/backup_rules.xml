@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 9 a 11: copia só no backup cifrado do lado do celular ou na passagem direta
+     para um celular novo. Duas regras porque requireFlags com "|" exige as duas ao mesmo tempo. -->
+<full-backup-content>
+    <include domain="root" path="." requireFlags="clientSideEncryption" />
+    <include domain="root" path="." requireFlags="deviceToDeviceTransfer" />
+</full-backup-content>

@@ -132,12 +132,14 @@
       <summary>Trocar a senha ou desligar</summary>
       <form method="post" action="/configuracoes/acesso" class="grid-form">
         <input type="hidden" name="acao" value="senha">
+        {{template "reauth" .}}
         <label>Nova senha <input type="password" name="senha" minlength="8" autocomplete="new-password" required></label>
         <label>Repita a senha <input type="password" name="confirmar" minlength="8" autocomplete="new-password" required></label>
         <button type="submit">Trocar senha</button>
       </form>
       <form method="post" action="/configuracoes/acesso" class="row-actions">
         <input type="hidden" name="acao" value="desligar">
+        {{template "reauth" .}}
         <button type="submit" class="secondary">Desligar acesso pelo celular</button>
       </form>
     </details>
@@ -147,8 +149,49 @@
       <input type="hidden" name="acao" value="ligar">
       <label class="wide">Crie uma senha <input type="password" name="senha" minlength="8" autocomplete="new-password" required placeholder="mínimo 8 caracteres"></label>
       <label>Repita a senha <input type="password" name="confirmar" minlength="8" autocomplete="new-password" required></label>
+      <label class="check wide"><input type="checkbox" name="mfa" value="1" checked> Pedir também um código de 6 dígitos do app autenticador do celular (recomendado: se alguém descobrir a senha, ainda não entra)</label>
       <button type="submit">Ligar acesso pelo celular</button>
     </form>
+  {{end}}
+  {{if or .LAN .EnvPassword}}
+  <div class="mfa" id="mfa">
+    <h3>Verificação em duas etapas</h3>
+    {{if .RecoveryCodes}}
+      <p class="notice ok"><strong>Ligada.</strong> Guarde estes códigos de recuperação num lugar seguro (papel ou gerenciador de senhas). Cada um vale uma vez, se você perder o celular. Eles não aparecem de novo.</p>
+      <ul class="recovery-codes">{{range .RecoveryCodes}}<li><code>{{.}}</code></li>{{end}}</ul>
+    {{else if .MFA.On}}
+      <p class="small muted"><strong>Ligada.</strong> Quem entra pela rede digita a senha e o código de 6 dígitos do app autenticador. {{.MFA.Left}} códigos de recuperação ainda valem.</p>
+      <details>
+        <summary>Desligar a verificação em duas etapas</summary>
+        <form method="post" action="/configuracoes/acesso" class="grid-form">
+          <input type="hidden" name="acao" value="mfa-desligar">
+          {{template "reauth" .}}
+          <button type="submit" class="secondary">Desligar o código</button>
+        </form>
+      </details>
+    {{else if .MFA.QR}}
+      <div class="lan">
+        <img src="{{.MFA.QR}}" alt="QR code para o app autenticador" width="174" height="174">
+        <div>
+          <p>1. No celular, abra o app autenticador (Google Authenticator, Microsoft Authenticator, Authy ou o app de senhas do iPhone) e leia o QR code.</p>
+          <p class="small muted">Sem câmera? Digite a chave no app: <code class="totp-secret">{{.MFA.Secret}}</code></p>
+          <form method="post" action="/configuracoes/acesso" class="grid-form">
+            <input type="hidden" name="acao" value="mfa-confirmar">
+            <label>2. Código que aparece no app <input name="codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required></label>
+            <button type="submit">Confirmar e ligar</button>
+          </form>
+          <form method="post" action="/configuracoes/acesso"><input type="hidden" name="acao" value="mfa-cancelar"><button type="submit" class="link plain">Agora não</button></form>
+        </div>
+      </div>
+    {{else}}
+      <p class="small muted">Além da senha, quem entra pela rede digita o código de 6 dígitos que o app autenticador do seu celular mostra. Se alguém descobrir a senha, ainda não entra.</p>
+      <form method="post" action="/configuracoes/acesso" class="grid-form">
+        <input type="hidden" name="acao" value="mfa-iniciar">
+        {{template "reauth" .}}
+        <button type="submit">Ligar o código de 6 dígitos</button>
+      </form>
+    {{end}}
+  </div>
   {{end}}
   {{with .AccessLog}}
   <details class="access-log">
@@ -258,3 +301,7 @@
 <script type="application/json" id="ai-data">{"presets": {{json .Presets}}, "installed": {{json .Status.Installed}}, "saved": {{json .AI.Preset.ID}}, "free": {{json .FreeID}}}</script>
 <script src="/static/settings.js"></script>
 {{end}}
+
+{{/* reauth: pela rede, mudar a segurança pede a senha atual (e o código, se ligado). */}}
+{{define "reauth"}}{{if .Remote}}<label>Senha atual <input type="password" name="senha_atual" autocomplete="current-password" required></label>{{if .MFA.On}}
+<label>Código de 6 dígitos <input name="codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="16" required></label>{{end}}{{end}}{{end}}

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+: o backup do Google só leva os dados da Rich quando é cifrado de ponta a
+     ponta (celular com bloqueio de tela); sem isso, não copia. A passagem direta para um
+     celular novo (cabo ou Wi-Fi, na configuração) continua valendo. -->
+<data-extraction-rules>
+    <cloud-backup disableIfNoEncryptionCapabilities="true" />
+    <device-transfer />
+</data-extraction-rules>

@@ -23,15 +23,6 @@ const (
 	sessionDuration = 30 * 24 * time.Hour
 )
 
-// publicPaths não exigem login (tela de login, arquivos estáticos e do PWA).
-func isPublicPath(path string) bool {
-	switch path {
-	case "/entrar", "/healthz", "/manifest.webmanifest", "/sw.js", "/offline", "/parear", "/api/parear":
-		return true
-	}
-	return strings.HasPrefix(path, "/static/")
-}
-
 const untrustedHostMsg = "endereço desconhecido: abra pelo IP ou por localhost (ou acrescente o nome em FINAN_HOSTS)"
 
 // trustedHost barra o "DNS rebinding": um site de fora cujo nome aponta para
@@ -90,21 +81,37 @@ func (s *Server) LANEnabled(ctx context.Context) bool {
 	return err == nil && saved[keyLAN] == "1"
 }
 
-// requireAuth exige login de quem acessa pela rede. Quem usa no próprio
-// computador entra direto, a não ser que a senha venha de FINAN_PASSWORD
-// (modo servidor, onde um proxy reverso faria tudo parecer local).
-func (s *Server) requireAuth(next http.Handler) http.Handler {
+// access diz quem pode usar uma rota (autorização). Cada rota da tabela (routes, em
+// server.go) declara o seu; o zero não é nível nenhum e nega tudo (negado por padrão).
+type access int
+
+const (
+	public        access = iota + 1 // qualquer um: login, arquivos do app, pareamento por código
+	owner                           // a pessoa: neste computador ou com login pela rede
+	ownerOrDevice                   // a pessoa ou o app do celular pareado (token do aparelho)
+	localOnly                       // a pessoa, e só neste computador (fechar o programa)
+)
+
+// authorize deixa passar só quem pode usar a rota. Quem usa no próprio computador entra
+// direto, a não ser que a senha venha de FINAN_PASSWORD (modo servidor, onde um proxy
+// reverso faria tudo parecer local); pela rede, só com login (senha e, se ligado, o
+// código de 6 dígitos) ou com o token de um aparelho pareado, nas rotas do app.
+func (s *Server) authorize(who access, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if isPublicPath(r.URL.Path) {
+		switch {
+		case who < public || who > localOnly:
+			http.Error(w, "rota sem regra de acesso", http.StatusForbidden)
+			return
+		case who == public:
 			next.ServeHTTP(w, r)
 			return
 		}
 		// App pareado: vale só o token, mesmo vindo deste computador (assim uma
 		// página de outro site não usa o acesso local para ler os dados).
 		if token, ok := bearerToken(r); ok {
-			// O token do celular vale só para a API (sincronizar, consultor):
+			// O token do celular vale só para as rotas do app (sincronizar, consultor):
 			// quem roubar um token não troca a IA nem baixa o banco inteiro.
-			if !strings.HasPrefix(r.URL.Path, "/api/") {
+			if who != ownerOrDevice {
 				http.Error(w, "o token do aparelho só vale para a sincronização", http.StatusForbidden)
 				return
 			}
@@ -115,42 +122,54 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		// Sem token, um pedido feito por outro site (fetch, imagem...) não usa o
-		// acesso local nem o login: senão qualquer página aberta no computador
-		// leria a conversa e os dados. Abrir um link (navegação) continua valendo.
-		if !isSameOrigin(r) && r.Header.Get("Sec-Fetch-Mode") != "navigate" {
-			http.Error(w, "requisição de outra origem bloqueada", http.StatusForbidden)
+		if !s.isOwner(w, r) {
 			return
 		}
-		if s.envPasswordHash == "" && isLoopback(r) {
-			if !trustedHost(r) {
-				http.Error(w, untrustedHostMsg, http.StatusForbidden)
-				return
-			}
-			next.ServeHTTP(w, r)
+		if who == localOnly && !isLoopback(r) {
+			http.Error(w, "só dá para fazer isso no próprio computador", http.StatusForbidden)
 			return
 		}
-		hash, err := s.passwordHash(r.Context())
-		if err != nil {
-			serverError(w, err)
-			return
-		}
-		if hash == "" && !trustedHost(r) {
-			http.Error(w, untrustedHostMsg, http.StatusForbidden)
-			return
-		}
-		if hash == "" || s.validSession(r) {
-			// Sem senha só se chega aqui pela rede quando o app foi exposto de
-			// propósito (flag -addr); o aviso aparece ao iniciar.
-			next.ServeHTTP(w, r)
-			return
-		}
-		if r.Method == http.MethodGet {
-			http.Redirect(w, r, "/entrar?volta="+url.QueryEscape(r.URL.RequestURI()), http.StatusSeeOther)
-			return
-		}
-		http.Error(w, "faça login para continuar", http.StatusUnauthorized)
+		next.ServeHTTP(w, r)
 	})
+}
+
+// isOwner diz se o pedido é da pessoa: neste computador ou com login pela rede. Se não
+// for, já responde (recusa, ou o caminho para entrar) e devolve false.
+func (s *Server) isOwner(w http.ResponseWriter, r *http.Request) bool {
+	// Sem token, um pedido feito por outro site (fetch, imagem...) não usa o
+	// acesso local nem o login: senão qualquer página aberta no computador
+	// leria a conversa e os dados. Abrir um link (navegação) continua valendo.
+	if !isSameOrigin(r) && r.Header.Get("Sec-Fetch-Mode") != "navigate" {
+		http.Error(w, "requisição de outra origem bloqueada", http.StatusForbidden)
+		return false
+	}
+	if s.envPasswordHash == "" && isLoopback(r) {
+		if !trustedHost(r) {
+			http.Error(w, untrustedHostMsg, http.StatusForbidden)
+			return false
+		}
+		return true
+	}
+	hash, err := s.passwordHash(r.Context())
+	if err != nil {
+		serverError(w, err)
+		return false
+	}
+	if hash == "" && !trustedHost(r) {
+		http.Error(w, untrustedHostMsg, http.StatusForbidden)
+		return false
+	}
+	if hash == "" || s.validSession(r) {
+		// Sem senha só se chega aqui pela rede quando o app foi exposto de
+		// propósito (flag -addr); o aviso aparece ao iniciar.
+		return true
+	}
+	if r.Method == http.MethodGet {
+		http.Redirect(w, r, "/entrar?volta="+url.QueryEscape(r.URL.RequestURI()), http.StatusSeeOther)
+		return false
+	}
+	http.Error(w, "faça login para continuar", http.StatusUnauthorized)
+	return false
 }
 
 func (s *Server) validSession(r *http.Request) bool {
@@ -209,6 +228,14 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.limiter.Reset(key)
+	// Com a verificação em duas etapas, a senha certa leva ao passo do código, que tem o
+	// limite de tentativas dele (codeLimiter).
+	if s.mfaOn(ctx) {
+		if err := s.askCode(w, r, back); err != nil {
+			fail(err.Error())
+		}
+		return
+	}
 	if err := s.startSession(ctx, w, r); err != nil {
 		serverError(w, err)
 		return
@@ -249,6 +276,17 @@ func (s *Server) saveAccess(w http.ResponseWriter, r *http.Request) {
 	action := r.FormValue("acao")
 	values := map[string]string{}
 	var msg string
+	if strings.HasPrefix(action, "mfa-") {
+		s.saveMFA(w, r, action)
+		return
+	}
+	// Pela rede, trocar a senha ou desligar o acesso pede a senha atual (e o código).
+	if action == "senha" || action == "desligar" {
+		if err := s.reauth(r); err != nil {
+			redirect(w, r, "/configuracoes#acesso", "", err)
+			return
+		}
+	}
 
 	switch action {
 	case "ligar", "senha":
@@ -290,11 +328,21 @@ func (s *Server) saveAccess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.logAccess(r, map[string]string{"ligar": "Acesso pelo celular ligado", "senha": "Senha trocada", "desligar": "Acesso pelo celular desligado"}[action])
+	// Ligar o acesso já oferece o código de 6 dígitos (marcado por padrão): o QR aparece em seguida.
+	back := "/configuracoes#acesso"
+	if action == "ligar" && r.FormValue("mfa") == "1" && !s.mfaOn(ctx) {
+		if err := s.startMFA(ctx); err != nil {
+			redirect(w, r, "/configuracoes", "", err)
+			return
+		}
+		msg += " Agora leia o QR code com o app autenticador para ligar o código de 6 dígitos."
+		back = "/configuracoes#mfa"
+	}
 	// Se quem trocou a senha está no celular, mantém essa pessoa conectada.
 	if !isLoopback(r) && action == "senha" {
 		s.startSession(ctx, w, r)
 	}
-	redirect(w, r, "/configuracoes#acesso", msg, nil)
+	redirect(w, r, back, msg, nil)
 	if _, changed := values[keyLAN]; changed && s.onNetworkChange != nil {
 		// Reabre a porta (só local ou toda a rede) depois que a resposta sair.
 		go func() {
