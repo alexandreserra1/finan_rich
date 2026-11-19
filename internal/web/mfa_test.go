@@ -30,7 +30,7 @@ func (a *accessApp) totp(at time.Time) string {
 var recoveryRe = regexp.MustCompile(`<code>([a-z2-9]{4}-[a-z2-9]{4}-[a-z2-9]{4})</code>`)
 
 // enableMFA liga a verificação em duas etapas neste computador e devolve os códigos de recuperação.
-func (a *accessApp) enableMFA() []string {
+func (a *accessApp) enableMFA() (codes []string, confirm string) {
 	a.t.Helper()
 	if loc := a.do("POST", "/configuracoes/acesso", local, url.Values{"acao": {"mfa-iniciar"}}).Header().Get("Location"); !strings.Contains(loc, "msg=") {
 		a.t.Fatalf("iniciar: %s", loc)
@@ -42,15 +42,15 @@ func (a *accessApp) enableMFA() []string {
 	if loc := a.do("POST", "/configuracoes/acesso", local, url.Values{"acao": {"mfa-confirmar"}, "codigo": {"000000"}}).Header().Get("Location"); !strings.Contains(loc, "erro=") {
 		a.t.Fatalf("código errado ligou: %s", loc)
 	}
-	rec := a.do("POST", "/configuracoes/acesso", local, url.Values{"acao": {"mfa-confirmar"}, "codigo": {a.totp(time.Now())}})
-	var codes []string
+	confirm = a.totp(time.Now())
+	rec := a.do("POST", "/configuracoes/acesso", local, url.Values{"acao": {"mfa-confirmar"}, "codigo": {confirm}})
 	for _, m := range recoveryRe.FindAllStringSubmatch(rec.Body.String(), -1) {
 		codes = append(codes, m[1])
 	}
 	if rec.Code != http.StatusOK || len(codes) != 8 || rec.Header().Get("Cache-Control") != "no-store" {
 		a.t.Fatalf("confirmar: %d, %d códigos, cache %q", rec.Code, len(codes), rec.Header().Get("Cache-Control"))
 	}
-	return codes
+	return codes, confirm
 }
 
 // login pela rede com senha e, se pedido, código; devolve a sessão (nil se não entrou).
@@ -83,7 +83,7 @@ func TestMFALogin(t *testing.T) {
 	a := newAccessApp(t, "")
 	a.enableLAN("senha-forte-1")
 	before := sessionFrom(a.do("POST", "/entrar", phone, url.Values{"senha": {"senha-forte-1"}}))
-	codes := a.enableMFA()
+	codes, confirm := a.enableMFA()
 	if rec := a.do("GET", "/", phone, nil, before); rec.Code != http.StatusSeeOther {
 		t.Error("a sessão aberta só com a senha continuou valendo depois de ligar o código")
 	}
@@ -93,7 +93,8 @@ func TestMFALogin(t *testing.T) {
 		t.Fatalf("código errado entrou: %s", loc)
 	}
 	// O código usado para confirmar já foi gasto: vale o próximo (o app troca a cada 30 s).
-	if s, _ := a.loginWithCode("senha-forte-1", a.totp(time.Now())); s != nil {
+	// O mesmo código de quando ligou, não "o de agora": na virada dos 30 s ele já seria outro.
+	if s, _ := a.loginWithCode("senha-forte-1", confirm); s != nil {
 		t.Error("o código usado para ligar entrou de novo")
 	}
 	code := a.totp(time.Now().Add(30 * time.Second))
@@ -154,7 +155,7 @@ func TestMFALogin(t *testing.T) {
 func TestSecurityChangesNeedReauth(t *testing.T) {
 	a := newAccessApp(t, "")
 	a.enableLAN("senha-forte-1")
-	codes := a.enableMFA()
+	codes, _ := a.enableMFA()
 	s, _ := a.loginWithCode("senha-forte-1", codes[0]) // o próximo código de 6 dígitos fica para a reautenticação
 	if s == nil {
 		t.Fatal("sem sessão")
