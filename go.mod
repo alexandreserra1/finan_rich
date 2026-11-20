@@ -3,7 +3,7 @@ module github.com/alexandreserra1/finan_rich
 go 1.26.11
 
 require (
-	modernc.org/sqlite v1.61.0
+	modernc.org/sqlite v1.61.1
 	rsc.io/qr v0.2.0
 )
 
