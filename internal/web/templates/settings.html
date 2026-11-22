@@ -205,6 +205,26 @@
   {{end}}
 </section>
 
+<section class="panel" id="google">
+  <div class="panel-head"><div><h2>Conta Google</h2><span class="muted small">Os dados ficam também numa pasta do seu Google Drive que só a Rich enxerga, e aparecem iguais no site com a mesma conta.</span></div>
+    <span class="tag{{if .Google.Linked}} on{{end}}">{{if .Google.Linked}}Conectado{{else}}Desligado{{end}}</span></div>
+  {{with .Google.Error}}<p class="notice warn">{{.}}</p>{{end}}
+  {{if .Google.Linked}}
+    <p>{{with .Google.Email}}Conta <strong>{{.}}</strong> · {{end}}{{if .Google.Synced}}última sincronização {{.Google.Synced}}{{else}}sincronizando…{{end}}</p>
+    <div class="row-actions">
+      <form method="post" action="/google/sincronizar"><button type="submit">Sincronizar agora</button></form>
+      {{if and .Google.Relogin .Google.CanSignIn}}<a class="button" href="/google/entrar">Entrar de novo e permitir acesso</a>{{end}}
+      <form method="post" action="/google/sair"><button type="submit" class="secondary">Sair da conta Google</button></form>
+    </div>
+    <p class="small muted">Enquanto este programa estiver aberto (mesmo com o navegador fechado), ele sincroniza a cada 2 minutos e logo depois que o celular pareado manda algo. Sair desliga a conta neste computador: os dados continuam aqui e no seu Drive.</p>
+  {{else if .Google.CanSignIn}}
+    <p class="row-actions tight"><a class="button" href="/google/entrar">Entrar com Google</a></p>
+    <p class="small muted">O login abre na página do Google, neste navegador, e volta para cá. A Rich só acessa a pasta de dados do app no seu Drive, nenhum outro arquivo. O acesso fica guardado só neste computador e não vai no backup do banco.</p>
+  {{else}}
+    <p class="small muted">Para entrar com Google, abra a Rich no próprio computador onde o programa está aberto.</p>
+  {{end}}
+</section>
+
 <section class="panel" id="app">
   <div class="panel-head"><div><h2>App do celular</h2><span class="muted small">O app Android guarda os dados, abre sem internet e sincroniza pelo Wi-Fi.</span></div></div>
   <p class="small muted">Com o app da Rich instalado (Android), o celular guarda seus dados, abre sem internet e sincroniza com este computador quando estiver no mesmo Wi-Fi. Para baixar, aponte a câmera do celular para o QR code ou abra a <a href="{{.App.Download}}" target="_blank" rel="noopener">página de download</a>.</p>

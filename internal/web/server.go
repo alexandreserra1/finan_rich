@@ -48,7 +48,8 @@ type Server struct {
 	assetsVersion   string // impressão digital de static/ e templates/
 	pairing         pairing
 	tailscaleURL    func(context.Context) string
-	bank            bankCache // Open Finance buscado em segundo plano
+	bank            bankCache   // Open Finance buscado em segundo plano
+	google          *googleSync // conta Google e sincronização pelo Drive (google.go)
 }
 
 // Options configura o servidor.
@@ -98,6 +99,7 @@ func New(st *store.Store, opts Options) (*Server, error) {
 		assetsVersion:   assetsFingerprint(),
 		tailscaleURL:    tailscaleURL,
 		rates:           ratesCache{url: opts.RatesURL},
+		google:          newGoogleSync(),
 	}
 	if _, err := staticFS.ReadFile("static/finance.wasm"); err != nil {
 		return nil, errors.New("static/finance.wasm não encontrado: rode 'go generate ./internal/web' (ou 'make wasm') antes de compilar")
@@ -179,6 +181,12 @@ func (s *Server) routes() []route {
 		{"POST /configuracoes/openfinance", owner, h(s.saveOpenFinance)},
 		{"POST /configuracoes/fechar", localOnly, h(s.quit)},
 		{"GET /configuracoes/backup.db", owner, h(s.backupDB)},
+
+		// Conta Google (google.go). O login vale só aqui: a volta vem por 127.0.0.1.
+		{"GET /google/entrar", localOnly, h(s.googleSignIn)},
+		{"GET /google/retorno", localOnly, h(s.googleReturn)},
+		{"POST /google/sincronizar", owner, h(s.googleSyncNow)},
+		{"POST /google/sair", owner, h(s.googleSignOut)},
 	}
 	// Telas de dados: o servidor entrega só o "casco"; o aparelho monta a tela
 	// com os dados guardados nele (funciona offline) e sincroniza com /api/sync.

@@ -51,6 +51,7 @@ func (s *Server) apiSync(w http.ResponseWriter, r *http.Request) {
 			writeJSONError(w, http.StatusUnprocessableEntity, err.Error()) // o que estava errado no registro
 			return
 		}
+		s.googleSoon() // com conta Google ligada, a alteração vai logo para o Drive
 	}
 	changes, cursor, err := s.store.ChangesSince(ctx, req.Cursor, syncPageSize)
 	if err != nil {

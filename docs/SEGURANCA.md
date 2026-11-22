@@ -45,7 +45,7 @@ Cada porta responde às duas perguntas do capítulo: quem é você e o que pode 
 | Computador, neste computador | O dono do computador (sem senha). Outro site não usa esse acesso: `Origin`/`Sec-Fetch-Site` barram CSRF e `trustedHost` barra DNS rebinding. | Tudo, inclusive fechar o programa e baixar o banco. |
 | Computador pela rede (Wi-Fi, Tailscale) | Senha (PBKDF2-HMAC-SHA256, 600 mil iterações, sal próprio, comparação em tempo constante) e, se ligado, o código de 6 dígitos (TOTP) ou um código de recuperação. Sessão de 30 dias no servidor: o banco guarda só o hash SHA-256 do token; o cookie é `HttpOnly` e `SameSite=Lax`. | Tudo, menos fechar o programa. Mudar a segurança (senha, código, acesso) pede a senha atual e o código. Trocar a senha ou desligar o acesso derruba todas as sessões e aparelhos. |
 | App do celular pareado | Token por aparelho (só o hash no banco), dado uma vez com um código de pareamento de uso único. | Só a API (`/api/`: sincronizar, consultor). Não troca a IA nem baixa o banco. Parado 180 dias, perde o acesso; "Desconectar" revoga na hora. |
-| Site e app com Google | OAuth 2.0 com código, PKCE e `state`; OpenID Connect só para mostrar o e-mail. | Escopo `drive.appdata`: só a pasta escondida da Rich no Drive. |
+| Site, app e computador com Google | OAuth 2.0 com código, PKCE e `state`; OpenID Connect só para mostrar o e-mail. No computador, entrar e a volta do login só valem no próprio computador, e o `state` vale uma vez, por 15 minutos. | Escopo `drive.appdata`: só a pasta escondida da Rich no Drive. |
 | Intermediário da IA | Ninguém: o `Bearer` do aparelho pode ser inventado e serve só para dividir a cota. | Uma pergunta com as instruções da Rich, dentro dos limites por aparelho e por IP. |
 | Cadastro sem Google (não ligado) | E-mail e senha no Supabase. | RLS: cada pessoa só lê o próprio perfil; o papel do limitador só executa a função. |
 
@@ -59,8 +59,9 @@ uma pessoa por instalação, isso basta; ABAC e papéis configuráveis não se a
 
 **Sessão ou JWT.** No computador, sessão no servidor: dá para revogar na hora, sem lista
 negra. Com o Google vale o híbrido do capítulo: o token de acesso dura 1 hora e fica só na
-memória; o token de renovação, que pode ser revogado, fica no cofre do sistema (app) ou num
-cookie `HttpOnly` do intermediário (site), nunca no JavaScript do site.
+memória; o token de renovação, que pode ser revogado, fica no cofre do sistema (app), num
+cookie `HttpOnly` do intermediário (site) ou no banco do programa (computador, como o segredo
+do Pluggy), nunca no JavaScript do site.
 
 **SSO e SAML.** O "Entrar com Google" já é o SSO (OIDC). SAML é para empresas e não se aplica.
 
@@ -94,7 +95,7 @@ próprio na rede de casa porque o certificado seria autoassinado e o navegador o
 - **Navegador (site).** Os dados ficam no banco do navegador. A chave da IA é cifrada com
   AES-GCM por uma chave do aparelho que o navegador não deixa exportar.
 - **Computador.** O banco fica na pasta do usuário, protegido pela conta do sistema. A chave
-  da IA e o segredo do Pluggy ficam em texto no banco. Cifrar com uma chave guardada ao lado
+  da IA, o segredo do Pluggy e o token de renovação do Google ficam em texto no banco. Cifrar com uma chave guardada ao lado
   não protegeria nada (o capítulo avisa: chave junto do dado não é proteção). O caminho certo
   seria o chaveiro do sistema. Enquanto isso, recomenda-se a cifra de disco do sistema
   (FileVault, BitLocker), e o backup sai sem esses segredos.
