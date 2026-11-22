@@ -292,7 +292,10 @@ function navigate(url, replace = false) {
   else history.pushState(null, "", u);
   navigationPending = true;
   render();
-  window.scrollTo(0, 0);
+  // Link para um trecho da tela (/configuracoes#sozinho): abre nele, não no topo.
+  const target = u.hash && document.getElementById(u.hash.slice(1));
+  if (target) target.scrollIntoView();
+  else window.scrollTo(0, 0);
 }
 
 // Site: com a página aberta e parada, a sessão vence sozinha e a tela vira o login.
@@ -372,6 +375,24 @@ if (device.isSite) {
     }, { capture: true });
   }
 }
+
+// Teclado aberto no celular: campo de texto em foco e a tela 20% mais baixa que a maior já
+// vista (o app encolhe a página). app.css esconde a barra de baixo, que subiria junto e
+// cobriria o formulário. Só o foco não basta: o "voltar" do Android fecha o teclado e o
+// campo continua em foco.
+const TYPING = "textarea, [contenteditable], input:not([type=checkbox], [type=radio], [type=range], [type=button], [type=submit], [type=reset], [type=file], [type=color], [type=image], [type=hidden])";
+let tallest = 0, screenWidth = 0;
+function keyboardCheck() {
+  const height = window.visualViewport?.height ?? innerHeight;
+  if (innerWidth !== screenWidth) [screenWidth, tallest] = [innerWidth, height]; // girou a tela
+  tallest = Math.max(tallest, height);
+  document.body.classList.toggle("typing", !!document.activeElement?.matches?.(TYPING) && height < tallest * 0.8);
+}
+keyboardCheck();
+window.visualViewport?.addEventListener("resize", keyboardCheck);
+addEventListener("resize", keyboardCheck);
+document.addEventListener("focusin", keyboardCheck);
+document.addEventListener("focusout", () => setTimeout(keyboardCheck));
 
 document.addEventListener("click", (e) => {
   const a = e.target.closest("a[href]");

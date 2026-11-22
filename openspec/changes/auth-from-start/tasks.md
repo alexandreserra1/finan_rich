@@ -13,4 +13,7 @@
 - [x] 4.1 Backup `.db` sem o segredo do código.
 ## 5. Pendente
 - [ ] 5.1 Conferir o backup do Android num celular de verdade.
+  - Emulador (Android 14, 22/11/2026): com o transporte local sem cifra, o backup da Rich sai vazio e é
+    recusado (0 bytes); marcado como cifrado (`is_encrypted=true`), leva 4,5 MB com os dados. Falta o
+    backup do Google num celular com bloqueio de tela.
 - [ ] 5.2 Banco do celular cifrado (decisão de 18/11: depois, com teste no aparelho).

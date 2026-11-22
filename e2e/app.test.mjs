@@ -266,6 +266,16 @@ try {
   await page.waitForSelector("text=ainda não está conectado", { timeout: 20000 });
   await waitStatus(page, "unpaired");
   ok(true, "app novo pede para conectar ao computador");
+  // "usar só neste celular" abre Ajustes já no botão, entre o cabeçalho e a barra de baixo
+  // (no emulador, caía no topo da página e o botão ficava sete telas abaixo).
+  await page.click("a[href='/configuracoes#sozinho']");
+  await page.waitForSelector("#sozinho [data-action=solo]");
+  ok(await page.$eval("#sozinho [data-action=solo]", (button) => {
+    const box = button.getBoundingClientRect();
+    const header = document.querySelector(".top").getBoundingClientRect().bottom;
+    const tabs = document.querySelector("body > .tabs")?.getBoundingClientRect().top ?? innerHeight;
+    return box.top >= header && box.bottom <= tabs;
+  }), "o link “usar só neste celular” abre Ajustes com o botão à vista");
 
   // Tema: segue o aparelho (aqui claro); Escuro fica salvo ao reabrir; volta ao automático.
   await page.goto(`${APP}/configuracoes`);
@@ -284,6 +294,18 @@ try {
   await page.waitForSelector("form[data-form=cloud-ai]");
   await page.click("[data-action=solo]");
   await page.waitForSelector("form[data-form=transaction]", { state: "attached", timeout: 20000 });
+  // Celular: com o teclado aberto (campo em foco e tela encolhida), a barra de baixo some; no
+  // emulador ela subia junto com o teclado e cobria o botão do formulário. Fechar o teclado
+  // a traz de volta, mesmo com o campo em foco (é o que o "voltar" do Android faz).
+  const tabsShown = (shown) => page.waitForFunction((want) => (getComputedStyle(document.querySelector("body > .tabs")).display !== "none") === want, shown, { timeout: 5000 }).then(() => true, () => false);
+  const fullView = page.viewportSize();
+  await page.focus("form[data-form=filter] input[name=busca]");
+  const focusOnly = await tabsShown(true);
+  await page.setViewportSize({ width: fullView.width, height: Math.round(fullView.height * 0.55) }); // teclado aberto
+  const keyboardHides = await tabsShown(false);
+  await page.setViewportSize(fullView); // teclado fechado, campo ainda em foco
+  ok(focusOnly && keyboardHides && await tabsShown(true), "celular: a barra de baixo some com o teclado aberto e volta quando ele fecha");
+  await page.evaluate(() => document.activeElement.blur());
   // Primeiro uso também só no celular: o Painel guia em vez de ficar vazio.
   await page.goto(`${APP}/`);
   // Desde o começo, o convite para proteger o app; o link já abre o formulário da senha.

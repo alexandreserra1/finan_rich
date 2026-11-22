@@ -137,7 +137,7 @@ export function render(ctx) {
       ${chat.busy ? "" : html`<div class="suggestions">${suggestionsFor(ctx, me.id).map((s) => html`<button type="button" data-suggest="${s}">${s}</button>`)}</div>`}
       <form data-form="ask" class="chat-form" autocomplete="off">
         <div class="composer">
-          <textarea name="message" rows="1" placeholder="Qual é o seu próximo plano? Fale com ${me.name}…" aria-label="Mensagem para ${me.name}" required ${chat.busy ? "disabled" : ""}>${chat.draft || ""}</textarea>
+          <textarea name="message" rows="1" placeholder="Fale com ${me.name}…" aria-label="Mensagem para ${me.name}" required ${chat.busy ? "disabled" : ""}>${chat.draft || ""}</textarea>
           <button type="submit" class="send" aria-label="Enviar" ${chat.busy ? "disabled" : ""}>${icon(SEND_ICON, 16)}</button>
         </div>
         <p class="composer-hint"><span class="desk-only">Enter envia · Shift+Enter quebra a linha · </span>O cálculo aparece primeiro. Nada é lançado sem você confirmar.</p>

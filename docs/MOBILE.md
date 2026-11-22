@@ -117,6 +117,28 @@ Depois de mudar qualquer coisa em `internal/web/static` ou nos templates, rode
 
 Testar o fluxo do app sem Android: `make e2e` (inclui o `e2e/app.test.mjs`).
 
+### Conferir no emulador
+
+Com o Android SDK, os aparelhos virtuais ficam em `~/.android/avd` (`emulator -list-avds`).
+Em 22/11/2026, no Android 14, foram conferidos assim: instalar pelo site, a IA grátis do
+Consultor, o backup só cifrado, o bloqueio e a ida e a volta do login do Google.
+
+```bash
+emulator -avd finan                 # liga o aparelho, com janela
+adb install -r finan_rich.apk       # ou pelo Chrome do emulador, em /baixar
+# Volta do login do Google sem conta: o site repassa ao app, que recusa o código falso.
+adb shell "am start -a android.intent.action.VIEW -d 'https://finan-rich-ia.vercel.app/oauth?code=x&state=app.teste' com.android.chrome"
+# Backup só cifrado (precisa de adb root): sem cifra sai vazio; com is_encrypted=true leva os dados.
+adb root && adb shell bmgr enable true && adb shell bmgr transport com.android.localtransport/.LocalTransport
+adb shell bmgr backupnow io.github.alexandreserra1.finanrich
+adb shell settings put secure backup_local_transport_parameters is_encrypted=true   # e repita
+adb shell settings delete secure backup_local_transport_parameters
+adb shell bmgr transport com.google.android.gms/.backup.BackupTransportService     # volta ao normal
+```
+
+O emulador sem Play Store fica com o WebView da própria imagem (113 no Android 14), mais
+velho que o de um celular atualizado: o que depende de CSS novo pode aparecer diferente.
+
 ## Publicação
 
 O CI compila um **APK de teste** a cada push (artefato `finan_rich-android-teste` na
