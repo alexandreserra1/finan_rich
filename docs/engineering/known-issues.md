@@ -116,3 +116,24 @@ restante. Referencie a mudança OpenSpec e arquivos relevantes, sem copiar a arq
   Xcode.
 - Também visto em 18/11: um push no PR não gerou o evento `pull_request` (mergeabilidade
   `UNKNOWN`); `gh workflow run ci.yml --ref <branch>` roda o mesmo CI no mesmo commit.
+
+## ENG-009 — No celular, link com âncora caía no topo e o teclado cobria o formulário
+
+Achados em 22/11/2026, com a v1.11.0 oficial instalada pelo site num emulador Android 14.
+- Âncora. Esperado: "usar só neste celular" (`/configuracoes#sozinho`) abre os Ajustes no
+  botão. Observado: abria no topo, com o botão sete telas abaixo. Causa confirmada: o
+  `navigate()` do `main.js` sempre rolava para o topo depois de desenhar a tela e ignorava o
+  `#`. Correção: rolar até o elemento do `#`; o `scroll-padding-top` do `html` faz ele parar
+  abaixo do cabeçalho fixo.
+- Teclado. Observado: a barra de baixo (fixa) subia com o teclado e cobria o botão "Ligar o
+  bloqueio". Causa confirmada: o WebView do app encolhe a página quando o teclado abre.
+  Correção: o `main.js` marca `body.typing` quando há campo de texto em foco e a tela está 20%
+  mais baixa que a maior já vista; o `app.css` esconde a barra. Só o foco não basta: o
+  "voltar" do Android fecha o teclado e o campo continua em foco.
+- Teste: o `e2e/app.test.mjs` confere o botão à vista depois do link. Também confere a barra
+  sumindo com a tela encolhida e voltando quando ela volta ao tamanho. Os dois falharam
+  antes da correção.
+- Armadilha: o Chrome 113 do emulador responde `pointer: fine` mesmo só com tela de toque
+  (`any-pointer: coarse` falso, medido pelo DevTools remoto). Regra só para celular vai pela
+  largura, não por `pointer`.
+- Não conferido: celular de verdade (o emulador sem Play Store fica no WebView 113).
