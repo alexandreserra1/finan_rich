@@ -16,6 +16,9 @@
   .button { display: inline-block; background: var(--accent); color: var(--on-accent); padding: .75rem 1.25rem; border-radius: 999px; text-decoration: none; font-weight: 600; min-height: 44px; box-sizing: border-box; }
   .qr { display: flex; gap: 1.25rem; align-items: center; flex-wrap: wrap; }
   .qr img { background: #fff; border-radius: 12px; padding: 8px; width: 200px; height: 200px; image-rendering: pixelated; }
+  /* No celular, o QR code (para quem está no computador) só empurrava o botão de baixar para baixo.
+     Pela largura: o Chrome do emulador Android responde "pointer: fine" mesmo só com toque. */
+  @media (max-width: 40rem) { .qr { display: none; } }
 </style>
 </head>
 <body>
@@ -35,9 +38,11 @@
     <h2>Android</h2>
     <p><a class="button" href="/baixar/android">Baixar o app (arquivo .apk)</a></p>
     <ol>
-      <li>Toque em <strong>Baixar o app</strong> e espere o download terminar.</li>
-      <li>Abra o arquivo baixado, pela notificação ou pela pasta Downloads.</li>
-      <li>Se o Android pedir, permita instalar apps deste navegador e toque em <strong>Instalar</strong>.</li>
+      <li>Toque em <strong>Baixar o app</strong>. O Chrome pode avisar que o arquivo pode ser perigoso (ele avisa isso
+        para todo app baixado fora da Play Store): confirme o download e espere terminar.</li>
+      <li>Abra o arquivo baixado: pelo aviso do navegador, pela notificação ou pela pasta Downloads (app Arquivos).</li>
+      <li>Se o Android pedir, toque em <strong>Configurações</strong>, permita instalar apps dessa origem (o navegador
+        ou o app Arquivos), volte e toque em <strong>Instalar</strong>.</li>
     </ol>
     <p class="muted">Quando houver versão nova, o próprio app avisa e leva a esta página.</p>
   </section>

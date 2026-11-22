@@ -11,3 +11,5 @@
 - [x] 3.1 Testes Go e e2e do app em Chromium e WebKit.
 - [x] 3.2 `TestEval` com IA real pelo grátis do finan_rich: 16 de 17; a falha (Uber) virou a 2.3 e passou 3 de 3.
 - [ ] 3.3 Conferência num celular de verdade (o e2e só imita o `CapacitorHttp`).
+  - Emulador (Android 14, WebView 113, 22/11/2026): a resposta chega aos poucos pelo `CapacitorHttp`
+    nativo, e o negrito, as listas e o quadro dos números aparecem certos. Falta celular de verdade.

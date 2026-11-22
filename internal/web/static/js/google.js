@@ -25,8 +25,9 @@ let finishingGeneration = null;
 // available diz se o login com Google está ligado no servidor (as variáveis
 // GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET na Vercel). Só no app e no site.
 export async function available() {
-  // shortcut: só no site por enquanto; no app Android a volta (finanrich://google) já existe,
-  // mas precisa de teste num celular de verdade antes de ligar.
+  // shortcut: só no site por enquanto. No emulador (Android 14, 22/11/2026) a ida (o Chrome
+  // abre a página do Google) e a volta (finanrich://google → /oauth) funcionaram; falta um
+  // login real com conta (troca do código, cofre e Drive) num celular antes de ligar.
   if (!device.isSite) return false;
   if (clientId === undefined) {
     try {
