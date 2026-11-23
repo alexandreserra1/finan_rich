@@ -431,11 +431,20 @@ try {
     return f.suggestions(await db.loadLedger(), ui.today(), "otavio");
   });
   ok(shown.length > 0 && shown.join("|") === fromData.join("|"), `as sugestões do Consultor vêm dos dados (${shown.join(" | ")})`);
+  // Pergunta de número: o app responde sozinho, sem chamar a IA; "Perguntar à IA" leva a mesma pergunta.
+  const beforeFeira = cloudBodies.length;
   await page.fill("textarea[name=message]", "Quanto gastei na Feira?");
   await page.click("form[data-form=ask] button");
+  await page.waitForSelector(".msg.assistant >> nth=-1 >> .app-answer", { timeout: 30000 });
+  const appSaid = (await page.textContent(".msg.assistant >> nth=-1")).replace(/\s+/g, " ").trim();
+  ok(appSaid.includes("Gastos com Feira") && appSaid.includes("R$ 40,00") && cloudBodies.length === beforeFeira && await page.locator(".handoff").count() === 0,
+    `pergunta de número: o app responde sozinho, sem chamar a IA (${appSaid.slice(0, 110)})`);
+  await page.click(".msg.assistant >> nth=-1 >> [data-retry]:has-text('Perguntar à IA')");
   await page.waitForSelector(".msg.assistant:has-text('você gastou')", { timeout: 30000 });
   const said = await page.textContent(".msg.assistant >> nth=-1");
   const sent = JSON.stringify(cloudBodies.map((b) => b.messages));
+  ok(cloudBodies.length === beforeFeira + 2 && await page.locator(".msg.user:has-text('Quanto gastei na Feira?')").count() === 2 && await page.locator(".msg.assistant >> nth=-1 >> .app-answer").count() === 0,
+    "\"Perguntar à IA\" manda a mesma pergunta para a IA, que responde embaixo");
   ok(said.includes("Feira") && !said.includes("Loja") && said.includes("R$ 40,00"), `a resposta volta com o nome verdadeiro (${said.trim()})`);
   ok(!/feira/i.test(sent) && cloudBodies.every((b) => b.auth === "Bearer chave-secreta-123"), "nenhum nome real saiu do celular (a IA só viu apelidos)");
   await page.fill("textarea[name=message]", "Lança 8,50 do pão");
@@ -541,7 +550,7 @@ try {
   // Lia; com ela, a IA recebe a voz e só as ferramentas de gastos.
   ok((await page.textContent(".msg.assistant >> nth=-1")).includes("Otávio · Organização e dívidas") && await page.getAttribute(".team-member[data-agent=otavio]", "aria-pressed") === "true",
     "sem escolher ninguém, quem responde é o Otávio");
-  await page.fill("textarea[name=message]", "Quanto gastei com delivery?");
+  await page.fill("textarea[name=message]", "Por que gastei tanto com delivery?");
   await page.click("form[data-form=ask] button");
   await page.waitForSelector(".handoff:has-text('Isso é com Lia (Hábitos e orçamento)')", { timeout: 30000 });
   await page.click("[data-handoff]");
@@ -665,8 +674,11 @@ try {
     "Mais abre o menu e tocar em Consultor fecha o menu ao entrar na conversa");
   await page.fill("textarea[name=message]", "Quanto gastei com mercado?");
   await page.click("form[data-form=ask] button");
-  await page.waitForSelector(".msg.assistant:has-text('R$ 250,00')", { timeout: 20000 });
-  ok(true, "consultor responde dentro do app (IA do computador, com o token)");
+  await page.waitForSelector(".msg.assistant >> nth=-1 >> .app-answer", { timeout: 20000 });
+  ok((await page.textContent(".msg.assistant >> nth=-1")).includes("Gastos com Mercado"), "pelo computador, a pergunta de número também sai do app, sem IA");
+  await page.click(".msg.assistant >> nth=-1 >> [data-retry]:has-text('Perguntar à IA')");
+  await page.waitForSelector(".msg.assistant:has-text('Você gastou R$ 250,00')", { timeout: 20000 });
+  ok(true, "consultor responde dentro do app (IA do computador, com o token), pelo \"Perguntar à IA\"");
   await page.click(".msg.assistant [data-save]");
   await page.waitForSelector(".flash.ok:has-text('Resposta salva em Notas')");
   await page.goto(`${APP}/notas`);
@@ -679,7 +691,7 @@ try {
   await page.waitForSelector("body.menu-open nav.tabs a[href='/chat']");
   await page.click("nav.tabs a[href='/chat']");
   await page.waitForSelector("form[data-form=ask]", { timeout: 15000 });
-  await page.fill("textarea[name=message]", "Quanto gastei na padaria?");
+  await page.fill("textarea[name=message]", "Procura os gastos na padaria");
   await page.click("form[data-form=ask] button");
   await page.waitForSelector(".msg.assistant:has-text('Pela busca: 1 lançamentos')", { timeout: 20000 });
   ok((await page.textContent(".msg.assistant >> nth=-1")).includes("Saídas: R$ 12,50"), "consultor busca lançamentos pela ferramenta (padaria: R$ 12,50)");
@@ -828,6 +840,9 @@ try {
   await desk.waitForSelector(".team-member[data-agent=lia][aria-pressed=true]");
   ok((await desk.locator(".msg.assistant >> nth=-1 >> .msg-who").textContent()) === "Lia · Hábitos e orçamento" && (await desk.getAttribute("textarea[name=message]", "placeholder")).includes("Lia"),
     "no computador, a resposta fica da Lia e a escolha é lembrada");
+  ok(await desk.locator(".msg.assistant >> nth=-1 >> .app-answer").count() === 1 && await desk.locator(".msg.assistant >> nth=-1 >> .numbers").count() === 0 &&
+    await desk.locator(".msg.assistant >> nth=-1 >> [data-retry]:has-text('Perguntar à IA')").count() === 1,
+    "no computador, ao recarregar, a resposta do app continua marcada, sem cartão à parte, e com \"Perguntar à IA\"");
   ok(await desk.locator(".msg.assistant:has-text('Resposta demorada') >> details.numbers:not([open]):has-text('Resumo de')").count() === 1,
     "no computador, ao recarregar, o cartão dos números volta recolhido em cima da resposta");
   // Falta o modelo no Ollama: o aviso oferece o que já está baixado e volta pronto ao Consultor.

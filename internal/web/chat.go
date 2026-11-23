@@ -22,7 +22,7 @@ type chatEntry struct {
 	Proposals []advisor.Proposal `json:"proposals,omitempty"`
 	Agent     string             `json:"agent,omitempty"`   // quem do time respondeu
 	Numbers   string             `json:"numbers,omitempty"` // as contas do app mostradas antes da resposta
-	// App: resposta do app, sem IA (a pronta, ou a que termina com os números do cartão).
+	// App: resposta do app, sem IA (a que o app deu sozinho, ou a que termina com os números do cartão).
 	App bool `json:"app,omitempty"`
 }
 
@@ -48,10 +48,12 @@ func (s *Server) chatHistory(ctx context.Context) ([]chatEntry, error) {
 		out[i] = chatEntry{Role: m.Role, Content: m.Content, Numbers: m.Numbers}
 		if m.Role == store.RoleAssistant {
 			out[i].Agent = member(m.Agent).ID
-			// Resposta do app: a pronta (depende só da pergunta e de quem respondeu)
-			// ou a sem IA, que termina com os mesmos números do cartão.
-			prepared := i > 0 && history[i-1].Role == store.RoleUser && advisor.Prepared(advisor.Question{Agent: m.Agent, Text: history[i-1].Content})
-			out[i].App = prepared || (m.Numbers != "" && strings.HasSuffix(m.Content, m.Numbers))
+			// Resposta do app: termina com os números gravados. A que o app deu sozinho foi
+			// gravada com os números iguais à resposta (ver answer): sem o cartão à parte.
+			out[i].App = m.Numbers != "" && strings.HasSuffix(m.Content, m.Numbers)
+			if m.Content == m.Numbers {
+				out[i].Numbers = ""
+			}
 		}
 		if len(m.Proposals) == 0 || json.Unmarshal(m.Proposals, &out[i].Proposals) != nil {
 			continue
@@ -74,7 +76,8 @@ func (s *Server) chatHistory(ctx context.Context) ([]chatEntry, error) {
 // contas do app, {"text": "..."} a cada pedaço, {"proposal": {...}} a cada mudança
 // que a IA propõe (a tela mostra com um botão para confirmar), {"app": {...}} na
 // resposta sem IA, {"error": "..."} em caso de falha e {"done": true} ao final.
-func (s *Server) answer(w http.ResponseWriter, r *http.Request, question, agent string) {
+// askAI: o "Perguntar à IA" da tela; a pergunta vai para a IA mesmo com resposta do app.
+func (s *Server) answer(w http.ResponseWriter, r *http.Request, question, agent string, askAI bool) {
 	agent = member(agent).ID // só ids do time chegam à IA e ao banco
 	question = strings.TrimSpace(question)
 	if question == "" {
@@ -106,7 +109,7 @@ func (s *Server) answer(w http.ResponseWriter, r *http.Request, question, agent 
 	for i, m := range history {
 		past[i] = llm.Message{Role: llm.Role(m.Role), Content: m.Content}
 	}
-	q := advisor.Question{History: past, Text: question, Ledger: ledger, Today: time.Now(), Agent: agent, Rates: s.rates.get(ctx)}
+	q := advisor.Question{History: past, Text: question, Ledger: ledger, Today: time.Now(), Agent: agent, Rates: s.rates.get(ctx), AskAI: askAI}
 	// Os números do app vão antes: a tela mostra na hora, enquanto a IA escreve.
 	numbers := advisor.Numbers(q)
 	if numbers != "" {
@@ -135,6 +138,9 @@ func (s *Server) answer(w http.ResponseWriter, r *http.Request, question, agent 
 			ev["limit"] = ai.Preset.ID == llm.FreeID && advisor.OverLimit(reply.AIError)
 		}
 		sse.Send(map[string]any{"app": ev})
+		if numbers == "" { // a resposta inteira é do app: gravada como os números, o histórico sabe
+			numbers = answer
+		}
 	}
 	// Contexto sem cancelamento: se a conexão cair agora, a resposta não se perde.
 	var saved json.RawMessage
@@ -200,17 +206,18 @@ func (s *Server) apiChatHistory(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, info)
 }
 
-// apiChatSend recebe {"message": "...", "agent": "..."} e responde em SSE (veja answer).
+// apiChatSend recebe {"message": "...", "agent": "...", "askAI": false} e responde em SSE (veja answer).
 func (s *Server) apiChatSend(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Message string `json:"message"`
 		Agent   string `json:"agent"`
+		AskAI   bool   `json:"askAI"` // "Perguntar à IA"
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&req); err != nil {
 		writeJSONError(w, http.StatusBadRequest, "pedido inválido")
 		return
 	}
-	s.answer(w, r, req.Message, req.Agent)
+	s.answer(w, r, req.Message, req.Agent, req.AskAI)
 }
 
 func (s *Server) apiChatClear(w http.ResponseWriter, r *http.Request) {

@@ -119,7 +119,7 @@ export function render(ctx) {
         ${chat.history.map((m, i) => m.role === "user" ? html`<div class="msg user">${md(m.content)}</div>` : html`<div class="msg assistant">
           <span class="msg-who">${face(member(m.agent), 28)}${member(m.agent).name} · ${member(m.agent).role}</span>${answerBody(m, i)}
           ${m.app ? html`<p class="small muted app-answer">${m.aiError ? `Resposta do app, sem IA. A IA falhou: ${m.aiError.replace(/\.$/, "")}.` : "Resposta do app, sem IA."}</p>` : ""}
-          ${m.aiError && !m.limit && i === chat.history.length - 1 && !chat.busy ? html`<button type="button" class="small-btn secondary" data-retry="${i}">Tentar de novo com a IA</button>` : ""}
+          ${m.app && !m.limit && i === chat.history.length - 1 && !chat.busy ? html`<button type="button" class="small-btn secondary" data-retry="${i}">${m.aiError ? "Tentar de novo com a IA" : "Perguntar à IA"}</button>` : ""}
           ${m.limit ? limitNotice() : ""}
           ${m.proposals?.length ? html`<div class="proposals">${m.proposals.map((p, j) => html`<div class="proposal"><span><small>${proposalKind(p)}</small>${p.label}</span>
             <button type="button" class="small-btn${p.action === "apagar" ? " danger" : ""}" data-propose="${i}:${j}" ${p.applied ? "disabled" : ""}>${proposalButton(p)[p.applied ? 1 : 0]}</button></div>`)}</div>` : ""}
@@ -221,7 +221,9 @@ function showPartial(text) {
   if (first) document.querySelectorAll(".msg.pending .thinking, .msg.pending .slow-note").forEach((x) => x.remove());
 }
 
-async function ask(ctx, question) {
+// askAI: o "Perguntar à IA" (e o "Tentar de novo com a IA"): vai para a IA mesmo quando o
+// app tem a resposta. Sem o cartão dos números: a resposta do app está logo acima.
+async function ask(ctx, question, askAI = false) {
   const agent = agentId;
   chat.history.push({ role: "user", content: question });
   chat.busy = true;
@@ -234,22 +236,22 @@ async function ask(ctx, question) {
   ctx.rerender();
   // Os números do app aparecem na hora; a resposta da IA chega embaixo deles.
   // No computador, eles vêm do servidor, no primeiro evento da resposta.
-  chat.numbers = isApp ? await cloud.numbers(ctx.ledger, question, agent).catch(() => "") : "";
+  chat.numbers = isApp && !askAI ? await cloud.numbers(ctx.ledger, question, agent).catch(() => "") : "";
   if (chat.numbers) ctx.rerender();
   try {
     if (chat.cloud) {
       let streamed = ""; // a resposta aos poucos; no fim vale a resposta inteira (reply)
-      const reply = await cloud.ask(ctx.ledger, chat.history.slice(0, -1), question, agent, (t) => showPartial((streamed += t)));
+      const reply = await cloud.ask(ctx.ledger, chat.history.slice(0, -1), question, agent, (t) => showPartial((streamed += t)), askAI);
       chat.partial = "";
       chat.history.push(assistantMessage(reply, agent, chat.numbers));
-      suggestHandoff(question, agent);
+      suggestHandoff(question, agent, askAI);
       await cloud.saveChat(chat.history);
       chat.busy = false;
       ctx.rerender();
       return;
     }
     await window.finanSync?.(); // a IA vê os lançamentos mais recentes deste aparelho
-    const res = await call("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: question, agent }) });
+    const res = await call("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: question, agent, askAI }) });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText);
     let answer = "";
     let app = null; // resposta do app, sem IA: { text, reason, limit }
@@ -266,7 +268,7 @@ async function ask(ctx, question) {
     });
     chat.partial = "";
     chat.history.push(assistantMessage(app ? { answer: app.text, proposals, app: true, aiError: app.reason, limit: app.limit } : { answer, proposals }, agent, chat.numbers));
-    suggestHandoff(question, agent);
+    suggestHandoff(question, agent, askAI);
   } catch (err) {
     chat.partial = "";
     // TypeError: fetch daqui; "network error": fetch do Go (IA na nuvem) que caiu no meio.
@@ -297,10 +299,11 @@ function assistantMessage({ answer, proposals = [], app, aiError, limit }, agent
   return m;
 }
 
-// suggestHandoff: se o assunto é de outro do time, oferece perguntar para ele.
-function suggestHandoff(question, agent) {
-  const other = finance.route(question);
-  chat.suggest = other && other !== agent ? { agent: other, question } : null;
+// suggestHandoff: se o assunto é de outro do time, oferece perguntar para ele (do mesmo jeito:
+// askAI segue). Não depois da resposta que o app deu sozinho: a conta é a mesma para todo o time.
+function suggestHandoff(question, agent, askAI) {
+  const other = finance.route(question), last = chat.history.at(-1);
+  chat.suggest = other && other !== agent && !(last?.app && !last.aiError) ? { agent: other, question, askAI } : null;
 }
 
 // pick troca quem responde. O que já estava escrito continua na caixa (lido só
@@ -378,13 +381,13 @@ export function bind(root, ctx) {
   }));
   root.querySelectorAll("[data-agent]").forEach((b) => b.addEventListener("click", () => !chat.busy && pick(ctx, b.dataset.agent)));
   root.querySelector("[data-handoff]")?.addEventListener("click", async () => {
-    const { agent, question } = chat.suggest;
+    const { agent, question, askAI } = chat.suggest;
     await pick(ctx, agent);
-    ask(ctx, question);
+    ask(ctx, question, askAI);
   });
   root.querySelectorAll("[data-suggest]").forEach((b) => b.addEventListener("click", () => ask(ctx, b.dataset.suggest)));
-  // Tentar de novo: a mesma pergunta, de novo para a IA (a resposta sem IA continua na conversa).
-  root.querySelector("[data-retry]")?.addEventListener("click", (e) => !chat.busy && ask(ctx, chat.history[e.currentTarget.dataset.retry - 1].content));
+  // Perguntar à IA / Tentar de novo: a mesma pergunta, agora para a IA (a resposta do app continua na conversa).
+  root.querySelector("[data-retry]")?.addEventListener("click", (e) => !chat.busy && ask(ctx, chat.history[e.currentTarget.dataset.retry - 1].content, true));
   root.querySelector("[data-retry-error]")?.addEventListener("click", () => !chat.busy && chat.failed && ask(ctx, chat.failed));
   root.querySelector('[data-action="clear"]')?.addEventListener("click", async () => {
     if (!confirm("Apagar toda a conversa?")) return;

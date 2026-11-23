@@ -159,7 +159,13 @@ func (a *app) postJSON(path string, body any) (int, map[string]any) {
 // ask faz uma pergunta ao Consultor (POST /api/chat) e devolve os eventos SSE.
 func (a *app) ask(message, agent string) string {
 	a.t.Helper()
-	b, _ := json.Marshal(map[string]string{"message": message, "agent": agent})
+	return a.chat(map[string]any{"message": message, "agent": agent})
+}
+
+// chat manda o pedido do Consultor (POST /api/chat) e devolve os eventos da resposta.
+func (a *app) chat(req map[string]any) string {
+	a.t.Helper()
+	b, _ := json.Marshal(req)
 	resp, err := http.Post(a.srv.URL+"/api/chat", "application/json", bytes.NewReader(b))
 	if err != nil {
 		a.t.Fatal(err)
@@ -245,17 +251,17 @@ func TestBlocksCrossOriginPost(t *testing.T) {
 
 func TestChatStreamsAndSaves(t *testing.T) {
 	a := newApp(t, fakeOllama(t).URL)
-	body := a.ask("Qual dívida pago primeiro?", "")
+	body := a.ask("O que eu faço primeiro?", "")
 	if !strings.Contains(body, `"text":"Pague o cartão."`) || !strings.Contains(body, `"done":true`) {
 		t.Fatalf("SSE = %s", body)
 	}
 	msgs, _ := a.st.ListChat(context.Background())
-	if len(msgs) != 2 || msgs[0].Content != "Qual dívida pago primeiro?" || msgs[1].Content != "Pague o cartão." || msgs[1].Agent != "otavio" {
+	if len(msgs) != 2 || msgs[0].Content != "O que eu faço primeiro?" || msgs[1].Content != "Pague o cartão." || msgs[1].Agent != "otavio" {
 		t.Errorf("histórico = %+v", msgs)
 	}
 	// Com a Lia escolhida, a resposta fica dela; personagem desconhecido ou de quem
 	// saiu do time vira o Otávio. (Passar para outro do time a tela decide com o finance.wasm.)
-	a.ask("Qual dívida pago primeiro?", "lia")
+	a.ask("O que eu faço primeiro?", "lia")
 	a.ask("oi", "<script>")
 	a.ask("oi", "bento")
 	msgs, _ = a.st.ListChat(context.Background())
@@ -306,6 +312,35 @@ func TestChatPreparedSkipsAI(t *testing.T) {
 	// Ao recarregar, a resposta pronta continua marcada como do app (sem cartão vazio).
 	if m := a.chatMessage(1); m["app"] != true || m["numbers"] != nil {
 		t.Errorf("a resposta pronta deveria voltar marcada como do app: %v", m)
+	}
+}
+
+// Pergunta de número: o app responde sem IA; o "Perguntar à IA" (askAI) manda a mesma
+// pergunta para a IA. Ao recarregar, só a resposta do app volta marcada como do app.
+func TestChatAskAI(t *testing.T) {
+	calls := 0
+	ollama := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/chat" {
+			fmt.Fprint(w, `{"models":[{"name":"qwen3:4b"}]}`)
+			return
+		}
+		calls++
+		fmt.Fprintln(w, `{"message":{"content":"Pague o cartão."},"done":true}`)
+	}))
+	t.Cleanup(ollama.Close)
+	a := newApp(t, ollama.URL)
+	if body := a.ask("quanto gastei esse mês?", "lia"); calls != 0 || !strings.Contains(body, `"app":{`) || !strings.Contains(body, "Saídas de") {
+		t.Fatalf("calls=%d SSE = %s", calls, body)
+	}
+	body := a.chat(map[string]any{"message": "quanto gastei esse mês?", "agent": "lia", "askAI": true})
+	if calls != 1 || !strings.Contains(body, `"text":"Pague o cartão."`) || strings.Contains(body, `"app":`) || strings.Contains(body, `"numbers"`) {
+		t.Fatalf("calls=%d SSE = %s", calls, body)
+	}
+	if m := a.chatMessage(1); m["app"] != true || m["numbers"] != nil || !strings.HasPrefix(fmt.Sprint(m["content"]), "**Saídas de") {
+		t.Errorf("a resposta do app volta marcada como do app, sem cartão à parte: %v", m)
+	}
+	if m := a.chatMessage(3); m["app"] != nil || m["content"] != "Pague o cartão." {
+		t.Errorf("a resposta da IA não é do app: %v", m)
 	}
 }
 

@@ -209,6 +209,7 @@ func TestFreePresetThroughProxy(t *testing.T) {
 		"ledger": json.RawMessage(`{"categories":` + string(cats) + `,
 		  "transactions":[{"id":"b","updatedAt":1,"kind":"saida","description":"Uber *Trip","amountCents":2500,"categoryId":"tra","date":"2026-10-06"}]}`),
 		"question": "Quanto gastei com Uber?", "today": "2026-10-20", "ai": ai, "anonymize": true,
+		"askAI": true, // o "Perguntar à IA": sem ele, o app responde esta sozinho
 	})
 	var out struct {
 		OK    AskReply
@@ -299,5 +300,26 @@ func TestNumbers(t *testing.T) {
 	}
 	if got := Numbers(`{"ledger":` + offlineLedger + `,"question":"Qual dívida devo pagar primeiro?","agent":"bento"}`); got != `{}` {
 		t.Errorf("pergunta pronta não tem números à parte: %s", got)
+	}
+}
+
+// "Perguntar à IA": com askAI, a pergunta que o app responde sozinho vai para a IA.
+func TestAskAIGoesToAI(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		fmt.Fprint(w, "data: {\"choices\":[{\"delta\":{\"content\":\"Pague o cartão.\"}}]}\n\ndata: [DONE]\n\n")
+	}))
+	defer srv.Close()
+	ask := func(askAI bool) AskReply {
+		raw, _ := json.Marshal(map[string]any{"ledger": json.RawMessage(offlineLedger), "question": "quanto devo no total?", "today": "2026-10-20", "anonymize": true, "askAI": askAI,
+			"ai": AIConfig{Preset: "groq", APIKey: "x", BaseURL: srv.URL}})
+		return askOut(t, Ask(context.Background(), string(raw), nil))
+	}
+	if r := ask(false); calls != 0 || !r.App || !strings.Contains(r.Answer, "Você deve R$ 3.200,00") {
+		t.Errorf("sem askAI: calls=%d %+v", calls, r)
+	}
+	if r := ask(true); calls != 1 || r.App || r.Answer != "Pague o cartão." {
+		t.Errorf("com askAI: calls=%d %+v", calls, r)
 	}
 }

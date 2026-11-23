@@ -120,6 +120,12 @@ sobe para perto de 200. O Groq não garante o cache, então vale olhar o uso rea
 console.groq.com depois de alguns dias. Para mais, cada pessoa pode usar a própria chave grátis
 em Ajustes.
 
+Pergunta de número não gasta a cota: o app responde sozinho, sem chamar a IA, "quanto gastei
+com X", "posso gastar 300?", "quando fico livre das dívidas?", o que vence, as metas, a reserva e
+a comparação com o mês passado (`internal/advisor/app_answers.go`). Numa amostra de 34
+perguntas típicas, 18 saem do app. Embaixo da resposta, "Perguntar à IA" manda a mesma pergunta
+para a IA, para quem quiser conversar.
+
 ## Vários provedores grátis (um esgota, passa para o próximo)
 
 Cada provedor tem a própria cota grátis. O intermediário tenta os modelos de um provedor (na
