@@ -37,7 +37,7 @@ Como agir:
 - O formato depende da pergunta:
   - Pergunta direta (um valor, uma data, uma lista: "quanto gastei com iFood?", "o que vence esta semana?", "qual a Selic hoje?"): responda já na primeira frase, com o número principal em **negrito**, em até 3 frases ou uma lista curta. Sem plano em passos e sem "hoje no app", a não ser que a pessoa peça.
   - Pedido de conselho, decisão ou plano ("o que eu faço?", "vale a pena?", "onde economizar?", "como saio das dívidas?"): comece com a conclusão em uma frase em **negrito**; depois o porquê com pelo menos dois números dele; depois um plano em passos numerados com valor em R$ e prazo; termine com um próximo passo que dá para fazer hoje no app (registrar um pagamento, criar uma meta, cortar uma assinatura).
-- O bloco <conhecimento> traz regras e boas práticas de finanças no Brasil: aplique ao caso do usuário, não copie.
+- O bloco <conhecimento> traz regras e boas práticas de finanças no Brasil: traga as 2 ou 3 que valem para a pergunta, aplicadas ao caso do usuário; não copie o bloco inteiro.
 - Taxas do momento: quando vierem "Taxas do Banco Central" nos dados (Selic, CDI e IPCA), use-as e diga a data. As que não estiverem nos dados (juros de um banco, de um CDB, a Selic quando não veio) mudam: não invente; diga para conferir a taxa do dia.
 - Você não é consultor de investimentos certificado: explique critérios (risco, prazo, liquidez, custo) sem indicar ação, fundo, cripto ou banco específico, e sem prometer retorno. Investimento de risco só depois de dívidas caras quitadas e reserva montada.
 - Para perguntas sobre um estabelecimento ou serviço (ex.: "quanto gastei com iFood?"), use a lista de gastos por estabelecimento.
@@ -112,16 +112,42 @@ func earlier(msgs []llm.Message) string {
 // maxToolRounds limita as idas e voltas de ferramentas numa pergunta.
 const maxToolRounds = 4
 
+// Ferramentas só quando a pergunta pede (a cota da IA grátis é pequena): ação (lançar,
+// corrigir, apagar, criar, pagar, guardar) leva as do personagem; busca nos lançamentos leva
+// só buscar, alterar e apagar; conselho e conversa vão sem nenhuma, uma chamada só e uns
+// 1.300 tokens a menos. Se a IA disser que deixou um cartão pronto sem ter as ferramentas,
+// era uma ação que o app não reconheceu: uma nova tentativa, com as do personagem.
+var (
+	wantRe      = regexp.MustCompile(`\b(quero|queria|vou|preciso|pode|poderia|consegue)\b.*\b(lancar|registrar|anotar|cadastrar|criar|apagar|excluir|corrigir|alterar|mudar|juntar|guardar)\b`)
+	lookupRe    = regexp.MustCompile(`\b(gast\w*|compr\w*|lancamentos?|categorias?|extrato|valor|errad\w*|duplicad\w*|repetid\w*)\b`)
+	lookupTools = []string{"buscar_lancamentos", "alterar_lancamento", "apagar_lancamento"}
+)
+
+// lookupPrompt: as instruções das ferramentas de busca (o lugar do toolsPrompt no pedido de busca).
+const lookupPrompt = `
+
+Ferramentas:
+- buscar_lancamentos: use quando a pergunta precisar de lançamentos que não estão no bloco de dados (outro mês, um período, um estabelecimento, uma categoria). Responda com os totais que ela devolver. Cada lançamento vem com o [id].
+- alterar_lancamento e apagar_lancamento: para corrigir ou apagar um lançamento que a pessoa pediu, pelo [id] da busca. Vira um cartão para ela confirmar; nada é gravado sozinho. Nunca diga que já fez: diga que deixou pronto para ela confirmar.`
+
+// wantsAction: a pergunta pede para lançar, corrigir, apagar, criar, pagar ou guardar algo.
+func wantsAction(question string) bool {
+	f := normalize(question)
+	return actionRe.MatchString(f) || wantRe.MatchString(f)
+}
+
 // Ask envia a pergunta ao provedor e devolve a resposta completa; onText recebe
 // os pedaços conforme chegam. Com tools, a IA pode buscar lançamentos e propor
 // lançamentos; se o modelo não aceitar ferramentas, pergunta sem elas.
 func Ask(ctx context.Context, p llm.Provider, agent string, history []llm.Message, question, snapshot string, tools *Tools, onText func(string)) (string, error) {
 	req := BuildRequest(history, question, snapshot)
 	req.System = systemFor(agent)
+	var armed []string // sem ferramentas agora; as do personagem, se a IA disser que deixou um cartão pronto
 	if tools != nil {
 		tools.only = persona(agent).Tools
 		req.System += toolsPrompt
-		if onboarding(agent, history, question) { // só as de criar: o pedido fica pequeno para a cota grátis
+		switch {
+		case onboarding(agent, history, question): // só as de criar: o pedido fica pequeno para a cota grátis
 			tools.only = onboardingTools
 			req.System += onboardingPrompt
 			// Com valores na mensagem, o cartão tem de sair: o modelo grátis dizia "conta
@@ -129,8 +155,15 @@ func Ask(ctx context.Context, p llm.Provider, agent string, history []llm.Messag
 			if strings.ContainsAny(question, "0123456789") {
 				req.ToolChoice = "required"
 			}
+		case wantsAction(question):
+		case lookupRe.MatchString(fold(question)):
+			tools.only, req.System = lookupTools, leanSystemFor(agent)+lookupPrompt
+		default:
+			armed, tools.only, req.System = tools.only, nil, leanSystemFor(agent)
 		}
-		req.Tools = tools.Defs()
+		if tools.only != nil {
+			req.Tools = tools.Defs()
+		}
 	}
 	var answer strings.Builder
 	usedTool, glitched, nudged := false, false, false
@@ -150,6 +183,18 @@ func Ask(ctx context.Context, p llm.Provider, agent string, history []llm.Messag
 		}
 		if err != nil {
 			return "", err
+		}
+		// Sem ferramentas, "deixei pronto": era uma ação. Nova tentativa com as do personagem e
+		// o aviso; se repetir, vale o caminho de baixo (a nota de que não deu).
+		if len(reply.ToolCalls) == 0 && armed != nil && falseClaimRe.MatchString(reply.Text) {
+			tools.only, armed, nudged = armed, nil, true
+			req.System, req.Tools = systemFor(agent)+toolsPrompt, tools.Defs()
+			answer.Reset()
+			onText("\n\n")
+			req.Messages = append(req.Messages,
+				llm.Message{Role: llm.RoleAssistant, Content: reply.Text},
+				llm.Message{Role: llm.RoleUser, Content: falseClaimNudge})
+			continue
 		}
 		// "Deixei pronto" sem ter chamado ferramenta nenhuma: nenhum cartão apareceu. Pede de
 		// novo uma vez, com um aviso; a resposta final é só a da nova tentativa.

@@ -3,6 +3,8 @@ package advisor
 import (
 	"slices"
 	"strings"
+
+	"github.com/alexandreserra1/finan_rich/internal/llm"
 )
 
 // O time da Rich no Consultor: a mesma IA, mas cada personagem tem o próprio
@@ -23,7 +25,8 @@ var personas = []Persona{
 	{ID: "otavio", Tools: []string{"buscar_lancamentos", "propor_lancamento", "alterar_lancamento", "apagar_lancamento", "simular_dividas", "proximos_vencimentos", "registrar_pagamento", "criar_divida", "criar_meta"}, Voice: `Quem fala:
 Você é o Otávio, do time da Rich: cuida da organização do mês e das dívidas. Calmo, organizado, sempre com números ("Vamos colocar as contas na mesa. E um plano no lugar da preocupação.").
 - Método: primeiro o retrato do mês (entrou, saiu, sobrou), depois o maior problema e uma próxima jogada clara. Pergunta vaga: faça uma pergunta curta antes de dar um plano.
-- Dívidas: ordene pela taxa de juros (a mais cara primeiro) e diga em que mês a pessoa fica livre de todas. Para saber quanto um valor extra por mês adianta, use simular_dividas com o valor, nunca a conta de cabeça; ela já traz a outra ordem (a menor dívida primeiro), para quem precisa de vitória rápida.
+- Dívidas: ordene pela taxa de juros (a mais cara primeiro) e diga em que mês a pessoa fica livre de todas.
+- Para saber quanto um valor extra por mês adianta, use simular_dividas com o valor, nunca a conta de cabeça; ela já traz a outra ordem (a menor dívida primeiro), para quem precisa de vitória rápida.
 - Rotativo e cheque especial são emergência: diga isso sem rodeio.
 - Vencimentos e faturas: chame proximos_vencimentos (padrão 10 dias; "esta semana" = 7, "este mês" = 31) e responda curto: o que vence, quanto e quando.
 - Lançar, corrigir ou apagar um lançamento, registrar o pagamento de uma dívida, cadastrar dívida ou criar meta: proponha e a pessoa confirma no cartão do app. Guardar dinheiro numa meta é com o Tito.
@@ -61,6 +64,18 @@ func persona(id string) Persona {
 }
 
 func systemFor(agent string) string { return SystemPrompt + "\n\n" + persona(agent).Voice }
+
+// leanSystemFor: as instruções do pedido sem ferramentas, sem as linhas da voz que falam
+// delas (a IA poderia tentar chamar uma ferramenta que não foi no pedido).
+func leanSystemFor(agent string) string {
+	var keep []string
+	for _, line := range strings.Split(persona(agent).Voice, "\n") {
+		if !slices.ContainsFunc(allTools(), func(tl llm.Tool) bool { return strings.Contains(line, tl.Name) }) {
+			keep = append(keep, line)
+		}
+	}
+	return SystemPrompt + "\n\n" + strings.Join(keep, "\n")
+}
 
 // sections: as seções do resumo (Snapshot) que cada personagem recebe, pelo
 // começo do título. O Otávio, que olha o quadro inteiro, recebe todas.

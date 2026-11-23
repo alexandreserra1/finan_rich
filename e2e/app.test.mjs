@@ -540,6 +540,8 @@ try {
   await page.click("form[data-form=ask] button");
   await page.waitForSelector(".msg.assistant:has-text('Oi!')", { timeout: 30000 });
   ok(await page.locator(".msg.error").count() === 0, "depois da queda, a próxima pergunta funciona");
+  ok(cloudBodies.at(-1).tools.length === 0 && !cloudBodies.at(-1).messages[0].content.includes("Ferramentas:"),
+    "conversa vai para a IA sem ferramentas: o pedido fica menor");
 
   // Resposta imediata: os números do app aparecem na hora e a resposta da IA chega embaixo.
   await page.fill("textarea[name=message]", "Por que demora tanto?");
@@ -566,9 +568,10 @@ try {
   await page.click("[data-handoff]");
   await page.waitForSelector(".msg.assistant:not(.pending):has-text('Lia · Hábitos e orçamento')", { timeout: 30000 }); // a pendente já tem o nome
   const toLia = cloudBodies.at(-1);
-  ok(toLia.messages[0].content.includes("Você é a Lia") && toLia.tools.join() === "buscar_lancamentos,alterar_lancamento,apagar_lancamento,achados,comparar_meses" &&
+  // Pergunta de gasto vai com as ferramentas de busca; conselho, sem nenhuma (o pedido fica menor).
+  ok(toLia.messages[0].content.includes("Você é a Lia") && toLia.tools.join() === "buscar_lancamentos,alterar_lancamento,apagar_lancamento" &&
     await page.getAttribute(".team-member[data-agent=lia]", "aria-pressed") === "true" && await page.locator(".handoff").count() === 0,
-    `trocar para a Lia muda a voz e as ferramentas (${toLia.tools})`);
+    `trocar para a Lia muda a voz, e a pergunta de gasto leva só as ferramentas de busca (${toLia.tools})`);
   // Sugestão com resposta pronta: o app responde sem chamar a IA.
   const calls = cloudBodies.length;
   await page.fill("textarea[name=message]", "Quanto ainda posso gastar?");

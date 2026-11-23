@@ -49,8 +49,7 @@ func appAnswer(q Question) string {
 	if onboarding(q.Agent, q.History, q.Text) {
 		return ""
 	}
-	f := leadRe.ReplaceAllString(strings.TrimRight(fold(q.Text), "?!. "), "")
-	f = strings.TrimPrefix(f, "e ") // "e se eu pagar 500 a mais?"
+	f := normalize(q.Text)
 	if f == "" || len([]rune(f)) > maxAppRunes || strings.ContainsAny(f, "?!") || strings.Contains(f, ". ") || actionRe.MatchString(f) {
 		return ""
 	}
@@ -67,6 +66,12 @@ func appAnswer(q Question) string {
 		}
 	}
 	return ""
+}
+
+// normalize: a pergunta sem acentos, sem a pontuação do fim e sem o começo que não muda
+// nada ("oi, Lia,", "me diz", "e se eu pagar 500 a mais?").
+func normalize(text string) string {
+	return strings.TrimPrefix(leadRe.ReplaceAllString(strings.TrimRight(fold(text), "?!. "), ""), "e ")
 }
 
 func twoQuestions(f string) bool {

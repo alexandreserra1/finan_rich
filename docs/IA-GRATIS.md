@@ -113,8 +113,12 @@ npx vercel@65.1.0 firewall publish --project finan-rich-ia
 
 **Capacidade**: o plano grátis do Groq conta por conta (não por chave): perto de 1.000 chamadas e
 200 mil tokens por dia por modelo, e 8 mil tokens por minuto (confira em
-console.groq.com/settings/limits). Cada chamada do consultor leva uns 4 mil tokens (os números
-do mês vão junto) e uma pergunta usa de 2 a 5 chamadas. Sem o cache, isso dá algumas dezenas de
+console.groq.com/settings/limits). Pergunta de conselho ou conversa vai sem ferramentas: uma
+chamada de uns 2,6 mil tokens (os números do mês vão junto). Pedido de ação (lançar, corrigir,
+pagar, guardar) leva as ferramentas do personagem: uns 4 mil tokens por chamada, de 2 a 5
+chamadas. Busca nos lançamentos leva só as ferramentas de buscar, corrigir e apagar. Medido em
+23/11/2026 com as perguntas da avaliação que ainda vão para a IA: de uns 24 mil para 17 mil
+tokens, com a mesma nota (24 e 23 de 26 critérios). Sem o cache, isso dá algumas dezenas de
 perguntas por dia somando todo mundo; com o cache, a maior parte se repete e não conta, e a conta
 sobe para perto de 200. O Groq não garante o cache, então vale olhar o uso real em
 console.groq.com depois de alguns dias. Para mais, cada pessoa pode usar a própria chave grátis
