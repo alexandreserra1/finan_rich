@@ -111,7 +111,8 @@ Ficam três limitações que só um app de verdade resolve:
 
 ### Modo "só no celular"
 
-> **Feito em parte:** Ajustes do app → *Usar só neste celular* cria as categorias no aparelho e
+> **Feito em parte:** *Começar a usar*, na primeira tela do app (ou Ajustes → *Usar só neste
+> celular*), cria as categorias no aparelho e
 > tudo (menos o consultor) funciona sem computador. Se depois parear, as categorias padrão se
 > juntam às do computador sem duplicar. Consultor sem computador: IA na nuvem com plano
 > grátis, chamada do celular com os nomes anonimizados e a chave cifrada (ver MOBILE.md).
@@ -200,5 +201,7 @@ O andamento detalhado está em [PLANO.md](PLANO.md) e [passo-a-passo.md](passo-a
   Detalhes em [passo-a-passo.md](passo-a-passo.md#safari-motor-webkit-29102026).
 - **Queda da IA no navegador:** fechamento de stream já interrompido protegido no
   Go/WebAssembly; filtro global de erros removido, com teste para erros independentes.
-- **Contas externas:** configurar as variáveis `GOOGLE_*` na Vercel, seguindo [GOOGLE.md](GOOGLE.md).
+- ~~**Contas externas:** configurar as variáveis `GOOGLE_*` na Vercel~~ — feito: o login com
+  Google está ligado no site (`/oauth/config` responde) e, desde 22/11/2026, no programa do
+  computador ([GOOGLE.md](GOOGLE.md)).
   O computador como IA do intermediário (`FINAN_LOCAL_*`) foi removido em 03/11/2026: sem uso.

@@ -12,7 +12,7 @@ import * as finance from "./finance.js";
 import * as charts from "./charts.js";
 import * as bell from "./bell.js";
 import * as sync from "./sync.js";
-import { closeModal, currentMonth, flash, focusPage, newId, toast, today, toString } from "./ui.js";
+import { closeModal, currentMonth, flash, focusPage, html, newId, toast, today, toString } from "./ui.js";
 import * as dashboard from "./pages/dashboard.js";
 import * as transactions from "./pages/transactions.js";
 import * as debts from "./pages/debts.js";
@@ -186,12 +186,18 @@ function render(message) {
     return;
   }
   if (!ledger.categories.length && page.needsData !== false) {
+    const ctx = context(path, new URLSearchParams(location.search));
     root.innerHTML = device.isApp && !server
-      ? `<p class="notice warn">Este celular ainda não está conectado ao computador. <a href="/configuracoes">Conectar agora</a> ou <a href="/configuracoes#sozinho">usar só neste celular</a>.</p>`
+      ? firstRun()
       : sync.state.status === "offline"
         ? `<p class="notice warn">Este aparelho ainda não tem seus dados. Conecte-se ao computador onde a Rich está aberta uma vez para baixá-los; depois ele funciona sem conexão.</p>`
         : `<p class="muted loading">Baixando seus dados…</p>`;
-    sharedDocuments.mount(root, context(path, new URLSearchParams(location.search)));
+    root.querySelector(".first-run [data-action=solo]")?.addEventListener("click", (e) => {
+      e.currentTarget.disabled = true; // um toque só: as categorias são criadas uma vez
+      devicePage.startSolo(ctx, "/");
+    });
+    sharedDocuments.mount(root, ctx);
+    focusNavigation();
     return;
   }
   const ctx = context(path, new URLSearchParams(location.search));
@@ -209,6 +215,20 @@ function render(message) {
   window.finanTheme?.apply();
   if (message) flash(message);
   focusNavigation();
+}
+
+// Primeiro uso no app, sem computador: começar só no celular é o caminho principal (quem
+// baixa pelo site quase nunca tem o programa do computador); conectar fica em segundo.
+function firstRun() {
+  return `<p id="flash" hidden></p>` + toString(html`${dashboard.pageHead("Seu dinheiro, aqui no celular.", null, {
+    kicker: "Boas-vindas", sub: "Lançamentos, dívidas e metas ficam guardados neste celular e funcionam sem internet.",
+  })}
+    <section class="panel empty-state first-run">
+      <strong>Comece agora, sem criar conta.</strong>
+      <span class="muted small">As categorias e a divisão do salário já vêm prontas. Dá para mudar tudo depois.</span>
+      <div class="row-actions"><button type="button" data-action="solo">Começar a usar</button></div>
+      <span class="small muted">Este celular ainda não está conectado ao computador. Usa a Rich no computador? <a href="/configuracoes">Conectar agora</a></span>
+    </section>`);
 }
 
 function focusNavigation() {
