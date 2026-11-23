@@ -80,7 +80,8 @@ func TestPrepared(t *testing.T) {
 		{"tito", "Quanto guardar por mês para a reserva?", true},
 		{"lia", "Tenho assinatura esquecida?", true},
 		{"lia", "Quanto ainda posso gastar?", true},
-		{"lia", "Qual dívida devo pagar primeiro?", false}, // pronta é a do Otávio
+		{"lia", "Qual dívida devo pagar primeiro?", true}, // pergunta de número: a conta do app vale para todo o time
+		{"lia", "Como reduzir meus gastos?", false},
 		{"lia", "Quanto gastei com iFood este ano?", false},
 		{"otavio", "Qual dívida devo pagar primeiro? E a moto?", false},
 		{"jade", "Como foi meu mês?", true}, // quem saiu do time vira o Otávio

@@ -280,6 +280,7 @@ type Question struct {
 	Anonymize bool        // IA de fora do aparelho: nomes viram apelidos (ver anon.go)
 	Agent     string      // quem do time responde (personas.go); vazio = Otávio
 	Rates     rates.Rates // taxas do Banco Central; vazio se o app não conseguiu buscar
+	AskAI     bool        // "Perguntar à IA": vai para a IA mesmo quando o app tem a resposta
 }
 
 // Answer responde à pergunta com as ferramentas ligadas. Com Anonymize, a IA

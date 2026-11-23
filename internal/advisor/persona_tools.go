@@ -352,8 +352,11 @@ func (t *Tools) upcoming(days string) string {
 
 var moneyRe = regexp.MustCompile(`\d[\d.]*(?:,\d{1,2})?`)
 
+// thousandsRe: "2 mil", "2k", "1 milhão" depois do número.
+var thousandsRe = regexp.MustCompile(`^(mil|k|milhao|milhoes)\b`)
+
 // questionMoney devolve o primeiro valor em reais da pergunta ("R$ 500",
-// "400 reais", "1.200,50"); números de dias, meses, anos ou % ficam de fora.
+// "400 reais", "1.200,50", "2 mil"); números de dias, meses, anos ou % ficam de fora.
 // shortcut: lê só o primeiro valor; com dois valores na pergunta, a IA ainda pode chamar a ferramenta com o outro.
 func questionMoney(q string) string {
 	for _, loc := range moneyRe.FindAllStringIndex(q, -1) {
@@ -362,7 +365,17 @@ func questionMoney(q string) string {
 			strings.HasPrefix(rest, "ano") || strings.HasPrefix(rest, "x ") || strings.HasPrefix(rest, "vez") {
 			continue
 		}
-		return strings.TrimRight(q[loc[0]:loc[1]], ".")
+		v := strings.TrimRight(q[loc[0]:loc[1]], ".")
+		if m := thousandsRe.FindString(rest); m != "" {
+			if c, err := money.Parse(v); err == nil {
+				c *= 1000
+				if strings.HasPrefix(m, "milh") {
+					c *= 1000
+				}
+				return fmt.Sprintf("%d,%02d", c/100, c%100)
+			}
+		}
+		return v
 	}
 	return ""
 }
@@ -406,16 +419,7 @@ func prefetch(agent string, t *Tools, question string) string {
 			}
 			return t.simulateDebts(questionMoney(question), order)
 		case "vencimentos":
-			days := ""
-			switch m := daysRe.FindStringSubmatch(q); {
-			case m != nil:
-				days = m[1]
-			case strings.Contains(q, "semana"):
-				days = "7"
-			case strings.Contains(q, "mes"):
-				days = "31"
-			}
-			return t.upcoming(days)
+			return t.upcoming(dueDays(q))
 		}
 		return t.placeSpending(q)
 	case "tito":

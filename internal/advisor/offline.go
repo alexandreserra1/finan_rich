@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/alexandreserra1/finan_rich/internal/domain"
 	"github.com/alexandreserra1/finan_rich/internal/finance"
 	"github.com/alexandreserra1/finan_rich/internal/llm"
 	"github.com/alexandreserra1/finan_rich/internal/money"
@@ -49,9 +50,13 @@ func rateAnswer(q Question) bool {
 	return q.Rates.Date != "" && rateQuestionRe.MatchString(fold(q.Text))
 }
 
-// Prepared diz se a pergunta tem resposta pronta do app (sem IA) para este personagem.
+// Prepared diz se a pergunta tem resposta pronta do app (sem IA): pergunta de número
+// (app_answers.go), as taxas do dia ou uma sugestão deste personagem. Com AskAI, não tem.
 func Prepared(q Question) bool {
-	if rateAnswer(q) {
+	if q.AskAI {
+		return false
+	}
+	if rateAnswer(q) || appAnswer(q) != "" {
 		return true
 	}
 	text := fold(q.Text)
@@ -89,9 +94,10 @@ func answerOrFallback(ctx context.Context, q Question, err error) (Reply, error)
 
 // Numbers são as contas do personagem para mostrar na hora, enquanto a IA
 // escreve (a IA leva de segundos a quase um minuto). Vazio para pergunta
-// pronta: nela o app já responde e a IA nem é chamada.
+// pronta (nela o app já responde e a IA nem é chamada) e no "Perguntar à IA"
+// (a resposta do app já está logo acima, na conversa).
 func Numbers(q Question) string {
-	if Prepared(q) {
+	if q.AskAI || Prepared(q) {
 		return ""
 	}
 	return Offline(q)
@@ -101,6 +107,9 @@ func Numbers(q Question) string {
 func Offline(q Question) string {
 	if rateAnswer(q) {
 		return q.Rates.Text()
+	}
+	if s := appAnswer(q); s != "" {
+		return s
 	}
 	if fold(q.Text) == fold(finance.StartQuestion) {
 		return "Para começar sem IA, cadastre à mão:\n- a renda e as contas do mês em \"Novo lançamento\", com \"Repetir todo mês\" marcado;\n- as dívidas na tela Dívidas;\n- as metas na tela Metas."
@@ -172,14 +181,8 @@ func titoOffline(t *Tools, q Question) string {
 	if goals != "" {
 		parts = append(parts, "**Suas metas**\n\n"+bullets(goals))
 	}
-	if e := BuildFacts(q.Ledger, q.Today).Emergency; e.AvgMonthlyOutCents > 0 && (goals == "" || strings.Contains(fold(q.Text), "reserva")) {
-		lines := []string{fmt.Sprintf("- Mínima: %s (3 meses de gastos); ideal: %s (6 meses).", money.Format(e.MinCents), money.Format(e.IdealCents))}
-		if e.MonthsToMin > 0 {
-			lines = append(lines, fmt.Sprintf("- Guardando a sobra livre (%s por mês), chega na mínima em %s e na ideal em %s.", money.Format(e.MonthlySavingCents), finance.Meses(e.MonthsToMin), finance.Meses(e.MonthsToIdeal)))
-		} else {
-			lines = append(lines, "- Hoje não sobra dinheiro no mês: sem cortar gastos, não dá para formar a reserva.")
-		}
-		parts = append(parts, "**Reserva de emergência**\n\n"+strings.Join(lines, "\n"))
+	if r := reserveText(q); r != "" && (goals == "" || strings.Contains(fold(q.Text), "reserva")) {
+		parts = append(parts, r)
 	}
 	if len(parts) == 0 {
 		return "Nenhuma meta em andamento. Crie uma na tela Metas e eu digo quanto guardar por mês."
@@ -190,21 +193,50 @@ func titoOffline(t *Tools, q Question) string {
 	return strings.Join(parts, "\n\n")
 }
 
+// reserveText: a reserva de emergência pelas contas do app ("" sem gastos de meses
+// fechados para medir).
+func reserveText(q Question) string {
+	e := BuildFacts(q.Ledger, q.Today).Emergency
+	if e.AvgMonthlyOutCents == 0 {
+		return ""
+	}
+	lines := []string{fmt.Sprintf("- Mínima: %s (3 meses de gastos); ideal: %s (6 meses).", money.Format(e.MinCents), money.Format(e.IdealCents))}
+	if e.MonthsToMin > 0 {
+		lines = append(lines, fmt.Sprintf("- Guardando a sobra livre (%s por mês), chega na mínima em %s e na ideal em %s.", money.Format(e.MonthlySavingCents), finance.Meses(e.MonthsToMin), finance.Meses(e.MonthsToIdeal)))
+	} else {
+		lines = append(lines, "- Hoje não sobra dinheiro no mês: sem cortar gastos, não dá para formar a reserva.")
+	}
+	return "**Reserva de emergência**\n\n" + strings.Join(lines, "\n")
+}
+
+// subscriptionsText: o que é cobrado todo mês, com o custo no ano; as assinaturas
+// (desejos) primeiro, depois as contas fixas, como na ferramenta "achados".
+func subscriptionsText(q Question) string {
+	var subs, fixed []string
+	for _, s := range finance.Insights(q.Ledger, q.Today).Subscriptions {
+		cost := money.Format(s.MonthlyCents) + " por mês, " + money.Format(s.YearlyCents) + " por ano."
+		if s.Bucket == domain.BucketDesejos {
+			subs = append(subs, s.Name+" (assinatura): "+cost)
+		} else {
+			fixed = append(fixed, s.Name+" (conta fixa): "+cost)
+		}
+	}
+	lines := append(subs, fixed...)
+	if len(lines) == 0 {
+		return "Não achei nada cobrado todo mês nos seus lançamentos."
+	}
+	return "**Cobranças todo mês**\n\n" + bullets(strings.Join(lines, "\n"))
+}
+
 // maxFindings: a Lia traz até 3 achados.
 const maxFindings = 3
 
 func liaOffline(q Question) string {
+	if strings.Contains(fold(q.Text), "assinatura") {
+		return subscriptionsText(q)
+	}
 	in := finance.Insights(q.Ledger, q.Today)
 	var lines []string
-	if strings.Contains(fold(q.Text), "assinatura") {
-		for _, s := range in.Subscriptions {
-			lines = append(lines, fmt.Sprintf("%s: %s por mês, %s por ano.", s.Name, money.Format(s.MonthlyCents), money.Format(s.YearlyCents)))
-		}
-		if len(lines) == 0 {
-			return "Não achei nada cobrado todo mês nos seus lançamentos."
-		}
-		return "**Cobranças todo mês**\n\n" + bullets(strings.Join(lines, "\n"))
-	}
 	if in.Day > 0 {
 		lines = append(lines, fmt.Sprintf("Até o dia %d: %s em gastos variáveis; no ritmo de agora, o mês fecha em %s (mês passado: %s).",
 			in.Day, money.Format(in.VariableCents), money.Format(in.ProjectedCents), money.Format(in.LastMonthCents)))
@@ -288,7 +320,7 @@ func overviewOffline(q Question) string {
 
 	// Quem do time aprofunda: o assunto da pergunta, senão o do problema.
 	for _, id := range []string{finance.Route(q.Text), finance.Route(problem), who} {
-		if id != "" && id != "otavio" {
+		if id != "" && id != "otavio" && id != persona(q.Agent).ID { // quem responde não manda escolher a si mesmo
 			a := member(id)
 			fmt.Fprintf(&b, "\n\n%s (%s) pode aprofundar: escolha %s no time.", a.Name, a.Role, a.Name)
 			break

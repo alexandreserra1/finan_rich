@@ -41,6 +41,7 @@ type AskRequest struct {
 	Anonymize bool          `json:"anonymize"`
 	Agent     string        `json:"agent"` // quem do time responde; vazio = Otávio
 	Rates     rates.Rates   `json:"rates"` // taxas do Banco Central (cloud-ai.js busca uma vez por dia)
+	AskAI     bool          `json:"askAI"` // "Perguntar à IA": vai para a IA mesmo com resposta do app
 }
 
 type ChatTurn struct {
@@ -76,7 +77,7 @@ func (req AskRequest) question() advisor.Question {
 	for i, h := range req.History {
 		history[i] = llm.Message{Role: llm.Role(h.Role), Content: h.Content}
 	}
-	return advisor.Question{History: history, Text: req.Question, Ledger: req.Ledger, Today: today, Anonymize: req.Anonymize, Agent: req.Agent, Rates: req.Rates}
+	return advisor.Question{History: history, Text: req.Question, Ledger: req.Ledger, Today: today, Anonymize: req.Anonymize, Agent: req.Agent, Rates: req.Rates, AskAI: req.AskAI}
 }
 
 func askReply(r advisor.Reply, preset string) AskReply {

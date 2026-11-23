@@ -127,7 +127,8 @@ A lista da auditoria, conferida nos e2e:
 | Ponto da auditoria | Situação |
 |---|---|
 | Painel como centro de decisão (situação, atenção, ação, evolução) | feito no redesign: avisos assinados pelo time, "O que o time viu", números do mês no topo |
-| Resposta pronta ao recarregar | feito em 30/10/2026: continua marcada "Resposta do app, sem IA" (a marca sai da pergunta, sem migração) |
+| Resposta pronta ao recarregar | feito em 30/10/2026: continua marcada "Resposta do app, sem IA", sem migração. Desde 23/11/2026 a marca sai dos números gravados com a resposta (iguais ao texto), não mais da pergunta: com as perguntas de número e o "Perguntar à IA", a mesma pergunta pode ter resposta do app e da IA |
+| Pergunta de número sem gastar a IA | feito em 23/11/2026: o app responde sozinho gasto, quanto cabe, dívidas, vencimentos, metas, reserva e comparação com o mês passado (`advisor/app_answers.go`); "Perguntar à IA" leva a mesma pergunta para a IA |
 | Modelo do computador não baixado | feito em 30/10/2026: o aviso oferece "Usar <modelo>" com os modelos de conversa que já estão no Ollama, sem baixar nada |
 | Avisos no sininho | feito em 29/10/2026: os avisos saíram do corpo do Painel para um sininho no alto de toda tela (app, site e computador), com o número de avisos. Tocar num leva à tela dele; "Limpar tudo" esvazia a lista em todos os aparelhos; o aviso volta se a situação mudar (`finance.Alert.ID`, `PendingAlerts`). Testes em `internal/finance/plans_test.go` e `e2e/budget.test.mjs` |
 | Do aviso para a conversa | feito em 29/10/2026: cada aviso e cada resumo do time tem "Perguntar para ...", que abre o Consultor com quem avisou e a pergunta já escrita (app, site e computador). Antes, o aviso só levava à tela do assunto e o "Conversar" abria com o último personagem escolhido. Testes em `e2e/budget.test.mjs` e `e2e/app.test.mjs` |
