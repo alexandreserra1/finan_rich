@@ -201,8 +201,9 @@ func TestAskWithTools(t *testing.T) {
 	}
 	second := fake.asked[1]
 	last := second.Messages[len(second.Messages)-1]
+	// Pergunta de busca: só buscar, alterar e apagar (ação leva as do personagem: lean_test.go).
 	if len(fake.asked) != 2 || last.Role != llm.RoleTool || !strings.Contains(last.Content, "R$ 82,30") ||
-		len(second.Tools) != len(persona("otavio").Tools) || !strings.Contains(second.System, "propor_lancamento") {
+		len(second.Tools) != len(lookupTools) || !strings.Contains(second.System, "buscar_lancamentos:") {
 		t.Errorf("segunda rodada = %+v", second)
 	}
 }
@@ -212,7 +213,7 @@ func TestAskFallsBackWithoutTools(t *testing.T) {
 		errs:    []error{&llm.APIError{Status: 400, Message: "model does not support tools"}},
 		replies: []llm.Reply{{}, {Text: "Resposta sem ferramentas."}},
 	}
-	answer, err := Ask(context.Background(), fake, "", nil, "oi", "resumo", NewTools(toolsLedger(), time.Now(), nil), func(string) {})
+	answer, err := Ask(context.Background(), fake, "", nil, "lança 30 de cinema", "resumo", NewTools(toolsLedger(), time.Now(), nil), func(string) {})
 	if err != nil || answer != "Resposta sem ferramentas." || fake.asked[1].Tools != nil || fake.asked[1].System != systemFor("") {
 		t.Fatalf("answer=%q err=%v", answer, err)
 	}
@@ -221,7 +222,7 @@ func TestAskFallsBackWithoutTools(t *testing.T) {
 func TestAskStopsCallingTools(t *testing.T) {
 	loop := llm.Reply{ToolCalls: []llm.ToolCall{call("buscar_lancamentos", `{}`)}}
 	fake := &scriptedLLM{replies: []llm.Reply{loop, loop, loop, loop, {Text: "Fim."}}}
-	answer, err := Ask(context.Background(), fake, "", nil, "oi", "resumo", NewTools(toolsLedger(), time.Now(), nil), func(string) {})
+	answer, err := Ask(context.Background(), fake, "", nil, "quanto gastei com ifood?", "resumo", NewTools(toolsLedger(), time.Now(), nil), func(string) {})
 	if err != nil || answer != "Fim." || len(fake.asked) != maxToolRounds+1 || fake.asked[maxToolRounds].Tools != nil {
 		t.Fatalf("answer=%q err=%v rodadas=%d", answer, err, len(fake.asked))
 	}

@@ -12,7 +12,8 @@ import (
 
 func TestAnswerAsPersona(t *testing.T) {
 	fake := &scriptedLLM{replies: []llm.Reply{{Text: "Ataque o cartão."}}}
-	q := Question{Text: "e agora?", Ledger: toolsLedger(), Today: time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC), Agent: "lia"}
+	// Pedido de ação: vão as ferramentas do personagem (conselho vai sem nenhuma: lean_test.go).
+	q := Question{Text: "apaga o uber repetido", Ledger: toolsLedger(), Today: time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC), Agent: "lia"}
 	if _, err := Answer(context.Background(), fake, q, func(string) {}, func(Proposal) {}); err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +76,7 @@ func TestAskWithoutToolsKeepsPersona(t *testing.T) {
 		errs:    []error{&llm.APIError{Status: 400, Message: "model does not support tools"}},
 		replies: []llm.Reply{{}, {Text: "ok"}},
 	}
-	q := Question{Text: "oi", Ledger: toolsLedger(), Today: time.Now(), Agent: "tito"}
+	q := Question{Text: "guardei 200 na viagem", Ledger: toolsLedger(), Today: time.Now(), Agent: "tito"}
 	Answer(context.Background(), fake, q, func(string) {}, func(Proposal) {})
 	if s := fake.asked[1].System; fake.asked[1].Tools != nil || !strings.Contains(s, "Você é o Tito") || strings.Contains(s, "Ferramentas:") {
 		t.Errorf("sem ferramentas, a voz continua e a lista de ferramentas sai:\n%s", s)
