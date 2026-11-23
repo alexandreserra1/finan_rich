@@ -69,10 +69,8 @@ func TestAppAnswers(t *testing.T) {
 // conta não cobre, lugar que o app não conhece, conversa.
 func TestAppAnswersLeaveTheRestToAI(t *testing.T) {
 	for _, text := range []string{
-		"o que eu faço com meu dinheiro?", "onde posso economizar?", "vale a pena investir em ações agora?",
-		"como montar minha reserva de emergência?", "devo pagar só o mínimo do cartão?", "recebi o 13º de R$ 4.500, o que faço com ele?",
-		"me conta uma piada", "quero financiar um carro de R$ 60 mil, o que acha?", "o que é cdb?", "como funciona o rotativo do cartão?",
-		"vale a pena antecipar parcelas?", "como saio do vermelho?", "Como reduzir meus gastos?", "Como chego na minha meta mais rápido?",
+		"o que eu faço com meu dinheiro?", "onde posso economizar?", "recebi o 13º de R$ 4.500, o que faço com ele?",
+		"me conta uma piada", "quero financiar um carro de R$ 60 mil, o que acha?", "como saio do vermelho?", "Como reduzir meus gastos?", "Como chego na minha meta mais rápido?",
 		"por que gastei mais com delivery este mês?", "devo cancelar a netflix?", "Me ajuda a começar do zero?",
 		// ação: a IA prepara o cartão
 		"gastei 50 no mercado", "paguei 200 no cartão", "eu já guardei 200 na viagem", "lança 30 de cinema", "cria uma meta de viagem",
@@ -173,8 +171,10 @@ func TestAppAnswersMeetEvalCriteria(t *testing.T) {
 			t.Errorf("%q: pergunta direta com %d palavras", c.q, n)
 		}
 	}
-	if answered != 5 { // uber, R$ 500 a mais, R$ 400 para a viagem, o que mudou, próximos 20 dias
-		t.Errorf("o app respondeu %d perguntas da avaliação, quer 5", answered)
+	// uber, R$ 500 a mais, R$ 400 para a viagem, o que mudou, próximos 20 dias; e as explicações
+	// (concepts.go): ações, reserva e pagar só o mínimo.
+	if answered != 8 {
+		t.Errorf("o app respondeu %d perguntas da avaliação, quer 8", answered)
 	}
 }
 

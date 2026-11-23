@@ -470,6 +470,16 @@ try {
   ok(!/Loj/.test(partial) && !/Loja/.test(streamedAnswer), `pela nuvem, a resposta chega aos poucos sem mostrar apelido, também com o CapacitorHttp (antes: "${partial.trim()}"; fim: "${streamedAnswer.trim()}")`);
   await page.evaluate(() => { window.fetch = window.CapacitorWebFetch; delete window.CapacitorWebFetch; });
 
+  // Pergunta de conceito: a explicação pronta do app, com a taxa do dia, sem IA. Antes do
+  // começo do zero: nas 4 respostas seguintes a ele, tudo é conversa com a IA.
+  const beforeCdb = cloudBodies.length;
+  await page.fill("textarea[name=message]", "O que é CDB?");
+  await page.click("form[data-form=ask] button");
+  await page.waitForSelector(".msg.assistant:has-text('CDB é um empréstimo que você faz ao banco') .app-answer", { timeout: 30000 });
+  const cdbText = (await page.textContent(".msg.assistant >> nth=-1")).replace(/\s+/g, " ");
+  ok(cdbText.includes("o CDI está em 13,75% ao ano") && cdbText.includes("FGC") && cloudBodies.length === beforeCdb,
+    `pergunta de conceito: explicação pronta do app, com a taxa do dia, sem IA (${cdbText.slice(0, 100).trim()})`);
+
   // O começo do zero: o Otávio pergunta, a resposta vira um cartão de conta fixa e só as ferramentas de criar vão.
   await page.fill("textarea[name=message]", "Me ajuda a começar do zero?");
   await page.click("form[data-form=ask] button");

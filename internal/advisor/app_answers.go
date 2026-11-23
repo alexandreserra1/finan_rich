@@ -51,8 +51,14 @@ func appAnswer(q Question) string {
 	}
 	f := leadRe.ReplaceAllString(strings.TrimRight(fold(q.Text), "?!. "), "")
 	f = strings.TrimPrefix(f, "e ") // "e se eu pagar 500 a mais?"
-	if f == "" || len([]rune(f)) > maxAppRunes || strings.ContainsAny(f, "?!") || strings.Contains(f, ". ") || strings.Contains(f, " ou ") ||
-		adviceRe.MatchString(f) || actionRe.MatchString(f) || twoQuestions(f) {
+	if f == "" || len([]rune(f)) > maxAppRunes || strings.ContainsAny(f, "?!") || strings.Contains(f, ". ") || actionRe.MatchString(f) {
+		return ""
+	}
+	// Conceito antes do filtro de conselho: "o que é", "como funciona" e "vale a pena" são a forma dessas perguntas.
+	if s := conceptAnswer(q, f); s != "" {
+		return s
+	}
+	if strings.Contains(f, " ou ") || adviceRe.MatchString(f) || twoQuestions(f) {
 		return ""
 	}
 	for _, in := range appIntents {
