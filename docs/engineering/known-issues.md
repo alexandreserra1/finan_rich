@@ -116,6 +116,12 @@ restante. Referencie a mudança OpenSpec e arquivos relevantes, sem copiar a arq
   Xcode.
 - Também visto em 18/11: um push no PR não gerou o evento `pull_request` (mergeabilidade
   `UNKNOWN`); `gh workflow run ci.yml --ref <branch>` roda o mesmo CI no mesmo commit.
+- Visto em 22/11 (main, `2cc6f54`): o `testAbreConfiguracoesSemConectarConta` falhou porque
+  o toque em "Conectar agora" não navegou. No `.xcresult` (artefato `rich-ios-validacao`), a
+  árvore de acessibilidade e o vídeo mostram a primeira tela parada por 30 s, sem alerta nem
+  redesenho. O mesmo código tinha passado nos três commits do PR, e rodar de novo só o job
+  passou. Para ler o `.xcresult` sem o Xcode, os blocos de `Data/` são zstd: `zstd -d` e
+  `file`. Se repetir, o teste deve tocar de novo quando a tela seguinte não aparecer.
 
 ## ENG-009 — No celular, link com âncora caía no topo e o teclado cobria o formulário
 

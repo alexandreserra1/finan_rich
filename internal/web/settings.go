@@ -30,6 +30,7 @@ func (s *Server) settingsPage(w http.ResponseWriter, r *http.Request, extra map[
 		"Themes": [][2]string{{"claro", "Claro"}, {"escuro", "Escuro"}, {"auto", "Igual ao aparelho"}},
 	}
 	data["Port"] = s.port
+	data["Google"] = s.googleView(ctx, r)
 	if c, err := s.pluggyCredentials(ctx); err == nil {
 		data["Pluggy"] = map[string]any{"ClientID": c.ClientID, "HasSecret": c.ClientSecret != "", "Items": strings.Join(c.ItemIDs, "\n")}
 	}

@@ -418,6 +418,7 @@ func TestBackupLeavesSecretsOut(t *testing.T) {
 	s.SaveSettings(ctx, "ai_", map[string]string{"api_key": "segredo-da-ia-123", "model": "qwen3:4b"})
 	s.SaveSettings(ctx, "pluggy_", map[string]string{"client_id": "id-publico", "client_secret": "segredo-do-pluggy-456"})
 	s.SaveSettings(ctx, "access_", map[string]string{"lan": "1", "totp_secret": "SEGREDODOCODIGO234", "totp_recovery": "hash-recuperacao-789"})
+	s.SaveSettings(ctx, "google_", map[string]string{"refresh": "segredo-do-google-321", "email": "pessoa@exemplo.com"})
 	s.CreateSession(ctx, "sessao-1", time.Now().Add(time.Hour))
 	s.CreateDevice(ctx, "Celular", "hash-do-aparelho")
 	if _, err := s.ApplyChanges(ctx, []Change{change(t, domain.TypeTransaction, txRecord("t1", 1, "Padaria do Zé"))}); err != nil {
@@ -431,7 +432,7 @@ func TestBackupLeavesSecretsOut(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, secret := range []string{"segredo-da-ia-123", "segredo-do-pluggy-456", "hash-do-aparelho", "SEGREDODOCODIGO234", "hash-recuperacao-789"} {
+	for _, secret := range []string{"segredo-da-ia-123", "segredo-do-pluggy-456", "hash-do-aparelho", "SEGREDODOCODIGO234", "hash-recuperacao-789", "segredo-do-google-321"} {
 		if bytes.Contains(raw, []byte(secret)) {
 			t.Errorf("o backup ainda tem %q", secret)
 		}
@@ -448,6 +449,10 @@ func TestBackupLeavesSecretsOut(t *testing.T) {
 	// Sem o segredo, o código de 6 dígitos sai desligado (o acesso pela rede continua).
 	if access, _ := b.Settings(ctx, "access_"); access["lan"] != "1" || access["totp_secret"] != "" || access["totp_recovery"] != "" {
 		t.Errorf("acesso no backup: %v", access)
+	}
+	// A conta Google aparece (o e-mail), mas desligada: quem restaurar entra de novo.
+	if google, _ := b.Settings(ctx, "google_"); google["refresh"] != "" || google["email"] != "pessoa@exemplo.com" {
+		t.Errorf("Google no backup: %v", google)
 	}
 	if ai["model"] != "qwen3:4b" || ai["api_key"] != "" || pluggy["client_id"] != "id-publico" || pluggy["client_secret"] != "" || len(devices) != 0 {
 		t.Errorf("ai %v, pluggy %v, aparelhos %v", ai, pluggy, devices)

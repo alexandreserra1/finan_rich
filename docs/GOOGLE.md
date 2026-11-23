@@ -3,8 +3,8 @@
 O site do finan_rich (`https://finan-rich-ia.vercel.app`) são as telas do app do celular
 publicadas na internet. Sem conta, os dados ficam no navegador. Com **Entrar com Google**,
 os dados vão também para o **Google Drive da própria pessoa**, numa pasta de dados do app
-(`appDataFolder`, que só o finan_rich enxerga), e aparecem iguais no site e no app. Nenhum
-servidor do finan_rich guarda dados.
+(`appDataFolder`, que só o finan_rich enxerga), e aparecem iguais no site e no programa do
+computador. Nenhum servidor do finan_rich guarda dados.
 
 ```
 navegador / app ──login (código + PKCE)──▶ Google ──volta──▶ /oauth (site)
@@ -20,7 +20,20 @@ navegador / app ──login (código + PKCE)──▶ Google ──volta──�
   Drive e rodada de sincronização), `js/pages/oauth.js` (volta do login),
   `internal/drivesync` (regra: precisa regravar o arquivo?), `internal/proxy/oauth.go`
   (rotas `/oauth/config`, `/oauth/token`, `/oauth/refresh`), pacote `site` (serve as telas
-  no mesmo programa da Vercel).
+  no mesmo programa da Vercel). No computador: `internal/gdrive` (cliente da API do Drive) e
+  `internal/web/google.go` (login, token e rodada de sincronização).
+- **No computador** (Ajustes → Conta Google):
+  - o login abre no navegador do próprio computador, e a página `/oauth` do site repassa a
+    volta para `127.0.0.1`, na porta do programa (8080 de fábrica);
+  - entrar e a volta só valem no próprio computador. Não funcionam de outro aparelho pela
+    rede nem no modo servidor (`FINAN_PASSWORD`), porque a volta não chegaria ao programa;
+  - o token de renovação fica no banco do programa, como o segredo do Pluggy, e o backup do
+    banco não o leva;
+  - enquanto o programa está aberto, ele sincroniza a cada 2 minutos e logo depois que um
+    aparelho pareado manda alterações. Assim, o que chega do site vai também para o celular;
+  - erros do Drive aparecem na seção, com as mesmas mensagens do site;
+  - sair não apaga os dados do computador. Por isso, entrar depois com **outra** conta leva
+    os dados deste computador para o Drive dessa outra conta.
 - **Mesclagem**: vence o `updatedAt` maior, como em toda sincronização. Cada aparelho baixa o
   arquivo quando a versão muda, aplica e regrava o arquivo inteiro se tiver algo que falta lá.
   Duas gravações no mesmo instante: a que perdeu regrava na próxima rodada (o dado continua
@@ -45,8 +58,9 @@ navegador / app ──login (código + PKCE)──▶ Google ──volta──�
   navegador: antes ele salva tudo no Drive e, se não conseguir, não sai nem apaga nada.
   Entrar de novo traz os dados de volta do Drive. No celular, os dados ficam no aparelho.
 
-Por enquanto o login funciona no site. O app Android e o programa do computador entram nas
-próximas versões (o caminho de volta `app.*` e `pc.*` da página `/oauth` já existe).
+O login funciona no site e no programa do computador. O app Android entra na próxima versão:
+a volta `app.*` da página `/oauth` já existe e foi conferida no emulador, mas falta um login
+real num celular.
 
 ## Cadastro no Google (uma vez, ~10 minutos, sem cartão)
 

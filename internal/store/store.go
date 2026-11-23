@@ -131,7 +131,7 @@ func (s *Store) BackupTo(ctx context.Context, path string) error {
 	}
 	defer db.Close()
 	for _, q := range []string{
-		`UPDATE settings SET value = '' WHERE key IN ('ai_api_key', 'pluggy_client_secret')`,
+		`UPDATE settings SET value = '' WHERE key IN ('ai_api_key', 'pluggy_client_secret', 'google_refresh')`,
 		`DELETE FROM settings WHERE key LIKE 'access_totp%'`,
 		`DELETE FROM sessions`,
 		`DELETE FROM devices`,

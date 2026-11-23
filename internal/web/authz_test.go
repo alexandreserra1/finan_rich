@@ -67,6 +67,9 @@ func TestRouteTable(t *testing.T) {
 		"GET /entrar": true, "POST /entrar": true, "GET /entrar/codigo": true, "POST /entrar/codigo": true,
 		"GET /parear": true, "POST /api/parear": true,
 	}
+	// Exclusivas deste computador: fechar o programa e o login com Google (a volta do
+	// login vem por 127.0.0.1; começar de outro aparelho mandaria a volta para o dele).
+	localOnlys := map[string]bool{"POST /configuracoes/fechar": true, "GET /google/entrar": true, "GET /google/retorno": true}
 	seen := map[string]bool{}
 	for _, rt := range a.srv.routes() {
 		api := strings.Contains(rt.pattern, " /api/") && rt.pattern != "POST /api/parear"
@@ -79,8 +82,8 @@ func TestRouteTable(t *testing.T) {
 			t.Errorf("%s: pública = %v", rt.pattern, rt.who == public)
 		case api != (rt.who == ownerOrDevice):
 			t.Errorf("%s: o token do app só vale para a API", rt.pattern)
-		case (rt.pattern == "POST /configuracoes/fechar") != (rt.who == localOnly):
-			t.Errorf("%s: só fechar o programa é exclusivo deste computador", rt.pattern)
+		case localOnlys[rt.pattern] != (rt.who == localOnly):
+			t.Errorf("%s: só fechar o programa e o login com Google são exclusivos deste computador", rt.pattern)
 		}
 		seen[rt.pattern] = true
 	}

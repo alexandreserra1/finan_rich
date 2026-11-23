@@ -82,6 +82,7 @@ func run(args []string) error {
 		return err
 	}
 	go srv.WatchOpenFinance(ctx)
+	go srv.WatchGoogle(ctx)
 
 	// Se o usuário liberou o acesso pelo celular, escuta em todas as interfaces
 	// da rede; senão, só neste computador.

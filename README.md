@@ -203,8 +203,9 @@ com **Entrar com Google** (o computador de quem abre o site pode ser de outra pe
 dados ficam no navegador e no seu Google Drive (numa pasta que só o finan_rich usa) e aparecem
 iguais em outros navegadores. Ao sair, eles saem do navegador e continuam no Drive; sem usar por
 30 minutos, o site pede para entrar de novo. Nenhum servidor do finan_rich guarda seus dados.
-Quem quer usar sem conta usa o programa do computador ou o app do celular. Detalhes em
-[docs/GOOGLE.md](docs/GOOGLE.md).
+Quem quer usar sem conta usa o programa do computador ou o app do celular. No programa do
+computador, **Ajustes → Conta Google** liga a mesma conta, e os dados do site e do computador
+ficam juntos. Detalhes em [docs/GOOGLE.md](docs/GOOGLE.md).
 
 ### No celular
 
