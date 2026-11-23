@@ -196,17 +196,24 @@ func titoOffline(t *Tools, q Question) string {
 // reserveText: a reserva de emergência pelas contas do app ("" sem gastos de meses
 // fechados para medir).
 func reserveText(q Question) string {
-	e := BuildFacts(q.Ledger, q.Today).Emergency
-	if e.AvgMonthlyOutCents == 0 {
+	lines := reserveLines(q)
+	if len(lines) == 0 {
 		return ""
 	}
-	lines := []string{fmt.Sprintf("- Mínima: %s (3 meses de gastos); ideal: %s (6 meses).", money.Format(e.MinCents), money.Format(e.IdealCents))}
-	if e.MonthsToMin > 0 {
-		lines = append(lines, fmt.Sprintf("- Guardando a sobra livre (%s por mês), chega na mínima em %s e na ideal em %s.", money.Format(e.MonthlySavingCents), finance.Meses(e.MonthsToMin), finance.Meses(e.MonthsToIdeal)))
-	} else {
-		lines = append(lines, "- Hoje não sobra dinheiro no mês: sem cortar gastos, não dá para formar a reserva.")
+	return "**Reserva de emergência**\n\n- " + strings.Join(lines, "\n- ")
+}
+
+// reserveLines: o tamanho da reserva e quando chega nela guardando a sobra (nil sem meses fechados).
+func reserveLines(q Question) []string {
+	e := BuildFacts(q.Ledger, q.Today).Emergency
+	if e.AvgMonthlyOutCents == 0 {
+		return nil
 	}
-	return "**Reserva de emergência**\n\n" + strings.Join(lines, "\n")
+	lines := []string{fmt.Sprintf("Mínima: %s (3 meses de gastos); ideal: %s (6 meses).", money.Format(e.MinCents), money.Format(e.IdealCents))}
+	if e.MonthsToMin > 0 {
+		return append(lines, fmt.Sprintf("Guardando a sobra livre (%s por mês), chega na mínima em %s e na ideal em %s.", money.Format(e.MonthlySavingCents), finance.Meses(e.MonthsToMin), finance.Meses(e.MonthsToIdeal)))
+	}
+	return append(lines, "Hoje não sobra dinheiro no mês: sem cortar gastos, não dá para formar a reserva.")
 }
 
 // subscriptionsText: o que é cobrado todo mês, com o custo no ano; as assinaturas

@@ -122,9 +122,11 @@ em Ajustes.
 
 Pergunta de número não gasta a cota: o app responde sozinho, sem chamar a IA, "quanto gastei
 com X", "posso gastar 300?", "quando fico livre das dívidas?", o que vence, as metas, a reserva e
-a comparação com o mês passado (`internal/advisor/app_answers.go`). Numa amostra de 34
-perguntas típicas, 18 saem do app. Embaixo da resposta, "Perguntar à IA" manda a mesma pergunta
-para a IA, para quem quiser conversar.
+a comparação com o mês passado (`internal/advisor/app_answers.go`). Pergunta de conceito também
+não gasta: "o que é CDB?", "como funciona o rotativo?", "vale a pena antecipar parcelas?" e "o
+que faço com o 13º?" têm explicação pronta, com os números da pessoa e as taxas do dia
+(`internal/advisor/concepts.go`). Numa amostra de 34 perguntas típicas, 25 saem do app. Embaixo
+da resposta, "Perguntar à IA" manda a mesma pergunta para a IA, para quem quiser conversar.
 
 ## Vários provedores grátis (um esgota, passa para o próximo)
 
