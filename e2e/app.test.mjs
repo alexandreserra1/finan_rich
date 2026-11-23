@@ -261,21 +261,29 @@ try {
     console.log(logs.slice(-15).join("\n"));
   };
 
-  // Recém-instalado: pede para conectar.
+  // Recém-instalado: boas-vindas com "Começar a usar" à vista, sem cara de erro. Conectar ao
+  // computador fica como segunda opção: quem baixa pelo site quase nunca tem o programa.
   await page.goto(`${APP}/`);
   await page.waitForSelector("text=ainda não está conectado", { timeout: 20000 });
   await waitStatus(page, "unpaired");
-  ok(true, "app novo pede para conectar ao computador");
-  // "usar só neste celular" abre Ajustes já no botão, entre o cabeçalho e a barra de baixo
-  // (no emulador, caía no topo da página e o botão ficava sete telas abaixo).
-  await page.click("a[href='/configuracoes#sozinho']");
-  await page.waitForSelector("#sozinho [data-action=solo]");
-  ok(await page.$eval("#sozinho [data-action=solo]", (button) => {
-    const box = button.getBoundingClientRect();
+  const inView = (selector) => page.$eval(selector, (el) => {
+    const box = el.getBoundingClientRect();
     const header = document.querySelector(".top").getBoundingClientRect().bottom;
     const tabs = document.querySelector("body > .tabs")?.getBoundingClientRect().top ?? innerHeight;
     return box.top >= header && box.bottom <= tabs;
-  }), "o link “usar só neste celular” abre Ajustes com o botão à vista");
+  });
+  ok(await page.textContent(".first-run [data-action=solo]") === "Começar a usar" && await inView(".first-run [data-action=solo]") &&
+    await page.isVisible(".first-run a[href='/configuracoes']") && !(await page.$(".notice.warn")),
+    "app novo: boas-vindas com Começar a usar à vista e conectar ao computador como segunda opção");
+  // Link para um trecho de outra tela (/configuracoes#sozinho) abre nele, entre o cabeçalho e a
+  // barra de baixo (no emulador, caía no topo e o botão ficava sete telas abaixo).
+  await page.evaluate(() => {
+    const link = Object.assign(document.createElement("a"), { href: "/configuracoes#sozinho", textContent: "trecho" });
+    document.body.append(link);
+    link.click();
+  });
+  await page.waitForSelector("#sozinho [data-action=solo]");
+  ok(await inView("#sozinho [data-action=solo]"), "link com # abre a outra tela já no trecho, com o botão à vista");
 
   // Tema: segue o aparelho (aqui claro); Escuro fica salvo ao reabrir; volta ao automático.
   await page.goto(`${APP}/configuracoes`);
@@ -931,8 +939,10 @@ try {
   const rem = await remCtx.newPage();
   listen(rem, "lembretes");
   rem.on("dialog", (d) => d.accept());
-  await rem.goto(`${APP}/configuracoes`);
-  await rem.click("[data-action=solo]");
+  await rem.goto(`${APP}/`);
+  await rem.click(".first-run [data-action=solo]"); // "Começar a usar" das boas-vindas
+  await rem.waitForSelector(".welcome-empty", { timeout: 20000 });
+  ok(new URL(rem.url()).pathname === "/", "Começar a usar cria as categorias no celular e abre o Painel guiado");
   await rem.waitForSelector("main h1", { timeout: 20000 });
   await rem.evaluate(async () => {
     const db = await import("/static/js/db.js");

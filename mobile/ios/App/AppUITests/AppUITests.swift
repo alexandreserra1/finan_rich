@@ -26,6 +26,11 @@ final class AppUITests: XCTestCase {
         conectar.tap()
 
         let usarSozinho = webView.buttons.matching(identifier: "Usar só neste celular").firstMatch
+        // No simulador do CI, o toque às vezes não vira clique e a tela fica parada (ENG-008):
+        // sem os Ajustes em 15 s, e com o link ainda na tela, toca de novo antes de falhar.
+        if !usarSozinho.waitForExistence(timeout: 15), conectar.exists {
+            conectar.tap()
+        }
         XCTAssertTrue(usarSozinho.waitForExistence(timeout: 30), "Os ajustes devem oferecer o uso somente neste celular.")
 
         let ajustes = XCTAttachment(screenshot: app.screenshot())

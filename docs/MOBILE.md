@@ -271,7 +271,7 @@ preciso a conta de desenvolvedor (anual).
 
 ## Próximos passos
 
-- **Projeto no Cloudflare Pages** para o download por QR code: passo a passo em
-  [DISTRIBUICAO.md](DISTRIBUICAO.md).
+- ~~**Projeto no Cloudflare Pages** para o download por QR code~~ — no ar desde a v1.11.0
+  (19/11/2026); veja [DISTRIBUICAO.md](DISTRIBUICAO.md).
 - **Play Store** (taxa única) e **App Store/TestFlight** (conta Apple anual): dependem das
   contas; fora do plano enquanto a regra for não gastar.
