@@ -59,6 +59,49 @@ func TestFetchErrors(t *testing.T) {
 	}
 }
 
+// O Banco Central às vezes responde 304, sem corpo, a um pedido sem condição (visto pelo curl e
+// no app em 24/11/2026). A busca pede de novo com um parâmetro único no endereço.
+func TestFetchRetries304(t *testing.T) {
+	series := map[string]string{
+		"432":   `[{"data":"09/12/2026","valor":"13.75"}]`,
+		"4389":  `[{"data":"23/11/2026","valor":"13.65"}]`,
+		"13522": `[{"data":"01/10/2026","valor":"4.63"}]`,
+	}
+	for name, misses := range map[string]int{"um 304": 1, "dois 304": 2} {
+		seen := map[string]int{}
+		var urls []string
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			urls = append(urls, r.URL.String())
+			for code, body := range series {
+				if strings.Contains(r.URL.Path, "bcdata.sgs."+code+"/") {
+					if seen[code]++; seen[code] <= misses {
+						w.WriteHeader(http.StatusNotModified)
+						return
+					}
+					w.Write([]byte(body))
+					return
+				}
+			}
+			http.NotFound(w, r)
+		}))
+		r, err := Fetch(context.Background(), srv.Client(), srv.URL)
+		srv.Close()
+		if err != nil || r.CDIBP != 1365 || r.IPCABP != 463 {
+			t.Errorf("%s: %+v, %v", name, r, err)
+		}
+		if strings.Contains(urls[0], "_=") || !strings.Contains(urls[1], "&_=") || urls[1] == urls[2] {
+			t.Errorf("%s: o 1º pedido vai como sempre; os de novo, cada um com um parâmetro único: %v", name, urls[:3])
+		}
+	}
+	// Sempre 304: desiste depois de 3 pedidos, com o erro de sempre.
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { calls++; w.WriteHeader(http.StatusNotModified) }))
+	defer srv.Close()
+	if _, err := Fetch(context.Background(), srv.Client(), srv.URL); err == nil || !strings.Contains(err.Error(), "resposta 304") || calls != 3 {
+		t.Errorf("sempre 304: %v, %d pedidos", err, calls)
+	}
+}
+
 func TestParseBP(t *testing.T) {
 	for in, want := range map[string]int{"13.75": 1375, "13.7": 1370, "13": 1300, "4.635": 464, "0.004": 0, "-0.21": -21, "10,50": 1050} {
 		if got, err := parseBP(in); err != nil || got != want {

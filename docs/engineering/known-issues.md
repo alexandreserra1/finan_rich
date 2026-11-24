@@ -166,16 +166,23 @@ Achado em 23/11/2026, num teste de uso com um APK de teste da main no emulador A
   repetido apareceu só com o Banco Central, que manda um cabeçalho só pelo `curl`; não é de todo
   pedido nativo, então não há remendo geral no `fetch`.
 - 24/11/2026, depois da v1.12.0: no APK oficial, as taxas voltaram a faltar ("Confira a taxa do
-  dia"). Causa confirmada pelo DevTools: o Banco Central responde com `Cache-Control: public,
-  max-age=900` e `private` repetidos; quando a resposta guardada vence (15 min), o WebView 113
-  revalida com o `ETag`, recebe `304` e o entrega ao JavaScript sem corpo, em vez da resposta
-  guardada. O Go recusa ("resposta 304"). No APK de teste não apareceu porque era o primeiro
-  pedido, com o cache vazio; na prática, as taxas falhariam em todo dia depois do primeiro.
-  Chromium 156 e WebKit atuais devolvem 200 do cache (o site não tem o problema).
-- Correção: os pedidos que vão pelo `fetch` do WebView saem com `cache: "no-store"`. Teste: o
-  e2e do ENG-010 imita também o 304 do WebView (falhou antes da correção). No emulador, com um
-  APK de teste: taxa no 1º dia e, com o relógio adiantado um dia (resposta guardada vencida),
-  taxa de novo.
+  dia"), até numa instalação do zero. Pelo DevTools, o Go recebia `304 Not Modified`, sem corpo.
+  O Banco Central manda `Cache-Control: public, max-age=900` e `private` repetidos e um `ETag`.
+- 1ª hipótese (#50, v1.12.1): o WebView 113 revalidava a resposta guardada e entregava o 304 ao
+  JavaScript. Os pedidos pelo `fetch` do WebView passaram a sair com `cache: "no-store"`. Não
+  bastou: a v1.12.1 continuou recebendo 304.
+- Causa confirmada: o **próprio servidor**, de forma intermitente, responde 304 sem corpo a pedido
+  sem condição. Pelo `curl` no Mac, sem cabeçalho nenhum, a série do CDI (4389) voltou 304 quatro
+  vezes seguidas; um minuto depois, 45 de 45 pedidos das três séries voltaram 200. No app, com
+  `no-store`, o pedido saía sem `If-None-Match` e o 304 vinha da rede, não do cache. Chromium 156 e
+  WebKit atuais devolveram 200 nos testes do site, que também pode pegar um surto de 304.
+- Correção: `internal/rates` pede de novo, até 3 vezes, quando recebe 304, cada vez com um
+  parâmetro único no endereço (`&_=…`; o Banco Central ignora parâmetros a mais). Vale para o
+  app, o site e o computador. O `no-store` ficou (não atrapalha e evita o cache do WebView).
+- Teste: `TestFetchRetries304` (Go: um e dois 304 seguidos dão certo; sempre 304 desiste no 3º
+  pedido) e o e2e do ENG-010, em que o 1º pedido de cada série volta 304 mesmo sem cache. Os dois
+  falharam antes da correção. No emulador, com um APK de teste, a taxa aparece e cinco rodadas
+  seguidas das três séries voltam 200; não deu para forçar um surto de 304 do servidor ao vivo.
 - Não conferido: celular de verdade.
 
 ## ENG-011 — No celular, o lançamento ia para a primeira categoria e a permissão de notificação voltava a cada gasto
