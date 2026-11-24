@@ -162,3 +162,16 @@ Achado em 23/11/2026, num teste de uso com um APK de teste da main no emulador A
 - Conferido também: o "Testar chave" dos Ajustes e o "IA sugere" da importação funcionam pelo
   nativo (as respostas da IA não vêm com o cabeçalho repetido).
 - Não conferido: celular de verdade.
+
+## ENG-012 — Job Android do CI caindo com 429 do Maven Central
+
+Em 24/11/2026, o job `android` dos PRs #45 e #46 falhou ao configurar o Gradle: o Maven Central
+respondeu `429 Too Many Requests` para várias dependências (`kotlin-stdlib`, `httpmime`, `asm`).
+Não tinha relação com o código; rodar de novo o job passou no #45.
+- Causa provável: sem cache, cada rodada baixa todas as dependências do Gradle do Maven Central,
+  e os endereços dos executores do GitHub são compartilhados.
+- Correção: `cache: gradle` no `actions/setup-java` do job `android` (`.github/workflows/ci.yml`).
+  O workflow de release, que publica o APK assinado, ficou sem cache de propósito; se cair por
+  429, basta rodar de novo.
+- Verificação: no CI do PR, o passo do Java restaura ou grava o cache do Gradle; a rodada
+  seguinte baixa só o que mudou.
