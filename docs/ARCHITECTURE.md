@@ -479,7 +479,7 @@ Arquivos do navegador (`static/`):
 | `js/finance.js` | Carrega o `finance.wasm` e expõe as funções em JavaScript. |
 | `js/ui.js` | `html` com escape automático (evita injeção), UUID, datas, mensagens. |
 | `js/pages/dashboard.js` | Painel do mês: totais, divisão do salário, gastos por categoria, visão anual. Também exporta o seletor de mês e os cartões de totais usados pelos lançamentos. |
-| `js/pages/transactions.js` | Lançamentos: formulário (categorias filtradas por entrada/saída), lista do mês, busca e filtros (no endereço, então voltar e avançar funcionam), apagar, "copiar do mês anterior". |
+| `js/pages/transactions.js` | Lançamentos: formulário (categorias filtradas por entrada/saída; num lançamento novo, a categoria vem da descrição enquanto a pessoa não escolhe uma, com as regras da importação, `importer.SuggestCategory` pelo `finance.wasm`), lista do mês, busca e filtros (no endereço, então voltar e avançar funcionam), apagar, "copiar do mês anterior". |
 | `js/pages/accounts.js` | Contas e cartões: cadastro, saldos, faturas e o painel de patrimônio (também usado na Análise). |
 | `js/pages/welcome.js` | Primeiro uso guiado, mostrado no Painel até a pessoa terminar ou pular. |
 | `js/pages/debts.js` | Dívidas: "Onde está o problema" (`finance.diagnose`) com os cortes para marcar (`?cortes=`), o plano numa frase (o que pagar primeiro, em quantos meses, juros economizados), valor a mais por mês (`?extra=`), gráfico plano × só o mínimo, calendário mês a mês agrupado por ano (com o mês em que cada dívida é quitada), prazos em anos e meses, faturas abertas dos cartões, cadastro e edição. |
@@ -491,7 +491,7 @@ Arquivos do navegador (`static/`):
 | `vendor/pdfjs/` | pdf.js 6.3 (Mozilla, Apache-2.0), build legacy, embutido para funcionar offline. |
 | `js/pages/goals.js` | Metas: criar, editar, apagar; cartões de progresso (também usados no painel). |
 | `js/notes-save.js` | Salva uma resposta do consultor como nota e grava o que ele propôs (depois do toque no botão). |
-| `js/native.js` | Só no app do celular: leitor de QR e lembretes do time (vencimentos, achados da semana, balanço das metas). |
+| `js/native.js` | Só no app do celular: leitor de QR e lembretes do time (vencimentos, achados da semana, balanço das metas). Os lembretes não pedem alarme exato, e sem a permissão de notificação ficam desligados (o app pede uma vez; ligar nos Ajustes pede de novo). |
 | `js/exporter.js` | Entrega o arquivo gerado: download no navegador; no app do celular, salva e abre o menu de compartilhar (plugins Filesystem e Share do Capacitor). |
 | `js/pages/advisor.js` | Consultor, no computador, no app e no site: o time, a conversa pela `/api/chat` (no app, também pela nuvem ou dentro do celular), os cartões de confirmar e "Os números do app". |
 | `js/pages/device.js` | Só no app do celular: Ajustes (pareamento, QR, lembretes). |

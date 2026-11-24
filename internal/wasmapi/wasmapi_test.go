@@ -280,3 +280,22 @@ func TestDebtPayment(t *testing.T) {
 		}
 	}
 }
+
+// O formulário de lançamento sugere a categoria pela descrição, com as regras da importação
+// (palavras-chave: "Uber" → Transporte; o histórico da pessoa: "Bar" → Lazer); "" se não souber.
+func TestSuggestCategory(t *testing.T) {
+	l := `{"categories":[{"id":"sal","updatedAt":1,"name":"Salário","bucket":"renda"},{"id":"tra","updatedAt":1,"name":"Transporte","bucket":"necessidades"},{"id":"laz","updatedAt":1,"name":"Lazer","bucket":"desejos"}],
+	  "transactions":[{"id":"b","updatedAt":1,"kind":"saida","description":"Bar do Zé","amountCents":2000,"categoryId":"laz","date":"2026-10-06"},
+	    {"id":"c","updatedAt":1,"kind":"saida","description":"Bar do Zé","amountCents":3000,"categoryId":"laz","date":"2026-10-13"}]}`
+	for _, c := range []struct{ desc, kind, want string }{
+		{"Uber", "saida", `"tra"`}, {"UBER *TRIP", "saida", `"tra"`}, {"Bar do Zé", "saida", `"laz"`},
+		{"Salário", "entrada", `"sal"`}, {"presente da tia", "saida", `""`},
+	} {
+		if got := SuggestCategory(l, c.desc, c.kind); got != `{"ok":`+c.want+`}` && !(c.want == `""` && got == `{}`) {
+			t.Errorf("SuggestCategory(%q, %s) = %s, quer %s", c.desc, c.kind, got, c.want)
+		}
+	}
+	if got := SuggestCategory("{", "Uber", "saida"); !strings.Contains(got, `"error"`) {
+		t.Errorf("JSON inválido: %s", got)
+	}
+}

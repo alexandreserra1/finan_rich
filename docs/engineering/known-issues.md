@@ -163,6 +163,29 @@ Achado em 23/11/2026, num teste de uso com um APK de teste da main no emulador A
   nativo (as respostas da IA não vêm com o cabeçalho repetido).
 - Não conferido: celular de verdade.
 
+## ENG-011 — No celular, o lançamento ia para a primeira categoria e a permissão de notificação voltava a cada gasto
+
+Achados em 23/11/2026, num teste de uso com um APK de teste da main no emulador Android 14.
+- Categoria. Esperado: "Uber" em Transporte. Observado: em "Contas da casa", a primeira da
+  lista. Causa confirmada: o formulário de lançamento não sugeria nada; a regra existia só na
+  importação e no Consultor (`importer.SuggestCategory`). O lançamento errado também ensina o
+  histórico: o próximo "Uber" seria sugerido em "Contas da casa".
+- Permissão. Observado: "Permitir notificações?" depois do 1º, do 2º e do 3º gasto salvo.
+  Causa confirmada: o `scheduleReminders` reagenda a cada mudança e, sem permissão, saía sem
+  guardar nada, então pedia de novo no gasto seguinte.
+- Alarme exato. Observado: depois de liberar a notificação, o app abria a tela de sistema
+  "Alarmes e lembretes". Causa confirmada no código do plugin (`@capacitor/local-notifications`
+  8.3.1): `isExactNotification` vale `true` por padrão e, no Android 12+, sem permissão de
+  alarme exato, o `schedule` abre essa tela.
+- Correção: o formulário usa `importer.SuggestCategory` pelo `finance.wasm` até a pessoa
+  escolher; sem a permissão, os lembretes ficam desligados (ligar nos Ajustes pede de novo e
+  avisa); os lembretes vão com `isExactNotification: false` (às 9h, sem hora exata).
+- Teste: `e2e/offline.test.mjs` (categoria) e `e2e/app.test.mjs` (permissão pedida uma vez,
+  Ajustes, lembretes sem alarme exato); falharam antes da correção. No emulador, de uma
+  instalação limpa: "Uber" em Transporte, "iFood" em Restaurantes, uma pergunta só, o aviso dos
+  Ajustes e os alarmes agendados sem abrir a tela de sistema.
+- Não conferido: celular de verdade.
+
 ## ENG-012 — Job Android do CI caindo com 429 do Maven Central
 
 Em 24/11/2026, o job `android` dos PRs #45 e #46 falhou ao configurar o Gradle: o Maven Central

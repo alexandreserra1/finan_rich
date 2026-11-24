@@ -404,5 +404,16 @@ func DriveNeedsUpload(localJSON, remoteJSON string) string {
 // Team é o time do finan_rich (nomes, papéis e imagens) para as telas.
 func Team() string { return reply(finance.Team, nil) }
 
+// SuggestCategory sugere a categoria pela descrição, com as regras da importação (o histórico
+// da pessoa, depois as palavras-chave: "Uber" → Transporte); "" se não souber. O formulário de
+// lançamento usa enquanto a pessoa não escolhe uma.
+func SuggestCategory(ledgerJSON, desc, kind string) string {
+	var l domain.Ledger
+	if err := json.Unmarshal([]byte(ledgerJSON), &l); err != nil {
+		return reply(nil, err)
+	}
+	return reply(importer.SuggestCategory(l, desc, kind), nil)
+}
+
 // Route diz quem do time cuida do assunto da pergunta ("" se ninguém em especial).
 func Route(question string) string { return reply(finance.Route(question), nil) }
