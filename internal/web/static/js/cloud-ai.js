@@ -160,6 +160,9 @@ export async function presets() {
 // que lê aos poucos. Se o provedor não aceitar CORS, o WebView barra no preflight,
 // antes de enviar a pergunta, e o pedido volta para o nativo. O Banco Central (rates)
 // também: pelo nativo, o Content-Length chega repetido ("0, 39") e o Go recusa a resposta.
+// Sem cache ("no-store"): com a resposta guardada vencida, o WebView 113 revalida e entrega
+// ao JavaScript o 304 do Banco Central, sem corpo, e as taxas falhavam todo dia depois do
+// primeiro (ENG-010). Pedido à IA (POST) não vai para o cache de qualquer jeito.
 const aiBases = new Set();
 function streamFromWebView(base) {
   const web = window.CapacitorWebFetch;
@@ -171,7 +174,7 @@ function streamFromWebView(base) {
     const url = String(res?.url ?? res);
     if (![...aiBases].some((b) => url.startsWith(b))) return native(res, opt);
     try {
-      return await web(res, opt);
+      return await web(res, { ...opt, cache: "no-store" });
     } catch (err) {
       if (err?.name === "AbortError") throw err; // a pessoa ou o prazo cancelou: não reenvia
       return native(res, opt);

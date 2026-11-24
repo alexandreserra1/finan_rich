@@ -165,6 +165,17 @@ Achado em 23/11/2026, num teste de uso com um APK de teste da main no emulador A
   respondeu 400", com credenciais de teste) e a de chave errada da IA (401). O `Content-Length`
   repetido apareceu só com o Banco Central, que manda um cabeçalho só pelo `curl`; não é de todo
   pedido nativo, então não há remendo geral no `fetch`.
+- 24/11/2026, depois da v1.12.0: no APK oficial, as taxas voltaram a faltar ("Confira a taxa do
+  dia"). Causa confirmada pelo DevTools: o Banco Central responde com `Cache-Control: public,
+  max-age=900` e `private` repetidos; quando a resposta guardada vence (15 min), o WebView 113
+  revalida com o `ETag`, recebe `304` e o entrega ao JavaScript sem corpo, em vez da resposta
+  guardada. O Go recusa ("resposta 304"). No APK de teste não apareceu porque era o primeiro
+  pedido, com o cache vazio; na prática, as taxas falhariam em todo dia depois do primeiro.
+  Chromium 156 e WebKit atuais devolvem 200 do cache (o site não tem o problema).
+- Correção: os pedidos que vão pelo `fetch` do WebView saem com `cache: "no-store"`. Teste: o
+  e2e do ENG-010 imita também o 304 do WebView (falhou antes da correção). No emulador, com um
+  APK de teste: taxa no 1º dia e, com o relógio adiantado um dia (resposta guardada vencida),
+  taxa de novo.
 - Não conferido: celular de verdade.
 
 ## ENG-011 — No celular, o lançamento ia para a primeira categoria e a permissão de notificação voltava a cada gasto
