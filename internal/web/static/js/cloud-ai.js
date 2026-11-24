@@ -158,7 +158,8 @@ export async function presets() {
 // No app, o CapacitorHttp troca o fetch por um nativo que entrega a resposta inteira
 // de uma vez. Os pedidos à IA na nuvem vão pelo fetch do WebView (CapacitorWebFetch),
 // que lê aos poucos. Se o provedor não aceitar CORS, o WebView barra no preflight,
-// antes de enviar a pergunta, e o pedido volta para o nativo.
+// antes de enviar a pergunta, e o pedido volta para o nativo. O Banco Central (rates)
+// também: pelo nativo, o Content-Length chega repetido ("0, 39") e o Go recusa a resposta.
 const aiBases = new Set();
 function streamFromWebView(base) {
   const web = window.CapacitorWebFetch;
@@ -182,7 +183,8 @@ function streamFromWebView(base) {
 
 // rates: Selic, CDI e IPCA do Banco Central, buscados uma vez por dia (só a data
 // vai no pedido, nenhum dado da pessoa). Sem internet, valem as últimas guardadas;
-// sem nenhuma, o consultor segue sem taxas.
+// sem nenhuma, o consultor segue sem taxas. O Banco Central aceita CORS.
+const BCB = "https://api.bcb.gov.br";
 let ratesToday = null;
 let ratesRetry = 0; // depois de uma falha, só tenta de novo em 10 min (sem internet, não atrasa cada pergunta)
 async function rates() {
@@ -193,6 +195,7 @@ async function rates() {
   if (Date.now() < ratesRetry || navigator.onLine === false) return saved?.rates || null;
   try {
     await loadAdvisor();
+    streamFromWebView(BCB);
     ratesToday = { day, rates: unwrap(await window.finanAdvisor.rates()) };
     await db.setMeta("taxas-bcb", ratesToday).catch(() => {});
     return ratesToday.rates;

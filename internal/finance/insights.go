@@ -277,6 +277,9 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 			continue
 		}
 		c := CategoryTrend{Name: cats[id].Name, Bucket: cats[id].Bucket, Cents: now, SharePct: pct(now, total), Avg3Cents: a}
+		if c.Name == "" {
+			c.Name = domain.NoCategoryName
+		}
 		if a > 0 {
 			c.DiffPct = int((now - a) * 100 / a)
 		}

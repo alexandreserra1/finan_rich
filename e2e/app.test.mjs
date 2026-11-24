@@ -477,8 +477,29 @@ try {
   await page.click("form[data-form=ask] button");
   await page.waitForSelector(".msg.assistant:has-text('CDB é um empréstimo que você faz ao banco') .app-answer", { timeout: 30000 });
   const cdbText = (await page.textContent(".msg.assistant >> nth=-1")).replace(/\s+/g, " ");
-  ok(cdbText.includes("o CDI está em 13,75% ao ano") && cdbText.includes("FGC") && cloudBodies.length === beforeCdb,
+  ok(cdbText.includes("CDI mais recente do Banco Central (17/11/2026): 13,75% ao ano") && cdbText.includes("FGC") && cloudBodies.length === beforeCdb,
     `pergunta de conceito: explicação pronta do app, com a taxa do dia, sem IA (${cdbText.slice(0, 100).trim()})`);
+  // No app de verdade, o fetch nativo (CapacitorHttp) entrega o Content-Length repetido ("0, 39")
+  // e o Go recusava a resposta do Banco Central: as taxas nunca chegavam no celular (emulador,
+  // 23/11/2026). O pedido das taxas vai pelo fetch do WebView, como os da IA.
+  await page.evaluate(async () => (await import("/static/js/db.js")).setMeta("taxas-bcb", null));
+  await page.reload();
+  await page.waitForSelector("form[data-form=ask]", { timeout: 20000 });
+  await page.evaluate(() => {
+    const web = (window.CapacitorWebFetch = window.fetch);
+    window.fetch = async (res, opt) => {
+      const r = await web(res, opt), body = await r.arrayBuffer(), headers = new Headers(r.headers);
+      headers.set("content-length", "0, " + body.byteLength);
+      return new Response(body, { status: r.status, headers });
+    };
+  });
+  await page.fill("textarea[name=message]", "O que é o CDI?");
+  await page.click("form[data-form=ask] button");
+  await page.waitForSelector(".msg.assistant:has-text('CDI é a taxa que os bancos cobram') .app-answer", { timeout: 30000 });
+  const cdiText = (await page.textContent(".msg.assistant >> nth=-1")).replace(/\s+/g, " ");
+  await page.evaluate(() => { window.fetch = window.CapacitorWebFetch; delete window.CapacitorWebFetch; });
+  ok(cdiText.includes("CDI mais recente do Banco Central (17/11/2026): 13,75% ao ano"),
+    `no app, as taxas do dia chegam mesmo com o Content-Length repetido do fetch nativo (${cdiText.slice(0, 160).trim()})`);
 
   // O começo do zero: o Otávio pergunta, a resposta vira um cartão de conta fixa e só as ferramentas de criar vão.
   await page.fill("textarea[name=message]", "Me ajuda a começar do zero?");
@@ -579,13 +600,17 @@ try {
   await page.waitForSelector(".msg.assistant >> nth=-1 >> .app-answer:has-text('Resposta do app, sem IA.')", { timeout: 30000 });
   ok(cloudBodies.length === calls, "pergunta pronta da Lia: resposta do app, sem chamar a IA");
   const liaText = await page.locator(".msg.assistant").last().innerText();
-  // O salário do guia entra no dia 5: antes dele não há renda no mês. A resposta segue a conta do app.
-  const income = await page.evaluate(async () => {
+  // O salário do guia entra no dia 5: antes dele não há renda no mês. A resposta segue a conta do app
+  // e a regra do Início: com dívida, cartão em aberto ou sem renda no mês, vem o motivo, não o valor.
+  const [income, home] = await page.evaluate(async () => {
     const f = await import("/static/js/finance.js"), ui = await import("/static/js/ui.js");
-    return f.insights(await (await import("/static/js/db.js")).loadLedger(), ui.today()).incomeCents;
+    const ledger = await (await import("/static/js/db.js")).loadLedger();
+    return [f.insights(ledger, ui.today()).incomeCents, f.home(ledger, ui.today())];
   });
-  ok(income ? liaText.includes("Ainda cabe no mês") || liaText.includes("já passou da renda") : liaText.includes("Ainda não há renda neste mês") && liaText.includes("Lance a entrada"),
-    `a Lia diz quanto cabe pela renda do mês (${income ? "com renda" : "sem renda: pede a entrada"}): ${liaText.replace(/\s+/g, " ").slice(0, 200)}`);
+  ok(!income ? liaText.includes("Ainda não há renda neste mês") && liaText.includes("Lance a entrada")
+    : !home.estimateAvailable ? liaText.includes("Sem estimativa por enquanto") && liaText.includes(home.estimateReason) && !liaText.includes("Ainda cabe no mês")
+    : liaText.includes("Ainda cabe no mês") || liaText.includes("já passou da renda"),
+    `a Lia diz quanto cabe pela regra do Início (${!income ? "sem renda" : home.estimateAvailable ? "com estimativa" : "sem estimativa: " + home.estimateReason}): ${liaText.replace(/\s+/g, " ").slice(0, 200)}`);
   await page.reload();
   await page.waitForSelector(".team-member[data-agent=lia][aria-pressed=true]", { timeout: 20000 });
   ok((await page.getAttribute("textarea[name=message]", "placeholder")).includes("Lia") && (await page.textContent(".messages")).includes("Otávio · Organização e dívidas"),

@@ -143,3 +143,22 @@ Achados em 22/11/2026, com a v1.11.0 oficial instalada pelo site num emulador An
   (`any-pointer: coarse` falso, medido pelo DevTools remoto). Regra só para celular vai pela
   largura, não por `pointer`.
 - Não conferido: celular de verdade (o emulador sem Play Store fica no WebView 113).
+
+## ENG-010 — No celular, as taxas do Banco Central nunca chegavam ao Consultor
+
+Achado em 23/11/2026, num teste de uso com um APK de teste da main no emulador Android 14.
+- Esperado: "o que é CDB?" traz o CDI do dia, e a IA do app recebe Selic, CDI e IPCA. Observado:
+  no celular, sempre "Confira a taxa do dia"; no computador, a taxa aparecia.
+- Causa confirmada pelo DevTools remoto do WebView: o `fetch` nativo do Capacitor
+  (CapacitorHttp) entrega o cabeçalho `Content-Length` repetido (`"0, 39"`). O `net/http` do Go
+  no `advisor.wasm` recusa a resposta (`ill-formed Content-Length header`). Pelo `fetch` do
+  WebView (`CapacitorWebFetch`) o cabeçalho vem certo (`"39"`), e o Banco Central aceita CORS.
+  Os pedidos à IA já iam pelo WebView (para a resposta chegar aos poucos), por isso funcionavam.
+- Correção: o `cloud-ai.js` manda também os pedidos do Banco Central pelo `fetch` do WebView
+  (`streamFromWebView`), com a volta para o nativo se o WebView falhar.
+- Teste: o `e2e/app.test.mjs` imita o `fetch` nativo com o cabeçalho repetido, apaga as taxas
+  guardadas e confere a taxa na explicação do CDI. Falhou antes da correção. No emulador, com o
+  APK corrigido, a taxa aparece e a IA a usa no "Perguntar à IA".
+- Conferido também: o "Testar chave" dos Ajustes e o "IA sugere" da importação funcionam pelo
+  nativo (as respostas da IA não vêm com o cabeçalho repetido).
+- Não conferido: celular de verdade.

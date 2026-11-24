@@ -226,3 +226,17 @@ func TestViews(t *testing.T) {
 		t.Error("listas vazias devem virar [] no JSON, não null")
 	}
 }
+
+// Lançamento com uma categoria que não existe mais (apagada noutro aparelho sem conexão,
+// pelo Drive): as contas mostram "Sem categoria", como as telas, e não um nome vazio.
+func TestMissingCategoryName(t *testing.T) {
+	l := domain.Ledger{Categories: domain.DefaultCategories(1), Transactions: []domain.Transaction{
+		{Meta: domain.Meta{ID: "t1", UpdatedAt: 1}, Kind: domain.KindSaida, Description: "Feira", AmountCents: 5000, CategoryID: "apagada", Date: "2026-10-03"},
+	}}
+	if got := Summarize(domain.ParseMonth("2026-10"), l).Categories; len(got) != 1 || got[0].Name != domain.NoCategoryName {
+		t.Errorf("resumo do mês: %+v", got)
+	}
+	if got := Insights(l, time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC)).Categories; len(got) != 1 || got[0].Name != domain.NoCategoryName {
+		t.Errorf("tendência por categoria: %+v", got)
+	}
+}

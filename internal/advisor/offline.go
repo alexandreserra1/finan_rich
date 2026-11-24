@@ -262,24 +262,26 @@ func liaOffline(q Question) string {
 	return "**Achados do mês**\n\n" + bullets(strings.Join(lines, "\n"))
 }
 
-// liaAllowance: quanto ainda cabe no mês (sem estourar a renda) e nos orçamentos.
+// liaAllowance: quanto ainda cabe no mês (sem estourar a renda) e nos orçamentos. Com dívida,
+// cartão em aberto ou sem renda registrada no mês, a sobra não vira limite de gasto: vale o
+// motivo do Início (finance.Home), e só os orçamentos aparecem.
 func liaAllowance(q Question) string {
 	in := finance.Insights(q.Ledger, q.Today)
 	if in.IncomeCents == 0 {
 		return "Ainda não há renda neste mês nem nos anteriores. Lance a entrada do mês e eu digo quanto ainda cabe."
 	}
+	head := "**Quanto ainda cabe no mês**"
 	var lines []string
-	income := money.Format(in.IncomeCents)
-	if in.IncomeEstimated {
-		income += ", pela média dos meses anteriores (a deste mês ainda não entrou)"
-	}
-	if in.FreeCents >= 0 {
-		lines = append(lines, fmt.Sprintf("Ainda cabe no mês: %s (renda de %s).", money.Format(in.FreeCents), income))
+	switch home := finance.Home(q.Ledger, q.Today); {
+	case !home.EstimateAvailable:
+		head = "**Sem estimativa por enquanto.** " + home.EstimateReason
+	case in.FreeCents >= 0:
+		lines = append(lines, fmt.Sprintf("Ainda cabe no mês: %s (renda de %s), pela estimativa com os registros do app, não o saldo da conta.", money.Format(in.FreeCents), money.Format(in.IncomeCents)))
 		if in.PerDayCents > 0 {
 			lines = append(lines, fmt.Sprintf("Dá uns %s por dia até o fim do mês.", money.Format(in.PerDayCents)))
 		}
-	} else {
-		lines = append(lines, fmt.Sprintf("O mês já passou da renda (%s) em %s, contando os fixos que ainda vão cair.", income, money.Format(-in.FreeCents)))
+	default:
+		lines = append(lines, fmt.Sprintf("O mês já passou da renda (%s) em %s, contando os fixos que ainda vão cair.", money.Format(in.IncomeCents), money.Format(-in.FreeCents)))
 	}
 	budgets := slices.Clone(in.Budgets)
 	slices.SortStableFunc(budgets, func(a, b finance.BudgetView) int { return b.UsedPct - a.UsedPct })
@@ -293,7 +295,10 @@ func liaAllowance(q Question) string {
 			lines = append(lines, fmt.Sprintf("%s: o orçamento de %s já acabou (%d%% usado).", b.Name, money.Format(b.BudgetCents), b.UsedPct))
 		}
 	}
-	return "**Quanto ainda cabe no mês**\n\n" + bullets(strings.Join(lines, "\n"))
+	if len(lines) == 0 {
+		return head
+	}
+	return head + "\n\n" + bullets(strings.Join(lines, "\n"))
 }
 
 // overviewOffline: o mês como um todo e o maior problema agora (Otávio).
