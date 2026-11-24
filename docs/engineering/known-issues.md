@@ -160,7 +160,11 @@ Achado em 23/11/2026, num teste de uso com um APK de teste da main no emulador A
   guardadas e confere a taxa na explicação do CDI. Falhou antes da correção. No emulador, com o
   APK corrigido, a taxa aparece e a IA a usa no "Perguntar à IA".
 - Conferido também: o "Testar chave" dos Ajustes e o "IA sugere" da importação funcionam pelo
-  nativo (as respostas da IA não vêm com o cabeçalho repetido).
+  nativo (as respostas da IA não vêm com o cabeçalho repetido). Em 24/11/2026, no emulador, o Go do
+  `advisor.wasm` leu certo pelo nativo uma resposta de erro do Pluggy (Open Finance: "a Pluggy
+  respondeu 400", com credenciais de teste) e a de chave errada da IA (401). O `Content-Length`
+  repetido apareceu só com o Banco Central, que manda um cabeçalho só pelo `curl`; não é de todo
+  pedido nativo, então não há remendo geral no `fetch`.
 - Não conferido: celular de verdade.
 
 ## ENG-011 — No celular, o lançamento ia para a primeira categoria e a permissão de notificação voltava a cada gasto

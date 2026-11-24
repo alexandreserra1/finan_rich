@@ -139,6 +139,32 @@ adb shell bmgr transport com.google.android.gms/.backup.BackupTransportService  
 O emulador sem Play Store fica com o WebView da própria imagem (113 no Android 14), mais
 velho que o de um celular atualizado: o que depende de CSS novo pode aparecer diferente.
 
+**Teste de uso (como a pessoa).** Em 23 e 24/11/2026, com um APK de teste da main, foram usados pela
+tela: lançamentos, Consultor (sem IA, com a IA grátis e pelo computador), exportação (CSV, backup,
+PDF e Excel abrem o compartilhar do Android), importação de extrato pelo seletor de arquivos,
+pareamento e sincronização nos dois sentidos, bloqueio, dívidas (cadastro e pagamento) e metas
+(cadastro, prazo pelo seletor de mês, aporte). Os defeitos achados estão em ENG-010 e ENG-011
+(`docs/engineering/known-issues.md`). Para repetir:
+
+```bash
+make wasm && go run ./tools/mobilebuild mobile/www && (cd mobile && npx cap sync)
+cd mobile/android && ANDROID_HOME=~/Library/Android/sdk ./gradlew assembleDebug   # JAVA_HOME do Java 21
+git checkout -- mobile/android/app/capacitor.build.gradle mobile/android/capacitor.settings.gradle mobile/ios/App/CapApp-SPM/Package.swift
+adb shell uiautomator dump /sdcard/ui.xml && adb exec-out cat /sdcard/ui.xml   # o que está na tela, com as posições
+adb push extrato.csv /sdcard/Download/          # arquivo para importar (no seletor: ☰ → Downloads)
+adb forward tcp:9334 localabstract:webview_devtools_remote_$(adb shell pidof io.github.alexandreserra1.finanrich)
+curl -s http://127.0.0.1:9334/json              # DevTools do WebView do app, para investigar
+```
+
+- Formulário: toque no primeiro campo, passe para o próximo com TAB (`adb shell input keyevent 61`)
+  e envie com Enter (`keyevent 66`). Não feche o teclado com "voltar" nem ESC: os dois fecham a janela
+  do formulário quando o teclado já está fechado. Com o teclado aberto, ele cobre a parte de baixo da
+  tela e a janela sobe; o `uiautomator` ainda lista o que ficou por baixo, e o toque cai no teclado.
+- Computador: no emulador, `10.0.2.2` é o próprio Mac. Para parear, use `10.0.2.2:PORTA` e o código
+  dos Ajustes do computador (o endereço que o computador mostra pode ser o do Tailscale).
+- O pedido de permissão de notificação e o seletor de mês são janelas do Android: o
+  `uiautomator` as mostra com os botões (`Allow`, `SET`).
+
 ## Publicação
 
 O CI compila um **APK de teste** a cada push (artefato `finan_rich-android-teste` na
