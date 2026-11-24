@@ -154,6 +154,9 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+          # Sem cache, cada rodada baixa as dependências do Gradle do Maven Central, que já
+          # respondeu 429 (Too Many Requests) e derrubou o job (PRs #45 e #46, 24/11/2026).
+          cache: gradle
       - run: go generate ./internal/web
       - run: go run ./tools/mobilebuild mobile/www
       - name: Compila o app Android (release, assinado como na publicação)
