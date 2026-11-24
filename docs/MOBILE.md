@@ -164,6 +164,12 @@ curl -s http://127.0.0.1:9334/json              # DevTools do WebView do app, pa
   dos Ajustes do computador (o endereço que o computador mostra pode ser o do Tailscale).
 - O pedido de permissão de notificação e o seletor de mês são janelas do Android: o
   `uiautomator` as mostra com os botões (`Allow`, `SET`).
+- Desligue o emulador (`adb emu kill`) antes do `make e2e`: com os dois ligados, o Chromium do
+  Playwright caiu no meio de uma suíte ("Target page, context or browser has been closed",
+  24/11/2026); sem o emulador, a mesma versão passou.
+- Para testar o dia seguinte (taxas, lembretes), adiante o relógio: `adb root`,
+  `adb shell settings put global auto_time 0` e `adb shell "date @SEGUNDOS"`; depois volte com
+  `auto_time 1`.
 
 ## Publicação
 
