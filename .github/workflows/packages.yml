@@ -35,7 +35,8 @@ jobs:
           echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
       - name: Abre
         run: |
-          finanrich -version | tee /dev/stderr | grep -q "finan_rich $(sed -n 's/.*version "\(.*\)"/\1/p' Casks/finan_rich.rb)"
+          # O programa se chama Rich desde a marca nova: "Rich (finanrich) 1.12.0".
+          finanrich -version | tee /dev/stderr | grep -qxF "Rich (finanrich) $(sed -n 's/.*version "\(.*\)"/\1/p' Casks/finan_rich.rb)"
           finanrich -no-browser -data "$RUNNER_TEMP/dados" &
           for i in $(seq 1 50); do curl -fs http://127.0.0.1:8080/healthz && break; sleep 0.2; done
           curl -fs http://127.0.0.1:8080/healthz
@@ -72,7 +73,7 @@ jobs:
           $want = (Get-Content bucket/finan_rich.json -Raw | ConvertFrom-Json).version
           $got = finanrich -version
           Write-Host $got
-          if ($got -ne "finan_rich $want") { throw "versão errada: $got" }
+          if ($got -ne "Rich (finanrich) $want") { throw "versão errada: $got" }
           $lnk = Join-Path ([Environment]::GetFolderPath('Programs')) 'Scoop Apps\finan_rich.lnk'
           if (-not (Test-Path $lnk)) { throw "sem atalho no menu Iniciar: $lnk" }
           Start-Process finanrich -ArgumentList '-no-browser', '-data', "$env:RUNNER_TEMP\dados"
