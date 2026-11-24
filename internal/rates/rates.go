@@ -53,15 +53,27 @@ func Fetch(ctx context.Context, client *http.Client, base string) (Rates, error)
 	return r, nil
 }
 
+// tries: o Banco Central às vezes responde 304, sem corpo, a um pedido sem condição (curl e
+// app, 24/11/2026; ENG-010). Pede de novo, até 3 vezes, com um parâmetro único no endereço.
+const tries = 3
+
 // last devolve o último valor da série e a data dele (AAAA-MM-DD).
 func last(ctx context.Context, client *http.Client, base, code string) (int, string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(base, "/")+"/dados/serie/bcdata.sgs."+code+"/dados/ultimos/1?formato=json", nil)
-	if err != nil {
-		return 0, "", err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return 0, "", err
+	url := strings.TrimRight(base, "/") + "/dados/serie/bcdata.sgs." + code + "/dados/ultimos/1?formato=json"
+	var resp *http.Response
+	for try := 1; ; try++ {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			return 0, "", err
+		}
+		if resp, err = client.Do(req); err != nil {
+			return 0, "", err
+		}
+		if resp.StatusCode != http.StatusNotModified || try == tries {
+			break
+		}
+		resp.Body.Close()
+		url = strings.SplitN(url, "&_=", 2)[0] + "&_=" + strconv.FormatInt(time.Now().UnixNano(), 36)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {

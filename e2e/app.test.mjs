@@ -485,13 +485,17 @@ try {
   await page.evaluate(async () => (await import("/static/js/db.js")).setMeta("taxas-bcb", null));
   await page.reload();
   await page.waitForSelector("form[data-form=ask]", { timeout: 20000 });
-  // E o WebView 113 do Android, com a resposta guardada vencida (15 min), revalida e entrega ao
-  // JavaScript o 304 do Banco Central, sem corpo: as taxas falhavam em todo dia depois do primeiro
-  // (emulador, APK oficial da v1.12.0). Sem cache ("no-store"), vem sempre a resposta inteira.
+  // E o 304 sem corpo: o WebView 113 do Android o entrega ao revalidar a resposta guardada, e o
+  // próprio Banco Central às vezes o manda a um pedido sem condição (curl e APK oficial da
+  // v1.12.0). Aqui, o 1º pedido de cada série sempre volta 304; os dados só vêm sem cache
+  // ("no-store") e no pedido de novo, com o parâmetro único no endereço (internal/rates).
   await page.evaluate(() => {
     const real = window.fetch;
-    window.CapacitorWebFetch = (res, opt) => String(res?.url ?? res).includes("bcb.gov.br") && opt?.cache !== "no-store"
-      ? Promise.resolve(new Response(null, { status: 304 })) : real(res, opt);
+    window.CapacitorWebFetch = (res, opt) => {
+      const url = String(res?.url ?? res);
+      return url.includes("bcb.gov.br") && (opt?.cache !== "no-store" || !url.includes("&_="))
+        ? Promise.resolve(new Response(null, { status: 304 })) : real(res, opt);
+    };
     window.fetch = async (res, opt) => {
       const r = await real(res, opt), body = await r.arrayBuffer(), headers = new Headers(r.headers);
       headers.set("content-length", "0, " + body.byteLength);
@@ -505,7 +509,7 @@ try {
   await page.reload(); // tira os fetch falsos (o do WebView e o nativo)
   await page.waitForSelector("form[data-form=ask]", { timeout: 20000 });
   ok(cdiText.includes("CDI mais recente do Banco Central (17/11/2026): 13,75% ao ano"),
-    `no app, as taxas do dia chegam com o Content-Length repetido do fetch nativo e com o 304 do cache do WebView (${cdiText.slice(0, 160).trim()})`);
+    `no app, as taxas do dia chegam com o Content-Length repetido do fetch nativo e com o 304 do Banco Central e do WebView (${cdiText.slice(0, 160).trim()})`);
 
   // O começo do zero: o Otávio pergunta, a resposta vira um cartão de conta fixa e só as ferramentas de criar vão.
   await page.fill("textarea[name=message]", "Me ajuda a começar do zero?");
