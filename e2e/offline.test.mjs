@@ -103,6 +103,25 @@ try {
   await addTransaction(page, "Salário", "4.500");
   await addTransaction(page, "Aluguel", "1.400");
   await waitStatus(page, "ok");
+  // A categoria vem da descrição, com as regras da importação ("Uber" → Transporte), até a
+  // pessoa escolher uma: antes ficava a primeira da lista ("Contas da casa"). Teste de uso, 23/11/2026.
+  const chosen = () => page.evaluate(() => document.querySelector("form[data-form=transaction] select[name=category_id]").selectedOptions[0]?.textContent);
+  await openTx(page);
+  await page.fill("input[name=description]", "Uber");
+  await page.waitForFunction(() => document.querySelector("form[data-form=transaction] select[name=category_id]").selectedOptions[0]?.textContent.startsWith("Transporte"), null, { timeout: 5000 }).catch(() => {});
+  const suggested = await chosen();
+  await page.selectOption("form[data-form=transaction] select[name=category_id]", { label: "Lazer · Desejos" });
+  await page.fill("input[name=description]", "Uber de volta");
+  await page.waitForTimeout(600);
+  const kept = await chosen();
+  await page.keyboard.press("Escape");
+  await openTx(page);
+  await page.fill("input[name=description]", "Posto Shell");
+  await page.waitForTimeout(600);
+  const fresh = await chosen();
+  await page.keyboard.press("Escape");
+  ok(suggested?.startsWith("Transporte") && kept === "Lazer · Desejos" && fresh?.startsWith("Transporte"),
+    `lançamento novo: a categoria vem da descrição até a pessoa escolher (Uber → ${suggested}; depois da escolha → ${kept}; novo formulário → ${fresh})`);
   await page.click("nav.tabs a[href='/']");
   await page.waitForSelector(".dash-kpis");
   ok((await page.textContent(".cards")).includes("R$ 3.100,00"), "painel calculado no aparelho (saldo R$ 3.100,00)");

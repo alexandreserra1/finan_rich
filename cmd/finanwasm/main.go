@@ -46,7 +46,10 @@ func main() {
 		"alerts":       js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Alerts(str(a, 0), str(a, 1), str(a, 2)) }),
 		"insights":     js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Insights(str(a, 0), str(a, 1)) }),
 		"home":         js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Home(str(a, 0), str(a, 1)) }),
-		"diagnose":     js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Diagnose(str(a, 0), str(a, 1)) }),
+		"suggestCategory": js.FuncOf(func(_ js.Value, a []js.Value) any {
+			return wasmapi.SuggestCategory(str(a, 0), str(a, 1), str(a, 2))
+		}),
+		"diagnose": js.FuncOf(func(_ js.Value, a []js.Value) any { return wasmapi.Diagnose(str(a, 0), str(a, 1)) }),
 		"importPreviewText": js.FuncOf(func(_ js.Value, a []js.Value) any {
 			return wasmapi.ImportPreviewText(str(a, 0), str(a, 1), str(a, 2), str(a, 3))
 		}),

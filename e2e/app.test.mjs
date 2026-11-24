@@ -1015,12 +1015,52 @@ try {
   ok(by("Lia")?.schedule.on.weekday === 2 && by("Lia").schedule.on.hour === 9 && by("Lia").extra.link === "/analise",
     "Lia avisa toda segunda, às 9h, e leva à Análise");
   ok(by("Tito")?.schedule.on.day === 5 && by("Tito").extra.link === "/metas", "Tito faz o balanço das metas no dia do salário");
+  ok(notifs.every((n) => n.isExactNotification === false), "os lembretes não pedem alarme exato (o Android abriria a tela de alarmes sem explicação)");
   await rem.evaluate(() => window.__tap({ notification: { extra: { link: "/metas" } } }));
   await rem.waitForFunction(() => location.pathname === "/metas");
   ok(true, "tocar na notificação abre a tela certa");
   await rem.evaluate(async () => (await import("/static/js/native.js")).setRemindersEnabled(false));
   ok((await rem.evaluate(() => window.__notifs())).length === 0, "desligar os lembretes cancela os do time também");
   await remCtx.close();
+
+  // Sem permissão de notificação: o app pede uma vez só. Antes pedia de novo a cada lançamento
+  // salvo, até a pessoa marcar "não perguntar de novo" (teste de uso no emulador, 23/11/2026).
+  const denyCtx = await browser.newContext({ ...devices["Pixel 7"] });
+  await denyCtx.addInitScript(() => {
+    const asked = () => Number(localStorage.getItem("pedidos") || 0);
+    window.__asked = asked;
+    window.Capacitor = { Plugins: { LocalNotifications: {
+      checkPermissions: async () => ({ display: "prompt" }),
+      requestPermissions: async () => { localStorage.setItem("pedidos", asked() + 1); return { display: "denied" }; },
+      getPending: async () => ({ notifications: [] }), cancel: async () => {}, schedule: async () => {}, addListener: () => {},
+    } } };
+  });
+  const deny = await denyCtx.newPage();
+  listen(deny, "lembretes sem permissão");
+  await deny.goto(`${APP}/`);
+  await deny.click(".first-run [data-action=solo]");
+  await deny.waitForSelector(".welcome-empty", { timeout: 20000 });
+  const spend = (id) => deny.evaluate(async (id) => {
+    const db = await import("/static/js/db.js"), f = await import("/static/js/finance.js");
+    const cat = (await db.loadLedger()).categories.find((c) => c.bucket !== "renda");
+    await db.saveLocal("transaction", f.validate("transaction", { id, updatedAt: Date.now(), kind: "saida", description: "Feira", amountCents: 3000, categoryId: cat.id, date: new Date().toISOString().slice(0, 10) }));
+  }, id);
+  await spend("t-lembrete-1");
+  await deny.reload();
+  await deny.waitForFunction(() => window.__asked() === 1, null, { timeout: 20000 });
+  await spend("t-lembrete-2");
+  await deny.reload();
+  await deny.waitForSelector("main h1", { timeout: 20000 });
+  await deny.waitForTimeout(1500);
+  const askedTwice = await deny.evaluate(() => window.__asked());
+  await deny.goto(`${APP}/configuracoes#lembretes`);
+  await deny.waitForSelector("[data-action=reminders]", { timeout: 20000 });
+  const offInSettings = !(await deny.isChecked("[data-action=reminders]"));
+  await deny.check("[data-action=reminders]");
+  await deny.waitForSelector(".flash:has-text('Sem permissão de notificação')", { timeout: 10000 });
+  ok(askedTwice === 1 && offInSettings && !(await deny.isChecked("[data-action=reminders]")) && await deny.evaluate(() => window.__asked()) === 2,
+    `sem permissão, o app pede uma vez só (pedidos: ${askedTwice}); os Ajustes mostram os lembretes desligados, e ligar pede de novo e avisa`);
+  await denyCtx.close();
 
   // Safari (sem field-sizing): a caixa de mensagem do Consultor cresce com o texto mesmo assim.
   const safariCtx = await browser.newContext({ viewport: { width: 1200, height: 900 } });

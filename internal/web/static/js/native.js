@@ -82,19 +82,23 @@ function teamReminders(ledger) {
   return out;
 }
 
-// scheduleReminders reagenda os lembretes do time quando o que eles dizem muda.
+// scheduleReminders reagenda os lembretes do time quando o que eles dizem muda. Não precisam
+// de hora exata (às 9h, alguns minutos depois serve): com alarme exato, o plugin abre no
+// Android 12+ a tela de sistema "Alarmes e lembretes" sem explicação (emulador, 23/11/2026).
 export async function scheduleReminders(ledger) {
   const notif = plugins().LocalNotifications;
   if (!isApp || !notif) return;
   if ((await getMeta("reminders", "on")) !== "on") return;
-  const list = teamReminders(ledger);
+  const list = teamReminders(ledger).map((n) => ({ ...n, isExactNotification: false }));
   const signature = JSON.stringify(list.map((n) => [n.id, n.title, n.schedule.on]));
   if (signature === (await getMeta("reminders-sig", ""))) return;
 
   if (list.length) {
     let perm = await notif.checkPermissions();
     if (perm.display === "prompt" || perm.display === "prompt-with-rationale") perm = await notif.requestPermissions();
-    if (perm.display !== "granted") return;
+    // Sem permissão, os lembretes ficam desligados: o app não pergunta de novo a cada lançamento
+    // salvo, e os Ajustes mostram desligado (ligar de novo pede a permissão).
+    if (perm.display !== "granted") return setMeta("reminders", "off");
   }
   const old = await ours(notif);
   if (old.length) await notif.cancel({ notifications: old.map((n) => ({ id: n.id })) });

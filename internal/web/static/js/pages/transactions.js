@@ -239,9 +239,23 @@ export function bind(root, ctx) {
   const form = root.querySelector('[data-form="transaction"]');
   const f = form.elements;
   let editing = null;
+  // Categoria pela descrição ("Uber" → Transporte), com as regras da importação, enquanto a
+  // pessoa não escolhe uma: num lançamento novo, a primeira da lista quase nunca é a certa.
+  let picked = false;
+  const suggest = () => {
+    if (editing || picked || !f.description.value.trim()) return;
+    let id = "";
+    try { id = finance.suggestCategory(ctx.ledger, f.description.value, f.kind.value); } catch {}
+    if (id && [...f.category_id.options].some((o) => o.value === id && !o.hidden)) f.category_id.value = id;
+  };
+  let typing;
+  f.description.addEventListener("input", () => { clearTimeout(typing); typing = setTimeout(suggest, 300); });
+  f.description.addEventListener("change", suggest);
+  f.category_id.addEventListener("change", () => { picked = true; });
 
   const open = (t, trigger) => {
     editing = t || null;
+    picked = false;
     form.reset();
     showErrors(form, {});
     modal.classList.toggle("editing", !!t);
@@ -265,7 +279,7 @@ export function bind(root, ctx) {
     history.replaceState(null, "", "/lancamentos");
     open(null);
   }
-  form.querySelectorAll("[data-kind]").forEach((b) => b.addEventListener("click", () => setKind(form, b.dataset.kind)));
+  form.querySelectorAll("[data-kind]").forEach((b) => b.addEventListener("click", () => { setKind(form, b.dataset.kind); suggest(); }));
   filterCategories(form);
 
   // Clique (ou Enter) numa linha, ou o lápis, abre a edição; o botão da lixeira apaga.

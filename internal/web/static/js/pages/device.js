@@ -330,6 +330,10 @@ export function bind(root, ctx) {
   root.querySelector('[data-action="reminders"]')?.addEventListener("change", async (e) => {
     remindersOn = e.target.checked;
     await setRemindersEnabled(remindersOn, ctx.ledger);
+    if (remindersOn && !(await remindersEnabled())) { // a permissão de notificação não veio
+      remindersOn = e.target.checked = false;
+      return ctx.flash("Sem permissão de notificação. Libere a Rich nas configurações do Android e ligue de novo.");
+    }
     ctx.flash(remindersOn ? "Lembretes ligados." : "Lembretes desligados.");
   });
   root.querySelector('[data-form="pair"]')?.addEventListener("submit", async (e) => {

@@ -65,6 +65,8 @@ export const installments = (tx, n) => unwrap(window.finan.installments(JSON.str
 // O time do finan_rich e quem dele cuida do assunto de uma pergunta ("" se ninguém em especial).
 export const team = () => unwrap(window.finan.team());
 export const route = (question) => unwrap(window.finan.route(question));
+// suggestCategory: a categoria pela descrição, com as regras da importação ("" se não souber).
+export const suggestCategory = (ledger, description, kind) => unwrap(window.finan.suggestCategory(JSON.stringify(ledger), description, kind));
 // O que Otávio (dívidas), Tito (metas) e Lia (gastos) têm a dizer hoje.
 export const briefings = (ledger, day) => unwrap(window.finan.briefings(JSON.stringify(ledger), day));
 export const suggestions = (ledger, day, agent) => unwrap(window.finan.suggestions(JSON.stringify(ledger), day, agent));
