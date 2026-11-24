@@ -285,7 +285,11 @@ func (t *Tools) txLabel(tx domain.Transaction) string {
 	if tx.Kind == domain.KindEntrada {
 		sign = "+"
 	}
-	return fmt.Sprintf("%s · %s · %s · %s%s", dateBR(tx.Date), tx.Description, t.ledger.CategoryIndex()[tx.CategoryID].Name, sign, money.Format(tx.AmountCents))
+	cat := t.ledger.CategoryIndex()[tx.CategoryID].Name
+	if cat == "" {
+		cat = domain.NoCategoryName
+	}
+	return fmt.Sprintf("%s · %s · %s · %s%s", dateBR(tx.Date), tx.Description, cat, sign, money.Format(tx.AmountCents))
 }
 
 func dateBR(iso string) string {

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alexandreserra1/finan_rich/internal/domain"
 	"github.com/alexandreserra1/finan_rich/internal/finance"
 	"github.com/alexandreserra1/finan_rich/internal/llm"
 )
@@ -14,10 +15,6 @@ import (
 // Perguntas de número: o app responde sozinho, com a conta certa e para qualquer
 // pessoa do time.
 func TestAppAnswers(t *testing.T) {
-	in := finance.Insights(teamLedger(), teamDay)
-	if in.FreeCents < 30000 || in.FreeCents >= 500000 {
-		t.Fatalf("o teste conta com R$ 300 cabendo no mês e R$ 5.000 não: cabe %d", in.FreeCents)
-	}
 	for _, c := range []struct {
 		text string
 		want []string
@@ -25,10 +22,11 @@ func TestAppAnswers(t *testing.T) {
 		{"quanto gastei com uber?", []string{"Gastos com Uber: R$ 20,00 em outubro de 2026"}},
 		{"Quanto gastei com iFood em setembro?", []string{"R$ 30,00 em setembro de 2026"}},
 		{"quanto gastei esse mês?", []string{"**Saídas de outubro de 2026: R$ 420,00.**", "Restaurantes e delivery"}},
-		{"quanto ainda posso gastar?", []string{"Quanto ainda cabe no mês"}},
-		{"Quanto sobra no mês?", []string{"Quanto ainda cabe no mês"}},
-		{"posso gastar 300 reais no fim de semana?", []string{"**Cabe no mês.**", "depois dos R$ 300,00", "por dia", "Lembrete: a dívida Cartão"}},
-		{"consigo comprar uma TV de 5 mil?", []string{"**Não cabe no mês sem passar da renda.**", "para os R$ 5.000,00"}},
+		// Com dívida pendente, a sobra não vira limite de gasto: a mesma regra do Início (finance.Home).
+		{"quanto ainda posso gastar?", []string{"**Sem estimativa por enquanto.** Há dívida pendente."}},
+		{"Quanto sobra no mês?", []string{"**Sem estimativa por enquanto.**"}},
+		{"posso gastar 300 reais no fim de semana?", []string{"**Sem estimativa por enquanto.** Há dívida pendente.", "Lembrete: a dívida Cartão"}},
+		{"consigo comprar uma TV de 5 mil?", []string{"**Sem estimativa por enquanto.**"}},
 		{"quando fico livre do cartão?", []string{"**Plano das dívidas**", "Cartão → Empréstimo", "livre em 7 meses (maio de 2027)"}},
 		{"e se eu pagar 200 a mais?", []string{"Com R$ 200,00 a mais: livre em 4 meses (fevereiro de 2027)"}},
 		{"Quanto adianta pagar R$ 200 a mais por mês?", []string{"Com R$ 200,00 a mais"}},
@@ -48,10 +46,10 @@ func TestAppAnswers(t *testing.T) {
 		{"em que categoria gasto mais?", []string{"**Restaurantes e delivery: R$ 400,00 em outubro de 2026**"}},
 		{"qual meu saldo do mês?", []string{"Resumo de outubro de 2026"}},
 		// saudação, nome do time e "me diz" no começo não mudam a pergunta
-		{"Oi Lia, quanto ainda posso gastar?", []string{"Quanto ainda cabe no mês"}},
+		{"Oi Lia, quanto ainda posso gastar?", []string{"**Sem estimativa por enquanto.**"}},
 		{"Otávio, quando fico livre do cartão?", []string{"livre em 7 meses"}},
 		{"me diz quanto gastei com uber", []string{"Gastos com Uber: R$ 20,00"}},
-		{"quero saber se posso gastar 300 reais", []string{"**Cabe no mês.**"}},
+		{"quero saber se posso gastar 300 reais", []string{"**Sem estimativa por enquanto.**"}},
 		{"gastos com uber esse mês?", []string{"Gastos com Uber: R$ 20,00"}},
 	} {
 		for _, agent := range []string{"otavio", "lia", "tito"} {
@@ -189,17 +187,51 @@ func TestAppAnswerDebtThatNeverEnds(t *testing.T) {
 	}
 }
 
-// "Posso gastar 300 com delivery?": além do mês, o orçamento da categoria.
-func TestAppAnswerAffordWithBudget(t *testing.T) {
-	q := offlineQ("lia", "posso gastar 300 com delivery?")
+// freeLedger: renda neste mês, sem dívida nem cartão. Assim a estimativa do app vale (finance.Home).
+func freeLedger() domain.Ledger {
+	l := teamLedger()
+	l.Debts = nil
+	l.Transactions = append(l.Transactions, domain.Transaction{Meta: domain.Meta{ID: "sal-out", UpdatedAt: 1}, Kind: domain.KindEntrada, Description: "Salário", AmountCents: 500000, CategoryID: "sal", Date: "2026-10-05"})
+	return l
+}
+
+// "Posso gastar X?": com a estimativa valendo, compara com o que ainda cabe no mês e com o
+// orçamento da categoria citada; sem ela, diz o motivo e não chama a sobra de limite.
+func TestAppAnswerAfford(t *testing.T) {
+	q := Question{Ledger: freeLedger(), Today: teamDay, Agent: "lia"}
+	in := finance.Insights(q.Ledger, q.Today)
+	if !finance.Home(q.Ledger, q.Today).EstimateAvailable || in.FreeCents < 30000 || in.FreeCents >= 500000 {
+		t.Fatalf("o teste conta com a estimativa valendo, R$ 300 cabendo e R$ 5.000 não: cabe %d", in.FreeCents)
+	}
+	for text, want := range map[string][]string{
+		"posso gastar 300 reais no fim de semana?": {"**Cabe no mês, pela estimativa do app.**", "depois dos R$ 300,00", "por dia"},
+		"consigo comprar uma TV de 5 mil?":         {"**Não cabe no mês sem passar da renda.**", "para os R$ 5.000,00"},
+		"quanto ainda posso gastar?":               {"**Quanto ainda cabe no mês**", "Ainda cabe no mês:", "estimativa com os registros do app, não o saldo da conta"},
+	} {
+		q.Text = text
+		got := appAnswer(q)
+		wantAll(t, text, got, want...)
+		if strings.Contains(got, "Lembrete: a dívida") {
+			t.Errorf("%q: sem dívida, sem lembrete:\n%s", text, got)
+		}
+	}
+	// O orçamento da categoria também conta.
 	for i := range q.Ledger.Categories {
 		if q.Ledger.Categories[i].ID == "res" {
 			q.Ledger.Categories[i].BudgetCents = 50000 // R$ 400 já gastos em outubro
 		}
 	}
-	wantAll(t, "orçamento", appAnswer(q), "**Cabe no mês.**", "Mas no orçamento de Restaurantes e delivery restam só R$ 100,00 de R$ 500,00.")
+	q.Text = "posso gastar 300 com delivery?"
+	wantAll(t, "orçamento", appAnswer(q), "**Cabe no mês, pela estimativa do app.**", "Mas no orçamento de Restaurantes e delivery restam só R$ 100,00 de R$ 500,00.")
 	q.Text = "posso gastar 50 com delivery?"
 	wantAll(t, "cabe no orçamento", appAnswer(q), "No orçamento de Restaurantes e delivery, restam R$ 100,00 de R$ 500,00; depois, ficam R$ 50,00.")
+	// Com uma dívida, a mesma pergunta não ganha "cabe": vem o motivo do Início, o lembrete e o orçamento.
+	q.Ledger.Debts = teamLedger().Debts
+	got := appAnswer(q)
+	wantAll(t, "com dívida", got, "**Sem estimativa por enquanto.** "+finance.Home(q.Ledger, q.Today).EstimateReason, "Lembrete: a dívida Cartão", "No orçamento de Restaurantes e delivery")
+	if strings.Contains(got, "Cabe no mês") || strings.Contains(got, "ficam R$ 1.") {
+		t.Errorf("com dívida, a sobra não vira limite:\n%s", got)
+	}
 }
 
 // A resposta do app vale para o time todo, mas quem responde não manda escolher a si mesmo.

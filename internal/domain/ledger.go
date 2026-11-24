@@ -23,6 +23,12 @@ type Ledger struct {
 
 // CategoryIndex dá acesso às categorias por ID, inclusive apagadas: um
 // lançamento antigo continua mostrando o nome da categoria.
+// NoCategoryName é o nome do lançamento cuja categoria não existe (apagada noutro aparelho
+// sem conexão, pelo Drive): o mesmo das telas.
+const NoCategoryName = "Sem categoria"
+
+// CategoryIndex indexa as categorias pelo id. Categoria que não existe volta com o nome
+// vazio: quem mostra o nome usa NoCategoryName.
 func (l Ledger) CategoryIndex() map[string]Category {
 	idx := make(map[string]Category, len(l.Categories))
 	for _, c := range l.Categories {

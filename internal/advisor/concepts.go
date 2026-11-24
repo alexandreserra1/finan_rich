@@ -82,9 +82,9 @@ var concepts = []concept{
 		func(q Question, _ string) string {
 			note := rateNote(q, "")
 			if q.Rates.Date != "" {
-				note = fmt.Sprintf("Hoje (%s), a Selic está em %s ao ano: a poupança rende 0,5%% ao mês mais a TR.", dateBR(q.Rates.Date), RatePct(q.Rates.SelicBP))
+				note = fmt.Sprintf("Selic mais recente do Banco Central (%s): %s ao ano. Com ela acima de 8,5%%, a poupança rende 0,5%% ao mês mais a TR.", dateBR(q.Rates.Date), RatePct(q.Rates.SelicBP))
 				if q.Rates.SelicBP <= 850 {
-					note = fmt.Sprintf("Hoje (%s), a Selic está em %s ao ano: a poupança rende 70%% dela mais a TR.", dateBR(q.Rates.Date), RatePct(q.Rates.SelicBP))
+					note = fmt.Sprintf("Selic mais recente do Banco Central (%s): %s ao ano. Com ela até 8,5%%, a poupança rende 70%% dela mais a TR.", dateBR(q.Rates.Date), RatePct(q.Rates.SelicBP))
 				}
 			}
 			return explain("**A poupança rende 0,5% ao mês mais a TR quando a Selic está acima de 8,5% ao ano**; com a Selic menor, rende 70% da Selic mais a TR.",
@@ -182,7 +182,7 @@ var concepts = []concept{
 				notes = notes[:1]
 			}
 			if q.Rates.Date != "" {
-				notes = append(notes, fmt.Sprintf("Guardado, o dinheiro rende perto do CDI: %s ao ano hoje (%s).", RatePct(q.Rates.CDIBP), dateBR(q.Rates.Date)))
+				notes = append(notes, fmt.Sprintf("Guardado, o dinheiro rende perto do CDI: %s ao ano (Banco Central, %s).", RatePct(q.Rates.CDIBP), dateBR(q.Rates.Date)))
 			}
 			return explain("**Antecipar parcelas dá desconto dos juros daquelas parcelas**: é um direito seu, pelo Código de Defesa do Consumidor.",
 				"Vale a pena quando os juros da dívida são maiores do que o dinheiro renderia guardado, e depois de ter uma reserva para imprevistos.",
@@ -273,11 +273,11 @@ func rateNote(q Question, which string) string {
 	if r.Date == "" {
 		return "Confira a taxa do dia no site do Banco Central."
 	}
-	switch which {
+	switch which { // a data é a da taxa mais recente do Banco Central (feriado e fim de semana não têm)
 	case "cdi":
-		return fmt.Sprintf("Hoje (%s), o CDI está em %s ao ano.", dateBR(r.Date), RatePct(r.CDIBP))
+		return fmt.Sprintf("CDI mais recente do Banco Central (%s): %s ao ano.", dateBR(r.Date), RatePct(r.CDIBP))
 	case "selic":
-		return fmt.Sprintf("Hoje (%s), a Selic está em %s ao ano.", dateBR(r.Date), RatePct(r.SelicBP))
+		return fmt.Sprintf("Selic mais recente do Banco Central (%s): %s ao ano.", dateBR(r.Date), RatePct(r.SelicBP))
 	case "ipca":
 		return fmt.Sprintf("Nos 12 meses até %s, o IPCA foi de %s.", domain.ParseMonth(r.IPCAMonth).Label(), RatePct(r.IPCABP))
 	}

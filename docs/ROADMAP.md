@@ -170,8 +170,10 @@ aparelho; o que falta para chegar perto, do mais simples ao mais caro:
 
 Achados das revisões de código, segurança e testes que ficaram para depois:
 
-- **Cota grátis da IA na nuvem**: cada pergunta com ferramentas faz de 2 a 5 chamadas; o
-  plano grátis do Gemini acaba rápido (erro 429, a tela avisa). Vale mostrar o uso do dia.
+- **Cota grátis da IA na nuvem**: desde 23/11/2026, perguntas de número e de conceito saem
+  do app, sem IA (25 de 34 numa amostra), e conselho vai sem ferramentas (uns 2,6 mil tokens
+  por chamada, em vez de 4 mil); ver `IA-GRATIS.md`. Pedido de ação ainda faz de 2 a 5 chamadas.
+  Falta: mostrar o uso do dia e pôr as chaves dos outros provedores grátis na Vercel.
 - **Pelo Wi-Fi o tráfego é HTTP**: para usar fora de casa, Tailscale (HTTPS).
 - **IA "custom" num proxy local** (LiteLLM etc.) conta como local e vai sem apelidos.
 - ~~**Limite de pedidos do intermediário na Vercel**~~: regra no Firewall da Vercel, 30 por

@@ -213,19 +213,18 @@ func affordAnswer(q Question, f string) string {
 	}
 	brl := money.Format
 	income := "renda de " + brl(in.IncomeCents)
-	if in.IncomeEstimated {
-		income += ", pela média dos meses anteriores"
-	}
 	left := in.FreeCents - cents
 	var out string
-	switch {
+	switch home := finance.Home(q.Ledger, q.Today); {
+	case !home.EstimateAvailable: // a mesma regra do Início: a sobra não vira limite de gasto
+		out = "**Sem estimativa por enquanto.** " + home.EstimateReason
 	case left >= 0:
-		out = fmt.Sprintf("**Cabe no mês.** Ainda cabem %s, já contando os fixos que vão cair (%s); depois dos %s, ficam %s.", brl(in.FreeCents), income, brl(cents), brl(left))
+		out = fmt.Sprintf("**Cabe no mês, pela estimativa do app.** Ainda cabem %s (%s, já contando os fixos que vão cair); depois dos %s, ficam %s.", brl(in.FreeCents), income, brl(cents), brl(left))
 		if days := int64(in.DaysInMonth - in.Day + 1); left > 0 && days > 0 {
 			out += fmt.Sprintf(" Dá uns %s por dia até o fim do mês.", brl(left/days))
 		}
 	case in.FreeCents > 0:
-		out = fmt.Sprintf("**Não cabe no mês sem passar da renda.** Ainda cabem %s, já contando os fixos que vão cair (%s): faltam %s para os %s.", brl(in.FreeCents), income, brl(-left), brl(cents))
+		out = fmt.Sprintf("**Não cabe no mês sem passar da renda.** Pela estimativa do app, ainda cabem %s (%s, já contando os fixos que vão cair): faltam %s para os %s.", brl(in.FreeCents), income, brl(-left), brl(cents))
 	default:
 		out = fmt.Sprintf("**Não cabe: o mês já passou da renda** em %s, contando os fixos que ainda vão cair (%s).", brl(-in.FreeCents), income)
 	}
@@ -245,7 +244,7 @@ func affordAnswer(q Question, f string) string {
 	if c := finance.Diagnose(q.Ledger, q.Today).Costliest; c != nil && c.MonthlyInterestCents > 0 {
 		out += fmt.Sprintf("\n\nLembrete: a dívida %s custa %s de juros por mês (%s ao mês).", c.Name, brl(c.MonthlyInterestCents), RatePct(c.MonthlyRateBP))
 	}
-	if left < 0 && cents > in.IncomeCents { // compra grande: vira meta
+	if cents > in.IncomeCents { // compra maior que a renda do mês: vira meta
 		out += "\n\nPara juntar esse valor, crie uma meta na tela Metas: o app calcula quanto guardar por mês."
 	}
 	return out

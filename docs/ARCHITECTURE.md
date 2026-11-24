@@ -158,7 +158,8 @@ aparelho                                      servidor
    `cmd/finanadvisor`), com uma função JS que recebe os pedaços. No app, o `CapacitorHttp`
    entregaria a resposta inteira de uma vez; por isso `cloud-ai.js` manda só os pedidos ao
    endereço da IA pelo fetch do WebView (`CapacitorWebFetch`) e volta ao nativo se o
-   provedor não aceitar CORS. Pergunta de gasto num lugar ou numa categoria, no mês pedido
+   provedor não aceitar CORS. Os do Banco Central (taxas do dia) também vão pelo WebView: pelo
+   nativo, o `Content-Length` chega repetido e o Go recusa a resposta (ENG-010). Pergunta de gasto num lugar ou numa categoria, no mês pedido
    ("quanto gastei com uber?", "...com mercado em setembro?", "...mês passado?") já vai com o
    total pronto (`placeSpending`, para o Otávio e a Lia, também na resposta sem IA).
 4. **"Treinamento" em finanças** (sem mexer nos pesos do modelo, o que os planos grátis não

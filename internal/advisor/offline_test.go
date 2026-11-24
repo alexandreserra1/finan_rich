@@ -56,7 +56,10 @@ func TestOfflineByPersona(t *testing.T) {
 	if n := strings.Count(lia, "\n- "); n < 1 || n > 3 {
 		t.Errorf("lia: quer de 1 a 3 achados, veio %d:\n%s", n, lia)
 	}
-	wantAll(t, "lia (quanto cabe)", Offline(offlineQ("lia", "Quanto ainda posso gastar?")), "Quanto ainda cabe no mês", "Ainda cabe no mês", "por dia")
+	free := offlineQ("lia", "Quanto ainda posso gastar?")
+	free.Ledger = freeLedger()
+	wantAll(t, "lia (quanto cabe)", Offline(free), "Quanto ainda cabe no mês", "Ainda cabe no mês", "por dia")
+	wantAll(t, "lia (com dívida)", Offline(offlineQ("lia", "Quanto ainda posso gastar?")), "Sem estimativa por enquanto", "Há dívida pendente")
 }
 
 // O texto sem IA usa os nomes reais (não sai do aparelho) e nunca o apelido.

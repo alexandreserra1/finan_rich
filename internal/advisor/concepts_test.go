@@ -15,14 +15,14 @@ func TestConceptAnswers(t *testing.T) {
 		text string
 		want []string
 	}{
-		{"o que é CDB?", []string{"**CDB é um empréstimo que você faz ao banco**", "FGC", "R$ 250 mil", "Hoje (17/11/2026), o CDI está em 13,65% ao ano.", "A dívida Cartão cobra 10,00% de juros ao mês (213,84% ao ano)"}},
+		{"o que é CDB?", []string{"**CDB é um empréstimo que você faz ao banco**", "FGC", "R$ 250 mil", "CDI mais recente do Banco Central (17/11/2026): 13,65% ao ano.", "A dívida Cartão cobra 10,00% de juros ao mês (213,84% ao ano)"}},
 		{"me explica o que é um CDB", []string{"**CDB é um empréstimo"}},
-		{"como funciona o tesouro selic?", []string{"**O Tesouro Selic é um título do governo", "Tesouro Nacional", "a Selic está em 13,75% ao ano"}},
-		{"o que significa CDI?", []string{"**CDI é a taxa", "o CDI está em 13,65% ao ano"}},
-		{"o que é a selic?", []string{"**A Selic é a taxa básica de juros", "Copom", "a Selic está em 13,75% ao ano"}},
+		{"como funciona o tesouro selic?", []string{"**O Tesouro Selic é um título do governo", "Tesouro Nacional", "Selic mais recente do Banco Central (17/11/2026): 13,75% ao ano."}},
+		{"o que significa CDI?", []string{"**CDI é a taxa", "CDI mais recente do Banco Central (17/11/2026): 13,65% ao ano."}},
+		{"o que é a selic?", []string{"**A Selic é a taxa básica de juros", "Copom", "Selic mais recente do Banco Central (17/11/2026): 13,75% ao ano."}},
 		{"o que é IPCA?", []string{"**O IPCA é a inflação oficial", "Nos 12 meses até outubro de 2026, o IPCA foi de 4,63%."}},
 		{"o que é inflação?", []string{"**O IPCA é a inflação oficial"}},
-		{"como funciona a poupança?", []string{"0,5% ao mês mais a TR", "a Selic está em 13,75% ao ano: a poupança rende 0,5% ao mês mais a TR"}},
+		{"como funciona a poupança?", []string{"0,5% ao mês mais a TR", "13,75% ao ano. Com ela acima de 8,5%, a poupança rende 0,5% ao mês mais a TR."}},
 		{"poupança ou CDB?", []string{"0,5% ao mês mais a TR", "CDB"}},
 		{"o que é LCI?", []string{"**LCI e LCA", "Não pagam IR"}},
 		{"o que é o FGC?", []string{"**O FGC", "R$ 250 mil", "R$ 1 milhão a cada 4 anos"}},

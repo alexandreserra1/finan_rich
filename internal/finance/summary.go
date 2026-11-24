@@ -101,6 +101,9 @@ func summarize(l domain.Ledger, in func(date string) bool) Summary {
 		spentByBucket[cat.Bucket] += t.AmountCents
 		c, ok := byCategory[t.CategoryID]
 		if !ok {
+			if cat.Name == "" {
+				cat.Name = domain.NoCategoryName
+			}
 			c = &CategoryLine{Name: cat.Name, Bucket: cat.Bucket}
 			byCategory[t.CategoryID] = c
 		}
