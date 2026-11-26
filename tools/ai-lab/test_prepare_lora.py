@@ -10,6 +10,23 @@ from test_prepare_dataset import sample, tool_sample
 
 
 class LoRAPreparationTests(unittest.TestCase):
+    def test_chamada_rejeitada_e_contexto_nao_alvo_a_imitar(self):
+        source = tool_sample()
+        source["executor_error"] = True
+        source["messages"][3]["content"] = "não deu: informe quantos dias olhar (1 a 31)"
+        source["messages"][-1]["content"] = "A consulta falhou; escolha um prazo válido."
+        rows = prepare_lora.targets(source)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["messages"], source["messages"])
+        self.assertEqual(source["messages"][2]["tool_calls"][0]["id"], "chamada")
+
+    def test_erro_estruturado_nao_vira_alvo_de_chamada(self):
+        source = tool_sample()
+        source["executor_error"] = True
+        source["messages"][3].update(error=True, content="Serviço indisponível.")
+        source["messages"][-1]["content"] = "Não foi possível consultar."
+        self.assertEqual([len(row["messages"]) for row in prepare_lora.targets(source)], [5])
+
     def test_preserva_erro_explicito_e_metadados_de_auditoria(self):
         source = tool_sample()
         source.update(executor_error=True, case_kind="executor_error", profile="tito", app_answer="Falhou.")

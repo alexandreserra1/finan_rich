@@ -6,7 +6,10 @@ não autorizam downloads de pesos/tokenizers, treino, publicação ou upload de 
 Retomar somente após erro residual demonstrado e nova aprovação explícita da pessoa.
 
 O extrator agora aceita conversas multivolta e gera um alvo por turno do assistente,
-incluindo chamadas sucessivas. Oferecer ferramenta sem chamá-la não transforma a resposta
+incluindo chamadas sucessivas bem-sucedidas. Uma chamada rejeitada pelo executor fica
+somente no contexto da recuperação, nunca como alvo positivo a imitar. Se um turno mistura
+chamadas aceitas e rejeitadas, ele não vira alvo; a conversa original não é reescrita.
+Oferecer ferramenta sem chamá-la não transforma a resposta
 em alvo de chamada. As contagens de 40 alvos abaixo pertencem ao corpus antigo; nenhum
 pacote novo foi preparado a partir dos 70 cenários do gerador refeito.
 

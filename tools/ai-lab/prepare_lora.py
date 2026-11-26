@@ -5,7 +5,7 @@ from pathlib import Path
 import tempfile
 
 from evaluate import OUTPUT, ROOT, source_hashes
-from prepare_dataset import digest, encode_rows, validate
+from prepare_dataset import digest, encode_rows, executor_failure, validate
 
 
 DATA_FILES = {"train.jsonl", "valid.jsonl", "test.jsonl", "audit.jsonl"}
@@ -29,8 +29,12 @@ def mask_lengths(tokens, prefix):
 def targets(row):
     tools = row["tools"]
     messages = row["messages"]
+    failed_calls = {message["tool_call_id"] for message in messages
+                    if message["role"] == "tool"
+                    and (message.get("error") is True or executor_failure(message.get("content", "")))}
     return [{"messages": messages[:index + 1], "tools": tools}
-            for index, message in enumerate(messages) if message["role"] == "assistant"]
+            for index, message in enumerate(messages) if message["role"] == "assistant"
+            and not any(call["id"] in failed_calls for call in message.get("tool_calls", []))]
 
 
 def read_bytes(path):

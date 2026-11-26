@@ -125,7 +125,8 @@ segredos e confere se a afirmação de proposta pronta tem resultado associado d
 
 O validador aceita ferramentas oferecidas sem chamada e conversas multivolta com
 resultados vinculados; erros exigem auditoria e reconhecimento explícito, sem sucesso falso.
-Os alvos LoRA são extraídos de cada turno do assistente. O contexto agora cobre também
+Os alvos LoRA são extraídos dos turnos válidos do assistente; chamadas rejeitadas pelo
+executor ficam como contexto da recuperação, não como alvo positivo. O contexto cobre também
 `prepare_dataset.py`, `prepare_lora.py` e `review_corpus.py`; com `--lora CAMINHO`, inclui
 manifesto e arquivos do pacote, validando vínculo e estabilidade antes/depois. Sem pacote,
 o contexto registra ausência; isso não aprova futuros alvos LoRA.
