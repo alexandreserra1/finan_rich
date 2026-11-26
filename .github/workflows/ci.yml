@@ -22,7 +22,7 @@ jobs:
       - name: Instala ferramentas locais sem scripts de instalação
         run: npm ci --prefix tools/engineering --ignore-scripts --no-fund --no-audit
       - name: Testa os gates e a correção controlada
-        run: node --test scripts/engineering.test.mjs scripts/document-assets.test.mjs scripts/ios-validation.test.mjs scripts/audit-tools.test.mjs
+        run: node --test scripts/engineering.test.mjs scripts/document-assets.test.mjs scripts/ios-validation.test.mjs scripts/audit-tools.test.mjs scripts/ai-lab.test.mjs
       - name: Valida contratos e mudanças
         env:
           OPENSPEC_TELEMETRY: '0'

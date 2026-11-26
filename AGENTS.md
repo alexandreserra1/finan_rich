@@ -171,6 +171,10 @@ medir tamanho de APK/binário ou quando o disco encher; depois, `make wasm` ante
 
 ## Pronto quer dizer
 
+Mudanças em exemplos financeiros, corpus ou preparação LoRA acionam automaticamente
+`.agents/skills/review-financial-corpus/SKILL.md` antes de propor liberação. A sessão
+principal orquestra os pareceres existentes; revisão por IA não é aprovação humana.
+
 `make test` passa, `make e2e` passa quando mexeu em tela ou sync, `scripts/check-licenses.sh`
 passa quando mexeu em dependência, docs atualizadas quando o comportamento mudou, e a
 resposta final diz o que não foi verificado.

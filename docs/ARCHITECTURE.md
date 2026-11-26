@@ -4,6 +4,10 @@ Este documento explica como o projeto está organizado: o que cada pasta e arqui
 como as peças se conectam e por que as decisões foram tomadas. Para instalar e usar,
 veja o [README](../README.md); para os próximos passos, o [ROADMAP](ROADMAP.md).
 
+Evolução experimental da IA: [arquitetura e validação](../openspec/changes/specialized-financial-ai/design.md).
+O laboratório não altera o provedor padrão. As correções do consultor são tratadas
+separadamente na capacidade `advisor`; treinamento permanece pausado.
+
 ## Visão geral
 
 O finan_rich é **um único executável em Go** que roda no computador do usuário. Ele:

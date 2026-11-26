@@ -1,0 +1,5 @@
+interface:
+  display_name: "Revisão do corpus financeiro"
+  short_description: "Revisar exemplos financeiros antes de propor liberação."
+policy:
+  allow_implicit_invocation: true

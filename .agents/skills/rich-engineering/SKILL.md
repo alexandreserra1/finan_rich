@@ -21,3 +21,8 @@ description: Aplicar em qualquer implementação, correção, revisão ou valida
    repetição sem progresso. Consulte docs/engineering/testing-strategy.md.
 7. Registre resultados e limites. Não faça push, merge, deploy ou migração destrutiva
    automática. Não declare validação visual, funcional ou integração real sem executá-la.
+
+## Corpus financeiro
+
+Em exemplos financeiros ou preparação LoRA, aplique
+`.agents/skills/review-financial-corpus/SKILL.md` antes de propor liberação.

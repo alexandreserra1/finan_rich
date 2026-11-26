@@ -19,7 +19,7 @@ export function classify(paths) {
     if (/\.go$|^go\.(mod|sum)$/.test(path)) gates.add("backend");
     if (/^internal\/web\/|^internal\/store\/|^e2e\/|^mobile\/|^site\//.test(path)) gates.add("frontend");
     if (/\.sql$|^internal\/identity\//.test(path)) gates.add("db");
-    if (/^scripts\/|^tools\/engineering\/|^openspec\/|^\.githooks\/|^\.codex\/|^\.github\/workflows\/|^\.mcp\.json$|^\.claude\/settings|^Makefile$/.test(path)) gates.add("tooling");
+    if (/^scripts\/|^tools\/(?:engineering|ai-lab)\/|^openspec\/|^\.githooks\/|^\.codex\/|^\.github\/workflows\/|^\.mcp\.json$|^\.claude\/settings|^Makefile$/.test(path)) gates.add("tooling");
     if (path === "Makefile") { gates.add("backend"); gates.add("frontend"); }
     if (path === "scripts/test-identity-db.sh") gates.add("db");
   }
@@ -191,7 +191,7 @@ async function check(scope) {
     const unstaged = command("git", ["diff", "--name-only", "-z"]).split("\0");
     if (unstaged.some((path) => staged.has(path))) throw new Error("Índice e arquivo de trabalho diferem no mesmo caminho. Teste a versão que será commitada antes de aprovar.");
     if (gates.includes("tooling")) {
-      await run(process.execPath, ["--test", "scripts/engineering.test.mjs", ...["scripts/document-assets.test.mjs", "scripts/ios-validation.test.mjs"].filter((file) => existsSync(join(root, file)))]);
+      await run(process.execPath, ["--test", "scripts/engineering.test.mjs", ...["scripts/document-assets.test.mjs", "scripts/ios-validation.test.mjs", "scripts/ai-lab.test.mjs"].filter((file) => existsSync(join(root, file)))]);
       await run(join(toolbin, "openspec"), ["validate", "--all", "--strict"]);
     }
     if (gates.includes("backend")) await run("make", ["test"]);
