@@ -1066,7 +1066,7 @@ try {
   await deny.goto(`${APP}/configuracoes#lembretes`);
   await deny.waitForSelector("[data-action=reminders]", { timeout: 20000 });
   const offInSettings = !(await deny.isChecked("[data-action=reminders]"));
-  await deny.check("[data-action=reminders]");
+  await deny.click("[data-action=reminders]");
   await deny.waitForSelector(".flash:has-text('Sem permissão de notificação')", { timeout: 10000 });
   ok(askedTwice === 1 && offInSettings && !(await deny.isChecked("[data-action=reminders]")) && await deny.evaluate(() => window.__asked()) === 2,
     `sem permissão, o app pede uma vez só (pedidos: ${askedTwice}); os Ajustes mostram os lembretes desligados, e ligar pede de novo e avisa`);
