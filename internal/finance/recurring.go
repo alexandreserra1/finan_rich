@@ -6,6 +6,32 @@ import (
 	"github.com/alexandreserra1/finan_rich/internal/domain"
 )
 
+func pendingRecurring(l domain.Ledger, month domain.Month) []domain.Recurring {
+	exists := map[string]bool{}
+	for _, transaction := range l.Transactions {
+		exists[transaction.ID] = true
+	}
+	var pending []domain.Recurring
+	for _, recurring := range l.ActiveRecurring() {
+		if recurring.Paused || recurring.Start > month.Key() || recurring.End != "" && recurring.End < month.Key() ||
+			exists[domain.RecurringTxID(recurring.ID, month)] {
+			continue
+		}
+		pending = append(pending, recurring)
+	}
+	return pending
+}
+
+func PendingRecurringExpenses(l domain.Ledger, month domain.Month) int64 {
+	var total int64
+	for _, recurring := range pendingRecurring(l, month) {
+		if recurring.Kind == domain.KindSaida {
+			total += recurring.AmountCents
+		}
+	}
+	return total
+}
+
 // RecurringDue lista os lançamentos que as recorrências já deveriam ter
 // gerado até hoje e ainda não existem. O ID é fixo por recorrência e mês,
 // então dois aparelhos geram o mesmo lançamento (sem duplicar) e um

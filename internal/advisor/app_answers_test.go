@@ -36,7 +36,7 @@ func TestAppAnswers(t *testing.T) {
 		{"o que vence essa semana?", []string{"Próximos 7 dias", "Cartão: parcela mínima R$ 200,00 em 20/10"}},
 		{"o que tenho pra pagar esse mês?", []string{"Próximos 31 dias", "Aluguel"}},
 		{"quanto preciso guardar por mês para a viagem?", []string{"Para chegar até março de 2027: guarde R$ 1.000,00 por mês durante 6 meses"}},
-		{"se eu guardar 400 por mês, quando chego na viagem?", []string{"Guardando R$ 400,00 por mês, chega em 15 meses (dezembro de 2027)"}},
+		{"se eu guardar 400 por mês, quando chego na viagem?", []string{"Guardando R$ 400,00 por mês a partir deste mês, chega em dezembro de 2027 (15 aportes)"}},
 		{"minha meta está atrasada?", []string{"Viagem"}},
 		{"quanto guardar por mês para a reserva?", []string{"**Reserva de emergência**", "Mínima:"}},
 		{"tenho assinatura esquecida?", []string{"**Cobranças todo mês**", "Aluguel (conta fixa): R$ 1.450,00 por mês, R$ 17.400,00 por ano."}},

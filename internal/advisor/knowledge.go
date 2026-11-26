@@ -30,8 +30,8 @@ var knowledge = []topic{
 
 	{"dividas", []string{"divida", "deve", "devendo", "juros", "rotativo", "cheque especial", "emprestimo", "renegoci", "quitar", "pagar primeiro", "nome sujo", "serasa", "atrasad", "consignado", "portabilidade", "avalanche", "bola de neve"}, `Dívidas:
 - Avalanche (maior juros primeiro) economiza mais dinheiro; bola de neve (menor saldo primeiro) dá vitórias rápidas e ajuda quem desanima. Pague o mínimo em todas e jogue o resto numa só.
-- Se a parcela mínima não cobre os juros do mês, a dívida cresce para sempre: é prioridade máxima.
-- Rotativo do cartão: por lei, juros e encargos não podem passar de 100% do valor original da dívida (Lei 14.690/2023), mas continua sendo das dívidas mais caras. O parcelamento da fatura costuma sair mais barato que o rotativo; compare o CET.
+- Se a parcela mínima não cobre os juros do mês, o saldo aumenta nas hipóteses de taxa e pagamento constantes. Confira contrato, encargos e opções de renegociação; não prometa crescimento sem limite ou um prazo sem simular.
+- No crédito rotativo e parcelamento da fatura originados a partir de 03/01/2024, juros e encargos têm limite específico de 100% do valor original da dívida (Lei 14.690/2023). Isso não é um teto genérico para empréstimos. A simulação do app não conhece modalidade, principal original nem encargos acumulados: não a apresente como cálculo do limite legal ou de quitação. Fonte: https://www.bcb.gov.br/meubc/faqs/p/limitacao-dos-juros-e-encargos-financeiros-no-saldo-devedor-da-fatura-do-cartao.
 - Cheque especial: juros limitados a 8% ao mês pelo Banco Central — ainda assim muito caro.
 - Trocar dívida cara por barata: consignado, empréstimo com garantia ou portabilidade de crédito (direito do cliente: outro banco quita e cobra menos). Compare sempre o CET, não só a taxa.
 - Renegociar: bancos e plataformas (Serasa Limpa Nome, feirões de renegociação) costumam dar descontos grandes para pagamento à vista de dívidas atrasadas. Só aceite parcela que cabe no orçamento.

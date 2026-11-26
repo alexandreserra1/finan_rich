@@ -88,7 +88,7 @@ func (t *Tools) simulateDebts(extra, order string) string {
 	name := map[bool]string{true: "maior juros primeiro", false: "menor saldo primeiro"}
 	describe := func(s finance.Schedule) string {
 		if !s.OK {
-			return "não acaba: o pagamento não cobre os juros"
+			return "sem quitação nas hipóteses e limites simulados; confira juros, pagamentos e contrato"
 		}
 		return fmt.Sprintf("livre em %s (%s), com %s de juros", finance.Meses(s.Months), t.monthAfter(s.Months).Label(), money.Format(s.InterestCents))
 	}
@@ -97,6 +97,7 @@ func (t *Tools) simulateDebts(extra, order string) string {
 	other := finance.PayoffSchedule(debts, x, !avalanche)
 
 	var b strings.Builder
+	b.WriteString("Simulação genérica com taxas constantes, juros mensais antes de cada pagamento e primeiro pagamento no próximo mês. Não aplica limites legais ou contratuais sem os dados da operação; confirme o valor de quitação com o credor.\n")
 	fmt.Fprintf(&b, "Ordem (%s): %s.\n", name[avalanche], strings.Join(plan.Names, " → "))
 	fmt.Fprintf(&b, "Só o mínimo (%s por mês): %s.\n", money.Format(mins), describe(base))
 	if x > 0 {
@@ -155,7 +156,7 @@ func (t *Tools) simulateGoal(name, deadline, perMonth string) string {
 			return "não deu para calcular: informe quanto guardar por mês"
 		}
 		months := int((v.RemainingCents + per - 1) / per)
-		line := fmt.Sprintf("Guardando %s por mês, chega em %s (%s)", money.Format(per), finance.Meses(months), t.monthAfter(months-1).Label()) // o mês atual conta, como no GoalPlan
+		line := fmt.Sprintf("Guardando %s por mês a partir deste mês, chega em %s (%d aportes)", money.Format(per), t.monthAfter(months-1).Label(), months)
 		if g.Deadline != "" {
 			if left, _, _ := finance.GoalPlan(v.RemainingCents, g.Deadline, t.today); left > 0 && months > left {
 				line += fmt.Sprintf(", %s depois do prazo (%s)", finance.Meses(months-left), domain.ParseMonth(g.Deadline).Label())

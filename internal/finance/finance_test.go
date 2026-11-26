@@ -183,7 +183,7 @@ func TestPlanMonth(t *testing.T) {
 		tx(domain.KindSaida, "mor", 355000, "2026-10-06"),
 	)
 	plan := PlanDebts(debts())
-	p := PlanMonth(Summarize(oct, l), plan)
+	p := PlanMonth(Summarize(oct, l), plan, 0)
 	if p.SurplusCents != 95000 || p.PendingMinCents != 72000 || p.FreeCents != 23000 {
 		t.Fatalf("plano = %+v", p)
 	}
@@ -196,7 +196,7 @@ func TestPlanMonth(t *testing.T) {
 		tx(domain.KindSaida, "mor", 283000, "2026-10-06"),
 		tx(domain.KindSaida, "div", 72000, "2026-10-10"),
 	)
-	if p := PlanMonth(Summarize(oct, l), plan); p.PendingMinCents != 0 || p.FreeCents != 95000 {
+	if p := PlanMonth(Summarize(oct, l), plan, 0); p.PendingMinCents != 0 || p.FreeCents != 95000 {
 		t.Errorf("com parcelas lançadas = %+v", p)
 	}
 }
