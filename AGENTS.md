@@ -101,6 +101,26 @@ No início, carregue `.agents/skills/rich-engineering/SKILL.md` e consulte o ín
 usam `openspec/changes/<nome>/`, sem sobrescrever tarefas antigas. Use a CLI local
 `tools/engineering/node_modules/.bin/openspec`, não instale outra cópia global.
 
+Desde o início de cada sessão, carregue `.agents/skills/to-spec/SKILL.md` e
+`.agents/skills/grill-with-docs/SKILL.md`, sem aguardar um comando manual. Na fase DEFINIR,
+aplique automaticamente grill-with-docs quando houver decisões relevantes em aberto;
+aplique to-spec quando a conversa estiver decidida e precisar de contrato ou continuidade
+entre sessões. Início de sessão não significa iniciar uma entrevista sem uma tarefa.
+Não repita decisões confirmadas nem crie especificações para toda correção pequena.
+Essa ativação automática foi autorizada pela pessoa; não autoriza publicação externa.
+Consulte a configuração compartilhada antes de executar:
+
+- `docs/agents/issue-tracker.md`: especificações locais no OpenSpec, sem criar issues externas.
+- `docs/agents/triage-labels.md`: significado local de `ready-for-agent`, sem execução automática.
+- `docs/agents/domain.md`: glossário e ADRs, preservando `docs/decisions/`.
+
+As quatro skills ficam em `.agents/skills/`, com links em `.claude/skills/`. A
+`grill-with-docs` exige carregar também `grilling` e `domain-modeling`. No Codex sem
+ferramenta Skill, leia os três arquivos SKILL.md completos e siga o mesmo processo.
+Use português claro, sem emojis, e não pergunte fatos que o código já responde. Reaproveite
+as skills de especificação, entrevista e ADRs existentes, sem abrir entrevistas paralelas.
+As convenções e permissões deste projeto prevalecem sobre os exemplos das skills.
+
 Hooks de sessão e saída estão em `.claude/settings.json` e `.codex/hooks.json`; MCPs estão
 em `.mcp.json` e `.codex/config.toml`, com a mesma lista nos dois (um teste confere). Exigem
 confiança nativa e recarga do cliente. Não altere aprovações nem configurações globais para

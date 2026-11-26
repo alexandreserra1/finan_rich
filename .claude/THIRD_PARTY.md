@@ -22,3 +22,20 @@ já está habilitado nos perfis locais do Claude e não foi copiado nem reinstal
 
 Para atualizar: clonar os repositórios, copiar as mesmas pastas por cima e repetir os dois
 ajustes acima.
+
+Matt Pocock (24/11/2026): [mattpocock/skills](https://github.com/mattpocock/skills), commit
+`d65391149dbb5fe76478e76fa8d5122b2aa5a70e`, MIT
+([licença](licenses/mattpocock-skills.LICENSE)). Instalados:
+`to-spec`, `grill-with-docs`, `grilling` e `domain-modeling`, incluindo metadados dos
+agentes e formatos auxiliares, em `.agents/skills/`, com links para Claude.
+O manifesto `.agents/skills/.mattpocock-sources.json` fixa a origem, os hashes originais
+e locais e as adaptações. Grilling, domain-modeling e os formatos auxiliares permanecem
+sem alterações. To-spec e grill-with-docs receberam ativação automática autorizada:
+descrições e guardas locais no SKILL.md, disable-model-invocation false e
+allow_implicit_invocation true nos metadados dos clientes.
+
+As convenções do projeto ficam em AGENTS.md e docs/agents/:
+rastreador local OpenSpec, ADRs em docs/decisions/, português e publicação só autorizada.
+As skills são carregadas no início e usadas conforme o contexto. Para atualizar, revise o
+commit novo, as dependências e a licença antes de renovar os arquivos e hashes; nada
+baixa uma versão nova automaticamente durante uma sessão ou no CI.
