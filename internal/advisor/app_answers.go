@@ -298,7 +298,7 @@ func compareAnswer(q Question, f string) string {
 	} else if diff < 0 {
 		head = fmt.Sprintf("**%s a menos que no mês passado.**", brl(-diff))
 	}
-	out := head + "\n\n" + bullets(fmt.Sprintf("Até o dia %d: %s em gastos variáveis; no mesmo período de %s, %s.\nNo ritmo de agora, o mês fecha em %s, contando as contas fixas (%s fechou em %s).",
+	out := head + "\n\n" + bullets(fmt.Sprintf("Até o dia %d: %s em gastos variáveis; no mesmo período de %s, %s.\nCom as contas fixas, a projeção do mês é %s (%s fechou em %s).",
 		in.Day, brl(in.VariableCents), last, brl(in.LastMonthSameDayCents), brl(in.ProjectedCents), last, brl(in.LastMonthCents)))
 	var cats []string
 	for _, line := range strings.Split(NewTools(q.Ledger, q.Today, nil).compareMonths("", ""), "\n")[2:] {

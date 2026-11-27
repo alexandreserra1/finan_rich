@@ -245,7 +245,7 @@ func liaOffline(q Question) string {
 	in := finance.Insights(q.Ledger, q.Today)
 	var lines []string
 	if in.Day > 0 {
-		lines = append(lines, fmt.Sprintf("Até o dia %d: %s em gastos variáveis; no ritmo de agora, o mês fecha em %s (mês passado: %s).",
+		lines = append(lines, fmt.Sprintf("Até o dia %d: %s em gastos variáveis; com as contas fixas, a projeção do mês é %s (mês passado: %s).",
 			in.Day, money.Format(in.VariableCents), money.Format(in.ProjectedCents), money.Format(in.LastMonthCents)))
 	}
 	for _, b := range finance.Briefings(q.Ledger, q.Today) {

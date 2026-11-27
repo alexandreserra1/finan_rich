@@ -24,15 +24,16 @@ type InsightsView struct {
 	Day         int    `json:"day"` // hoje
 	DaysInMonth int    `json:"daysInMonth"`
 
-	VariableCents         int64   `json:"variableCents"`         // gastos variáveis até hoje
-	FixedCents            int64   `json:"fixedCents"`            // fixos do mês: lançados + que ainda vão cair
-	ProjectedCents        int64   `json:"projectedCents"`        // como o mês fecha no ritmo atual
-	LastMonthCents        int64   `json:"lastMonthCents"`        // gastos do mês passado
-	LastMonthSameDayCents int64   `json:"lastMonthSameDayCents"` // variáveis do mês passado até o mesmo dia
-	Avg3Cents             int64   `json:"avg3Cents"`             // média dos 3 meses anteriores
-	Pace                  []int64 `json:"pace"`                  // variável acumulado, do dia 1 até hoje
-	LastPace              []int64 `json:"lastPace"`              // variável acumulado do mês passado
-	Avg3Pace              []int64 `json:"avg3Pace"`              // variável acumulado médio dos 3 meses anteriores (com lançamentos), nos dias deste mês
+	VariableCents          int64   `json:"variableCents"`          // gastos variáveis até hoje
+	FixedCents             int64   `json:"fixedCents"`             // fixos do mês: lançados + que ainda vão cair
+	ProjectedCents         int64   `json:"projectedCents"`         // como o mês deve fechar: variável projetado + fixos
+	ProjectedVariableCents int64   `json:"projectedVariableCents"` // variável até hoje + o resto do mês como nos meses anteriores
+	LastMonthCents         int64   `json:"lastMonthCents"`         // gastos do mês passado
+	LastMonthSameDayCents  int64   `json:"lastMonthSameDayCents"`  // variáveis do mês passado até o mesmo dia
+	Avg3Cents              int64   `json:"avg3Cents"`              // média dos 3 meses anteriores
+	Pace                   []int64 `json:"pace"`                   // variável acumulado, do dia 1 até hoje
+	LastPace               []int64 `json:"lastPace"`               // variável acumulado do mês passado
+	Avg3Pace               []int64 `json:"avg3Pace"`               // variável acumulado médio dos 3 meses anteriores (com lançamentos), nos dias deste mês
 
 	IncomeCents     int64 `json:"incomeCents"`
 	IncomeEstimated bool  `json:"incomeEstimated"` // renda ainda não entrou: média dos meses anteriores
@@ -106,7 +107,7 @@ const (
 	frequentMin     = 8    // compras em 30 dias
 	frequentTicket  = 6000 // tíquete médio até R$ 60
 	paceOverPct     = 10   // ritmo 10% acima do mês passado
-	paceMinDay      = 7    // antes disso, poucos dias não dizem o ritmo: o resto do mês segue a média
+	paceMinDay      = 7    // antes disso, poucos dias não dizem o ritmo
 	subsTolerance   = 15   // assinatura: valor varia até 15% entre meses
 )
 
@@ -134,7 +135,7 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 	byPlace := map[string]map[string]int64{} // lugar → mês → centavos
 	placeCount := map[string]map[string]int{}
 	placeNames := map[string]map[string]int{}
-	var investedNow, futureCents int64
+	var investedNow, futureCents, debtPaidNow int64
 	var monthSpends []domain.Transaction
 	byDay3 := map[string][]int64{} // mês anterior → gasto variável por dia (dias deste mês)
 	for _, t := range txs {
@@ -167,6 +168,9 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 		switch {
 		case mk == m.Key():
 			monthSpends = append(monthSpends, t)
+			if debtPayment {
+				debtPaidNow += t.AmountCents
+			}
 			switch {
 			case fixed:
 				v.FixedCents += t.AmountCents
@@ -199,7 +203,9 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 		}
 		dueCents += r.AmountCents
 	}
-	v.FixedCents += dueCents
+	// Parcelas mínimas que ainda faltam pagar também vão cair (as mesmas do Plano do mês).
+	pendingMin := pendingMinimums(PlanDebts(l.ActiveDebts()), debtPaidNow)
+	v.FixedCents += dueCents + pendingMin
 
 	// Médias dos 3 meses anteriores (só os meses com algum lançamento).
 	months := 0
@@ -231,12 +237,15 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 			v.Avg3Pace[i] /= int64(months)
 		}
 	}
-	// Projeção: o variável no ritmo de até hoje; nos primeiros dias, o resto do
-	// mês segue a média dos meses anteriores (dois dias de gasto vezes 15 assusta à toa).
-	v.ProjectedCents = v.VariableCents*int64(days)/int64(day) + v.FixedCents + futureCents
-	if day < paceMinDay && months > 0 {
-		v.ProjectedCents = v.VariableCents + v.Avg3Pace[days-1] - v.Avg3Pace[day-1] + v.FixedCents + futureCents
+	// Projeção: o variável até hoje mais o que os meses anteriores gastaram depois
+	// deste dia. Multiplicar pelo ritmo repetiria a compra do mês feita cedo (o
+	// mercado do dia 8) e dois dias de gasto vezes 15 assusta à toa; sem histórico, é o que há.
+	rest := v.VariableCents*int64(days)/int64(day) - v.VariableCents
+	if months > 0 {
+		rest = v.Avg3Pace[days-1] - v.Avg3Pace[day-1]
 	}
+	v.ProjectedVariableCents = v.VariableCents + rest + futureCents
+	v.ProjectedCents = v.ProjectedVariableCents + v.FixedCents
 	savingsRates(&v, l, m)
 
 	// Quanto ainda cabe no mês (o "pode gastar" do PocketGuard).
@@ -245,9 +254,9 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 		v.IncomeCents, v.IncomeEstimated = avg(incomeByMonth), true
 	}
 	// Livre = renda − investimento planejado (ou o já investido, se for mais) −
-	// tudo que já foi lançado no mês − recorrentes que ainda vão cair.
+	// tudo que já foi lançado no mês − recorrentes e parcelas mínimas que ainda vão cair.
 	reserve := max(v.IncomeCents*int64(l.Split()[domain.BucketInvestimentos])/100, investedNow)
-	v.FreeCents = v.IncomeCents - reserve - spendByMonth[m.Key()] - dueCents
+	v.FreeCents = v.IncomeCents - reserve - spendByMonth[m.Key()] - dueCents - pendingMin
 	if left := int64(days - day + 1); v.FreeCents > 0 {
 		v.PerDayCents = v.FreeCents / left
 	}
@@ -320,11 +329,12 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 		}
 	}
 
-	// Ritmo acima do mês passado.
-	if day >= paceMinDay && v.LastMonthCents > 0 && v.ProjectedCents*100 > v.LastMonthCents*(100+paceOverPct) {
-		d := v.ProjectedCents - v.LastMonthCents
+	// Ritmo acima do mês passado: o variável até hoje contra o do mês passado até o
+	// mesmo dia. Fixos e o que ainda vai cair não são ritmo.
+	if d := v.VariableCents - v.LastMonthSameDayCents; day >= paceMinDay && v.LastMonthSameDayCents > 0 &&
+		v.VariableCents*100 > v.LastMonthSameDayCents*(100+paceOverPct) {
 		v.Savings = append(v.Savings, Saving{Kind: "ritmo", Title: "Gastando mais rápido que no mês passado", MonthlyCents: d,
-			Text: fmt.Sprintf("No ritmo atual, o mês fecha em %s, %s a mais que o mês passado.", money.Format(v.ProjectedCents), money.Format(d))})
+			Text: fmt.Sprintf("Até o dia %d, os gastos do dia a dia somam %s, %s a mais que no mesmo dia do mês passado.", day, money.Format(v.VariableCents), money.Format(d))})
 	}
 
 	v.Subscriptions = subscriptions(l, m, cats, placeCats, byPlace, placeCount, placeNames)

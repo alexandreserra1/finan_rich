@@ -60,7 +60,7 @@ func TestInsights(t *testing.T) {
 	}
 	check("variáveis até hoje", v.VariableCents, 58090)             // 10×50 + 55,90 + 25 (investimento não conta)
 	check("fixos (aluguel a cair)", v.FixedCents, 150000)           // recorrente de outubro ainda sem lançamento
-	check("projeção", v.ProjectedCents, 58090*31/15+150000)         // ritmo × 31 dias + fixos
+	check("projeção", v.ProjectedCents, 58090+10000+150000)         // até hoje + o iFood do dia 20 dos meses anteriores + aluguel
 	check("mês passado", v.LastMonthCents, 185590)                  // 300 + 55,90 + 1.500
 	check("mês passado até dia 15", v.LastMonthSameDayCents, 25590) // dias 3 e 10 + Netflix (sem o aluguel fixo)
 	check("média 3 meses", v.Avg3Cents, 185590)
@@ -82,7 +82,8 @@ func TestInsights(t *testing.T) {
 	for _, s := range v.Savings {
 		kinds = append(kinds, fmt.Sprintf("%s:%d", s.Kind, s.MonthlyCents))
 	}
-	if fmt.Sprint(kinds) != fmt.Sprint([]string{"ritmo:84462", "frequente:30000", "categoria:20000", "assinaturas:0"}) {
+	// Ritmo: R$ 580,90 até o dia 15 contra R$ 255,90 no mesmo dia de setembro.
+	if fmt.Sprint(kinds) != fmt.Sprint([]string{"ritmo:32500", "frequente:30000", "categoria:20000", "assinaturas:0"}) {
 		t.Errorf("economias = %v", kinds)
 	}
 	if len(v.Subscriptions) != 2 || v.Subscriptions[0].Name != "Aluguel" || !v.Subscriptions[0].Registered ||
@@ -140,6 +141,79 @@ func TestInsightsAvgPaceAndSavingsRate(t *testing.T) {
 	}
 	if v.SavingsPct != 88 || v.SavingsAvgPct != 62 || v.SavingsTargetPct != 20 {
 		t.Errorf("taxa = %d, média = %d, meta = %d", v.SavingsPct, v.SavingsAvgPct, v.SavingsTargetPct)
+	}
+}
+
+// Mercado no dia 8 e assinatura no dia 9, nos dois meses: até o dia 22 o gasto do
+// dia a dia subiu só R$ 10 (2%). Compra do mês feita cedo não se repete até o fim do
+// mês nem vira "gastando mais rápido" (achado da revisão do corpus, 26/11/2026).
+func paceLedger() domain.Ledger {
+	m := func(id string) domain.Meta { return domain.Meta{ID: id, UpdatedAt: 1} }
+	l := domain.Ledger{Categories: []domain.Category{
+		{Meta: m("sal"), Name: "Salário", Bucket: domain.BucketRenda},
+		{Meta: m("mer"), Name: "Mercado", Bucket: domain.BucketNecessidades},
+		{Meta: m("ass"), Name: "Assinaturas", Bucket: domain.BucketDesejos},
+		{Meta: m("pd"), Name: domain.DebtPaymentCategory, Bucket: domain.BucketNecessidades},
+	}}
+	tx := func(id, kind, desc string, cents int64, cat, date string) {
+		l.Transactions = append(l.Transactions, domain.Transaction{Meta: m(id), Kind: kind, Description: desc, AmountCents: cents, CategoryID: cat, Date: date})
+	}
+	for _, mk := range []string{"2026-09", "2026-10"} {
+		tx("sal-"+mk, domain.KindEntrada, "Salário", 385000, "sal", mk+"-05")
+		tx("ass-"+mk, domain.KindSaida, "Assinatura Exemplo", 2990, "ass", mk+"-09")
+	}
+	tx("mer-set", domain.KindSaida, "Mercado Exemplo", 44000, "mer", "2026-09-08")
+	tx("mer-out", domain.KindSaida, "Mercado Exemplo", 45000, "mer", "2026-10-08")
+	return l
+}
+
+func TestInsightsMonthlyPurchasesAreNotPace(t *testing.T) {
+	v := Insights(paceLedger(), time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC))
+	if v.VariableCents != 47990 || v.LastMonthSameDayCents != 46990 {
+		t.Fatalf("variável %d, mês passado até o dia 22 %d", v.VariableCents, v.LastMonthSameDayCents)
+	}
+	// Setembro não teve nada depois do dia 22: o resto de outubro segue setembro.
+	if v.ProjectedVariableCents != 47990 || v.ProjectedCents != 47990 {
+		t.Errorf("projeção %d (variável %d), esperado 47990: as compras do mês não se repetem", v.ProjectedCents, v.ProjectedVariableCents)
+	}
+	for _, s := range v.Savings {
+		if s.Kind == "ritmo" {
+			t.Errorf("alarme falso de ritmo com R$ 10 a mais: %+v", s)
+		}
+	}
+}
+
+// Sem mês anterior para comparar, a projeção segue o ritmo de até hoje.
+func TestInsightsProjectionWithoutHistory(t *testing.T) {
+	l := paceLedger()
+	var october []domain.Transaction
+	for _, tx := range l.Transactions {
+		if tx.Date[:7] == "2026-10" {
+			october = append(october, tx)
+		}
+	}
+	l.Transactions = october
+	if v := Insights(l, time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC)); v.ProjectedVariableCents != 47990*31/22 || len(v.Savings) > 1 {
+		t.Errorf("projeção sem histórico = %d, sugestões %+v", v.ProjectedVariableCents, v.Savings)
+	}
+}
+
+// A parcela mínima que ainda falta pagar vai cair no mês: entra na projeção e sai do
+// que ainda cabe. Depois de lançada em "Pagamento de dívidas", não conta duas vezes.
+func TestInsightsPendingDebtMinimum(t *testing.T) {
+	today := time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC)
+	l := paceLedger()
+	l.Debts = []domain.Debt{{Meta: domain.Meta{ID: "emp", UpdatedAt: 1}, Name: "Empréstimo Exemplo", BalanceCents: 240000, MonthlyRateBP: 900, MinPaymentCents: 30000, DueDay: 10}}
+	pending := Insights(l, today)
+	free := int64(385000 - 77000 - 47990 - 30000) // renda − 20% planejado − gastos − parcela que falta
+	if pending.FixedCents != 30000 || pending.ProjectedCents != 47990+30000 || pending.FreeCents != free || pending.PerDayCents != free/10 {
+		t.Errorf("parcela pendente: fixos %d, projeção %d, livre %d, por dia %d", pending.FixedCents, pending.ProjectedCents, pending.FreeCents, pending.PerDayCents)
+	}
+	l.Transactions = append(l.Transactions, domain.Transaction{Meta: domain.Meta{ID: "pag", UpdatedAt: 1}, Kind: domain.KindSaida,
+		Description: "Pagamento: Empréstimo Exemplo", AmountCents: 30000, CategoryID: "pd", Date: "2026-10-10"})
+	paid := Insights(l, today)
+	if paid.FixedCents != 30000 || paid.ProjectedCents != 47990+30000 || paid.FreeCents != free {
+		t.Errorf("parcela paga: fixos %d, projeção %d, livre %d", paid.FixedCents, paid.ProjectedCents, paid.FreeCents)
 	}
 }
 
