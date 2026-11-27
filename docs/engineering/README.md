@@ -82,6 +82,26 @@ Os limites controlam continuações locais; não são um limite monetário garan
 
 ## Responsabilidades e skills
 
+### Definição com as skills do Matt Pocock
+
+As skills oficiais `to-spec` e `grill-with-docs`, com as dependências mínimas `grilling`
+e `domain-modeling`, estão em `.agents/skills/`; o Claude lê os mesmos arquivos por links.
+Não foi instalado o plugin inteiro nem outra cópia global. A origem, o commit fixado e os
+hashes locais e originais estão em `.agents/skills/.mattpocock-sources.json`; a licença
+MIT foi preservada. As adaptações autorizadas de ativação estão registradas no manifesto.
+
+Use `/grill-with-docs` para esclarecer decisões e vocabulário. Use `/to-spec` para
+sintetizar uma conversa já decidida, principalmente quando o trabalho atravessa sessões.
+Por solicitação da pessoa, as duas skills principais agora permitem invocação automática
+nos dois clientes. O hook manda carregá-las desde o início e aplicá-las conforme a tarefa,
+sem exigir comando manual, repetir entrevistas ou criar contratos para correções triviais.
+Isso não publica issues nem inicia um serviço permanente ou outro agente.
+Sessões novas usam a configuração; uma sessão aberta pode precisar atualizar a descoberta.
+
+Os documentos `docs/agents/issue-tracker.md`, `triage-labels.md` e `domain.md` adaptam o
+fluxo ao OpenSpec, aos ADRs existentes e às permissões locais. Nenhuma configuração de
+confiança foi alterada. O teste de ferramentas confere links, hashes e o contexto do hook.
+
 A sessão principal orquestra e junta resultados; subagentes não chamam outros agentes.
 O Codex recebe o conteúdo integral da persona em `.claude/agents`. Sem subagentes, faz
 as mesmas revisões sequencialmente. Escritas no mesmo arquivo nunca são paralelas.

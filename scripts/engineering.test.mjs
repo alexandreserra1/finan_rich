@@ -1,10 +1,65 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mkdtempSync, writeFileSync, readFileSync, rmSync, mkdirSync, copyFileSync, chmodSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync, rmSync, mkdirSync, copyFileSync, chmodSync, existsSync, realpathSync } from "node:fs";
 import { spawn, spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createHash } from "node:crypto";
+import { parse } from "../tools/engineering/node_modules/yaml/dist/index.js";
 import { advance, classify, redact, root, runControlled, runCommand, stopChild } from "./engineering.mjs";
+
+test("skills do Matt compartilham a fonte e preservam origem, dependências e ativação automática", () => {
+  const directory = join(root, ".agents/skills");
+  const manifest = JSON.parse(readFileSync(join(directory, ".mattpocock-sources.json"), "utf8"));
+  assert.equal(manifest.repository, "https://github.com/mattpocock/skills");
+  assert.match(manifest.commit, /^[a-f0-9]{40}$/);
+  assert.deepEqual(manifest.skills, ["to-spec", "grill-with-docs", "grilling", "domain-modeling"]);
+  for (const name of manifest.skills) {
+    const shared = join(directory, name, "SKILL.md");
+    assert.equal(realpathSync(join(root, ".claude/skills", name, "SKILL.md")), realpathSync(shared));
+    const source = readFileSync(shared, "utf8");
+    const metadata = parse(source.match(/^---\n([\s\S]*?)\n---/)?.[1] || "");
+    assert.equal(metadata.name, name);
+    if (["to-spec", "grill-with-docs"].includes(name)) {
+      assert.equal(metadata["disable-model-invocation"], false);
+      assert.equal(parse(readFileSync(join(directory, name, "agents/openai.yaml"), "utf8")).policy.allow_implicit_invocation, true);
+    }
+  }
+  assert.match(readFileSync(join(directory, "grill-with-docs/SKILL.md"), "utf8"), /"grilling" and "domain-modeling"/);
+  for (const [path, expected] of Object.entries(manifest.sha256)) {
+    assert.match(path, /^(?:\.agents\/skills\/(?:to-spec|grill-with-docs|grilling|domain-modeling)\/|\.claude\/licenses\/mattpocock-skills\.LICENSE$)/);
+    assert.equal(createHash("sha256").update(readFileSync(join(root, path))).digest("hex"), expected, path);
+    const original = manifest.upstreamSha256[path];
+    assert.match(original, /^[a-f0-9]{64}$/);
+    if (original !== expected) {
+      assert.ok(manifest.adaptations[path], `Adaptação sem registro: ${path}`);
+      assert.match(path, /^\.agents\/skills\/(?:to-spec|grill-with-docs)\/(?:SKILL\.md|agents\/openai\.yaml)$/);
+    }
+  }
+  assert.deepEqual(Object.keys(manifest.upstreamSha256).sort(), Object.keys(manifest.sha256).sort());
+  assert.match(readFileSync(join(root, ".claude/licenses/mattpocock-skills.LICENSE"), "utf8"), /MIT License/);
+});
+
+test("hook de sessão carrega as skills automaticamente sem substituir o OpenSpec", () => repository(({ execute }) => {
+  const start = execute(process.execPath, ["scripts/engineering-hooks.mjs", "start"], JSON.stringify({ session_id: "skills" }));
+  assert.equal(start.status, 0);
+  const context = JSON.parse(start.stdout).hookSpecificOutput.additionalContext;
+  assert.match(context, /grill-with-docs/);
+  assert.match(context, /to-spec/);
+  assert.match(context, /carregue.*to-spec\/SKILL\.md.*grill-with-docs\/SKILL\.md/);
+  assert.match(context, /automaticamente conforme o contexto/);
+  assert.doesNotMatch(context, /invocação explícita|opt-in/);
+  assert.match(context, /OpenSpec/);
+  assert.match(context, /não publique issues automaticamente/);
+  for (const file of [".claude/settings.json", ".codex/hooks.json"]) {
+    const config = JSON.parse(readFileSync(join(root, file), "utf8"));
+    assert.ok(config.hooks.SessionStart.some((group) => group.hooks.some((hook) => hook.command.includes("engineering-hooks.mjs") && hook.command.endsWith(" start"))));
+  }
+  for (const name of ["issue-tracker", "triage-labels", "domain"]) {
+    assert.ok(existsSync(join(root, "docs/agents", `${name}.md`)));
+    assert.match(readFileSync(join(root, "AGENTS.md"), "utf8"), new RegExp(`docs/agents/${name}\\.md`));
+  }
+}));
 
 test("falhas preservam stdout e stderr sem expor credenciais", async () => {
   await assert.rejects(runCommand(process.execPath, ["-e", 'console.log("CAUSA: contrato inválido; Bearer segredo-ficticio"); console.error("AVISO: processo encerrado"); process.exit(1)']), (error) => {

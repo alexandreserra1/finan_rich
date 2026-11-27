@@ -1,0 +1,42 @@
+{
+  "repository": "https://github.com/mattpocock/skills",
+  "commit": "d65391149dbb5fe76478e76fa8d5122b2aa5a70e",
+  "skills": [
+    "to-spec",
+    "grill-with-docs",
+    "grilling",
+    "domain-modeling"
+  ],
+  "sha256": {
+    ".agents/skills/to-spec/SKILL.md": "b11f8cc3bdef37b33e068b04e4593af591caf817ba637e9186562a05347e3753",
+    ".agents/skills/to-spec/agents/openai.yaml": "37828cc6c0f903575798fe17374b0bb6fd28e59bc622d7fb32df76f55946d2b3",
+    ".agents/skills/grill-with-docs/SKILL.md": "c4b06017cf5430787bee513f2af8859452aff85ac858e6effe408324d949fa5b",
+    ".agents/skills/grill-with-docs/agents/openai.yaml": "4e3ac56fd00c573cf3a1f4b55663627d8be2e4e2d5277b790becc5a1db82d10d",
+    ".agents/skills/grilling/SKILL.md": "a146842ed93ca43d833550fa9adf02e58cb63c83fea9d4b4522995b82242d4e2",
+    ".agents/skills/grilling/agents/openai.yaml": "1411d7df7d99b7e621a1ff8283c8133cc2464be63d064e52d8ce169c6800ee9b",
+    ".agents/skills/domain-modeling/ADR-FORMAT.md": "944c92aa790e8fbdc9199640b170979abb8a34ba8d0fe18c2a01a63bce140ca0",
+    ".agents/skills/domain-modeling/GLOSSARY-FORMAT.md": "21dcc40cdec8e151a829b98ab1517c1867bc444e3665134a98c6983411996801",
+    ".agents/skills/domain-modeling/SKILL.md": "7b925d7b1e341a2eeae33ad68a8a8c0ab889a38ddd22a7598e4c240e5a7556a3",
+    ".agents/skills/domain-modeling/agents/openai.yaml": "f6bf2aa996c6e6f53fdd0708e18a0d16a56aed8322cca59fedbe3c0d2c75f06b",
+    ".claude/licenses/mattpocock-skills.LICENSE": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5"
+  },
+  "upstreamSha256": {
+    ".agents/skills/to-spec/SKILL.md": "43ad9cf318e5e7d3d1fa360253a37021796dc87a0c2e595ad262661a10f85088",
+    ".agents/skills/to-spec/agents/openai.yaml": "1c5b4d1e3d8e52287ef19cc2742fdbbfae1914ac75d33af3e4c8174f08cc55bb",
+    ".agents/skills/grill-with-docs/SKILL.md": "7de372c13488f1ee96cc11cd8907b56b6809cc93eef776eeddd37de6b6cbe3fe",
+    ".agents/skills/grill-with-docs/agents/openai.yaml": "94cd0ab161fb468a836349f5ed482ba58ce8e709a05c57ce533d739dbd35cca9",
+    ".agents/skills/grilling/SKILL.md": "a146842ed93ca43d833550fa9adf02e58cb63c83fea9d4b4522995b82242d4e2",
+    ".agents/skills/grilling/agents/openai.yaml": "1411d7df7d99b7e621a1ff8283c8133cc2464be63d064e52d8ce169c6800ee9b",
+    ".agents/skills/domain-modeling/ADR-FORMAT.md": "944c92aa790e8fbdc9199640b170979abb8a34ba8d0fe18c2a01a63bce140ca0",
+    ".agents/skills/domain-modeling/GLOSSARY-FORMAT.md": "21dcc40cdec8e151a829b98ab1517c1867bc444e3665134a98c6983411996801",
+    ".agents/skills/domain-modeling/SKILL.md": "7b925d7b1e341a2eeae33ad68a8a8c0ab889a38ddd22a7598e4c240e5a7556a3",
+    ".agents/skills/domain-modeling/agents/openai.yaml": "f6bf2aa996c6e6f53fdd0708e18a0d16a56aed8322cca59fedbe3c0d2c75f06b",
+    ".claude/licenses/mattpocock-skills.LICENSE": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5"
+  },
+  "adaptations": {
+    ".agents/skills/to-spec/SKILL.md": "Ativação automática autorizada: metadados dos clientes e orientação local, sem permitir publicação externa.",
+    ".agents/skills/to-spec/agents/openai.yaml": "Ativação automática autorizada: metadados dos clientes e orientação local, sem permitir publicação externa.",
+    ".agents/skills/grill-with-docs/SKILL.md": "Ativação automática autorizada: metadados dos clientes e orientação local, sem permitir publicação externa.",
+    ".agents/skills/grill-with-docs/agents/openai.yaml": "Ativação automática autorizada: metadados dos clientes e orientação local, sem permitir publicação externa."
+  }
+}

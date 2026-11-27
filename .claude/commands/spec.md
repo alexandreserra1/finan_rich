@@ -1,17 +1,15 @@
 ---
-description: Start spec-driven development — write a structured specification before writing code
+description: Definir uma mudança com decisões claras e especificação no OpenSpec existente
 ---
 
-Invoke the spec-driven-development skill.
+Leia AGENTS.md, a skill rich-engineering e a configuração em docs/agents/.
+Reaproveite spec-driven-development e a mudança OpenSpec relevante.
 
-Begin by understanding what the user wants to build. Ask clarifying questions about:
-1. The objective and target users
-2. Core features and acceptance criteria
-3. Tech stack preferences and constraints
-4. Known boundaries (what to always do, ask first about, and never do)
+- Decisões abertas: use grill-with-docs, com grilling e domain-modeling carregadas.
+- Conversa já decidida e trabalho extenso: use to-spec, sem repetir a entrevista.
+- Mudança pequena: use o contrato e os testes existentes, sem burocracia adicional.
 
-Then generate a structured spec covering all six core areas: objective, commands, project structure, code style, testing strategy, and boundaries.
-
-If the request bundles several independently testable capabilities, first propose a capability map (module ids, dependency direction, build order) per the skill's Phase 0 and get it approved, then spec each module in dependency order.
-
-Save the spec as SPEC.md in the project root and confirm with the user before proceeding.
+As duas skills do Matt são carregadas desde o início e usadas automaticamente conforme
+o contexto; não exigem comando manual. Não invente uma entrevista ao abrir uma sessão.
+Depois da escolha, siga os pontos de teste e limites confirmados pela pessoa. Preserve o
+OpenSpec como fonte única, sem criar SPEC.md paralelo nem publicar issues automaticamente.
