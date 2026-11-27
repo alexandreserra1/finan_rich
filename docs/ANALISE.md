@@ -21,13 +21,16 @@ Tela **Análise** (`/analise`, link no Painel e no menu do computador): responde
   pagamento de dívida (categoria "Pagamento de dívidas"); o resto é variável. Investimentos
   não contam como gasto.
 - **Ritmo**: gasto variável acumulado por dia neste mês e no mês passado. Projeção do mês =
-  variável até hoje ÷ dias corridos × dias do mês + fixos do mês (os que já caíram e os que
-  ainda vão cair) + o que está agendado para depois de hoje (parcelas). Nos primeiros 6 dias,
-  poucos dias não dizem o ritmo: o resto do mês segue a média dos 3 meses anteriores, e a
-  sugestão de "ritmo" só aparece a partir do dia 7.
+  variável até hoje + o que os meses anteriores (até 3, só os que têm lançamentos) gastaram,
+  em média, depois deste dia + o que está agendado para depois de hoje (parcelas) + fixos do
+  mês (os que já caíram, os recorrentes que ainda vão cair e as parcelas mínimas de dívidas
+  que faltam pagar, como no Plano do mês). Multiplicar o gasto pelo ritmo repetiria a compra
+  do mês feita cedo (o mercado do dia 8); só sem histórico a projeção segue o ritmo de até
+  hoje (variável ÷ dias corridos × dias do mês).
 - **Pode gastar por dia**: renda do mês (ou a média dos 3 meses anteriores, se ainda não
-  entrou) − investimento planejado (percentual da divisão) − gastos do mês − recorrentes que
-  ainda vão cair, dividido pelos dias que faltam (contando hoje). Nunca negativo.
+  entrou) − investimento planejado (percentual da divisão) − gastos do mês − recorrentes e
+  parcelas mínimas que ainda vão cair, dividido pelos dias que faltam (contando hoje). Nunca
+  negativo.
 - **Onde foi**: por lugar (iFood, Uber… reconhecido pela descrição, como no consultor) e por
   categoria, com a fatia de cada um e a comparação com a média de 3 meses. O nome do lugar é a
   descrição inteira quando ela vem sempre igual ("Pão de Açúcar"), o que vem antes do "*" no
@@ -38,7 +41,8 @@ Tela **Análise** (`/analise`, link no Painel e no menu do computador): responde
   - lugar com 8 compras ou mais em 30 dias e tíquete médio até R$ 60: economia = metade;
   - assinaturas: soma por mês e por ano, para a pessoa revisar;
   - "Desejos" acima do planejado na divisão do salário: economia = o que passou;
-  - ritmo 10% acima do mês passado: quanto a projeção passa do mês passado.
+  - ritmo: gasto variável até hoje 10% acima do mês passado até o mesmo dia, a partir do
+    dia 7 (fixos não são ritmo): economia = a diferença até hoje.
 - **Maiores gastos do mês**: os 5 maiores lançamentos de saída.
 
 O consultor também recebe o resumo da análise (ritmo, projeção e sugestões), para responder

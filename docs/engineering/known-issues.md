@@ -225,3 +225,19 @@ Não tinha relação com o código; rodar de novo o job passou no #45.
   429, basta rodar de novo.
 - Verificação: no CI do PR, o passo do Java restaura ou grava o cache do Gradle; a rodada
   seguinte baixa só o que mudou.
+
+## ENG-013 — Números do app que a revisão do corpus da IA achou errados
+
+Achado em 26/11/2026, na terceira revisão do corpus (três revisores independentes,
+`.artifacts/ai-lab/corpus-review-a3q0ph26/`, fora do git). Mudança OpenSpec:
+`openspec/changes/advisor-review-fixes/`.
+- Ritmo do mês. Observado: "Gastando mais rápido que no mês passado ... R$ 206,32 a mais" com
+  o mercado comprado no dia 8 nos dois meses e só R$ 10,00 a mais até o dia 22. Causa
+  confirmada: a projeção multiplicava o gasto variável pelos dias do mês, e o aviso comparava a
+  projeção, com fixos, com o total do mês passado. Correção: o resto do mês segue o que os meses
+  anteriores gastaram depois deste dia (sem histórico, o ritmo de até hoje), e o aviso compara só
+  o gasto variável até o mesmo dia. As parcelas mínimas que faltam pagar entram na projeção e
+  saem do que ainda cabe no mês, como no Plano do mês. Teste: `TestInsightsMonthlyPurchasesAreNotPace`
+  e `TestInsightsPendingDebtMinimum` falharam antes da correção.
+- Risco restante: uma compra do mês feita em dia diferente do mês passado (dia 8 agora, dia 25
+  antes) ainda pode acusar ritmo até o dia em que a do mês passado caiu.

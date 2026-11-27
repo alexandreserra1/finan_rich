@@ -18,7 +18,7 @@ function paceChart(v, mode) {
   const ref = mode === "media" ? v.avg3Pace : v.lastPace;
   const refName = mode === "media" ? "Média de 3 meses" : "Mês passado";
   const days = Math.max(v.daysInMonth, ref.length);
-  const projected = v.day ? Math.round((v.variableCents * v.daysInMonth) / v.day) : 0;
+  const projected = v.projectedVariableCents;
   const span = Math.max(1, v.daysInMonth - v.day);
   const proj = Array.from({ length: days }, (_, i) => (i + 1 < v.day || i + 1 > v.daysInMonth ? null
     : Math.round(v.variableCents + ((projected - v.variableCents) * (i + 1 - v.day)) / span)));
@@ -129,7 +129,7 @@ export function render({ ledger, params }) {
     </section>
 
     <section class="panel">
-      <div class="panel-head"><h2>Como o mês pode terminar?</h2><span class="faint small">só gastos variáveis; a projeção segue o ritmo de até hoje</span></div>
+      <div class="panel-head"><h2>Como o mês pode terminar?</h2><span class="faint small">só gastos variáveis; no resto do mês, a projeção segue os meses anteriores</span></div>
       ${paceChart(v, mode)}
     </section>
 
@@ -139,7 +139,7 @@ export function render({ ledger, params }) {
         ${v.savings.length ? html`<ul class="savings">
           ${v.savings.map((s) => html`<li class="saving ${s.kind}">
             <div class="saving-top"><strong>${s.title}</strong>${!s.monthlyCents ? "" : s.kind === "ritmo"
-              ? html`<span class="goal-chip neg">+${m(s.monthlyCents)} no mês</span>`
+              ? html`<span class="goal-chip neg">+${m(s.monthlyCents)} até hoje</span>`
               : html`<span class="goal-chip">até ${m(s.monthlyCents)}/mês</span>`}</div>
             <p class="small muted">${s.text}</p>
           </li>`)}

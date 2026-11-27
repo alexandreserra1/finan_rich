@@ -234,12 +234,12 @@ func Snapshot(f Facts) string {
 	if in := f.Insights; in.Day > 0 {
 		fmt.Fprintf(&b, "\n## Ritmo do mês (dia %d de %d; os mesmos números da tela Análise)\n", in.Day, in.DaysInMonth)
 		fmt.Fprintf(&b, "- Gastos variáveis até hoje: %s (no mês passado, até o mesmo dia: %s)\n", brl(in.VariableCents), brl(in.LastMonthSameDayCents))
-		fmt.Fprintf(&b, "- Projeção do mês no ritmo atual: %s, com %s de contas fixas (mês passado: %s; média de 3 meses: %s)\n",
+		fmt.Fprintf(&b, "- Projeção do mês: %s, com %s de contas fixas e parcelas; o resto do mês segue os meses anteriores (mês passado: %s; média dos meses anteriores: %s)\n",
 			brl(in.ProjectedCents), brl(in.FixedCents), brl(in.LastMonthCents), brl(in.Avg3Cents))
 		if in.FreeCents >= 0 {
-			fmt.Fprintf(&b, "- Pode gastar %s por dia até o fim do mês (sobram %s depois do investimento planejado e das contas fixas)\n", brl(in.PerDayCents), brl(in.FreeCents))
+			fmt.Fprintf(&b, "- Pode gastar %s por dia até o fim do mês (sobram %s depois do investimento planejado, das contas fixas e das parcelas)\n", brl(in.PerDayCents), brl(in.FreeCents))
 		} else {
-			fmt.Fprintf(&b, "- O mês já passou %s do que cabe na renda (depois do investimento planejado e das contas fixas)\n", brl(-in.FreeCents))
+			fmt.Fprintf(&b, "- O mês já passou %s do que cabe na renda (depois do investimento planejado, das contas fixas e das parcelas)\n", brl(-in.FreeCents))
 		}
 		for _, s := range in.Savings {
 			fmt.Fprintf(&b, "- Onde economizar: %s — %s\n", s.Title, s.Text)

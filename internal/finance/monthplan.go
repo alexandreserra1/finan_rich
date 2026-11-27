@@ -28,18 +28,13 @@ func PlanMonth(sum Summary, debts DebtPlan, pendingFixedCents int64) MonthPlan {
 			p.DebtPaidCents = c.SpentCents
 		}
 	}
-	var minimums int64
 	for i := range debts.Debts {
 		d := &debts.Debts[i]
-		if d.BalanceCents <= 0 {
-			continue
-		}
-		minimums += min(d.MinPaymentCents, d.BalanceCents+d.MonthlyInterestCents)
-		if p.Target == nil || d.MonthlyRateBP > p.Target.MonthlyRateBP {
+		if d.BalanceCents > 0 && (p.Target == nil || d.MonthlyRateBP > p.Target.MonthlyRateBP) {
 			p.Target = d
 		}
 	}
-	p.PendingMinCents = max(minimums-p.DebtPaidCents, 0)
+	p.PendingMinCents = pendingMinimums(debts, p.DebtPaidCents)
 	p.FreeCents = p.SurplusCents - p.PendingFixedCents - p.PendingMinCents
 	if p.Target != nil && p.FreeCents > 0 {
 		p.TargetBudgetCents = p.FreeCents
@@ -50,4 +45,16 @@ func PlanMonth(sum Summary, debts DebtPlan, pendingFixedCents int64) MonthPlan {
 		p.TargetMonths, p.TargetInterest, p.TargetPayable = Payoff(p.Target.BalanceCents, p.Target.MonthlyRateBP, p.TargetPaymentCents)
 	}
 	return p
+}
+
+// pendingMinimums: parcelas mínimas que ainda faltam no mês, cada uma limitada ao
+// saldo com os juros do mês, menos o que já foi lançado em "Pagamento de dívidas".
+func pendingMinimums(debts DebtPlan, paidCents int64) int64 {
+	var minimums int64
+	for _, d := range debts.Debts {
+		if d.BalanceCents > 0 {
+			minimums += min(d.MinPaymentCents, d.BalanceCents+d.MonthlyInterestCents)
+		}
+	}
+	return max(minimums-paidCents, 0)
 }

@@ -174,7 +174,8 @@ func (t *Tools) findings() string {
 	in := finance.Insights(t.ledger, t.today)
 	brl := money.Format
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s, até o dia %d: gastos variáveis %s; o mês deve fechar em %s (mês passado: %s).\n", in.Label, in.Day, brl(in.VariableCents), brl(in.ProjectedCents), brl(in.LastMonthCents))
+	fmt.Fprintf(&b, "%s, até o dia %d: gastos variáveis %s (mês passado até o mesmo dia: %s); projeção do mês com as contas fixas: %s (mês passado: %s).\n",
+		in.Label, in.Day, brl(in.VariableCents), brl(in.LastMonthSameDayCents), brl(in.ProjectedCents), brl(in.LastMonthCents))
 	var above []string
 	for _, c := range in.Categories {
 		if c.Avg3Cents > 0 && c.DiffPct >= 25 {
