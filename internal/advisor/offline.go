@@ -119,7 +119,11 @@ func Offline(q Question) string {
 	case "otavio":
 		switch otavioTopic(q.Text) {
 		case "dividas":
-			plan := "**Plano das dívidas**\n\n" + bullets(prefetch(id, t, q.Text))
+			sim := prefetch(id, t, q.Text)
+			if sim == "" { // cadastro ou pagamento já feito: o plano sem ler o valor como "a mais por mês"
+				sim = t.simulateDebts("", "")
+			}
+			plan := "**Plano das dívidas**\n\n" + bullets(sim)
 			if strings.Contains(fold(q.Text), "paguei") { // o pagamento já aconteceu: falta registrar
 				return "Para baixar o saldo, use \"Registrar pagamento\" no cartão da dívida, na tela Dívidas.\n\n" + plan
 			}
@@ -145,6 +149,9 @@ func Offline(q Question) string {
 	return overviewOffline(q)
 }
 
+// payRe: pagar, pagarei, paguei... como palavra; "apagar" não é pagamento.
+var payRe = regexp.MustCompile(`(^|[^a-z])pag(ar|uei)`)
+
 // otavioTopic: do que a pergunta ao Otávio trata ("" é o mês como um todo).
 func otavioTopic(text string) string {
 	f := fold(text)
@@ -153,7 +160,7 @@ func otavioTopic(text string) string {
 			return "vencimentos"
 		}
 	}
-	if finance.Route(text) == "otavio" || strings.Contains(f, "pagar") || strings.Contains(f, "paguei") || strings.Contains(f, "a mais") {
+	if finance.Route(text) == "otavio" || payRe.MatchString(f) || strings.Contains(f, "a mais") {
 		return "dividas"
 	}
 	return ""

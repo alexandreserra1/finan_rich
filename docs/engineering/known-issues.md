@@ -254,5 +254,13 @@ Achado em 26/11/2026, na terceira revisão do corpus (três revisores independen
   pelo novo aviso `debt-late` (#59). As contas fixas não entram: o app as lança sozinho no dia.
 - Textos que a IA copia: "1 lançamentos", "1 compra(s)", "1 meses", datas `2026-09-02` e, no #52,
   uma ressalva longa como primeiro item da resposta sem IA "Plano das dívidas" (#57).
+- Contas prontas (quarta revisão do corpus, 27/11/2026, `.artifacts/ai-lab/corpus-review-v4v2htop/`).
+  Observado: "Confira meus gastos em 2026-10" simulava "R$ 2.026,00 a mais"; "crie a meta Passeio 1 de
+  R$ 2500" virava "R$ 1,00 por mês ... 6000 aportes"; "cadastre o contrato Oficina 1" simulava "R$ 1,00 a
+  mais"; "apagar" caía no plano das dívidas por conter "pagar". Causa confirmada: `questionMoney` lia
+  data e número de nome como valor, `otavioTopic` procurava "pagar" dentro de qualquer palavra e a conta
+  pronta simulava valor a mais em pedido de cadastro. Correção: data e número solto de nome não são
+  dinheiro quando há valor com "R$"; pagar só como palavra; pedido de ação (`wantsAction`) não vira
+  simulação. Testes: `TestQuestionMoney`, `TestPrefetch` e `TestOtavioPaymentIsNotExtra` falharam antes.
 - Risco restante: uma compra do mês feita em dia diferente do mês passado (dia 8 agora, dia 25
   antes) ainda pode acusar ritmo até o dia em que a do mês passado caiu.
