@@ -290,7 +290,8 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 			c.DiffPct = int((now - a) * 100 / a)
 		}
 		v.Categories = append(v.Categories, c)
-		if a > 0 && now*100 >= a*(100+overAvgPct) && now-a >= overAvgMinCents {
+		// Pagar mais dívida não é gasto a cortar.
+		if c.Name != domain.DebtPaymentCategory && a > 0 && now*100 >= a*(100+overAvgPct) && now-a >= overAvgMinCents {
 			v.Savings = append(v.Savings, Saving{Kind: "categoria", Title: c.Name, MonthlyCents: now - a, Category: c.Name, Bucket: c.Bucket,
 				Text: fmt.Sprintf("%s este mês; a média dos últimos meses é %s. Voltar à média economiza %s.", money.Format(now), money.Format(a), money.Format(now-a))})
 		}
@@ -338,15 +339,23 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 	}
 
 	v.Subscriptions = subscriptions(l, m, cats, placeCats, byPlace, placeCount, placeNames)
+	// Para revisar, só o que não é necessidade: aluguel e contas da casa não são corte.
 	var subsMonth int64
+	subsCount := 0
 	for _, s := range v.Subscriptions {
-		subsMonth += s.MonthlyCents
+		if s.Bucket != domain.BucketNecessidades {
+			subsMonth += s.MonthlyCents
+			subsCount++
+		}
 	}
 	slices.SortStableFunc(v.Savings, func(a, b Saving) int { return int(b.MonthlyCents - a.MonthlyCents) })
-	if len(v.Subscriptions) > 0 {
-		v.Savings = append(v.Savings, Saving{Kind: "assinaturas", Title: "Assinaturas e contas fixas",
-			Text: fmt.Sprintf("%d cobranças todo mês somam %s (%s por ano). Vale revisar as que você não usa mais.",
-				len(v.Subscriptions), money.Format(subsMonth), money.Format(subsMonth*12))})
+	if subsCount > 0 {
+		count := fmt.Sprintf("%d assinaturas somam", subsCount)
+		if subsCount == 1 {
+			count = "1 assinatura soma"
+		}
+		v.Savings = append(v.Savings, Saving{Kind: "assinaturas", Title: "Assinaturas",
+			Text: fmt.Sprintf("%s %s por mês (%s por ano). Vale revisar se ainda usa.", count, money.Format(subsMonth), money.Format(subsMonth*12))})
 	}
 
 	// Maiores gastos do mês.
@@ -357,7 +366,8 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 
 // subscriptions junta as recorrências cadastradas com as cobranças que se
 // repetem sozinhas: o mesmo lugar em pelo menos 3 dos últimos 4 meses, no
-// máximo 2 vezes por mês e com valor parecido (o Rocket Money faz assim).
+// máximo 2 vezes por mês e com valor parecido (o Rocket Money faz assim). Lugar
+// de necessidade (o mercado do mês, a farmácia) não é assinatura.
 func subscriptions(l domain.Ledger, m domain.Month, cats map[string]domain.Category, placeCats map[string]string,
 	byPlace map[string]map[string]int64, count map[string]map[string]int, names map[string]map[string]int) []Subscription {
 	out := []Subscription{}
@@ -372,7 +382,7 @@ func subscriptions(l domain.Ledger, m domain.Month, cats map[string]domain.Categ
 	}
 	window := []string{m.Key(), m.Prev().Key(), m.Prev().Prev().Key(), m.Prev().Prev().Prev().Key()}
 	for key, byMonth := range byPlace {
-		if key == "" || covered[key] {
+		if key == "" || covered[key] || cats[placeCats[key]].Bucket == domain.BucketNecessidades {
 			continue
 		}
 		var amounts []int64
