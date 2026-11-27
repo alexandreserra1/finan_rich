@@ -62,7 +62,7 @@ func TestSimulateGoalTool(t *testing.T) {
 	for args, want := range map[string]string{
 		`{"meta":"viagem"}`:                   "guarde R$ 1.000,00 por mês durante 6 meses",
 		`{"meta":"viagem","prazo":"2026-12"}`: "Para chegar até dezembro de 2026: guarde R$ 2.000,00 por mês durante 3 meses",
-		`{"meta":"viagem","valor_mes":"500"}`: "Guardando R$ 500,00 por mês, chega em 12 meses (setembro de 2027), 6 meses depois do prazo",
+		`{"meta":"viagem","valor_mes":"500"}`: "Guardando R$ 500,00 por mês a partir deste mês, chega em setembro de 2027 (12 aportes), 6 meses depois do prazo",
 		`{"meta":"viagem","prazo":"2026-01"}`: "esse prazo já passou",
 		`{"meta":"notebook"}`:                 "já foi atingida",
 		`{"meta":"casa"}`:                     "não deu",
@@ -152,7 +152,7 @@ func TestPrefetch(t *testing.T) {
 	for _, c := range []struct{ agent, q, want string }{
 		{"otavio", "e se eu pagar R$ 200 a mais?", "Com R$ 200,00 a mais: livre em 4 meses"},
 		{"otavio", "o que vence esta semana?", "Próximos 7 dias"},
-		{"tito", "se eu guardar 500 por mês, quando chego na viagem?", "Guardando R$ 500,00 por mês, chega em 12 meses"},
+		{"tito", "se eu guardar 500 por mês, quando chego na viagem?", "Guardando R$ 500,00 por mês a partir deste mês, chega em setembro de 2027 (12 aportes)"},
 		{"lia", "o que mudou?", "setembro de 2026 → outubro de 2026"},
 		// A IA às vezes dizia "nenhum lançamento de Uber" sem buscar: o total vai pronto.
 		{"otavio", "quanto gastei com uber esse mês?", "Gastos com Uber: R$ 20,00 em outubro de 2026 (1 lançamento). Desde o começo: R$ 45,00 (2 lançamentos)."},

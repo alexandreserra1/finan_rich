@@ -15,7 +15,7 @@ func BuildFacts(l domain.Ledger, today time.Time) Facts {
 	m := domain.NewMonth(today.Year(), today.Month())
 	sum := finance.Summarize(m, l)
 	debts := finance.PlanDebts(l.ActiveDebts())
-	plan := finance.PlanMonth(sum, debts)
+	plan := finance.PlanMonth(sum, debts, finance.PendingRecurringExpenses(l, m))
 	var recent []finance.Totals
 	all := finance.RecentTotals(l, m, 6)
 	for _, t := range all {
@@ -295,7 +295,7 @@ func clip(s string, n int) string {
 
 // writeMonthPlan descreve para onde vai o dinheiro do mês, com as contas feitas.
 func writeMonthPlan(b *strings.Builder, p finance.MonthPlan, noIncome bool) {
-	if p.PendingMinCents == 0 && p.Target == nil {
+	if p.PendingMinCents == 0 && p.PendingFixedCents == 0 && p.Target == nil {
 		return
 	}
 	brl := money.Format
@@ -304,20 +304,25 @@ func writeMonthPlan(b *strings.Builder, p finance.MonthPlan, noIncome bool) {
 		fmt.Fprintf(b, "- Pagamentos de dívidas já lançados: %s\n", brl(p.DebtPaidCents))
 	}
 	fmt.Fprintf(b, "- Parcelas mínimas que ainda faltam pagar este mês (não estão nas saídas): %s\n", brl(p.PendingMinCents))
+	fmt.Fprintf(b, "- Contas fixas reservadas, ainda não lançadas: %s\n", brl(p.PendingFixedCents))
+	if p.DebtPaidCents > 0 && p.PendingMinCents > 0 {
+		b.WriteString("- Os pagamentos lançados estão agregados por categoria: confirme os mínimos de cada dívida. O orçamento extra mantém toda a reserva pendente, sem atribuir o que já foi pago a uma dívida específica\n")
+	}
 	if noIncome {
 		b.WriteString("- A renda deste mês ainda não entrou: a sobra livre do mês ainda não dá para calcular\n")
 		return
 	}
-	fmt.Fprintf(b, "- Sobra livre depois de pagar as parcelas mínimas: %s - %s = %s\n",
-		brl(p.SurplusCents), brl(p.PendingMinCents), brl(p.FreeCents))
+	fmt.Fprintf(b, "- Sobra livre depois dos fixos e das parcelas mínimas: %s - %s - %s = %s\n",
+		brl(p.SurplusCents), brl(p.PendingFixedCents), brl(p.PendingMinCents), brl(p.FreeCents))
 	switch {
 	case p.FreeCents <= 0:
-		fmt.Fprintf(b, "- Não sobra nada depois das parcelas mínimas: faltam %s, então é preciso cortar gastos\n", brl(-p.FreeCents))
+		fmt.Fprintf(b, "- Não sobra dinheiro extra após os compromissos: diferença de %s. Confira o orçamento antes de assumir outro pagamento\n", brl(-p.FreeCents))
 	case p.Target != nil && p.TargetPayable:
-		fmt.Fprintf(b, "- Sugestão (avalanche): mandar toda a sobra livre para %s, pagando %s + %s = %s por mês; assim ela é quitada em %d meses, com %s de juros no total\n",
-			p.Target.Name, brl(p.Target.MinPaymentCents), brl(p.FreeCents), brl(p.TargetPaymentCents), p.TargetMonths, brl(p.TargetInterest))
+		fmt.Fprintf(b, "- Orçamento máximo para a prioridade %s: %s. Na simulação genérica, pagamento estimado de até %s por mês; estimativa de %s, com %s de juros no total\n",
+			p.Target.Name, brl(p.TargetBudgetCents), brl(p.TargetPaymentCents), finance.Meses(p.TargetMonths), brl(p.TargetInterest))
+		b.WriteString("- Essa estimativa não é o valor de quitação: confirme saldo atualizado, encargos e demais compromissos antes de pagar. Não mande toda a sobra se o devido for menor\n")
 	case p.Target != nil:
-		fmt.Fprintf(b, "- Mesmo mandando toda a sobra livre para %s (%s por mês), o pagamento não cobre os juros: é preciso cortar gastos ou renegociar\n",
+		fmt.Fprintf(b, "- Com o orçamento estimado para %s (%s por mês), não foi encontrada quitação dentro das hipóteses e limites da simulação. Confira o contrato e as opções de renegociação\n",
 			p.Target.Name, brl(p.TargetPaymentCents))
 	}
 }

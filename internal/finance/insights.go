@@ -135,11 +135,9 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 	placeCount := map[string]map[string]int{}
 	placeNames := map[string]map[string]int{}
 	var investedNow, futureCents int64
-	exists := map[string]bool{}
 	var monthSpends []domain.Transaction
 	byDay3 := map[string][]int64{} // mês anterior → gasto variável por dia (dias deste mês)
 	for _, t := range txs {
-		exists[t.ID] = true
 		mk := t.Date[:7]
 		if t.Kind == domain.KindEntrada {
 			incomeByMonth[mk] += t.AmountCents
@@ -195,9 +193,8 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 
 	// Recorrentes deste mês que ainda não viraram lançamento.
 	var dueCents int64
-	for _, r := range l.ActiveRecurring() {
-		if r.Kind != domain.KindSaida || r.Paused || r.Start > m.Key() || r.End != "" && r.End < m.Key() ||
-			exists[domain.RecurringTxID(r.ID, m)] || cats[r.CategoryID].Bucket == domain.BucketInvestimentos {
+	for _, r := range pendingRecurring(l, m) {
+		if r.Kind != domain.KindSaida || cats[r.CategoryID].Bucket == domain.BucketInvestimentos {
 			continue
 		}
 		dueCents += r.AmountCents
