@@ -31,7 +31,7 @@ var Team = []Agent{
 // dívidas e do que chega do banco; Lia do orçamento, da divisão do salário e do
 // gasto fora do padrão; Tito das metas.
 var agentKinds = map[string]string{
-	"debt-due": "otavio", "debt-growing": "otavio", "bank-new": "otavio",
+	"debt-due": "otavio", "debt-late": "otavio", "debt-growing": "otavio", "bank-new": "otavio",
 	"bucket-over": "lia", "budget-near": "lia", "budget-over": "lia", "unusual": "lia",
 	"goal-late": "tito", "goal-done": "tito",
 }
