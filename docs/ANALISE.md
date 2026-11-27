@@ -11,7 +11,7 @@ Tela **Análise** (`/analise`, link no Painel e no menu do computador): responde
 | Ritmo do mês: linha do gasto acumulado deste mês contra o do mês passado, com projeção de como o mês fecha | Copilot Money (gráfico do Dashboard; tira as contas recorrentes para não dar degrau) | Gráfico "Ritmo do mês" só com gastos variáveis; os fixos (recorrentes) entram na projeção |
 | "Quanto posso gastar hoje" | PocketGuard ("In My Pocket" / "safe to spend") | "Pode gastar R$ X por dia até o fim do mês" |
 | Comparar cada categoria com a própria média | Monarch Money, Copilot (categorias contra o mês passado) | Categoria contra a média dos 3 meses anteriores |
-| Assinaturas e quanto custam por ano | Rocket Money | Lista de assinaturas (recorrentes cadastrados + cobranças que se repetem) com custo anual |
+| Assinaturas e quanto custam por ano | Rocket Money | Lista de assinaturas (recorrentes cadastrados + cobranças que se repetem, menos as de necessidade, como o mercado do mês) com custo anual |
 | Gastos pequenos e frequentes | "Latte factor" (David Bach), popular nos apps de orçamento | Lugar com muitas compras pequenas em 30 dias |
 | Divisão 50/30/20 | Elizabeth Warren, *All Your Worth* | Já existe no Painel (Divisão do salário); a análise avisa quando "Desejos" estoura |
 
@@ -37,9 +37,11 @@ Tela **Análise** (`/analise`, link no Painel e no menu do computador): responde
   extrato do cartão ("UBER *TRIP" → "UBER") e só a primeira palavra quando o mesmo lugar vem
   escrito de jeitos diferentes; sem o "(2/3)" das parcelas. Pagamento de dívida não é lugar.
 - **Onde economizar** (cada item com a economia estimada por mês, maior primeiro):
-  - categoria acima da média de 3 meses (pelo menos 25% e R$ 50 a mais): economia = diferença;
+  - categoria acima da média de 3 meses (pelo menos 25% e R$ 50 a mais): economia = diferença.
+    "Pagamento de dívidas" fica de fora: pagar mais dívida não é gasto a cortar;
   - lugar com 8 compras ou mais em 30 dias e tíquete médio até R$ 60: economia = metade;
-  - assinaturas: soma por mês e por ano, para a pessoa revisar;
+  - assinaturas: soma por mês e por ano das que não são necessidade (aluguel e contas da casa
+    não são corte), para a pessoa revisar;
   - "Desejos" acima do planejado na divisão do salário: economia = o que passou;
   - ritmo: gasto variável até hoje 10% acima do mês passado até o mesmo dia, a partir do
     dia 7 (fixos não são ritmo): economia = a diferença até hoje.

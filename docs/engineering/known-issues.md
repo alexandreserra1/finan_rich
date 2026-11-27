@@ -239,5 +239,11 @@ Achado em 26/11/2026, na terceira revisão do corpus (três revisores independen
   o gasto variável até o mesmo dia. As parcelas mínimas que faltam pagar entram na projeção e
   saem do que ainda cabe no mês, como no Plano do mês. Teste: `TestInsightsMonthlyPurchasesAreNotPace`
   e `TestInsightsPendingDebtMinimum` falharam antes da correção.
+- Onde economizar. Observado: "3 cobranças todo mês somam R$ 559,90 ... Vale revisar as que você
+  não usa mais", com o mercado do mês e a Internet na conta, e "Pagamento de dívidas ... Voltar à
+  média economiza R$ 500,00" quando a pessoa pagou a mais para quitar antes. Causa confirmada: a
+  detecção de cobranças repetidas aceitava lugar de necessidade, a sugestão somava todas as
+  cobranças e a sugestão por categoria não excluía o pagamento de dívida. Teste:
+  `TestInsightsSavingsSkipCommitments` falhou antes da correção.
 - Risco restante: uma compra do mês feita em dia diferente do mês passado (dia 8 agora, dia 25
   antes) ainda pode acusar ritmo até o dia em que a do mês passado caiu.

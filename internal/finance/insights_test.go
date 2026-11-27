@@ -263,3 +263,51 @@ func TestInsightsEarlyMonth(t *testing.T) {
 		t.Errorf("estabelecimentos = %+v", v.Places)
 	}
 }
+
+// Onde economizar não manda cortar compromissos: o mercado do mês não é assinatura,
+// a conta da casa não entra em "revisar as que você não usa mais" e pagar mais dívida
+// não vira "voltar à média" (achados da revisão do corpus, 26/11/2026).
+func TestInsightsSavingsSkipCommitments(t *testing.T) {
+	m := func(id string) domain.Meta { return domain.Meta{ID: id, UpdatedAt: 1} }
+	l := domain.Ledger{
+		Categories: []domain.Category{
+			{Meta: m("sal"), Name: "Salário", Bucket: domain.BucketRenda},
+			{Meta: m("mer"), Name: "Mercado", Bucket: domain.BucketNecessidades},
+			{Meta: m("mor"), Name: "Moradia", Bucket: domain.BucketNecessidades},
+			{Meta: m("ass"), Name: "Assinaturas", Bucket: domain.BucketDesejos},
+			{Meta: m("pd"), Name: domain.DebtPaymentCategory, Bucket: domain.BucketNecessidades},
+		},
+		Recurring: []domain.Recurring{{Meta: m("net"), Kind: domain.KindSaida, Description: "Internet Exemplo", AmountCents: 9000, CategoryID: "mor", Day: 5, Start: "2026-07"}},
+	}
+	tx := func(id, desc string, cents int64, cat, date string) {
+		l.Transactions = append(l.Transactions, domain.Transaction{Meta: m(id), Kind: domain.KindSaida, Description: desc, AmountCents: cents, CategoryID: cat, Date: date})
+	}
+	for _, mk := range []string{"2026-07", "2026-08", "2026-09", "2026-10"} {
+		l.Transactions = append(l.Transactions, domain.Transaction{Meta: m("sal-" + mk), Kind: domain.KindEntrada, Description: "Salário", AmountCents: 385000, CategoryID: "sal", Date: mk + "-05"})
+		tx(domain.RecurringTxID("net", domain.ParseMonth(mk)), "Internet Exemplo", 9000, "mor", mk+"-05")
+		tx("mer-"+mk, "Mercado Exemplo", 44000, "mer", mk+"-08")
+		tx("ass-"+mk, "Assinatura Exemplo", 2990, "ass", mk+"-09")
+		pay := int64(30000)
+		if mk == "2026-10" {
+			pay = 80000 // pagou R$ 500 a mais para quitar antes
+		}
+		tx("pag-"+mk, "Pagamento: Empréstimo Exemplo", pay, "pd", mk+"-10")
+	}
+
+	v := Insights(l, time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC))
+	var subs []string
+	for _, s := range v.Subscriptions {
+		subs = append(subs, s.Name)
+	}
+	if fmt.Sprint(subs) != "[Internet Exemplo Assinatura Exemplo]" {
+		t.Errorf("assinaturas = %v: o mercado do mês não é assinatura", subs)
+	}
+	for _, s := range v.Savings {
+		if s.Category == domain.DebtPaymentCategory {
+			t.Errorf("pagar mais dívida não é gasto a cortar: %+v", s)
+		}
+		if s.Kind == "assinaturas" && (s.Title != "Assinaturas" || s.Text != "1 assinatura soma R$ 29,90 por mês (R$ 358,80 por ano). Vale revisar se ainda usa.") {
+			t.Errorf("sugestão de assinaturas = %+v: conta da casa não entra", s)
+		}
+	}
+}
