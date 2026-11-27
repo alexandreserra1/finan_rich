@@ -522,6 +522,13 @@ func lancamentos(n int) string {
 	return fmt.Sprintf("%d lançamentos", n)
 }
 
+func compras(n int) string {
+	if n == 1 {
+		return "1 compra"
+	}
+	return fmt.Sprintf("%d compras", n)
+}
+
 var monthNames = []string{"janeiro", "fevereiro", "marco", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"}
 
 // spendingMonth: o mês de que a pergunta de gasto fala ("mês passado", "em setembro",

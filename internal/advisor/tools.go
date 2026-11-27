@@ -246,8 +246,11 @@ func (t *Tools) search(text, category, kind, from, to string) string {
 	}
 	slices.SortFunc(found, func(x, y domain.Transaction) int { return strings.Compare(y.Date, x.Date) })
 	var b strings.Builder
-	fmt.Fprintf(&b, "%d lançamentos (de %s a %s). Saídas: %s. Entradas: %s.\n",
-		len(found), found[len(found)-1].Date, found[0].Date, money.Format(out), money.Format(in))
+	period := "de " + dateBR(found[len(found)-1].Date) + " a " + dateBR(found[0].Date)
+	if found[0].Date == found[len(found)-1].Date {
+		period = "em " + dateBR(found[0].Date)
+	}
+	fmt.Fprintf(&b, "%s (%s). Saídas: %s. Entradas: %s.\n", lancamentos(len(found)), period, money.Format(out), money.Format(in))
 	if len(found) > maxListed {
 		fmt.Fprintf(&b, "Os %d mais recentes:\n", maxListed)
 		found = found[:maxListed]

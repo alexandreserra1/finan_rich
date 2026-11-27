@@ -127,8 +127,8 @@ func Snapshot(f Facts) string {
 		fmt.Fprintf(&b, "- Gasto médio por mês: %s\n- Reserva mínima (3 meses de gastos): %s\n- Reserva ideal (6 meses de gastos): %s\n",
 			brl(e.AvgMonthlyOutCents), brl(e.MinCents), brl(e.IdealCents))
 		if e.MonthsToMin > 0 {
-			fmt.Fprintf(&b, "- Guardando toda a sobra livre (%s/mês, já descontadas as parcelas de dívidas): mínima em %d meses, ideal em %d meses\n",
-				brl(e.MonthlySavingCents), e.MonthsToMin, e.MonthsToIdeal)
+			fmt.Fprintf(&b, "- Guardando toda a sobra livre (%s/mês, já descontadas as parcelas de dívidas): mínima em %s, ideal em %s\n",
+				brl(e.MonthlySavingCents), finance.Meses(e.MonthsToMin), finance.Meses(e.MonthsToIdeal))
 			if f.Debts.TotalCents > 0 {
 				b.WriteString("- Com dívidas de juros altos, o comum é juntar só uma reserva pequena e quitar essas dívidas antes de completar a reserva\n")
 			}
@@ -152,7 +152,7 @@ func Snapshot(f Facts) string {
 				brl(d.BalanceCents), RatePct(d.MonthlyRateBP), brl(d.MonthlyInterestCents), brl(d.MinPaymentCents))
 			if d.Payable {
 				fmt.Fprintf(&b, "; o mínimo cobre os juros e abate %s do saldo por mês", brl(d.MinPaymentCents-d.MonthlyInterestCents))
-				fmt.Fprintf(&b, "; pagando só o mínimo, quita em %d meses e paga %s de juros no total", d.Months, brl(d.InterestCents))
+				fmt.Fprintf(&b, "; pagando só o mínimo, quita em %s e paga %s de juros no total", finance.Meses(d.Months), brl(d.InterestCents))
 			} else if d.MinPaymentCents > 0 {
 				fmt.Fprintf(&b, "; o mínimo NÃO cobre os juros (%s < %s): a dívida cresce todo mês", brl(d.MinPaymentCents), brl(d.MonthlyInterestCents))
 			}
@@ -181,7 +181,7 @@ func Snapshot(f Facts) string {
 				case lv.Ends:
 					b.WriteString(" Com isso nas dívidas, elas passam a ter fim.")
 				case lv.MonthsSooner > 0:
-					fmt.Fprintf(&b, " Pondo nas dívidas: sai %d meses antes e paga %s a menos de juros.", lv.MonthsSooner, brl(lv.InterestSavedCents))
+					fmt.Fprintf(&b, " Pondo nas dívidas: sai %s antes e paga %s a menos de juros.", finance.Meses(lv.MonthsSooner), brl(lv.InterestSavedCents))
 				}
 				b.WriteString("\n")
 			}
@@ -200,7 +200,7 @@ func Snapshot(f Facts) string {
 			case g.Late:
 				fmt.Fprintf(&b, "; prazo (%s) já passou, faltam %s", domain.ParseMonth(g.Deadline).Label(), brl(g.RemainingCents))
 			case g.PerMonthCents > 0:
-				fmt.Fprintf(&b, "; prazo %s; precisa guardar %s por mês nos próximos %d meses", domain.ParseMonth(g.Deadline).Label(), brl(g.PerMonthCents), g.MonthsLeft)
+				fmt.Fprintf(&b, "; prazo %s; precisa guardar %s por mês nos próximos %s", domain.ParseMonth(g.Deadline).Label(), brl(g.PerMonthCents), finance.Meses(g.MonthsLeft))
 			default:
 				fmt.Fprintf(&b, "; sem prazo, faltam %s", brl(g.RemainingCents))
 			}
@@ -226,8 +226,8 @@ func Snapshot(f Facts) string {
 	if len(f.Merchants) > 0 {
 		fmt.Fprintf(&b, "\n## Gastos por estabelecimento (últimos 12 meses, os %d maiores)\n", len(f.Merchants))
 		for _, m := range f.Merchants {
-			fmt.Fprintf(&b, "- %s: %s em %d compra(s) nos últimos 12 meses; %s em %d; %s neste mês; última em %s\n",
-				m.Name, brl(m.Last12Cents), m.Count, brl(m.YearCents), f.Today.Year(), brl(m.MonthCents), m.LastDate[8:10]+"/"+m.LastDate[5:7]+"/"+m.LastDate[:4])
+			fmt.Fprintf(&b, "- %s: %s em %s nos últimos 12 meses; %s em %d; %s neste mês; última em %s\n",
+				m.Name, brl(m.Last12Cents), compras(m.Count), brl(m.YearCents), f.Today.Year(), brl(m.MonthCents), m.LastDate[8:10]+"/"+m.LastDate[5:7]+"/"+m.LastDate[:4])
 		}
 	}
 
