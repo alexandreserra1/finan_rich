@@ -53,3 +53,16 @@ pagamento lançado para a dívida, pedindo para registrar se já foi paga.
 - **WHEN** hoje é dia 22 e não há "Pagamento: <dívida>" lançado neste mês
 - **THEN** "o que vence?" começa pela parcela vencida em 10/10, com o pedido para registrar se já pagou
 - **AND** o sininho mostra um aviso dessa parcela, que some ao limpar
+
+### Requirement: Conta pronta só com valor e assunto da pergunta
+A conta pronta do consultor SHALL ler como dinheiro só valores da pergunta, nunca datas,
+SHALL preferir o valor com "R$", "reais" ou "mil" ao número de um nome e SHALL deixar de
+simular quando a pergunta pede para cadastrar, registrar, corrigir ou apagar algo.
+
+#### Scenario: Data e número de nome
+- **WHEN** a pergunta é "Quero criar a meta Passeio 1 de R$ 2500" ou cita "2026-10"
+- **THEN** o valor lido é R$ 2.500,00, e a data não vira dinheiro
+
+#### Scenario: Pedido de cadastro ou exclusão
+- **WHEN** a pessoa pede para cadastrar uma dívida ou apagar uma compra
+- **THEN** a conta pronta não simula pagamento a mais, e "apagar" não é tratado como pagar

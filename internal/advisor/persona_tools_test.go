@@ -150,6 +150,12 @@ func TestQuestionMoney(t *testing.T) {
 		"o que vence nos próximos 20 dias?":      "",
 		"juros de 14% ao mês":                    "",
 		"oi":                                     "",
+		// Data não é dinheiro, e o valor com "R$" vale mais que o número do nome
+		// (revisão do corpus, 27/11/2026).
+		"Confira meus gastos registrados em 2026-10; não autorizei apagar nada.": "",
+		"a compra de 08/07/2026 veio duplicada":                                  "",
+		"Quero criar a meta Passeio 1 de R$ 2500":                                "2500",
+		"Cadastre o contrato Oficina 1: saldo R$ 1700, parcela R$ 100":           "1700",
 	} {
 		if got := questionMoney(q); got != want {
 			t.Errorf("questionMoney(%q) = %q, quer %q", q, got, want)
@@ -170,6 +176,24 @@ func TestPrefetch(t *testing.T) {
 		if got := prefetch(c.agent, tools, c.q); !strings.Contains(got, c.want) {
 			t.Errorf("%s: sem %q:\n%s", c.agent, c.want, got)
 		}
+	}
+	// Pedido de cadastro não é simulação: nada de "R$ 1.700,00 a mais" nem de aporte de R$ 1 por mês.
+	if got := prefetch("otavio", tools, "Quero cadastrar o contrato novo Oficina 1: saldo R$ 1700, juros 2% ao mês, parcela R$ 100"); got != "" {
+		t.Errorf("cadastro de dívida não pré-calcula simulação: %q", got)
+	}
+	if got := prefetch("tito", tools, "Quero criar a meta Passeio 1 de R$ 2500"); strings.Contains(got, "por mês a partir deste mês") {
+		t.Errorf("criar meta não vira aporte por mês: %q", got)
+	}
+	if got := otavioTopic("Quero apagar a compra Mercearia em 2026-10"); got == "dividas" {
+		t.Errorf("apagar não é pagar: tema %q", got)
+	}
+	for _, q := range []string{"se eu pagar 300 a mais por mês", "quanto pagarei de juros?", "já paguei a parcela"} {
+		if got := otavioTopic(q); got != "dividas" {
+			t.Errorf("otavioTopic(%q) = %q, quer dividas", q, got)
+		}
+	}
+	if got := prefetch("otavio", tools, "e se eu pagar R$ 1 a mais?"); !strings.Contains(got, "Diferença: termina no mesmo mês") || strings.Contains(got, "0 meses") {
+		t.Errorf("valor a mais que não adianta o mês: %q", got)
 	}
 	if got := prefetch("otavio", tools, "oi"); got != "" {
 		t.Errorf("o mês todo não pré-calcula (o retrato já tem os números): %q", got)

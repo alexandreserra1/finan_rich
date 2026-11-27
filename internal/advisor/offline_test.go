@@ -302,3 +302,10 @@ func TestRates(t *testing.T) {
 		t.Error("as instruções não falam das taxas de hoje")
 	}
 }
+
+// O valor pago não é "a mais por mês": o plano vem sem a simulação de R$ 200 a mais.
+func TestOtavioPaymentIsNotExtra(t *testing.T) {
+	if got := Offline(offlineQ("otavio", "Paguei 200 reais no Cartão hoje")); strings.Contains(got, "R$ 200,00 a mais") {
+		t.Errorf("leu o pagamento como valor a mais por mês:\n%s", got)
+	}
+}

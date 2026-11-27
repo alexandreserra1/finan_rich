@@ -105,6 +105,8 @@ func (t *Tools) simulateDebts(extra, order string) string {
 		switch {
 		case plan.OK && !base.OK:
 			b.WriteString("Com o valor a mais, as dívidas passam a ter fim.\n")
+		case plan.OK && base.OK && base.Months == plan.Months:
+			fmt.Fprintf(&b, "Diferença: termina no mesmo mês e paga %s a menos de juros.\n", money.Format(base.InterestCents-plan.InterestCents))
 		case plan.OK && base.OK:
 			fmt.Fprintf(&b, "Diferença: sai %s antes e paga %s a menos de juros.\n", finance.Meses(base.Months-plan.Months), money.Format(base.InterestCents-plan.InterestCents))
 		}
@@ -367,28 +369,45 @@ var moneyRe = regexp.MustCompile(`\d[\d.]*(?:,\d{1,2})?`)
 var thousandsRe = regexp.MustCompile(`^(mil|k|milhao|milhoes)\b`)
 
 // questionMoney devolve o primeiro valor em reais da pergunta ("R$ 500",
-// "400 reais", "1.200,50", "2 mil"); números de dias, meses, anos ou % ficam de fora.
+// "400 reais", "1.200,50", "2 mil"); números de dias, meses, anos, % e datas ficam de
+// fora. Um valor com "R$", "reais" ou "mil" vence o número solto de um nome ("a meta
+// Passeio 1 de R$ 2.500" é 2.500).
 // shortcut: lê só o primeiro valor; com dois valores na pergunta, a IA ainda pode chamar a ferramenta com o outro.
 func questionMoney(q string) string {
-	for _, loc := range moneyRe.FindAllStringIndex(q, -1) {
-		rest := strings.TrimSpace(fold(q[loc[1]:]))
-		if strings.HasPrefix(rest, "%") || strings.HasPrefix(rest, "dia") || strings.HasPrefix(rest, "mes") ||
-			strings.HasPrefix(rest, "ano") || strings.HasPrefix(rest, "x ") || strings.HasPrefix(rest, "vez") {
-			continue
-		}
-		v := strings.TrimRight(q[loc[0]:loc[1]], ".")
-		if m := thousandsRe.FindString(rest); m != "" {
-			if c, err := money.Parse(v); err == nil {
-				c *= 1000
-				if strings.HasPrefix(m, "milh") {
-					c *= 1000
-				}
-				return fmt.Sprintf("%d,%02d", c/100, c%100)
+	locs := moneyRe.FindAllStringIndex(q, -1)
+	for _, explicit := range []bool{true, false} {
+		for _, loc := range locs {
+			rest := strings.TrimSpace(fold(q[loc[1]:]))
+			if datePart(q, loc) || strings.HasPrefix(rest, "%") || strings.HasPrefix(rest, "dia") || strings.HasPrefix(rest, "mes") ||
+				strings.HasPrefix(rest, "ano") || strings.HasPrefix(rest, "x ") || strings.HasPrefix(rest, "vez") {
+				continue
 			}
+			m := thousandsRe.FindString(rest)
+			if explicit && m == "" && !strings.HasSuffix(strings.TrimSpace(q[:loc[0]]), "R$") && !strings.HasPrefix(rest, "rea") {
+				continue
+			}
+			v := strings.TrimRight(q[loc[0]:loc[1]], ".")
+			if m != "" {
+				if c, err := money.Parse(v); err == nil {
+					c *= 1000
+					if strings.HasPrefix(m, "milh") {
+						c *= 1000
+					}
+					return fmt.Sprintf("%d,%02d", c/100, c%100)
+				}
+			}
+			return v
 		}
-		return v
 	}
 	return ""
+}
+
+// datePart diz se o número achado faz parte de uma data ("2026-10", "08/07/2026").
+func datePart(q string, loc []int) bool {
+	digit := func(b byte) bool { return b >= '0' && b <= '9' }
+	after, before := q[loc[1]:], q[:loc[0]]
+	return len(after) > 1 && (after[0] == '-' || after[0] == '/') && digit(after[1]) ||
+		len(before) > 1 && (before[len(before)-1] == '-' || before[len(before)-1] == '/') && digit(before[len(before)-2])
 }
 
 var daysRe = regexp.MustCompile(`(\d+)\s*dias`)
@@ -424,6 +443,9 @@ func prefetch(agent string, t *Tools, question string) string {
 	case "otavio":
 		switch otavioTopic(question) {
 		case "dividas":
+			if wantsAction(question) { // cadastrar, registrar ou apagar não é simular um valor a mais
+				return ""
+			}
 			order := ""
 			if strings.Contains(q, "menor") || strings.Contains(q, "bola") {
 				order = "menor saldo"
@@ -459,8 +481,8 @@ func prefetch(agent string, t *Tools, question string) string {
 			}
 		}
 		// "Guardei 200": o dinheiro já foi guardado; não é um valor por mês.
-		saved := value != "" && savedRe.MatchString(q)
-		if saved {
+		// "Guardei 200" ou "crie a meta de R$ 2.500": o valor não é quanto guardar por mês.
+		if savedRe.MatchString(q) || wantsAction(question) {
 			value = ""
 		}
 		if len(named) == 0 {
