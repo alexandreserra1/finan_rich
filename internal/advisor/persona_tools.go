@@ -97,7 +97,6 @@ func (t *Tools) simulateDebts(extra, order string) string {
 	other := finance.PayoffSchedule(debts, x, !avalanche)
 
 	var b strings.Builder
-	b.WriteString("Simulação genérica com taxas constantes, juros mensais antes de cada pagamento e primeiro pagamento no próximo mês. Não aplica limites legais ou contratuais sem os dados da operação; confirme o valor de quitação com o credor.\n")
 	fmt.Fprintf(&b, "Ordem (%s): %s.\n", name[avalanche], strings.Join(plan.Names, " → "))
 	fmt.Fprintf(&b, "Só o mínimo (%s por mês): %s.\n", money.Format(mins), describe(base))
 	if x > 0 {
@@ -116,8 +115,9 @@ func (t *Tools) simulateDebts(extra, order string) string {
 		for _, p := range plan.PaidOff {
 			each = append(each, fmt.Sprintf("%s em %s", p.Name, t.monthAfter(p.Month).Label()))
 		}
-		b.WriteString("Cada uma zera: " + strings.Join(each, "; ") + ".")
+		b.WriteString("Cada uma zera: " + strings.Join(each, "; ") + ".\n")
 	}
+	b.WriteString("Conta aproximada: taxas constantes, juros antes de cada pagamento e o primeiro no próximo mês, sem limites legais ou encargos do contrato. Para quitar, confirme o valor com o credor.")
 	return strings.TrimSpace(b.String())
 }
 
