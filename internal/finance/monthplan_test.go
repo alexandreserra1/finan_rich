@@ -8,7 +8,7 @@ import (
 
 func TestPlanMonthLimitaPagamentoAoPrimeiroPeriodo(test *testing.T) {
 	debtPlan := PlanDebts([]domain.Debt{{Name: "Empréstimo", BalanceCents: 240000, MonthlyRateBP: 900, MinPaymentCents: 30000}})
-	plan := PlanMonth(Summary{InCents: 360000, OutCents: 43990}, debtPlan, 0)
+	plan := PlanMonth(Summary{InCents: 360000, OutCents: 43990}, debtPlan, 0, 0)
 	if plan.TargetPaymentCents != 261600 {
 		test.Fatalf("pagamento = %d; esperado saldo 240000 + juros 21600", plan.TargetPaymentCents)
 	}
@@ -51,7 +51,7 @@ func TestPlanMonthNaoRepeteMinimoPago(test *testing.T) {
 	debtPlan := PlanDebts([]domain.Debt{{Name: "Empréstimo", BalanceCents: 240000, MonthlyRateBP: 900, MinPaymentCents: 30000}})
 	summary := Summary{InCents: 100000, OutCents: 60000,
 		Categories: []CategoryLine{{Name: domain.DebtPaymentCategory, SpentCents: 30000}}}
-	plan := PlanMonth(summary, debtPlan, 0)
+	plan := PlanMonth(summary, debtPlan, 0, 0)
 	if plan.TargetPaymentCents != 40000 {
 		test.Fatalf("pagamento = %d; só há 40000 disponíveis e o mínimo já foi lançado", plan.TargetPaymentCents)
 	}
@@ -64,7 +64,7 @@ func TestPlanMonthReservaMinimosSemAtribuirPagamentoAgregado(test *testing.T) {
 	})
 	summary := Summary{InCents: 200000, OutCents: 30000,
 		Categories: []CategoryLine{{Name: domain.DebtPaymentCategory, SpentCents: 30000}}}
-	plan := PlanMonth(summary, debts, 0)
+	plan := PlanMonth(summary, debts, 0, 0)
 	if plan.PendingMinCents != 20000 || plan.TargetBudgetCents != 150000 {
 		test.Fatalf("pagamento agregado não identifica a dívida; preserve os mínimos restantes: %+v", plan)
 	}
@@ -72,7 +72,7 @@ func TestPlanMonthReservaMinimosSemAtribuirPagamentoAgregado(test *testing.T) {
 
 func TestPlanMonthNaoReservaMinimoAcimaDoDevidoSimulado(test *testing.T) {
 	debts := PlanDebts([]domain.Debt{{Name: "Pequena", BalanceCents: 10000, MonthlyRateBP: 1000, MinPaymentCents: 50000}})
-	plan := PlanMonth(Summary{InCents: 20000}, debts, 0)
+	plan := PlanMonth(Summary{InCents: 20000}, debts, 0, 0)
 	if plan.PendingMinCents != 11000 || plan.FreeCents != 9000 || plan.TargetPaymentCents != 11000 {
 		test.Fatalf("mínimo ou pagamento acima do saldo com juros simulados: %+v", plan)
 	}
@@ -80,7 +80,7 @@ func TestPlanMonthNaoReservaMinimoAcimaDoDevidoSimulado(test *testing.T) {
 
 func TestPlanMonthIgnoraMinimoDeSaldoZerado(test *testing.T) {
 	debts := PlanDebts([]domain.Debt{{Name: "Quitada", BalanceCents: 0, MonthlyRateBP: 1000, MinPaymentCents: 50000}})
-	plan := PlanMonth(Summary{InCents: 20000}, debts, 0)
+	plan := PlanMonth(Summary{InCents: 20000}, debts, 0, 0)
 	if plan.PendingMinCents != 0 || plan.FreeCents != 20000 || plan.Target != nil {
 		test.Fatalf("saldo zerado não gera mínimo pendente: %+v", plan)
 	}
@@ -96,7 +96,7 @@ func TestPlanMonthNaoExcedeCaixaNemDevidoSimulado(test *testing.T) {
 			for _, fixed := range []int64{0, 9000, 400000} {
 				summary := Summary{InCents: income, OutCents: paid,
 					Categories: []CategoryLine{{Name: domain.DebtPaymentCategory, SpentCents: paid}}}
-				plan := PlanMonth(summary, debts, fixed)
+				plan := PlanMonth(summary, debts, fixed, 0)
 				if plan.TargetBudgetCents > max(income-paid-fixed, 0) || plan.TargetPaymentCents > 261600 || plan.TargetPaymentCents < 0 {
 					test.Fatalf("excedeu caixa ou saldo com juros; renda=%d pago=%d fixos=%d: %+v", income, paid, fixed, plan)
 				}
@@ -105,5 +105,19 @@ func TestPlanMonthNaoExcedeCaixaNemDevidoSimulado(test *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// No dia 22, o que costuma ser gasto até o fim do mês fica reservado antes do extra
+// para a dívida: sem isso, o plano mandava toda a sobra e não sobrava nada para o
+// mercado da semana (revisão do corpus, 26/11/2026).
+func TestPlanMonthReservaGastosDoRestoDoMes(test *testing.T) {
+	debts := PlanDebts([]domain.Debt{{Meta: domain.Meta{ID: "emp", UpdatedAt: 1}, Name: "Empréstimo", BalanceCents: 600000, MonthlyRateBP: 900, MinPaymentCents: 30000}})
+	plan := PlanMonth(Summary{InCents: 385000, OutCents: 50000}, debts, 9000, 120000) // sobra de R$ 3.350,00, parcela ainda não paga
+	if plan.PendingVariableCents != 120000 || plan.FreeCents != 335000-9000-30000-120000 {
+		test.Fatalf("plano = %+v", plan)
+	}
+	if plan.TargetBudgetCents != plan.FreeCents+30000 || plan.TargetPaymentCents != plan.TargetBudgetCents {
+		test.Errorf("orçamento %d, pagamento %d", plan.TargetBudgetCents, plan.TargetPaymentCents)
 	}
 }

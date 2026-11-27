@@ -61,6 +61,7 @@ func TestInsights(t *testing.T) {
 	check("variáveis até hoje", v.VariableCents, 58090)             // 10×50 + 55,90 + 25 (investimento não conta)
 	check("fixos (aluguel a cair)", v.FixedCents, 150000)           // recorrente de outubro ainda sem lançamento
 	check("projeção", v.ProjectedCents, 58090+10000+150000)         // até hoje + o iFood do dia 20 dos meses anteriores + aluguel
+	check("resto do mês", v.RemainingVariableCents, 10000)          // o iFood do dia 20 dos meses anteriores
 	check("mês passado", v.LastMonthCents, 185590)                  // 300 + 55,90 + 1.500
 	check("mês passado até dia 15", v.LastMonthSameDayCents, 25590) // dias 3 e 10 + Netflix (sem o aluguel fixo)
 	check("média 3 meses", v.Avg3Cents, 185590)
@@ -173,6 +174,9 @@ func TestInsightsMonthlyPurchasesAreNotPace(t *testing.T) {
 		t.Fatalf("variável %d, mês passado até o dia 22 %d", v.VariableCents, v.LastMonthSameDayCents)
 	}
 	// Setembro não teve nada depois do dia 22: o resto de outubro segue setembro.
+	if v.RemainingVariableCents != 0 {
+		t.Errorf("setembro não gastou nada depois do dia 22: resto %d", v.RemainingVariableCents)
+	}
 	if v.ProjectedVariableCents != 47990 || v.ProjectedCents != 47990 {
 		t.Errorf("projeção %d (variável %d), esperado 47990: as compras do mês não se repetem", v.ProjectedCents, v.ProjectedVariableCents)
 	}
@@ -193,7 +197,7 @@ func TestInsightsProjectionWithoutHistory(t *testing.T) {
 		}
 	}
 	l.Transactions = october
-	if v := Insights(l, time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC)); v.ProjectedVariableCents != 47990*31/22 || len(v.Savings) > 1 {
+	if v := Insights(l, time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC)); v.ProjectedVariableCents != 47990*31/22 || v.RemainingVariableCents != 0 || len(v.Savings) > 1 {
 		t.Errorf("projeção sem histórico = %d, sugestões %+v", v.ProjectedVariableCents, v.Savings)
 	}
 }
