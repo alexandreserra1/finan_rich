@@ -6,7 +6,7 @@ não usa dados bancários reais e não publica alterações automaticamente.
 ## Diagnóstico e fontes únicas
 
 Auditado em 16/11/2026: Go 1.26.11, JavaScript sem framework, SQLite, WebAssembly,
-Capacitor 8 e Playwright 1.64.1. O app é offline-first; Vercel serve o site e o proxy.
+Capacitor 8 e Playwright 1.65.0. O app é offline-first; Vercel serve o site e o proxy.
 O adaptador Supabase existe, mas não significa cadastro ativo: falta projeto e configuração.
 Havia 16 scripts E2E e CI de Go, Wasm, Chromium, WebKit, PostgreSQL, Android e iOS.
 O Superpowers já estava habilitado nos dois perfis locais do Claude. As skills existentes

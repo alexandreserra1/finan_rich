@@ -83,7 +83,7 @@ jobs:
           # tentativas de 5 min). A imagem oficial do Playwright, na mesma versão do e2e, já
           # traz as bibliotecas e o navegador: nada vem do apt.
           - browser: webkit
-            image: mcr.microsoft.com/playwright:v1.64.1-noble
+            image: mcr.microsoft.com/playwright:v1.65.0-noble
     container: ${{ matrix.image }} # vazio: roda direto na máquina do GitHub
     steps:
       - uses: actions/checkout@v7

@@ -123,6 +123,11 @@ restante. Referencie a mudança OpenSpec e arquivos relevantes, sem copiar a arq
   passou. Para ler o `.xcresult` sem o Xcode, os blocos de `Data/` são zstd: `zstd -d` e
   `file`. Se repetir, o teste deve tocar de novo quando a tela seguinte não aparecer.
 
+- Em 27/11/2026, o Dependabot subiu o `playwright` do e2e para 1.65.0 (#37) sem a imagem, e o
+  job do WebKit parou com `Executable doesn't exist ... required: v1.65.0-noble`. A imagem foi para
+  `v1.65.0-noble`, e `scripts/engineering.test.mjs` passou a conferir que ela acompanha a versão do
+  `e2e/package.json`: o próximo PR do Dependabot falha no job `engineering` até a imagem subir junto.
+
 ## ENG-009 — No celular, link com âncora caía no topo e o teclado cobria o formulário
 
 Achados em 22/11/2026, com a v1.11.0 oficial instalada pelo site num emulador Android 14.
