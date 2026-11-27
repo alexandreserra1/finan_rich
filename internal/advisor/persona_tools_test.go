@@ -184,6 +184,14 @@ func TestPrefetch(t *testing.T) {
 	if got := prefetch("tito", tools, "Quero criar a meta Passeio 1 de R$ 2500"); strings.Contains(got, "por mês a partir deste mês") {
 		t.Errorf("criar meta não vira aporte por mês: %q", got)
 	}
+	// "Antes de registrar..." é uma pergunta de cálculo, não o pedido de registrar: o valor é lido
+	// (quinta revisão do corpus, 27/11/2026).
+	if got := prefetch("otavio", tools, "Antes de registrar pagamento, simule R$ 450 a mais por mês nas duas dívidas."); !strings.Contains(got, "Com R$ 450,00 a mais") {
+		t.Errorf("antes de registrar descartou o valor pedido: %q", got)
+	}
+	if got := prefetch("tito", tools, "Antes de registrar aporte, calcule quando chego na viagem guardando R$ 350 por mês."); !strings.Contains(got, "Guardando R$ 350,00 por mês") {
+		t.Errorf("antes de registrar descartou o valor da meta: %q", got)
+	}
 	if got := otavioTopic("Quero apagar a compra Mercearia em 2026-10"); got == "dividas" {
 		t.Errorf("apagar não é pagar: tema %q", got)
 	}

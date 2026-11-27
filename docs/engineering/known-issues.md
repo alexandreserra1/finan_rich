@@ -262,6 +262,9 @@ Achado em 26/11/2026, na terceira revisão do corpus (três revisores independen
   pronta simulava valor a mais em pedido de cadastro. Correção: data e número solto de nome não são
   dinheiro quando há valor com "R$"; pagar só como palavra; pedido de ação (`wantsAction`) não vira
   simulação. Testes: `TestQuestionMoney`, `TestPrefetch` e `TestOtavioPaymentIsNotExtra` falharam antes.
+  Efeito colateral achado na quinta revisão: a trava de pedido de ação também descartava o valor em
+  "Antes de registrar pagamento, simule R$ 450 a mais". `asksToWrite` ignora o verbo depois de
+  "antes de" (`TestPrefetch` falhou antes).
 - Dados de terceiros como ordens (aviso de segurança da quarta revisão). Observado: o prompt não dizia
   que descrição de extrato, nome de quem mandou o Pix, nota e resultado de ferramenta são dados, e o
   retrato chamava as notas de "escritas por ele no app", embora o app salve respostas do consultor como
