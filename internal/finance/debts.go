@@ -1,7 +1,10 @@
 package finance
 
 import (
+	"slices"
 	"sort"
+	"strings"
+	"time"
 
 	"github.com/alexandreserra1/finan_rich/internal/domain"
 )
@@ -170,6 +173,33 @@ func simulate(order []domain.Debt, extraCents int64, rollover bool) Schedule {
 		s.Months = month
 	}
 	return s
+}
+
+// LateDebts são as dívidas cuja parcela deste mês já venceu (antes de hoje) sem um
+// pagamento lançado para ela neste mês: "Pagamento: <nome>" em "Pagamento de dívidas",
+// como o app registra. O app não sabe de pagamento feito fora dele: quem mostra pede
+// para registrar, se já pagou.
+func LateDebts(l domain.Ledger, today time.Time) []domain.Debt {
+	month := domain.NewMonth(today.Year(), today.Month())
+	day := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.UTC)
+	cats := l.CategoryIndex()
+	var paid []string
+	for _, t := range l.ActiveTransactions() {
+		if t.Kind == domain.KindSaida && t.Date[:7] == month.Key() && cats[t.CategoryID].Name == domain.DebtPaymentCategory {
+			paid = append(paid, strings.ToLower(t.Description))
+		}
+	}
+	var late []domain.Debt
+	for _, d := range l.ActiveDebts() {
+		if d.BalanceCents <= 0 || d.DueDay <= 0 || !month.Day(d.DueDay).Before(day) {
+			continue
+		}
+		name := strings.ToLower(d.Name)
+		if !slices.ContainsFunc(paid, func(desc string) bool { return strings.Contains(desc, name) }) {
+			late = append(late, d)
+		}
+	}
+	return late
 }
 
 // DebtPayment é pagar parte de uma dívida (tela Dívidas e o consultor): o saldo

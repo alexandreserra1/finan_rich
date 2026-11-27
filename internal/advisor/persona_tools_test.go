@@ -14,7 +14,7 @@ func teamLedger() domain.Ledger {
 	m := func(id string) domain.Meta { return domain.Meta{ID: id, UpdatedAt: 1} }
 	l.Debts = []domain.Debt{
 		{Meta: m("d1"), Name: "Cartão", BalanceCents: 100000, MinPaymentCents: 20000, MonthlyRateBP: 1000, DueDay: 20},
-		{Meta: m("d2"), Name: "Empréstimo", BalanceCents: 100000, MinPaymentCents: 20000, MonthlyRateBP: 200, DueDay: 5},
+		{Meta: m("d2"), Name: "Empréstimo", BalanceCents: 100000, MinPaymentCents: 20000, MonthlyRateBP: 200, DueDay: 28},
 	}
 	l.Goals = []domain.Goal{
 		{Meta: m("g1"), Name: "Viagem", TargetCents: 600000, Deadline: "2027-03", StartDate: "2026-10-01"},
@@ -99,6 +99,16 @@ func TestUpcomingTool(t *testing.T) {
 	}
 	if strings.Contains(got, "Empréstimo") || strings.Contains(got, "Pausado") {
 		t.Errorf("fora da janela ou pausado não entra:\n%s", got)
+	}
+	// Com vencimento no dia 5 e nenhum pagamento lançado em outubro, a parcela venceu: vem antes de tudo.
+	l := teamLedger()
+	l.Debts[1].DueDay = 5
+	late := "Empréstimo: parcela mínima R$ 200,00 venceu em 05/10 e não há pagamento lançado neste mês (se já pagou, registre o pagamento)"
+	if got := NewTools(l, teamDay, nil).Run(call("proximos_vencimentos", `{"dias":"10"}`)); !strings.HasPrefix(got, "Próximos 10 dias (até 26/10):\n- "+late) || strings.Contains(got, "05/11") {
+		t.Errorf("sem a parcela vencida no começo:\n%s", got)
+	}
+	if got := NewTools(l, teamDay, nil).Run(call("proximos_vencimentos", `{"dias":"1"}`)); !strings.HasPrefix(got, "Próximo dia (até 17/10):\n- "+late) {
+		t.Errorf("um dia só, no singular:\n%s", got)
 	}
 	if got := tools.Run(call("proximos_vencimentos", `{"dias":"2"}`)); !strings.Contains(got, "Nada vence") {
 		t.Errorf("janela vazia:\n%s", got)

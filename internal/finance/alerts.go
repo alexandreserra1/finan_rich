@@ -102,6 +102,11 @@ func allAlerts(l domain.Ledger, today time.Time) []Alert {
 	day := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.UTC)
 	current := domain.NewMonth(today.Year(), today.Month())
 
+	for _, d := range LateDebts(l, today) {
+		due := current.Day(d.DueDay)
+		out = append(out, alert("debt-late", d.ID+":"+due.Format(time.DateOnly), "warn", d.Name+": parcela de "+due.Format("02/01")+" sem pagamento lançado",
+			"Parcela mínima: "+brl(d.MinPaymentCents)+". Se já pagou, registre o pagamento em Dívidas.", "/dividas", "O que vence esta semana?"))
+	}
 	for _, d := range PlanDebts(l.ActiveDebts()).Debts {
 		if d.BalanceCents <= 0 {
 			continue

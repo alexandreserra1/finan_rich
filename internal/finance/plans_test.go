@@ -195,3 +195,57 @@ func TestBankAlert(t *testing.T) {
 		t.Error("sem busca do banco, nenhum aviso")
 	}
 }
+
+// Parcela do mês que já venceu sem pagamento lançado para a dívida: o app avisa e
+// pede para registrar, se já pagou (achado da revisão do corpus, 26/11/2026).
+func TestLateDebts(t *testing.T) {
+	today := time.Date(2026, 10, 22, 0, 0, 0, 0, time.UTC)
+	l := domain.Ledger{
+		Categories: []domain.Category{{Meta: meta("pd"), Name: domain.DebtPaymentCategory, Bucket: domain.BucketNecessidades}},
+		Debts: []domain.Debt{
+			{Meta: meta("emp"), Name: "Empréstimo Exemplo", BalanceCents: 240000, MinPaymentCents: 30000, MonthlyRateBP: 900, DueDay: 10},
+			{Meta: meta("car"), Name: "Cartão", BalanceCents: 100000, MinPaymentCents: 20000, MonthlyRateBP: 1000, DueDay: 25},  // ainda vai vencer
+			{Meta: meta("cre"), Name: "Crediário", BalanceCents: 50000, MinPaymentCents: 10000, MonthlyRateBP: 300, DueDay: 22}, // vence hoje
+			{Meta: meta("qui"), Name: "Quitada", MinPaymentCents: 10000, MonthlyRateBP: 300, DueDay: 5},
+			{Meta: meta("sem"), Name: "Sem dia", BalanceCents: 50000, MinPaymentCents: 10000, MonthlyRateBP: 300},
+		},
+	}
+	late := func() (names []string) {
+		for _, d := range LateDebts(l, today) {
+			names = append(names, d.Name)
+		}
+		return names
+	}
+	if got := late(); strings.Join(got, ",") != "Empréstimo Exemplo" {
+		t.Errorf("atrasadas = %v", got)
+	}
+	pay := func(id, date string) {
+		l.Transactions = append(l.Transactions, domain.Transaction{Meta: meta(id), Kind: domain.KindSaida,
+			Description: "Pagamento: Empréstimo Exemplo", AmountCents: 30000, CategoryID: "pd", Date: date})
+	}
+	if pay("set", "2026-09-10"); len(late()) != 1 {
+		t.Errorf("o pagamento de setembro não vale para outubro: %v", late())
+	}
+	if pay("out", "2026-10-12"); len(late()) != 0 {
+		t.Errorf("com o pagamento de outubro lançado, não está atrasada: %v", late())
+	}
+	for _, a := range Alerts(l, today) {
+		if a.Kind == "debt-late" {
+			t.Errorf("paga, sem aviso: %+v", a)
+		}
+	}
+}
+
+func TestLateDebtAlert(t *testing.T) {
+	l := domain.Ledger{Debts: []domain.Debt{{Meta: meta("emp"), Name: "Empréstimo Exemplo", BalanceCents: 240000, MinPaymentCents: 30000, MonthlyRateBP: 900, DueDay: 10}}}
+	for _, a := range Alerts(l, time.Date(2026, 10, 22, 0, 0, 0, 0, time.UTC)) {
+		if a.Kind == "debt-late" {
+			if a.ID != "debt-late:emp:2026-10-10" || a.Level != "warn" || a.Agent.Name != "Otávio" || a.Link != "/dividas" ||
+				a.Title != "Empréstimo Exemplo: parcela de 10/10 sem pagamento lançado" || !strings.Contains(a.Text, "Se já pagou, registre") {
+				t.Errorf("aviso = %+v", a)
+			}
+			return
+		}
+	}
+	t.Error("sem aviso da parcela vencida")
+}

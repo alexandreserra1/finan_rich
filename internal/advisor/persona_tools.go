@@ -303,6 +303,11 @@ func (t *Tools) upcoming(days string) string {
 		}
 		return fmt.Sprintf("em %d dias", d)
 	}
+	for _, d := range finance.LateDebts(t.ledger, t.today) {
+		at := current.Day(d.DueDay)
+		items = append(items, item{at, fmt.Sprintf("%s: parcela mínima %s venceu em %s e não há pagamento lançado neste mês (se já pagou, registre o pagamento)",
+			d.Name, money.Format(d.MinPaymentCents), at.Format("02/01"))})
+	}
 	for _, d := range t.ledger.ActiveDebts() {
 		if d.DueDay > 0 && d.BalanceCents > 0 {
 			if at := next(d.DueDay); in(at) {
@@ -329,7 +334,11 @@ func (t *Tools) upcoming(days string) string {
 		}
 	}
 	sort.SliceStable(items, func(i, j int) bool { return items[i].at.Before(items[j].at) })
-	lines := []string{fmt.Sprintf("Próximos %d dias (até %s):", n, end.Format("02/01"))}
+	head := fmt.Sprintf("Próximos %d dias", n)
+	if n == 1 {
+		head = "Próximo dia"
+	}
+	lines := []string{fmt.Sprintf("%s (até %s):", head, end.Format("02/01"))}
 	for _, it := range items {
 		lines = append(lines, "- "+it.text)
 	}
@@ -339,7 +348,7 @@ func (t *Tools) upcoming(days string) string {
 		}
 	}
 	if len(lines) == 1 {
-		return fmt.Sprintf("Nada vence nos próximos %d dias, e nenhum orçamento passou de 80%%.", n)
+		return fmt.Sprintf("Nada vence até %s, e nenhum orçamento passou de 80%%.", end.Format("02/01"))
 	}
 	return strings.Join(lines, "\n")
 }

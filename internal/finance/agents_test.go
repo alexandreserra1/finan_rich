@@ -20,7 +20,7 @@ func TestTeam(t *testing.T) {
 
 func TestAgentFor(t *testing.T) {
 	for kind, want := range map[string]string{
-		"debt-due": "Otávio", "debt-growing": "Otávio", "budget-near": "Lia", "budget-over": "Lia", "bucket-over": "Lia",
+		"debt-due": "Otávio", "debt-late": "Otávio", "debt-growing": "Otávio", "budget-near": "Lia", "budget-over": "Lia", "bucket-over": "Lia",
 		"unusual": "Lia", "goal-late": "Tito", "goal-done": "Tito", "qualquer-outro": "Otávio",
 	} {
 		if got := agentFor(kind); got.Name != want {
