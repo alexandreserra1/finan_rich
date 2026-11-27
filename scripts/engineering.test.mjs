@@ -311,3 +311,10 @@ test("Claude e Codex usam os mesmos MCPs do projeto, com o mapa do código e a m
   assert.deepEqual(codex, claude);
   for (const name of ["graphify", "ai-memory"]) assert.ok(claude.includes(name), `${name} fora do .mcp.json`);
 });
+
+test("imagem do Playwright no CI acompanha a versão do e2e", () => {
+  const version = JSON.parse(readFileSync(join(root, "e2e/package.json"), "utf8")).devDependencies.playwright;
+  const images = [...readFileSync(join(root, ".github/workflows/ci.yml"), "utf8").matchAll(/mcr\.microsoft\.com\/playwright:v([\d.]+)-/g)].map((m) => m[1]);
+  assert.ok(images.length > 0, "o CI usa a imagem do Playwright no WebKit");
+  assert.deepEqual([...new Set(images)], [version], `Dependabot sobe o playwright do e2e; a imagem do CI precisa subir junto (${version})`);
+});
