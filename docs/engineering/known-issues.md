@@ -245,5 +245,9 @@ Achado em 26/11/2026, na terceira revisão do corpus (três revisores independen
   detecção de cobranças repetidas aceitava lugar de necessidade, a sugestão somava todas as
   cobranças e a sugestão por categoria não excluía o pagamento de dívida. Teste:
   `TestInsightsSavingsSkipCommitments` falhou antes da correção.
+- Diagnóstico. Observado: "quitação em 1 mês" pondo nas dívidas a sobra de setembro, que ainda
+  continha a parcela de R$ 300,00 não lançada, por cima do mínimo que o plano já paga. Correção:
+  a sobra desconta as parcelas mínimas sem pagamento lançado no mês (com as dívidas de hoje).
+  Teste: `TestDiagnoseUnpaidMinimumIsNotSurplus` falhou antes da correção.
 - Risco restante: uma compra do mês feita em dia diferente do mês passado (dia 8 agora, dia 25
   antes) ainda pode acusar ritmo até o dia em que a do mês passado caiu.

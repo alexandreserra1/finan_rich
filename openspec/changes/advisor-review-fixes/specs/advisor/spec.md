@@ -35,3 +35,12 @@ A detecção de cobranças que se repetem SHALL ignorar lugares de necessidade.
 - **WHEN** o mercado é comprado uma vez por mês com valor parecido e a Internet é recorrente
 - **THEN** o mercado não entra na lista de assinaturas
 - **AND** a sugestão de revisar assinaturas soma só as que não são necessidade, no singular quando é uma
+
+### Requirement: Diagnóstico não conta a parcela duas vezes
+A sobra que o diagnóstico propõe pôr nas dívidas SHALL descontar as parcelas mínimas sem
+pagamento lançado no mês, porque o plano das dívidas já paga o mínimo e soma a sobra por cima.
+
+#### Scenario: Parcela não lançada
+- **WHEN** no mês passado sobraram R$ 3.380,10 e a parcela mínima de R$ 300,00 não foi lançada
+- **THEN** a sobra do diagnóstico é R$ 3.080,10 e o texto diz que descontou a parcela
+- **AND** com o pagamento lançado, a sobra é a mesma e nada é descontado de novo
