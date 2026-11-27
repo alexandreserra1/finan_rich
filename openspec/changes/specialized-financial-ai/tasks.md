@@ -85,3 +85,15 @@ publicar modelo ou subir dados. Terceira rodada independente: blocked, parallel_
 
 Uma caixa marcada comprova somente a tarefa descrita. Documentação validada não significa
 que RAG, treinamento ou infraestrutura estejam implementados.
+
+## 7. Correções da quarta revisão independente
+- [x] 7.1 Conferir achados no código e preservar o resultado blocked da quarta rodada.
+- [x] 7.2 Usar ID da compra consultada e mostrar data/valores de edição/exclusão.
+- [x] 7.3 Separar atraso de vencimentos futuros e capturar os cartões reais do executor.
+- [x] 7.4 Cobrir comportamentos nos três conjuntos, renda no onboarding e injeções variadas.
+- [x] 7.5 Bloquear duplicatas exatas/mascaradas e não contar histórico como contraponto.
+- [x] 7.6 Conferir chamadas, argumentos, erros e propostas na avaliação reservada e no hash.
+- [x] 7.7 Concluir validação integrada e gerar pacote para a quinta revisão sem modelos.
+- [ ] 7.8 Receber os três pareceres independentes do Claude; reavaliar desenho se reprovado.
+
+LoRA continua pausado; quinta revisão não equivale a aprovação humana nem autorização de treino.

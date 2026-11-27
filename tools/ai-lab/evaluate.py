@@ -134,6 +134,7 @@ def source_hashes():
     files = list((ROOT / "internal").rglob("*.go"))
     files += list(Path(__file__).parent.glob("*.py"))
     files += list((Path(__file__).parent / "corpusgen").glob("*.go"))
+    files += list((Path(__file__).parent / "reservedeval").glob("*.go"))
     files += [ROOT / "go.mod", ROOT / "go.sum", Path(__file__).parent / "models.json",
               Path(__file__).parent / "runtime-model.json", Path(__file__).parent / "requirements-mlx.lock"]
     return {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()

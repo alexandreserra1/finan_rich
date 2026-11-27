@@ -87,7 +87,9 @@ class EvaluationTests(unittest.TestCase):
 
     def test_hashes_incluem_manifesto_dominio_e_dependencias(self):
         hashes = evaluate.source_hashes()
-        for path in ("tools/ai-lab/models.json", "go.mod", "go.sum"):
+        for path in ("tools/ai-lab/models.json", "go.mod", "go.sum",
+                     "tools/ai-lab/evaluate.py", "tools/ai-lab/runtime-model.json",
+                     "tools/ai-lab/reservedeval/evaluate.go"):
             self.assertIn(path, hashes)
         self.assertTrue(any(path.startswith("internal/domain/") for path in hashes))
 

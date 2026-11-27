@@ -1,7 +1,21 @@
 # Orquestrador de revisão do corpus
 
-**Resultado vigente: blocked (terceira rodada, 26/11/2026).** Há 11 bloqueantes e 40
-avisos. A conclusão sequencial anterior foi substituída; nenhuma etapa libera LoRA.
+**Resultado vigente: blocked (quarta rodada, 27/11/2026).** Há 18 bloqueantes e 34
+avisos entre os três pareceres independentes, com repetições. Contexto: 9f32c90c.
+As correções e a geração de outro pacote não substituem esse resultado nem liberam LoRA.
+
+## Próxima rodada
+
+O Codex corrige o laboratório a partir da main `748df75`, executa os testes e gera
+um novo pacote. Depois para: o Claude faz a quinta revisão independente. Os pareceres
+anteriores não servem para o novo hash. Se a nova rodada reprovar, rever o desenho do
+corpus antes de insistir; não criar loop de revisão ilimitado.
+
+O controlador agora vincula o contexto ao avaliador Python, runtime-model.json e fontes
+Go do comparador reservado. IDs de edição/exclusão precisam de busca anterior válida;
+cartões do executor e quantidade informada são conferidos. Duplicatas mascaradas entre
+conjuntos bloqueiam a exportação. Histórico de onboarding não infla contrapontos positivos.
+Nada disso constitui avaliação semântica independente ou evidência de ganho de um modelo.
 
 O fluxo usa o OpenSpec existente, o controlador `review_corpus.py` e as personas atuais.
 Não é outro framework de agentes nem um serviço em segundo plano. Funciona na sessão

@@ -184,6 +184,20 @@ revisada e, quando houver, chamadas de ferramentas corretas. Separar treino, val
 teste por família de cenário/documento, removendo duplicatas e variações próximas.
 Respostas sintéticas exigem revisão; outro modelo não é certificado de correção financeira.
 
+Após a quarta revisão, família não é sinônimo de ferramenta nem de perfil. Ferramentas
+precisam aparecer nos três conjuntos; famílias agrupam situações de cadastro, conferência
+e recuperação. Perfis, livros e frases ficam separados. O exportador compara também as
+perguntas e respostas finais depois de mascarar nomes declarados, datas e números: renomear
+uma família não torna uma cópia válida. Pares com e sem taxas usam a mesma pergunta somente
+dentro do mesmo conjunto, com contexto diferente. Isso reduz vazamento observável, mas não
+prova distância semântica suficiente; essa avaliação permanece com os revisores.
+
+O material de auditoria inclui os cartões reais emitidos pelo executor. Só os IDs aleatórios
+de registros novos são substituídos por IDs sintéticos determinísticos; IDs usados para
+editar/apagar, registros anteriores, valores e demais campos permanecem intactos. Nenhum
+cartão é aplicado. Os dados de treinamento continuam somente com mensagens e ferramentas;
+os metadados de auditoria não entram como resposta que a pessoa veria.
+
 Registrar modelo-base e revisão, licença, dataset e hashes, seed, configuração LoRA,
 template, precisão, limites de tempo/memória e resultados. Guardar pesos e checkpoints fora
 do Git; versionar apenas manifestos e exemplos fictícios aprovados. Interromper por estouro
