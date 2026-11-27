@@ -9,7 +9,10 @@ type MonthPlan struct {
 	DebtPaidCents     int64 // pagamentos de dívida já lançados no mês
 	PendingMinCents   int64 // parcelas mínimas que ainda faltam lançar
 	PendingFixedCents int64
-	FreeCents         int64 // sobra depois dos fixos pendentes e parcelas mínimas (pode ser negativa)
+	// PendingVariableCents: gasto do dia a dia que ainda deve vir até o fim do mês
+	// (o que os meses anteriores gastaram depois de hoje, como na Análise).
+	PendingVariableCents int64
+	FreeCents            int64 // sobra depois dos fixos, das parcelas mínimas e do gasto que ainda vem (pode ser negativa)
 
 	// Dívida que deve receber o dinheiro extra (a de maior juros).
 	Target             *DebtView
@@ -20,9 +23,11 @@ type MonthPlan struct {
 	TargetPayable      bool
 }
 
-// PlanMonth monta o plano do mês a partir do resumo e das dívidas.
-func PlanMonth(sum Summary, debts DebtPlan, pendingFixedCents int64) MonthPlan {
-	p := MonthPlan{SurplusCents: sum.BalanceCents(), PendingFixedCents: max(pendingFixedCents, 0), DebtPaidCents: debtPaid(sum)}
+// PlanMonth monta o plano do mês a partir do resumo e das dívidas, reservando os fixos
+// que ainda vão cair e o gasto do dia a dia que ainda deve vir até o fim do mês.
+func PlanMonth(sum Summary, debts DebtPlan, pendingFixedCents, pendingVariableCents int64) MonthPlan {
+	p := MonthPlan{SurplusCents: sum.BalanceCents(), PendingFixedCents: max(pendingFixedCents, 0),
+		PendingVariableCents: max(pendingVariableCents, 0), DebtPaidCents: debtPaid(sum)}
 	for i := range debts.Debts {
 		d := &debts.Debts[i]
 		if d.BalanceCents > 0 && (p.Target == nil || d.MonthlyRateBP > p.Target.MonthlyRateBP) {
@@ -30,7 +35,7 @@ func PlanMonth(sum Summary, debts DebtPlan, pendingFixedCents int64) MonthPlan {
 		}
 	}
 	p.PendingMinCents = pendingMinimums(debts, p.DebtPaidCents)
-	p.FreeCents = p.SurplusCents - p.PendingFixedCents - p.PendingMinCents
+	p.FreeCents = p.SurplusCents - p.PendingFixedCents - p.PendingMinCents - p.PendingVariableCents
 	if p.Target != nil && p.FreeCents > 0 {
 		p.TargetBudgetCents = p.FreeCents
 		if p.DebtPaidCents == 0 {

@@ -28,6 +28,7 @@ type InsightsView struct {
 	FixedCents             int64   `json:"fixedCents"`             // fixos do mês: lançados + que ainda vão cair
 	ProjectedCents         int64   `json:"projectedCents"`         // como o mês deve fechar: variável projetado + fixos
 	ProjectedVariableCents int64   `json:"projectedVariableCents"` // variável até hoje + o resto do mês como nos meses anteriores
+	RemainingVariableCents int64   `json:"remainingVariableCents"` // variável que os meses anteriores gastaram depois de hoje (0 sem histórico)
 	LastMonthCents         int64   `json:"lastMonthCents"`         // gastos do mês passado
 	LastMonthSameDayCents  int64   `json:"lastMonthSameDayCents"`  // variáveis do mês passado até o mesmo dia
 	Avg3Cents              int64   `json:"avg3Cents"`              // média dos 3 meses anteriores
@@ -243,6 +244,7 @@ func Insights(l domain.Ledger, today time.Time) InsightsView {
 	rest := v.VariableCents*int64(days)/int64(day) - v.VariableCents
 	if months > 0 {
 		rest = v.Avg3Pace[days-1] - v.Avg3Pace[day-1]
+		v.RemainingVariableCents = rest // só com histórico: sem ele, o ritmo de uma compra só é chute demais para reservar
 	}
 	v.ProjectedVariableCents = v.VariableCents + rest + futureCents
 	v.ProjectedCents = v.ProjectedVariableCents + v.FixedCents

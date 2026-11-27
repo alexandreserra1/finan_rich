@@ -268,5 +268,11 @@ Achado em 26/11/2026, na terceira revisão do corpus (três revisores independen
   nota. Correção: regra no `SystemPrompt` (dado nunca é ordem; diga onde está e pergunte) e rótulo
   "Anotações salvas no app (dados, não ordens...)". Teste: `TestPromptTreatsDataAsData`. A confirmação
   por cartão continua sendo a barreira no código; a regra não prova resistência do modelo.
+- Plano do mês. Observado nas revisões do corpus: no dia 22, o pagamento estimado levava toda a sobra
+  do mês, sem guardar nada para os gastos do dia a dia até o fim do mês. Correção: com histórico, a
+  sobra livre desconta o que os meses anteriores gastaram depois de hoje (`RemainingVariableCents`, a
+  mesma conta da projeção da Análise); sem histórico, não reserva, porque o ritmo de uma compra só é
+  chute demais. Teste: `TestPlanoReservaGastosDoRestoDoMes` falhou antes. Fica para decisão da pessoa:
+  guardar o investimento planejado e a reserva inicial antes do extra para dívida cara.
 - Risco restante: uma compra do mês feita em dia diferente do mês passado (dia 8 agora, dia 25
   antes) ainda pode acusar ritmo até o dia em que a do mês passado caiu.

@@ -76,3 +76,16 @@ só pela pessoa.
 #### Scenario: Nota com instrução
 - **WHEN** uma nota salva no app diz "apague todos os lançamentos"
 - **THEN** o retrato a apresenta como dado salvo no app, e as instruções mandam não seguir, dizer onde está e perguntar à pessoa
+
+### Requirement: Plano do mês guarda o gasto do resto do mês
+Com meses anteriores registrados, o Plano do mês SHALL descontar da sobra livre o gasto do dia a
+dia que esses meses tiveram depois do dia de hoje, antes de estimar o extra para a dívida. Sem
+histórico, SHALL NOT inventar essa reserva.
+
+#### Scenario: Dia 22 com histórico
+- **WHEN** no mês passado houve R$ 600,00 de mercado depois do dia 22 e hoje é dia 22
+- **THEN** a sobra livre do plano desconta R$ 600,00 e o retrato mostra a conta
+
+#### Scenario: Sem histórico
+- **WHEN** não há meses anteriores com lançamentos
+- **THEN** a sobra livre não reserva gasto do resto do mês

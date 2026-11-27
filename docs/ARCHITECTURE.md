@@ -281,7 +281,7 @@ aparelho                                      servidor
 | `agents.go` | `Team`: os personagens do time (id, nome e papel; o retrato fica em `static/img/time/<id>.webp`). Cada tipo de aviso de `Alerts` tem um dono (Otávio avisa vencimentos e a dívida que cresce, Lia os orçamentos, a divisão do salário e o gasto fora do padrão, Tito as metas). `Route` diz de quem é o assunto de uma pergunta. |
 | `briefings.go` | `Briefings`: o cartão "O que o time viu" do Painel, sem IA. Otávio diz a dívida a atacar e quando tudo acaba pagando o mínimo, Tito quanto guardar por mês em cada meta, Lia a categoria mais acima da média, as assinaturas de desejos por ano e a maior economia possível (até 3 linhas cada). Cada resumo traz `Ask`, com resposta pronta. |
 | `briefings.go` (sugestões) | `Suggestions`: as perguntas sugeridas na tela do Consultor, pelos dados (a dívida mais cara, a categoria que disparou, a meta atrasada; sem nada cadastrado, `StartQuestion`, o começo do zero), completadas pelas de sempre (`DefaultSuggestions`) sem as que não se aplicam. |
-| `monthplan.go` | `PlanMonth`: parcelas mínimas pendentes, sobra livre, quanto pagar na dívida de maior juros. |
+| `monthplan.go` | `PlanMonth`: parcelas mínimas pendentes, sobra livre (depois dos fixos que ainda vão cair e, com histórico, do gasto do dia a dia que os meses anteriores tiveram depois de hoje), quanto pagar na dívida de maior juros. |
 | `view.go` | `Dashboard` e `Debts`: o que cada tela mostra, já calculado, em structs com tags JSON (o que o navegador recebe). |
 | `finance_test.go` | Testes de todas as regras com casos de valores conhecidos. |
 

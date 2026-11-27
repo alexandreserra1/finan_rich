@@ -15,7 +15,8 @@ func BuildFacts(l domain.Ledger, today time.Time) Facts {
 	m := domain.NewMonth(today.Year(), today.Month())
 	sum := finance.Summarize(m, l)
 	debts := finance.PlanDebts(l.ActiveDebts())
-	plan := finance.PlanMonth(sum, debts, finance.PendingRecurringExpenses(l, m))
+	insights := finance.Insights(l, today)
+	plan := finance.PlanMonth(sum, debts, finance.PendingRecurringExpenses(l, m), insights.RemainingVariableCents)
 	var recent []finance.Totals
 	all := finance.RecentTotals(l, m, 6)
 	for _, t := range all {
@@ -35,7 +36,7 @@ func BuildFacts(l domain.Ledger, today time.Time) Facts {
 		Recurring: l.ActiveRecurring(),
 		Merchants: finance.TopMerchants(l, today, maxMerchants),
 		Alerts:    finance.Alerts(l, today),
-		Insights:  finance.Insights(l, today),
+		Insights:  insights,
 		Diagnosis: finance.Diagnose(l, today),
 		Names:     categoryNames(l),
 	}
@@ -305,6 +306,9 @@ func writeMonthPlan(b *strings.Builder, p finance.MonthPlan, noIncome bool) {
 	}
 	fmt.Fprintf(b, "- Parcelas mínimas que ainda faltam pagar este mês (não estão nas saídas): %s\n", brl(p.PendingMinCents))
 	fmt.Fprintf(b, "- Contas fixas reservadas, ainda não lançadas: %s\n", brl(p.PendingFixedCents))
+	if p.PendingVariableCents > 0 {
+		fmt.Fprintf(b, "- Gastos do dia a dia que ainda devem vir até o fim do mês (pelos meses anteriores): %s\n", brl(p.PendingVariableCents))
+	}
 	if p.DebtPaidCents > 0 && p.PendingMinCents > 0 {
 		b.WriteString("- Os pagamentos lançados estão agregados por categoria: confirme os mínimos de cada dívida. O orçamento extra mantém toda a reserva pendente, sem atribuir o que já foi pago a uma dívida específica\n")
 	}
@@ -312,8 +316,13 @@ func writeMonthPlan(b *strings.Builder, p finance.MonthPlan, noIncome bool) {
 		b.WriteString("- A renda deste mês ainda não entrou: a sobra livre do mês ainda não dá para calcular\n")
 		return
 	}
-	fmt.Fprintf(b, "- Sobra livre depois dos fixos e das parcelas mínimas: %s - %s - %s = %s\n",
-		brl(p.SurplusCents), brl(p.PendingFixedCents), brl(p.PendingMinCents), brl(p.FreeCents))
+	if p.PendingVariableCents > 0 {
+		fmt.Fprintf(b, "- Sobra livre depois dos fixos, das parcelas mínimas e dos gastos que ainda vêm: %s - %s - %s - %s = %s\n",
+			brl(p.SurplusCents), brl(p.PendingFixedCents), brl(p.PendingMinCents), brl(p.PendingVariableCents), brl(p.FreeCents))
+	} else {
+		fmt.Fprintf(b, "- Sobra livre depois dos fixos e das parcelas mínimas: %s - %s - %s = %s\n",
+			brl(p.SurplusCents), brl(p.PendingFixedCents), brl(p.PendingMinCents), brl(p.FreeCents))
+	}
 	switch {
 	case p.FreeCents <= 0:
 		fmt.Fprintf(b, "- Não sobra dinheiro extra após os compromissos: diferença de %s. Confira o orçamento antes de assumir outro pagamento\n", brl(-p.FreeCents))

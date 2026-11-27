@@ -55,3 +55,30 @@ func TestPlanoDasDividasComecaPelaConta(test *testing.T) {
 		test.Errorf("plano das dívidas:\n%s", got)
 	}
 }
+
+// Com histórico, o plano reserva o que os meses anteriores gastaram depois de hoje antes
+// do extra para a dívida (revisão do corpus, 26/11/2026: o pagamento levava 100% da sobra).
+func TestPlanoReservaGastosDoRestoDoMes(test *testing.T) {
+	m := func(id string) domain.Meta { return domain.Meta{ID: id, UpdatedAt: 1} }
+	l := domain.Ledger{
+		Categories: []domain.Category{{Meta: m("sal"), Name: "Salário", Bucket: domain.BucketRenda}, {Meta: m("mer"), Name: "Mercado", Bucket: domain.BucketNecessidades}},
+		Debts:      []domain.Debt{{Meta: m("emp"), Name: "Empréstimo", BalanceCents: 600000, MonthlyRateBP: 900, MinPaymentCents: 30000}},
+	}
+	tx := func(id, kind string, cents int64, cat, date string) {
+		l.Transactions = append(l.Transactions, domain.Transaction{Meta: m(id), Kind: kind, Description: id, AmountCents: cents, CategoryID: cat, Date: date})
+	}
+	tx("sal-set", domain.KindEntrada, 385000, "sal", "2026-09-05")
+	tx("mer-set-1", domain.KindSaida, 40000, "mer", "2026-09-08")
+	tx("mer-set-2", domain.KindSaida, 60000, "mer", "2026-09-27") // depois do dia 22: o resto do mês costuma ter R$ 600
+	tx("sal-out", domain.KindEntrada, 385000, "sal", "2026-10-05")
+	tx("mer-out-1", domain.KindSaida, 40000, "mer", "2026-10-08")
+	got := Snapshot(BuildFacts(l, time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC)))
+	for _, want := range []string{
+		"- Gastos do dia a dia que ainda devem vir até o fim do mês (pelos meses anteriores): R$ 600,00",
+		"- Sobra livre depois dos fixos, das parcelas mínimas e dos gastos que ainda vêm: R$ 3.450,00 - R$ 0,00 - R$ 300,00 - R$ 600,00 = R$ 2.550,00",
+	} {
+		if !strings.Contains(got, want) {
+			test.Errorf("sem %q:\n%s", want, got)
+		}
+	}
+}
