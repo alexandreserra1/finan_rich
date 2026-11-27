@@ -64,10 +64,21 @@ As regras são outro objeto JSON, definido e revisado **antes de qualquer infer�
 
 - `synthetic: true` e `fixtures_sha256`: SHA-256 dos bytes exatos da fixture.
 - `cases`: exatamente uma entrada por caso, com `id` e `criteria`.
-- Cada critério tem `id`, `category` e **somente um** `contains` ou `forbids` não vazio.
+- Cada critério tem `id`, `category` e **somente um** entre `contains`, `forbids`, `calls` e `proposals`.
 - IDs e categorias seguem o formato dos identificadores. Há 1 a 20 critérios por caso.
 - `contains`/`forbids` são substrings literais, sensíveis a maiúsculas, com até 512 bytes.
   Não há regex, normalização, tolerância monetária ou julgamento por outro modelo.
+- `calls` declara a sequência completa de chamadas, com nome, argumentos JSON exatos e
+  `error: true` quando o executor deve rejeitar. A lista vazia afirma que não deve chamar.
+- `proposals` declara a sequência de cartões, ação, tipo e campos do registro esperado;
+  edições incluem `before` e ID existente. Registros são comparados por campos declarados
+  para não exigir IDs aleatórios novos, mas os critérios precisam incluir valores e dados
+  financeiros importantes. Lista vazia afirma que não deve haver cartão. `Applied` nunca é aceito.
+- Um fluxo com chamadas/propostas ou com qualquer critério estruturado exige critérios
+  para **ambas** as listas, inclusive ausência explícita. Omissão reprova como
+  `rubrica_incompleta`, sem premiar apenas a frase final. Em caso somente textual sem
+  emissão de ferramenta, detectar uma chamada omitida pelo modelo ainda exige rubrica
+  de chamadas definida por quem revisa o caso; não é inferido da frase da pessoa.
 
 Um critério de texto não certifica correção financeira. Categorias e critérios finais,
 seus denominadores e a rubrica humana ainda precisam de revisão. Não foram criados casos
