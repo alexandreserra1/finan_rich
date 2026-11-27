@@ -44,3 +44,12 @@ pagamento lançado no mês, porque o plano das dívidas já paga o mínimo e som
 - **WHEN** no mês passado sobraram R$ 3.380,10 e a parcela mínima de R$ 300,00 não foi lançada
 - **THEN** a sobra do diagnóstico é R$ 3.080,10 e o texto diz que descontou a parcela
 - **AND** com o pagamento lançado, a sobra é a mesma e nada é descontado de novo
+
+### Requirement: Vencimentos avisam a parcela que já venceu
+O consultor e os avisos SHALL mostrar a parcela do mês que venceu antes de hoje sem um
+pagamento lançado para a dívida, pedindo para registrar se já foi paga.
+
+#### Scenario: Parcela do dia 10 sem pagamento lançado
+- **WHEN** hoje é dia 22 e não há "Pagamento: <dívida>" lançado neste mês
+- **THEN** "o que vence?" começa pela parcela vencida em 10/10, com o pedido para registrar se já pagou
+- **AND** o sininho mostra um aviso dessa parcela, que some ao limpar
