@@ -42,10 +42,25 @@ type Fixtures struct {
 }
 
 type Criterion struct {
-	ID       string `json:"id"`
-	Category string `json:"category"`
-	Contains string `json:"contains,omitempty"`
-	Forbids  string `json:"forbids,omitempty"`
+	ID        string              `json:"id"`
+	Category  string              `json:"category"`
+	Contains  string              `json:"contains,omitempty"`
+	Forbids   string              `json:"forbids,omitempty"`
+	Calls     *[]ExpectedCall     `json:"calls,omitempty"`
+	Proposals *[]ExpectedProposal `json:"proposals,omitempty"`
+}
+
+type ExpectedCall struct {
+	Name  string          `json:"name"`
+	Args  json.RawMessage `json:"args"`
+	Error bool            `json:"error,omitempty"`
+}
+
+type ExpectedProposal struct {
+	Action string          `json:"action"`
+	Type   string          `json:"type"`
+	Record json.RawMessage `json:"record"`
+	Before json.RawMessage `json:"before,omitempty"`
 }
 
 type CaseRules struct {
@@ -167,9 +182,8 @@ func validate(fixtures Fixtures, rules Rules, fixturesHash string) error {
 		criteria := map[string]bool{}
 		for _, rule := range item.Criteria {
 			if !identifier.MatchString(rule.ID) || criteria[rule.ID] || !identifier.MatchString(rule.Category) ||
-				(rule.Contains != "") == (rule.Forbids != "") || strings.TrimSpace(rule.Contains+rule.Forbids) == "" ||
-				len(rule.Contains)+len(rule.Forbids) > 512 {
-				return errors.New("critério exige id, categoria e somente contains ou forbids não vazio")
+				!validCriterion(rule) {
+				return errors.New("critério exige id, categoria e somente contains, forbids, calls ou proposals válido")
 			}
 			criteria[rule.ID] = true
 		}

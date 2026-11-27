@@ -51,9 +51,11 @@ type Collection struct {
 }
 
 type replayProvider struct {
-	rounds []Round
-	index  int
-	failed bool
+	rounds  []Round
+	index   int
+	failed  bool
+	calls   []ExpectedCall
+	callIDs map[string]int
 }
 
 func (p *replayProvider) Chat(ctx context.Context, req llm.Request, emit func(string)) (llm.Reply, error) {
@@ -75,12 +77,12 @@ func (p *replayProvider) Chat(ctx context.Context, req llm.Request, emit func(st
 		if message.Role != llm.RoleTool {
 			continue
 		}
-		for _, prefix := range []string{"argumentos inválidos:", "não deu para preparar:", "essa ferramenta não é com você:"} {
-			if strings.HasPrefix(message.Content, prefix) {
-				p.failed = true
-				return llm.Reply{}, errors.New("ferramenta retornou erro")
-			}
+		if index, ok := p.callIDs[message.ToolCallID]; ok {
+			p.calls[index].Error = executorFailed(message.Content)
 		}
+	}
+	if p.callIDs == nil {
+		p.callIDs = map[string]int{}
 	}
 	for _, call := range round.Reply.ToolCalls {
 		offered := false
@@ -89,10 +91,14 @@ func (p *replayProvider) Chat(ctx context.Context, req llm.Request, emit func(st
 				offered = true
 			}
 		}
-		if !offered || len(call.Args) > 4096 || !json.Valid(call.Args) {
+		_, duplicate := p.callIDs[call.ID]
+		_, object := jsonObject(call.Args)
+		if !offered || strings.TrimSpace(call.ID) == "" || duplicate || len(call.Args) > 4096 || !object {
 			p.failed = true
 			return llm.Reply{}, errors.New("chamada de ferramenta inválida")
 		}
+		p.callIDs[call.ID] = len(p.calls)
+		p.calls = append(p.calls, ExpectedCall{Name: call.Name, Args: call.Args})
 	}
 	emit(round.Reply.Text)
 	return round.Reply, nil
@@ -128,19 +134,39 @@ type CriterionResult struct {
 }
 
 type Result struct {
-	ID           string            `json:"id"`
-	Source       string            `json:"source"`
-	Status       string            `json:"status"`
-	AnswerSHA256 string            `json:"answer_sha256"`
-	Passed       int               `json:"passed"`
-	Total        int               `json:"total"`
-	Criteria     []CriterionResult `json:"criteria"`
+	ID              string            `json:"id"`
+	Source          string            `json:"source"`
+	Status          string            `json:"status"`
+	AnswerSHA256    string            `json:"answer_sha256"`
+	Passed          int               `json:"passed"`
+	Total           int               `json:"total"`
+	Criteria        []CriterionResult `json:"criteria"`
+	CallsSHA256     string            `json:"calls_sha256"`
+	ProposalsSHA256 string            `json:"proposals_sha256"`
+	CallCount       int               `json:"call_count"`
+	ProposalCount   int               `json:"proposal_count"`
 }
 
 func score(id, source, text, status string, rules []Criterion) Result {
-	result := Result{ID: id, Source: source, Status: status, AnswerSHA256: digest([]byte(text)), Total: len(rules)}
+	return scoreObserved(id, source, text, status, rules, nil, nil)
+}
+
+func scoreObserved(id, source, text, status string, rules []Criterion, calls []ExpectedCall, proposals []advisor.Proposal) Result {
+	hasCalls, hasProposals := false, false
 	for _, rule := range rules {
-		pass := status == "ok" && ((rule.Contains != "" && strings.Contains(text, rule.Contains)) || (rule.Forbids != "" && !strings.Contains(text, rule.Forbids)))
+		hasCalls = hasCalls || rule.Calls != nil
+		hasProposals = hasProposals || rule.Proposals != nil
+	}
+	if status == "ok" && (len(calls) > 0 || len(proposals) > 0 || hasCalls || hasProposals) && (!hasCalls || !hasProposals) {
+		status = "rubrica_incompleta"
+	}
+	result := Result{ID: id, Source: source, Status: status, AnswerSHA256: digest([]byte(text)), Total: len(rules)}
+	callData, _ := json.Marshal(calls)
+	proposalData, _ := json.Marshal(proposals)
+	result.CallsSHA256, result.ProposalsSHA256 = digest(callData), digest(proposalData)
+	result.CallCount, result.ProposalCount = len(calls), len(proposals)
+	for _, rule := range rules {
+		pass := status == "ok" && ((rule.Contains != "" && strings.Contains(text, rule.Contains)) || (rule.Forbids != "" && !strings.Contains(text, rule.Forbids)) || structuredPass(rule, calls, proposals))
 		result.Criteria = append(result.Criteria, CriterionResult{ID: rule.ID, Category: rule.Category, Pass: pass})
 		if pass {
 			result.Passed++
@@ -187,12 +213,15 @@ func evaluate(ctx context.Context, fixtures Fixtures, rules Rules, split, varian
 		caseCtx, cancel = context.WithTimeout(ctx, perCase)
 		provider := &replayProvider{rounds: collected[item.ID]}
 		q.AskAI = true
-		reply, err = advisor.Answer(caseCtx, systemWrapper{provider: provider, variant: variant}, q, func(string) {}, func(advisor.Proposal) {})
+		var proposals []advisor.Proposal
+		reply, err = advisor.Answer(caseCtx, systemWrapper{provider: provider, variant: variant}, q, func(string) {}, func(proposal advisor.Proposal) {
+			proposals = append(proposals, proposal)
+		})
 		status = answerStatus(caseCtx, reply, err)
 		if provider.failed || provider.index == 0 || provider.index != len(provider.rounds) {
 			status = "incompleto"
 		}
-		results = append(results, score(item.ID, "modelo", reply.Text, status, ruleIndex[item.ID]))
+		results = append(results, scoreObserved(item.ID, "modelo", reply.Text, status, ruleIndex[item.ID], provider.calls, proposals))
 		cancel()
 	}
 	return results
