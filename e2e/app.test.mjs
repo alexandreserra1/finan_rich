@@ -741,7 +741,7 @@ try {
   await page.waitForSelector("form[data-form=ask]", { timeout: 15000 });
   await page.fill("textarea[name=message]", "Procura os gastos na padaria");
   await page.click("form[data-form=ask] button");
-  await page.waitForSelector(".msg.assistant:has-text('Pela busca: 1 lançamentos')", { timeout: 20000 });
+  await page.waitForSelector(".msg.assistant:has-text('Pela busca: 1 lançamento (em ')", { timeout: 20000 });
   ok((await page.textContent(".msg.assistant >> nth=-1")).includes("Saídas: R$ 12,50"), "consultor busca lançamentos pela ferramenta (padaria: R$ 12,50)");
   await page.fill("textarea[name=message]", "Lança 30 reais de cinema");
   await page.click("form[data-form=ask] button");
