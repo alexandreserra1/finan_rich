@@ -245,5 +245,14 @@ Achado em 26/11/2026, na terceira revisão do corpus (três revisores independen
   detecção de cobranças repetidas aceitava lugar de necessidade, a sugestão somava todas as
   cobranças e a sugestão por categoria não excluía o pagamento de dívida. Teste:
   `TestInsightsSavingsSkipCommitments` falhou antes da correção.
+- Diagnóstico. Observado: "quitação em 1 mês" pondo nas dívidas a sobra de setembro, que ainda
+  continha a parcela de R$ 300,00 não lançada, por cima do mínimo que o plano já paga. Correção:
+  a sobra desconta as parcelas mínimas sem pagamento lançado no mês (com as dívidas de hoje).
+  Teste: `TestDiagnoseUnpaidMinimumIsNotSurplus` falhou antes da correção.
+- Vencimentos. Observado: com a parcela do dia 10 sem pagamento lançado e hoje dia 22, "o que
+  vence?" só mostrava a do mês seguinte. Correção: `finance.LateDebts`, usado pela ferramenta e
+  pelo novo aviso `debt-late` (#59). As contas fixas não entram: o app as lança sozinho no dia.
+- Textos que a IA copia: "1 lançamentos", "1 compra(s)", "1 meses", datas `2026-09-02` e, no #52,
+  uma ressalva longa como primeiro item da resposta sem IA "Plano das dívidas" (#57).
 - Risco restante: uma compra do mês feita em dia diferente do mês passado (dia 8 agora, dia 25
   antes) ainda pode acusar ritmo até o dia em que a do mês passado caiu.

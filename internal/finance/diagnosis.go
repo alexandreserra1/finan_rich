@@ -52,20 +52,30 @@ func Diagnose(l domain.Ledger, today time.Time) Diagnosis {
 		d.TopCategory = &in.Categories[0]
 	}
 
-	// Sobra média dos últimos 3 meses fechados (entradas − saídas).
+	// Sobra média dos últimos 3 meses fechados (entradas − saídas), menos as parcelas
+	// mínimas que não foram lançadas: o plano das dívidas já paga o mínimo e soma a
+	// sobra por cima. shortcut: usa as dívidas de hoje nos meses passados; melhorar se
+	// o app guardar o histórico das dívidas.
 	m := domain.NewMonth(today.Year(), today.Month())
+	plan := PlanDebts(debts)
 	if recent := RecentTotals(l, m.Prev(), 2); len(recent) > 0 {
-		var sum int64
+		var sum, unpaid int64
 		for _, t := range recent {
-			sum += t.BalanceCents
+			missing := pendingMinimums(plan, debtPaid(Summarize(t.Month, l)))
+			sum += t.BalanceCents - missing
+			unpaid += missing
 		}
 		if avg := sum / int64(len(recent)); avg > 0 {
 			text := fmt.Sprintf("Nos últimos %d meses sobraram em média %s por mês", len(recent), money.Format(avg))
 			if len(recent) == 1 {
 				text = "No último mês sobraram " + money.Format(avg)
 			}
+			text += " (entradas menos saídas"
+			if unpaid > 0 {
+				text += fmt.Sprintf(", menos %s de parcelas mínimas sem pagamento lançado", money.Format(unpaid/int64(len(recent))))
+			}
 			d.Levers = append(d.Levers, Lever{Kind: "sobra", Title: "Sobra dos últimos meses", MonthlyCents: avg,
-				Text: text + " (entradas menos saídas). Pôr parte disso nas dívidas acelera o plano."})
+				Text: text + "). Pôr parte disso nas dívidas acelera o plano."})
 		}
 	}
 

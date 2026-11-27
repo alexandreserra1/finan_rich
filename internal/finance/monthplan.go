@@ -22,12 +22,7 @@ type MonthPlan struct {
 
 // PlanMonth monta o plano do mês a partir do resumo e das dívidas.
 func PlanMonth(sum Summary, debts DebtPlan, pendingFixedCents int64) MonthPlan {
-	p := MonthPlan{SurplusCents: sum.BalanceCents(), PendingFixedCents: max(pendingFixedCents, 0)}
-	for _, c := range sum.Categories {
-		if c.Name == domain.DebtPaymentCategory {
-			p.DebtPaidCents = c.SpentCents
-		}
-	}
+	p := MonthPlan{SurplusCents: sum.BalanceCents(), PendingFixedCents: max(pendingFixedCents, 0), DebtPaidCents: debtPaid(sum)}
 	for i := range debts.Debts {
 		d := &debts.Debts[i]
 		if d.BalanceCents > 0 && (p.Target == nil || d.MonthlyRateBP > p.Target.MonthlyRateBP) {
@@ -57,4 +52,14 @@ func pendingMinimums(debts DebtPlan, paidCents int64) int64 {
 		}
 	}
 	return max(minimums-paidCents, 0)
+}
+
+// debtPaid: o que foi lançado em "Pagamento de dívidas" no mês do resumo.
+func debtPaid(sum Summary) int64 {
+	for _, c := range sum.Categories {
+		if c.Name == domain.DebtPaymentCategory {
+			return c.SpentCents
+		}
+	}
+	return 0
 }
