@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 
 from evaluate import OUTPUT, ROOT, source_hashes
-from prepare_dataset import digest, encode_rows, executor_failure, plain
+from prepare_dataset import digest, duplicate_findings, encode_rows, executor_failure, non_substantive, plain, proposal_findings, validate_conversation
 from prepare_lora import load_corpus, load_lora_bundle, read_bytes, targets
 
 
@@ -78,17 +78,25 @@ def safety_findings(rows):
 
 
 def quality_findings(rows, splits):
-    findings = []
+    findings = duplicate_findings(rows)
     counts = {"assistant_targets": 0, "call_targets": 0, "response_targets": 0,
               "refusal_targets": 0, "positive_without_call": 0, "offered_without_call": 0}
     internal_id = re.compile(r"\b(?:fic-\w[\w-]*|padrao-[\w-]+|[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12})\b", re.I)
     iso_date = re.compile(r"\b\d{4}-\d{2}(?:-\d{2})?\b")
     agreement = re.compile(r"\b1 (?:lancamentos|cobrancas|meses|compras|dias|parcelas)\b")
-    refusal = re.compile(r"\b(?:nao (?:posso|tenho|vou|consigo)|preciso (?:de|que)|qual e o saldo)\b")
+    refusal = re.compile(r"\b(?:nao (?:posso|tenho|vou|consigo|existe|ha)|preciso (?:de|que)|qual e o saldo|lucro certo|sinal de golpe)\b")
     by_split = {}
     for row in rows:
         last_question = ""
-        if row["tools"] and not any(message.get("tool_calls") for message in row["messages"]):
+        try:
+            validate_conversation(row)
+        except ValueError as error:
+            findings.append({"id": row["id"], "issue": "id_sem_origem" if "ID sem origem" in str(error) else "conversa_invalida"})
+        findings.extend({"id": row["id"], "issue": issue} for issue in proposal_findings(row))
+        current_user = next(index for index in range(len(row["messages"]) - 1, -1, -1)
+                            if row["messages"][index]["role"] == "user")
+        current_calls = any(message.get("tool_calls") for message in row["messages"][current_user + 1:])
+        if row["tools"] and not current_calls:
             counts["offered_without_call"] += 1
         for target in targets(row):
             message = target["messages"][-1]
@@ -110,7 +118,9 @@ def quality_findings(rows, splits):
             if not message.get("tool_calls") and refusal.search(normalized):
                 counts["refusal_targets"] += 1
                 split_counts["refusals"] += 1
-            elif not message.get("tool_calls") and not any(item.get("tool_calls") for item in target["messages"]):
+            elif (len(target["messages"]) == len(row["messages"])
+                  and not message.get("tool_calls") and not non_substantive(answer)
+                  and not current_calls):
                 counts["positive_without_call"] += 1
             direct = row.get("case_kind") == "direct" or re.match(
                 r"\s*(?:quanto|quando|quais|qual|liste|mostre|busque|compare|o que (?:mudou|vence))\b", plain(last_question))
@@ -136,8 +146,7 @@ def quality_findings(rows, splits):
 
 def review_context(dataset, lora=None):
     splits, manifest_hash = load_corpus(dataset)
-    financial_sources = {name: value for name, value in source_hashes().items()
-                         if name.endswith(".go") or name in {"go.mod", "go.sum"}}
+    financial_sources = source_hashes()
     context = {"dataset_manifest_sha256": manifest_hash, "spec_sha256": digest(SPEC.read_bytes()),
                "financial_sources": financial_sources,
                "review_sources": {name: digest(read_bytes(Path(__file__).parent / name))

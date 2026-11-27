@@ -1,8 +1,53 @@
 # Revisão do corpus e correção das causas financeiras
 
-**Estado vigente em 26/11/2026: blocked.** A terceira rodada independente substitui a
-conclusão técnica sequencial da segunda, no mesmo contexto d9115ca5. Há 11 bloqueantes
-e 40 avisos; nenhum foi rebaixado. As seções anteriores são histórico, não aprovação.
+**Estado vigente em 27/11/2026: blocked, quarta rodada.** Três revisores independentes
+reprovaram o contexto 9f32c90c, com 18 bloqueantes e 34 avisos, incluindo repetições.
+As correções locais e checks determinísticos não mudam esse veredito. As seções antigas
+preservam o histórico; nenhum bloqueante foi rebaixado.
+
+## Quarta rodada: achados conferidos no código
+
+Evidências originais: `.artifacts/ai-lab/corpus-review-ds4bzh3a/reviews.json` e
+`.artifacts/ai-lab/corpus-review-v4v2htop/report.json`, na pasta principal preservada.
+O pacote original tinha 70 exemplos; três revisores em `parallel_agents` identificaram:
+
+| Achado | Causa confirmada | Tratamento no laboratório |
+|---|---|---|
+| ID de outro mês | `book.Transactions[1]` selecionava a primeira compra histórica | Seleção explícita da compra do mês e validação do ID contra busca anterior; data e valores na resposta |
+| Próximo vencimento omitido | Retorno antecipado para atraso descartava a janela futura | Lista futura separada do atraso; regressão para aluguel de 05/04 |
+| Injeção uniforme | Marcador fixo, um personagem e pergunta já defensiva | Descrição, loja e nota em cada conjunto, personagens distintos, ordens variadas e ferramentas de escrita reais |
+| Avaliador apenas textual | Rubrica não comparava chamadas nem cartões | Critérios estruturados obrigatórios para fluxo estruturado, com argumentos, ordem, erros e registros |
+| Hash incompleto | Python de avaliação e comparador não compunham contexto | Cobertura de evaluate.py, runtime-model.json e fontes do comparador reservado |
+| Moldes cruzando conjuntos | Família nomeada por perfil não barrava clones | Normalização de nomes/números/datas e bloqueio de perguntas/alvos duplicados entre conjuntos |
+| Comportamentos isolados | Consulta de vencimentos, ferramenta não chamada e golpes só em alguns conjuntos | Cobertura explícita nos três conjuntos; treino também com duas dívidas |
+| Onboarding sem renda | Histórico artificial começava pelas contas | Histórico inclui pergunta de renda, resposta da pessoa e só depois contas fixas |
+| Pagamento e metatexto | Dois cartões descritos como um; rótulo de ficção na resposta e promessa não feita | Propostas capturadas e quantidade validada; respostas de produção, ficção somente nos metadados |
+
+Os defeitos de números extraídos de nomes/datas e os avisos do app foram corrigidos pelo
+Claude nos PRs #62–#64, base `748df75`. O laboratório não altera regras de advisor/finance.
+O Plano do mês agora reserva os gastos restantes com histórico; investimento planejado
+e reserva inicial antes do extra continuam como decisão de produto pendente. Não são
+usados nos alvos para declarar dinheiro disponível para amortizar dívidas.
+
+As novas conversas continuam pequenas e roteirizadas. O fake não demonstra resistência
+de um modelo a ataques; checks lexicais não certificam semântica financeira. A quinta
+rodada fica com os três revisores do Claude. Nenhum formulário novo, treino ou inferência
+decorre desta correção.
+
+### Revisão de código das correções, separada da quinta rodada
+
+A revisão técnica encontrou três lacunas adicionais: cartão adulterado podia manter
+o rótulo original; histórico textual não passava na deduplicação apesar de virar alvo;
+recusa curta com valor financeiro era isentada como frase sem conteúdo. Foram criadas
+regressões e aplicadas correções. Uma segunda execução independente das mesmas sondas
+confirmou rejeição de `applied: true`, valor divergente, duplicação de histórico e recusa
+com saldo/valor alterado. Isso não é parecer financeiro do corpus.
+
+Na preparação local passaram `make test`, 98 testes Python e `check affected`. São
+95 casos: 40 de treino, 27 de validação e 28 de teste. Os três conjuntos exercitam
+14 ferramentas com sucesso; há seis erros explícitos, três recuperações e nove
+conversas com chamadas sucessivas. Pareceres especializados e comparação com modelos
+continuam pendentes; `training_allowed` permanece falso.
 
 Data: 25/11/2026. Revisão técnica assistida por IA, não certificação financeira.
 Contexto: `5b22bf3e7ee9e5b05c639e6f8b58ec3247b70a5c8d676529d79817481c014e4d`.

@@ -1,7 +1,8 @@
 # Preparação do piloto LoRA no Mac
 
-**LoRA pausado em 26/11/2026.** A terceira revisão independente substituiu a segunda:
-`blocked`, `parallel_agents`, 11 bloqueantes e 40 avisos. As provas abaixo são históricas;
+**LoRA continua pausado em 27/11/2026.** A quarta revisão independente reprovou o contexto
+9f32c90c: `blocked`, `parallel_agents`, 18 bloqueantes e 34 avisos, incluindo repetições.
+Correções e pacote para a quinta rodada não liberam treino. As provas abaixo são históricas;
 não autorizam downloads de pesos/tokenizers, treino, publicação ou upload de dados.
 Retomar somente após erro residual demonstrado e nova aprovação explícita da pessoa.
 

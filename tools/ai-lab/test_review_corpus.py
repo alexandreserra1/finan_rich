@@ -14,6 +14,210 @@ from test_prepare_dataset import sample, tool_sample
 
 
 class CorpusReviewTests(unittest.TestCase):
+    def transaction_sample(self):
+        row = tool_sample()
+        row["today"] = "2026-10-22"
+        row["ledger"] = {"categories": [{"id": "mercado", "name": "Mercado"}]}
+        row["tools"][0]["function"]["name"] = "propor_lancamento"
+        row["messages"][2]["tool_calls"][0]["function"].update(name="propor_lancamento", arguments={
+            "descricao": "Compra fictícia", "valor": "52", "categoria": "Mercado", "tipo": "saida"})
+        row["proposals"] = [{"action": "criar", "type": "transaction", "record": {
+            "id": "novo", "kind": "saida", "description": "Compra fictícia", "amountCents": 5200,
+            "date": "2026-10-22", "categoryId": "mercado"},
+            "label": "Novo gasto: 22/10/2026 · Compra fictícia · Mercado · -R$ 52,00"}]
+        row["messages"][3].update(name="propor_lancamento", content="Pronto na tela para o usuário confirmar (" + row["proposals"][0]["label"] + "). Ainda NÃO foi feito.")
+        return row
+
+    def test_contrato_rejeita_monetario_adulterado_aplicado_e_campos_sem_origem(self):
+        original = self.transaction_sample()
+        self.assertEqual(review_corpus.proposal_findings(original), [])
+        mutations = [("record", "amountCents", 999999), ("proposal", "applied", True),
+                     ("proposal", "applied", "false"), ("record", "amountCents", -1),
+                     ("record", "amountCents", True), ("record", "amountCents", 5200.0),
+                     ("record", "date", "2026-10-23"), ("record", "description", "Outra compra"),
+                     ("record", "kind", "entrada"), ("record", "categoryId", "inexistente")]
+        for target, key, value in mutations:
+            row = copy.deepcopy(original)
+            proposal = row["proposals"][0]
+            (proposal["record"] if target == "record" else proposal)[key] = value
+            with self.subTest(key=key, value=value):
+                self.assertEqual(review_corpus.proposal_findings(row), ["propostas_divergentes"])
+        original["proposals"][0]["applied"] = False
+        self.assertEqual(review_corpus.proposal_findings(original), [])
+
+    def test_edicao_exige_before_do_livro_e_preserva_campos_nao_pedidos(self):
+        row = self.transaction_sample()
+        old = copy.deepcopy(row["proposals"][0]["record"])
+        old["amountCents"] = 4000
+        row["ledger"]["transactions"] = [old]
+        row["proposals"][0].update(action="alterar", before=copy.deepcopy(old))
+        row["messages"][2]["tool_calls"][0]["function"].update(name="alterar_lancamento", arguments={"id": "novo", "valor": "52"})
+        row["messages"][3]["name"] = "alterar_lancamento"
+        self.assertEqual(review_corpus.proposal_findings(row), [])
+        for variant in ("before", "campo", "sem_before", "sem_livro"):
+            changed = copy.deepcopy(row)
+            if variant == "before":
+                changed["proposals"][0]["before"]["amountCents"] = 1
+            elif variant == "campo":
+                changed["proposals"][0]["record"]["description"] = "Não solicitado"
+            elif variant == "sem_before":
+                del changed["proposals"][0]["before"]
+            else:
+                changed["ledger"]["transactions"] = []
+            with self.subTest(variant=variant):
+                self.assertEqual(review_corpus.proposal_findings(changed), ["propostas_divergentes"])
+
+    def recurring_sample(self):
+        row = tool_sample()
+        row["today"] = "2026-10-22"
+        row["ledger"] = {"categories": [{"id": "moradia", "name": "Moradia"}]}
+        row["tools"][0]["function"]["name"] = "criar_conta_fixa"
+        row["messages"][2]["tool_calls"][0]["function"].update(name="criar_conta_fixa", arguments={
+            "descricao": "Internet nova 0", "valor": "120", "dia": 7})
+        row["messages"][3]["name"] = "criar_conta_fixa"
+        row["proposals"] = [{"action": "criar", "type": "recurring",
+                             "record": {"id": "fic-proposta-conta-0", "amountCents": 12000, "day": 7,
+                                        "description": "Internet nova 0", "kind": "saida", "categoryId": "moradia", "start": "2026-10"},
+                             "label": "Nova conta fixa: Internet nova 0 · R$ 120,00 todo dia 7"}]
+        row["messages"][3]["content"] = "Pronto na tela para o usuário confirmar (" + row["proposals"][0]["label"] + "). Ainda NÃO foi feito."
+        row["messages"][-1]["content"] = "A conta de R$ 120,00, todo dia 7, aguarda confirmação; o cadastro antigo continua."
+        return row
+
+    def test_conta_fixa_com_lembrete_real_de_onboarding_preserva_um_cartao(self):
+        row = self.recurring_sample()
+        self.assertEqual(review_corpus.proposal_findings(row), [])
+        row["messages"][3]["content"] += " Se a mensagem da pessoa tiver outro item com valor que ainda não virou cartão, chame a ferramenta para ele agora."
+        self.assertEqual(review_corpus.proposal_findings(row), [])
+        row["messages"][-1]["content"] = "Os dois cartões aguardam confirmação."
+        self.assertEqual(review_corpus.proposal_findings(row), ["quantidade_cartoes"])
+
+    def test_conta_fixa_nao_aceita_segundo_cartao_ou_sufixo_arbitrario(self):
+        for variant in ("cartao", "rotulo", "sufixo"):
+            row = self.recurring_sample()
+            if variant == "cartao":
+                row["proposals"].append({"action": "criar", "type": "transaction", "record": {}, "label": "Gasto de hoje"})
+                row["messages"][3]["content"] = "Pronto na tela para o usuário confirmar (" + "; ".join(item["label"] for item in row["proposals"]) + "). Ainda NÃO foi feito."
+            elif variant == "rotulo":
+                row["messages"][3]["content"] = row["messages"][3]["content"].replace("120,00", "200,00")
+            else:
+                row["messages"][3]["content"] += " Outro cartão foi preparado."
+            with self.subTest(variant=variant):
+                self.assertEqual(review_corpus.proposal_findings(row), ["propostas_divergentes"])
+
+    def test_qualidade_reporta_id_de_escrita_sem_origem_em_busca(self):
+        row = tool_sample()
+        row["tools"][0]["function"]["name"] = "alterar_lancamento"
+        row["messages"][2]["tool_calls"][0]["function"]["name"] = "alterar_lancamento"
+        row["messages"][3]["name"] = "alterar_lancamento"
+        result = review_corpus.quality_findings([row], {"train": [row]})
+        self.assertIn("id_sem_origem", [item["issue"] for item in result["findings"]])
+
+    def payment_sample(self):
+        row = tool_sample()
+        row["today"] = "2026-10-22"
+        old = {"id": "divida-1", "name": "Cartão", "balanceCents": 20000}
+        row["ledger"] = {"debts": [old], "categories": [{"id": "pagamentos", "name": "Pagamento de dívidas"}]}
+        row["tools"][0]["function"]["name"] = "registrar_pagamento"
+        row["tools"][0]["function"]["parameters"] = {"properties": {"divida": {"type": "string"}, "valor": {"type": "string"}}, "required": ["divida", "valor"]}
+        row["messages"][2]["tool_calls"][0]["function"].update(name="registrar_pagamento", arguments={"divida": "Cartão", "valor": "100"})
+        row["messages"][3]["name"] = "registrar_pagamento"
+        row["proposals"] = [
+            {"action": "alterar", "type": "debt", "record": {**old, "balanceCents": 10000}, "before": copy.deepcopy(old),
+             "label": "Pagamento de R$ 100,00: saldo R$ 200,00 → R$ 100,00"},
+            {"action": "criar", "type": "transaction", "record": {"id": "gasto-1", "amountCents": 10000,
+                "description": "Pagamento: Cartão", "date": "2026-10-22", "kind": "saida", "categoryId": "pagamentos"},
+             "label": "Novo gasto: R$ 100,00"}]
+        row["messages"][3]["content"] = "Pronto na tela para o usuário confirmar (" + "; ".join(item["label"] for item in row["proposals"]) + "). Ainda NÃO foi feito."
+        row["messages"][-1]["content"] = "Os dois cartões aguardam confirmação: baixa da dívida e novo gasto de R$ 100,00."
+        return row
+
+    def test_pagamento_exige_dois_cartoes_no_alvo_e_metadados_vinculados(self):
+        row = self.payment_sample()
+        self.assertTrue(review_corpus.quality_findings([row], {"train": [row]})["ok"])
+        row["messages"][-1]["content"] = "Há dois cartões: o cartão da dívida e o cartão do gasto."
+        self.assertTrue(review_corpus.quality_findings([row], {"train": [row]})["ok"])
+        for answer in ("O cartão aguarda confirmação.", "Os cartões aguardam confirmação.", "Há três cartões."):
+            changed = copy.deepcopy(row)
+            changed["messages"][-1]["content"] = answer
+            with self.subTest(answer=answer):
+                result = review_corpus.quality_findings([changed], {"train": [changed]})
+                self.assertIn("quantidade_cartoes", [item["issue"] for item in result["findings"]])
+
+    def test_proposta_omitida_extra_tipo_errado_ou_rotulo_nao_comprovado_bloqueia(self):
+        for variant in ("omitida", "extra", "tipo", "rotulo", "ausente", "formato"):
+            row = self.payment_sample()
+            if variant == "omitida":
+                row["proposals"].pop()
+            elif variant == "extra":
+                row["proposals"].append(copy.deepcopy(row["proposals"][1]))
+            elif variant == "tipo":
+                row["proposals"][1]["type"] = "goal"
+            elif variant == "rotulo":
+                row["proposals"][1]["label"] = "Outro cartão"
+            elif variant == "ausente":
+                del row["proposals"]
+            else:
+                row["proposals"] = "dois cartões"
+            with self.subTest(variant=variant):
+                result = review_corpus.quality_findings([row], {"train": [row]})
+                self.assertIn("propostas_divergentes", [item["issue"] for item in result["findings"]])
+
+    def test_pagamento_sem_gasto_exige_um_cartao_e_nao_inventa_o_segundo(self):
+        row = self.payment_sample()
+        row["proposals"].pop()
+        row["messages"][3]["content"] = "Pronto na tela para o usuário confirmar (" + row["proposals"][0]["label"] + "). Ainda NÃO foi feito."
+        row["messages"][-1]["content"] = "Um cartão de baixa da dívida aguarda confirmação."
+        self.assertTrue(review_corpus.quality_findings([row], {"train": [row]})["ok"])
+        row["messages"][-1]["content"] = "Os dois cartões aguardam confirmação."
+        self.assertFalse(review_corpus.quality_findings([row], {"train": [row]})["ok"])
+
+    def test_falha_de_escrita_nao_gera_cartao(self):
+        row = self.payment_sample()
+        row["executor_error"] = True
+        row["messages"][3]["content"] = "não deu para preparar: dívida ausente"
+        row["messages"][-1]["content"] = "Não foi possível preparar os cartões."
+        self.assertFalse(review_corpus.quality_findings([row], {"train": [row]})["ok"])
+        row["proposals"] = []
+        result = review_corpus.quality_findings([row], {"train": [row]})
+        self.assertNotIn("propostas_divergentes", [item["issue"] for item in result["findings"]])
+
+    def test_historico_nao_infla_contraponto_a_recusa_atual(self):
+        row = sample()
+        row["messages"][1:1] = [{"role": "user", "content": "Tenho R$ 20."},
+                                  {"role": "assistant", "content": "Seu saldo é R$ 20."}]
+        row["messages"][-1]["content"] = "Não posso revelar senhas."
+        result = review_corpus.quality_findings([row], {"train": [row]})
+        self.assertEqual(result["counts"]["positive_without_call"], 0)
+        self.assertIn("recusas_sem_contraponto", [item["issue"] for item in result["findings"]])
+
+    def test_alerta_de_retorno_e_erro_nao_contam_como_contraponto(self):
+        rows = [sample("recusa"), sample("alerta"), sample("erro"), sample("continuidade")]
+        for row, answer in zip(rows, ["Não posso revelar senhas.",
+                "Não existe ativo com lucro certo e sem risco.",
+                "A consulta falhou; escolha outro prazo.", "Certo, vamos continuar."]):
+            row["messages"][-1]["content"] = answer
+        result = review_corpus.quality_findings(rows, {"train": rows})
+        self.assertEqual(result["counts"]["positive_without_call"], 0)
+        self.assertFalse(result["ok"])
+
+    def test_qualidade_detecta_vazamento_de_resposta_entre_splits(self):
+        first, second = sample(), sample("outra", "outra", "test")
+        second["messages"][-1]["content"] = first["messages"][-1]["content"]
+        result = review_corpus.quality_findings([first, second], {"train": [first], "test": [second]})
+        self.assertIn("duplicata_resposta", [item["issue"] for item in result["findings"]])
+
+    def test_hash_da_revisao_cobre_avaliador_runtime_e_reservado(self):
+        sources = {"go.mod": "go", "tools/ai-lab/evaluate.py": "python",
+                   "tools/ai-lab/runtime-model.json": "runtime",
+                   "tools/ai-lab/reservedeval/evaluate.go": "reservado"}
+        with patch("review_corpus.load_corpus", return_value=({}, "fonte")), \
+                patch("review_corpus.source_hashes", return_value=sources):
+            _, original = review_corpus.review_context(Path("corpus"))
+            for name in sources:
+                with self.subTest(name=name), patch("review_corpus.source_hashes", return_value={**sources, name: "mudou"}):
+                    _, changed = review_corpus.review_context(Path("corpus"))
+                    self.assertNotEqual(original, changed)
+
     def test_alerta_sobre_promessa_de_golpe_nao_e_garantia_do_assistente(self):
         row = sample()
         row["messages"][-1]["content"] = "Promessa de dobrar dinheiro em um mês sem risco é sinal de golpe. Não transfira dinheiro."

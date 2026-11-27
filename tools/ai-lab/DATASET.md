@@ -1,8 +1,40 @@
 # Corpus supervisionado inicial
 
-**Estado vigente: blocked.** Terceira rodada de 26/11/2026, `parallel_agents`, no mesmo
-contexto d9115ca5 da segunda: 11 bloqueantes e 40 avisos. Revisão sequencial anterior
-não aprova o corpus. LoRA pausado; formulário antigo obsoleto e preservado.
+**Estado vigente: blocked, quarta rodada (27/11/2026).** Três revisores independentes,
+`parallel_agents`, reprovaram o contexto 9f32c90c: 18 bloqueantes e 34 avisos, incluindo
+repetições. As novas correções ainda precisam da quinta revisão; não representam aprovação.
+LoRA pausado; formulário antigo obsoleto e preservado. As contagens iniciais abaixo são histórico.
+
+## Correções preparadas para a quinta rodada
+
+Base: main `748df75`, com correções do app #62–#64. O gerador passa pela API real do
+consultor com provedor roteirizado local, sem modelo. Os livros incluem parcelas pagas
+na categoria correta e contas fixas sem duplicação. O treino inclui um perfil com duas
+dívidas; compras históricas variam, em vez de repetir todo mês o mesmo valor.
+
+- Alterar/apagar usa a compra do período da busca, não o primeiro lançamento histórico.
+- Vencimentos futuros e pendências antigas são separados na resposta.
+- Propostas registram cartões completos do executor; pagamento descreve os dois cartões.
+- Onboarding preserva a pergunta sobre renda antes das contas fixas.
+- Injeções cobrem descrição, loja e nota nos três conjuntos e personagens, sem marcador fixo
+  nem pedido do usuário que já diga para ignorar o ataque. O fake não prova resistência real.
+- Ferramenta oferecida sem chamada, vencimentos bem-sucedidos, golpe e busca vazia aparecem
+  em todos os conjuntos. Há erros com recuperação; chamadas rejeitadas não viram alvos positivos.
+- Taxas com e sem fonte formam pares da mesma pergunta dentro de cada conjunto; as respostas
+  citam Banco Central/data ou explicam a ausência. Ficção fica na auditoria, não na resposta.
+- Nomes, valores e datas são mascarados ao procurar duplicatas de perguntas e alvos entre
+  conjuntos. Os nomes usados ficam em `dedup_names`; renomear uma família não contorna o gate.
+
+`proposals` e `injection_location` são metadados de auditoria. IDs aleatórios de registros
+novos são substituídos por IDs fictícios estáveis só nesses metadados; IDs de registros
+existentes e seu estado anterior não são trocados. Nenhum cartão é aplicado.
+
+O manifesto exportado contém as contagens atuais, os hashes e `training_allowed: false`.
+O contexto da revisão cobre também o avaliador, runtime-model.json e o comparador reservado.
+O comparador aceita critérios de chamadas e cartões; isso não executa modelos nem dispensa
+rubrica financeira independente. Corpus pequeno, seleção roteirizada e proximidade semântica
+continuam exigindo revisão humana/especializada. Não usar a sobra do Plano como autorização
+de pagamento: investimento planejado e reserva inicial ainda dependem de decisão de produto.
 
 Estado: gerador e exportador implementados; **não houve treinamento do Qwen com este corpus**.
 Preparação autorizada após o piloto. Não há dados de usuários, geração por outro LLM,

@@ -73,6 +73,33 @@ determinísticas, Qwen2.5-7B com prompt atual e variações locais de prompt sem
 - **THEN** o teste reservado é usado somente na comparação final com acertos por critério e falhas por categoria
 - **AND** LoRA só volta com erro residual demonstrado e nova aprovação explícita da pessoa
 
+#### Scenario: Avaliação de chamadas e cartões
+- **WHEN** um caso emite chamadas ou propostas ou declara critérios estruturados
+- **THEN** a rubrica declara chamadas e propostas esperadas, inclusive listas vazias quando não houver
+- **AND** a avaliação verifica ordem, argumentos, erros, registros e estado anterior, sem aprovar apenas pela resposta textual
+
+#### Scenario: Reutilização de nomes e números não cria um novo cenário
+- **WHEN** uma pergunta ou resposta de outro conjunto muda somente nomes, datas ou números
+- **THEN** o exportador bloqueia a duplicata exata ou mascarada
+- **AND** os nomes usados na normalização ficam registrados no material de auditoria
+
+#### Scenario: Contrapontos e recuperação
+- **WHEN** o corpus exercita consultas, ferramentas oferecidas sem chamada, recusas, golpes e resultados vazios
+- **THEN** os comportamentos aparecem em treino, validação e teste com perguntas e contextos próprios
+- **AND** respostas históricas do onboarding não contam como contraponto positivo ao pedido atual
+- **AND** uma chamada rejeitada não recebe alvo positivo, mesmo quando uma chamada posterior corrigida funciona
+
+#### Scenario: Identidade e quantidade de propostas
+- **WHEN** o modelo prepara alteração ou exclusão de lançamento
+- **THEN** o ID precisa ter vindo de busca válida anterior na conversa e corresponder ao período solicitado
+- **AND** o material registra as propostas reais do executor e a resposta distingue todos os cartões necessários
+
+#### Scenario: Nova revisão após a quarta rodada bloqueada
+- **WHEN** os defeitos confirmados da quarta rodada são corrigidos
+- **THEN** o novo pacote usa a main com as correções #62–#64 e um novo contexto
+- **AND** o contexto cobre também o avaliador, runtime-model.json e o comparador reservado
+- **AND** a geração não substitui os três pareceres do Claude nem libera LoRA
+
 ### Requirement: Dados privados não viram corpus compartilhado
 O laboratório e a recuperação pública MUST usar somente materiais permitidos, sem extratos, perguntas ou conversas reais coletados automaticamente.
 

@@ -5,13 +5,15 @@ description: Orquestrar automaticamente a revisão dos exemplos financeiros da R
 
 # Orquestrador de revisão do corpus
 
-Estado confirmado em 26/11/2026: a terceira rodada independente, parallel_agents,
-reprovou o mesmo contexto d9115ca5 da segunda: blocked, 11 bloqueantes e 40 avisos.
-O parecer sequencial anterior foi substituído. Não rebaixar bloqueante; conferir cada
-achado no código e registrar evidência de eventual discordância antes de corrigir.
+Estado confirmado em 27/11/2026: a quarta rodada independente, parallel_agents,
+reprovou o contexto 9f32c90c: blocked, 18 bloqueantes e 34 avisos, com repetições entre
+pareceres. O resultado anterior da terceira rodada permanece histórico, não aprovação.
+Não rebaixar bloqueante; conferir cada achado e registrar evidência de discordância.
 Treino pausado: não baixar pesos, treinar, publicar modelo ou subir dados. Codex cuida
-do laboratório; Claude corrige app e revisa/mescla PRs. Regeneração final aguarda aviso
-da pessoa sobre correções na main. Formulário antigo não pode ser sobrescrito; outro
+do laboratório; Claude corrige app e revisa/mescla PRs. As correções #62–#64 estão na
+main em 748df75. O Codex prepara as correções e o pacote da quinta rodada e para;
+Claude faz os três pareceres independentes. Se houver nova reprovação, rever o desenho
+antes de insistir. Formulário antigo não pode ser sobrescrito; outro
 só após revisão sem bloqueantes, com novo nome e hash. Ver review-findings.md.
 
 A sessão principal orquestra. Um subagente não chama outro. Não instalar um framework
