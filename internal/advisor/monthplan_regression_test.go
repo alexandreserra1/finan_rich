@@ -45,3 +45,13 @@ func TestSimulacoesExplicamHipoteses(test *testing.T) {
 		test.Fatal("conhecimento contém previsão absoluta de crescimento")
 	}
 }
+
+// A resposta sem IA mostra a simulação para a pessoa: a conta vem primeiro e a
+// ressalva, curta, no fim (revisão do #52).
+func TestPlanoDasDividasComecaPelaConta(test *testing.T) {
+	q := offlineQ("otavio", "Quanto adianta pagar R$ 200 a mais por mês?")
+	got := appAnswer(q)
+	if !strings.HasPrefix(got, "**Plano das dívidas**\n\n- Ordem (") || !strings.HasSuffix(got, "Para quitar, confirme o valor com o credor.") {
+		test.Errorf("plano das dívidas:\n%s", got)
+	}
+}

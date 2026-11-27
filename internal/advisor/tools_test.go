@@ -38,8 +38,8 @@ func call(name, args string) llm.ToolCall {
 func TestSearchTool(t *testing.T) {
 	tools := NewTools(toolsLedger(), time.Date(2026, 10, 16, 0, 0, 0, 0, time.UTC), nil)
 	cases := []struct{ args, want string }{
-		{`{"texto":"ifood"}`, "2 lançamentos (de 2026-03-10 a 2026-09-02). Saídas: R$ 82,30"}, // acento/caixa não importam; apagado não conta
-		{`{"texto":"ifood","de":"2026-09"}`, "1 lançamentos (de 2026-09-02 a 2026-09-02). Saídas: R$ 30,00"},
+		{`{"texto":"ifood"}`, "2 lançamentos (de 10/03/2026 a 02/09/2026). Saídas: R$ 82,30"}, // acento/caixa não importam; apagado não conta
+		{`{"texto":"ifood","de":"2026-09"}`, "1 lançamento (em 02/09/2026). Saídas: R$ 30,00"},
 		{`{"categoria":"transporte","ate":"2026-09"}`, "Saídas: R$ 25,00"},
 		{`{"tipo":"entrada"}`, "Entradas: R$ 5.000,00"},
 		{`{"texto":"netflix"}`, "Nenhum lançamento"},
