@@ -402,6 +402,15 @@ func questionMoney(q string) string {
 	return ""
 }
 
+// beforeVerbRe: "antes de registrar", "antes de corrigir": o verbo é condição, não o pedido.
+var beforeVerbRe = regexp.MustCompile(`\bantes d[eo]s? \w+`)
+
+// asksToWrite: a pergunta pede para cadastrar, registrar, corrigir ou apagar algo agora. "Antes
+// de registrar pagamento, simule R$ 450 a mais" é uma conta, e o valor vale.
+func asksToWrite(question string) bool {
+	return wantsAction(beforeVerbRe.ReplaceAllString(normalize(question), " "))
+}
+
 // datePart diz se o número achado faz parte de uma data ("2026-10", "08/07/2026").
 func datePart(q string, loc []int) bool {
 	digit := func(b byte) bool { return b >= '0' && b <= '9' }
@@ -443,7 +452,7 @@ func prefetch(agent string, t *Tools, question string) string {
 	case "otavio":
 		switch otavioTopic(question) {
 		case "dividas":
-			if wantsAction(question) { // cadastrar, registrar ou apagar não é simular um valor a mais
+			if asksToWrite(question) { // cadastrar, registrar ou apagar não é simular um valor a mais
 				return ""
 			}
 			order := ""
@@ -482,7 +491,7 @@ func prefetch(agent string, t *Tools, question string) string {
 		}
 		// "Guardei 200": o dinheiro já foi guardado; não é um valor por mês.
 		// "Guardei 200" ou "crie a meta de R$ 2.500": o valor não é quanto guardar por mês.
-		if savedRe.MatchString(q) || wantsAction(question) {
+		if savedRe.MatchString(q) || asksToWrite(question) {
 			value = ""
 		}
 		if len(named) == 0 {
